@@ -8,7 +8,7 @@ The sole purpose of this bot is to annoy Gareth.
 
 import os
 import disnake
-from disnake.ext import commands, tasks
+from disnake.ext import commands
 import config
 import os
 from markovify import markovify
@@ -59,8 +59,9 @@ async def on_ready():
         message += "\n  {0}). {1.name} ({1.id})".format(n, server)
     print(message)
 
+
 @bot.event
-async def on_command_error(ctx, error):
+async def on_slash_command_error(ctx, error):
     """Handle different types of errors.
     """
     if isinstance(error, commands.errors.CommandOnCooldown):
