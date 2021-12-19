@@ -1,3 +1,8 @@
+data/reminders.json
+data/users.json
+data/chain.pickle
+data/chain.pickle.bak
+
 # Project specific files to ignore
 trained/*
 log/*
