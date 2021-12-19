@@ -59,6 +59,13 @@ async def on_ready():
         message += "\n  {0}). {1.name} ({1.id})".format(n, server)
     print(message)
 
+@bot.event
+async def on_command_error(ctx, error):
+    """Handle different types of errors.
+    """
+    if isinstance(error, commands.errors.CommandOnCooldown):
+        await ctx.response.send_message(f"This command is on cooldown for you.")
+
 # Run the bot ------------------------------------------------------------------
 
 bot.run(os.environ["BOT_TOKEN"])
