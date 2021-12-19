@@ -52,9 +52,6 @@ class Reminder(commands.Cog):
         who: str
             Who to remind, either "user" or "channel".
         """
-        if ctx.author.id == config.id_user_adam:
-            return await ctx.response.send_message("Not today, nonce!")
-
         if amount <= 0:
             return await ctx.response.send_message("You can't set a reminder for 0 units or less.")
 
@@ -105,9 +102,10 @@ class Reminder(commands.Cog):
                 else:
                     channel = self.bot.get_channel(reminder["channel"])
                     message = f"{user.mention}"
-                    for user_id in reminder["tag"]:
-                        user = self.bot.get_user(user_id)
-                        message += f" {user.mention}"
+                    if user.id != config.id_user_adam:
+                        for user_id in reminder["tag"]:
+                            user = self.bot.get_user(user_id)
+                            message += f" {user.mention}"
                     await channel.send(message, embed=embed)
 
                 self.reminders.pop(id)
