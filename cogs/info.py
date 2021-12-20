@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import asyncio
 import datetime
-import time
 import json
 import random
 
 import config
+import magic8ball
 import disnake
 import pyowm
 import requests
@@ -52,6 +51,22 @@ class Info(commands.Cog):
         self.news_sources = [source["id"] for source in self.news.get_sources()["sources"]]
 
     # Commands -----------------------------------------------------------------
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(
+        name="8ball",
+        description="ask the magicall ball a question",
+        guild_ids=config.slash_servers
+    )
+    async def bell(self, ctx, question):
+        """Ask the magicall ball a question.
+
+        Parameters
+        ----------
+        question : str
+            The question to ask.
+        """
+        await ctx.response.send_message(f"{ctx.author.mention}: {random.choice(magic8ball.list)}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(

@@ -9,4 +9,5 @@ Unidecode==1.2.0
 wolframalpha==5.0.0
 youtube_dl==2021.6.6
 newsapi-python==0.2.6
-disnake
+disnake==2.2.2
+magic8ball==1.1.2
