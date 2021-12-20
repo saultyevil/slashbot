@@ -105,6 +105,23 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
+        name="roll",
+        description="roll a dice",
+        guild_ids=config.slash_servers
+    )
+    async def roll(self, ctx, n: int):
+        """Roll a random number from 1 to n.
+
+        Parameters
+        ----------
+        n: int
+            The number of sides of the dice.
+        """
+        num = random.randint(1, n)
+        await ctx.response.send_message(f"{ctx.author.mention} rolled a {num}.")
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(
         name="news",
         description="get the news",
         guild_ids=config.slash_servers
