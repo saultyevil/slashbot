@@ -345,7 +345,8 @@ class Spam(commands.Cog):
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
         await channel.send(
-            self.generate_sentence("monday"), file=disnake.File("data/videos/monday.mp4")
+            self.generate_sentence("monday").replace("monday", "**monday**"),
+            file=disnake.File("data/videos/monday.mp4")
         )
 
     @tasks.loop(hours=config.hours_in_week)
@@ -355,7 +356,8 @@ class Spam(commands.Cog):
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
         await channel.send(
-            self.generate_sentence("wednesday"), file=disnake.File("data/videos/wednesday.mp4")
+            self.generate_sentence("wednesday").replace("wednesday", "**wednesday**"),
+            file=disnake.File("data/videos/wednesday.mp4")
         )
 
     @tasks.loop(hours=config.hours_in_week)
@@ -365,7 +367,8 @@ class Spam(commands.Cog):
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
         await channel.send(
-            self.generate_sentence("weekend"), file=disnake.File("data/videos/weekend.mp4")
+            self.generate_sentence("weekend").replace("weekend", "**weekend**"),
+            file=disnake.File("data/videos/weekend.mp4")
         )
 
     @tasks.loop(hours=config.hours_in_week)
@@ -375,7 +378,8 @@ class Spam(commands.Cog):
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
         await channel.send(
-            self.generate_sentence("friday"), file=disnake.File("data/videos/friday.mp4")
+            self.generate_sentence("friday").replace("friday", "**friday**"),
+            file=disnake.File("data/videos/friday.mp4")
         )
 
     @tasks.loop(hours=config.hours_in_week)
@@ -385,7 +389,8 @@ class Spam(commands.Cog):
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
         await channel.send(
-            self.generate_sentence("sunday"), file=disnake.File("data/videos/sunday.mp4")
+            self.generate_sentence("sunday").replace("sunday", "**sunday**"),
+            file=disnake.File("data/videos/sunday.mp4")
         )
 
     @tasks.loop(hours=12)
@@ -439,18 +444,18 @@ class Spam(commands.Cog):
         await asyncio.sleep(self.calc_sleep_time(calendar.WEDNESDAY, 8, 30))
         await self.bot.wait_until_ready()
 
-    @friday_morning.before_loop
-    async def sleep_friday_morning(self):
-        """Sleep until Friday morning.
-        """
-        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 8, 30))
-        await self.bot.wait_until_ready()
-
     @friday_evening.before_loop
     async def sleep_friday_evening(self):
         """Sleep until Monday morning.
         """
         await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 17, 0))
+        await self.bot.wait_until_ready()
+
+    @friday_morning.before_loop
+    async def sleep_friday_morning(self):
+        """Sleep until Friday morning.
+        """
+        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 8, 30))
         await self.bot.wait_until_ready()
 
     @sunday_morning.before_loop
