@@ -46,6 +46,18 @@ class Spam(commands.Cog):
         self.friday_evening.start()
         self.sunday_morning.start()
 
+    # Before command invoke ----------------------------------------------------
+
+    async def cog_before_slash_command_invoke(self, ctx):
+        """Reset the cooldown for some users and servers.
+        """
+        if ctx.guild.id != config.id_server_adult_children:
+            return ctx.application_command.reset_cooldown(ctx)
+
+        if ctx.author.id in config.no_cooldown_users:
+            return ctx.application_command.reset_cooldown(ctx)
+
+
     # Slash commands -----------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
@@ -75,7 +87,7 @@ class Spam(commands.Cog):
         description="artificial intelligence",
         guild_ids=config.slash_servers,
     )
-    async def chat(self, ctx, *, words=None):
+    async def chat(self, ctx, words=""):
         """Generate a message from the Markov sentence model.
 
         Parameters
@@ -83,7 +95,7 @@ class Spam(commands.Cog):
         words: str
             A seed word (or words) to generate a message from.
         """
-        await ctx.response.send_message(self.generate_sentence(words, False))
+        await ctx.response.send_message(self.generate_sentence(words, mentions=False))
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
@@ -274,7 +286,7 @@ class Spam(commands.Cog):
 
         return learnable
 
-    def generate_sentence(self, seed=None, mentions=False):
+    def generate_sentence(self, seedword=None, mentions=False):
         """Generate a "safe" message from the markov chain model.
 
         Parameters
@@ -285,12 +297,12 @@ class Spam(commands.Cog):
             Enable the markov chain to generate a message with mentions.
         """
         for _ in range(self.attempts):
-            if seed:
+            if seedword:
                 try:
-                    if len(seed.split()) > 1:
-                        sentence = self.markov.make_sentence_with_start(seed)
+                    if len(seedword.split()) > 1:
+                        sentence = self.markov.make_sentence_with_start(seedword)
                     else:
-                        sentence = self.markov.make_sentence_that_contains(seed)
+                        sentence = self.markov.make_sentence_that_contains(seedword)
                 except (IndexError, KeyError, markovify.text.ParamError):
                     sentence = self.markov.make_sentence()
             else:

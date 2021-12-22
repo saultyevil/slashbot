@@ -37,6 +37,10 @@ slash_servers = [
     id_server_bumpaper
 ]
 
+no_cooldown_users = [
+    id_user_saultyevil
+]
+
 
 # Constants for the chat bot
 

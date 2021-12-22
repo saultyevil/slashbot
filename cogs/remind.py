@@ -27,6 +27,17 @@ class Reminder(commands.Cog):
         self.time_units = {"minute" : 60, "hour" : 3600, "day" : 86400, "week": 604800, "month": 2592000}
         self.check_reminders.start()
 
+    # Before command invoke ----------------------------------------------------
+
+    async def cog_before_slash_command_invoke(self, ctx):
+        """Reset the cooldown for some users and servers.
+        """
+        if ctx.guild.id != config.id_server_adult_children:
+            return ctx.application_command.reset_cooldown(ctx)
+
+        if ctx.author.id in config.no_cooldown_users:
+            return ctx.application_command.reset_cooldown(ctx)
+
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
