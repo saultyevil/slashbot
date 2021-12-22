@@ -191,6 +191,7 @@ class Info(commands.Cog):
         value: str
             The value of the thing to set.
         """
+        value = value.lower()
         try:
             self.userdata[str(ctx.author.id)][thing] = value
         except KeyError:

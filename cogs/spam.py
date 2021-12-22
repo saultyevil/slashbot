@@ -55,14 +55,15 @@ class Spam(commands.Cog):
         guild_ids=config.slash_servers
     )
     async def badword(self, ctx):
-        """Send a badword to the chat."""
+        """Send a badword to the chat.
+        """
         badword = random.choice(self.badwords)
 
         no_user_badword = True
-        for user in self.userdata.keys():
-            if badword == self.userdata[user]["badword"]:
+        for user_id, items in self.userdata.items():
+            if badword == items.get("badword", None):
                 no_user_badword = False
-                user = ctx.guild.get_member(int(user))
+                user = ctx.guild.get_member(int(user_id))
                 await ctx.response.send_message(f"Here's one for ya, {user.mention} pal ... {badword}!")
 
         if no_user_badword:
