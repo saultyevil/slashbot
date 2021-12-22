@@ -32,8 +32,7 @@ with open("data/godwords.txt", "r") as fp:
 
 for file in ["data/users.json", "data/reminders.json"]:
     if not os.path.exists(file):
-        fp = open(file, "w")
-        fp.close()
+        fp = open(file, "w").write("{}").close()
 
 # Set up the bot and cogs ------------------------------------------------------
 
