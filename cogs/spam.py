@@ -57,7 +57,6 @@ class Spam(commands.Cog):
         if ctx.author.id in config.no_cooldown_users:
             return ctx.application_command.reset_cooldown(ctx)
 
-
     # Slash commands -----------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)

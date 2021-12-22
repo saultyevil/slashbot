@@ -80,7 +80,7 @@ class Info(commands.Cog):
         question = question.capitalize()
         if question[-1] != "?":
             question += "?"
-        await ctx.response.send_message(f"{question}: {random.choice(magic8ball.list)}")
+        await ctx.response.send_message(f"{question} {random.choice(magic8ball.list)}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
