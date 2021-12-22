@@ -65,7 +65,7 @@ async def on_slash_command_error(ctx, error):
     """Handle different types of errors.
     """
     if isinstance(error, commands.errors.CommandOnCooldown):
-        await ctx.response.send_message(f"This command is on cooldown for you.")
+        await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
     else:
         print(f"{ctx.command.name} failed with error:\n{error}\n", "-" * 80)
 

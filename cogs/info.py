@@ -200,7 +200,7 @@ class Info(commands.Cog):
         with open("data/users.json", "w") as fp:
             json.dump(self.userdata, fp)
 
-        await ctx.response.send_message(f"{thing} has been set to {value}")
+        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
