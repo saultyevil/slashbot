@@ -9,6 +9,7 @@ import disnake
 import random
 import xml
 import asyncio
+import json
 import datetime
 import rule34 as r34
 import calendar
@@ -36,6 +37,8 @@ class Spam(commands.Cog):
         self.attempts = attempts
         self.messages = {}
         self.rule34 = r34.Rule34()
+        with open("data/users.json", "r") as fp:
+            self.userdata = json.load(fp)
         atexit.unregister(self.rule34._exitHandler)
         self.monday_morning.start()
         self.wednesday_morning.start()
@@ -54,10 +57,15 @@ class Spam(commands.Cog):
     async def badword(self, ctx):
         """Send a badword to the chat."""
         badword = random.choice(self.badwords)
-        if badword in [config.badword, config.badword_plural]:
-            user = ctx.guild.get_member(config.id_user_zadeth)
-            await ctx.response.send_message(f"Here's one for ya, {user.mention} pal... {badword}!")
-        else:
+
+        no_user_badword = True
+        for user in self.userdata.keys():
+            if badword == self.userdata[user]["badword"]:
+                no_user_badword = False
+                user = ctx.guild.get_member(int(user))
+                await ctx.response.send_message(f"Here's one for ya, {user.mention} pal ... {badword}!")
+
+        if no_user_badword:
             await ctx.response.send_message(f"{badword.capitalize()}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)

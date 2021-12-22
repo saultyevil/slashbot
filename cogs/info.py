@@ -27,7 +27,7 @@ news_sources = [
 ]
 
 set_options = [
-    "location"
+    "location", "badword"
 ]
 
 
