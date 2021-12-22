@@ -194,7 +194,8 @@ class Info(commands.Cog):
         try:
             self.userdata[str(ctx.author.id)][thing] = value
         except KeyError:
-            self.userdata[str(ctx.author.id)].update({thing: value})
+            self.userdata[str(ctx.author.id)] = {}
+            self.userdata[str(ctx.author.id)][thing] = value
 
         with open("data/users.json", "w") as fp:
             json.dump(self.userdata, fp)
