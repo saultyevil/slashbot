@@ -8,10 +8,19 @@ import config
 import datetime
 from disnake.ext import commands, tasks
 import time
+import re
 
 
 cd_user = commands.BucketType.user
-time_units = ["minutes", "hours", "days", "weeks", "months"]
+time_units = {
+    "seconds": 1,
+    "minutes": 60,
+    "hours": 3600,
+    "days": 86400,
+    "weeks": 604800,
+    "months": 2592000,
+    "years": 31536000
+}
 whofor = ["channel", "user"]
 
 
@@ -24,7 +33,6 @@ class Reminder(commands.Cog):
         self.generate_sentence = generate_sentence
         self.reminders = {}
         self.load_reminders()
-        self.time_units = {"minute" : 60, "hour" : 3600, "day" : 86400, "week": 604800, "month": 2592000}
         self.check_reminders.start()
 
     # Before command invoke ----------------------------------------------------
@@ -47,7 +55,7 @@ class Reminder(commands.Cog):
         guild_ids=config.slash_servers
     )
     async def reminder(
-        self, ctx, amount:float=commands.Param(), time_unit=commands.Param(autocomplete=time_units),
+        self, ctx, amount:float=commands.Param(), time_unit=commands.Param(autocomplete=list(time_units.keys())),
         what=commands.Param(), whofor=commands.Param(autocomplete=whofor)
     ):
         """Set a reminder.
@@ -74,7 +82,7 @@ class Reminder(commands.Cog):
         server_id = ctx.guild.id
         channel_id = ctx.channel.id
 
-        seconds = amount * self.time_units[time_unit[:-1]]
+        seconds = amount * time_units[time_unit]
         future = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
         self.reminders[int(time.time())] = {
             "user": user_id,
@@ -133,18 +141,12 @@ class Reminder(commands.Cog):
     def replace_mentions(self, sentence):
         """Replace mentions from a post with the user name.
         """
-        users = []
-        sentence = sentence.split()
-        for n, split in enumerate(sentence):
-            if split.startswith("<@!"):
-                user_id = int(split[3:].rstrip(">"))
-                user = self.bot.get_user(user_id)
-                users.append(user_id)
-                sentence[n] = user.name
+        user_ids = re.findall(r"\<@!(.*?)\>", sentence)
+        for id in user_ids:
+            id = self.bot.get_user(int(id))
+            sentence = sentence.replace(f"<!@{id.id}>", id.name)
 
-        sentence = " ".join(sentence)
-
-        return users, sentence
+        return user_ids, sentence
 
     def save_reminders(self):
         """Dump the reminders to a file.

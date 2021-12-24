@@ -30,12 +30,12 @@ $ python -m pip install -r requirements.txt
 The following environment variables are required,
 
 ```
-export BOT_TOKEN="XXXXXXXXXXXXXXXXXXXX"     # the discord bot token
-export BAD_WORD="XXXXXXXXXXXXXXXXXXXX"      # a special bad word
-export YT_VIDEO_KEY="XXXXXXXXXXXXXXXXXXXX"  # a google api key
-export OWM_KEY="XXXXXXXXXXXXXXXXXXXX"       # an open weather map api key
-export WOLFRAM_ID="XXXXXXXXXXXXXXXXXXXX"    # a wolfram alpha api key
-export NEWS_API="XXXXXXXXXXXXXXXXXXXX"      # an api key for newsapi.org
+export BOT_TOKEN="XXXXXXXXXXXXXXXXXXXX"       # the discord bot token
+export YT_VIDEO_KEY="XXXXXXXXXXXXXXXXXXXX"    # a google api key
+export OWM_KEY="XXXXXXXXXXXXXXXXXXXX"         # an open weather map api key
+export WOLFRAM_ID="XXXXXXXXXXXXXXXXXXXX"      # a wolfram alpha api key
+export NEWS_API="XXXXXXXXXXXXXXXXXXXX"        # an api key for newsapi.org
+export TWITTER_BEARER="XXXXXXXXXXXXXXXXXXXX"  # twitter bearer token
 ```
 
 ## Usage

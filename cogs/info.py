@@ -4,7 +4,6 @@
 import datetime
 import json
 import random
-
 import config
 import magic8ball
 import disnake

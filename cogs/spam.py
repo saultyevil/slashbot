@@ -11,6 +11,7 @@ import xml
 import asyncio
 import json
 import datetime
+import tweepy
 import rule34 as r34
 import calendar
 import atexit
@@ -45,6 +46,8 @@ class Spam(commands.Cog):
         self.friday_morning.start()
         self.friday_evening.start()
         self.sunday_morning.start()
+        # twitter client
+        self.twitter = tweepy.Client(config.twitter_bearer)
 
     # Before command invoke ----------------------------------------------------
 
@@ -114,6 +117,35 @@ class Spam(commands.Cog):
         cow = cowsay.get_output_string("cow", text)
 
         await ctx.response.send_message(f"```{cow}```")
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(
+        name="danny",
+        description="get the latest danny dyer tweet",
+        guild_ids=config.slash_servers
+    )
+    async def danny(self, ctx):
+        """Send the latest Danny Dyer tweet to the chat.
+        """
+        user = self.twitter.get_user(username="MrDDyer")[0]
+        tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
+        tweet = random.choice(tweets)
+
+        danny_pics = [
+            "https://m.media-amazon.com/images/M/MV5BMTUyMzYxNTEwNV5BMl5BanBnXkFtZTYwNzQxOTEz._V1_UY317_CR6,0,214,317_AL_.jpg",
+            "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Danny_Dyer_at_Upton_Park%2C_02_Oct_2010.jpg"
+                "/480px-Danny_Dyer_at_Upton_Park%2C_02_Oct_2010.jpg",
+            "https://www.thesun.co.uk/wp-content/uploads/2021/01/c9df3413-00fd-4c0d-9b65-715cdba59ad0.jpg",
+            "https://i2-prod.mylondon.news/incoming/article20765554.ece/ALTERNATES/s615/3_JS230006785.jpg",
+            "https://www.irishnews.com/picturesarchive/irishnews/irishnews/2019/09/10/084044159-557339d9-0c46-40c1-b2f9-4ce7eee211cc.jpg",
+            "https://thebigissue581.wpengine.com/wp-content/uploads/2018/11/DYER02.jpg"
+        ]
+
+        embed = disnake.Embed(title=f"{tweet.text}", color=disnake.Color.default())
+        embed.set_thumbnail(url=random.choice(danny_pics))
+        embed.set_footer(text=f"{self.generate_sentence('danny')}")
+
+        await ctx.response.send_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
