@@ -2,6 +2,7 @@ data/reminders.json
 data/users.json
 data/chain.pickle
 data/chain.pickle.bak
+.DS_Store
 
 # Project specific files to ignore
 trained/*
