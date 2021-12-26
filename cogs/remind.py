@@ -7,12 +7,14 @@ import disnake
 import config
 import datetime
 from disnake.ext import commands, tasks
+from dateutil import parser
 import time
 import re
 
 
 cd_user = commands.BucketType.user
 time_units = {
+    "unix": 1,
     "seconds": 1,
     "minutes": 60,
     "hours": 3600,
@@ -54,7 +56,7 @@ class Reminder(commands.Cog):
         description="set a reminder",
         guild_ids=config.slash_servers
     )
-    async def reminder(
+    async def add(
         self, ctx, amount:float=commands.Param(), time_unit=commands.Param(autocomplete=list(time_units.keys())),
         what=commands.Param(), whofor=commands.Param(autocomplete=whofor)
     ):
@@ -72,25 +74,47 @@ class Reminder(commands.Cog):
             Who to remind, either "user" or "channel".
         """
         if amount <= 0:
-            return await ctx.response.send_message("You can't set a reminder for 0 units or less.")
+            return await ctx.response.send_message("You can't set a reminder for 0 units or less.", ephemeral=True)
 
         if len(what) > 1024:
-            return await ctx.response.send_message("That is too long of a reminder. 1024 characters is the max.")
+            return await ctx.response.send_message(
+                "That is too long of a reminder. 1024 characters is the max.", ephemeral=True
+            )
 
         tagged_users, what = self.replace_mentions(what)
         user_id = ctx.author.id
         server_id = ctx.guild.id
         channel_id = ctx.channel.id
 
-        seconds = amount * time_units[time_unit]
-        future = datetime.datetime.now() + datetime.timedelta(seconds=seconds)
-        self.reminders[int(time.time())] = {
+        now = datetime.datetime.now()
+
+        if time_unit == "unix":
+            try:
+                unix = datetime.datetime.fromtimestamp(amount)
+            except TypeError:
+                return await ctx.response.send_message("That is not a valid unix timestamp.", ephemeral=True)
+            future = unix.isoformat()
+        elif time_unit == "time stamp":
+            try:
+                future = datetime.datetime.fromtimestamp(amount)
+            except parser.ParserError:
+                return await ctx.response.send_message("That is not a valid timestamp.", ephemeral=True)
+        else:
+            seconds = amount * time_units[time_unit]
+            future = now + datetime.timedelta(seconds=seconds)
+
+        future = future.isoformat()
+        if future < now.isoformat():
+            return await ctx.response.send_message("You can't set a reminder in the past.", ephemeral=True)
+
+        key = f"{int(time.time())}{user_id}"  # the id for the reminder is the current unix time plus the user id
+        self.reminders[key] = {
             "user": user_id,
             "whofor": whofor,
             "server": server_id,
             "channel": channel_id,
             "tag": tagged_users,
-            "when": future.isoformat(),
+            "when": future,
             "what": what,
             "amount": amount,
             "time_unit": time_unit
@@ -98,6 +122,51 @@ class Reminder(commands.Cog):
         self.save_reminders()
 
         await ctx.response.send_message(f"Reminder set for {amount} {time_unit}.")
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(
+        name="forget",
+        description="clear your reminders",
+        guild_ids=config.slash_servers
+    )
+    async def clear(self, ctx, id):
+        """Clear a reminder or all of a user's reminders.
+
+        Parameters
+        ----------
+        reminder: int
+            The id of the reminder to remove.
+        """
+        if id not in self.reminders:
+            return await ctx.response.send_message("That reminder doesn't exist.", ephemeral=True)
+
+        if self.reminders[id]["user"] != ctx.author.id:
+            return await ctx.response.send_message("You can't remove someone else's reminder.", ephemeral=True)
+
+        removed = self.reminders.pop(id, None)
+        self.save_reminders()
+
+        await ctx.response.send_message(f"Reminder for {removed['what']} removed.")
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(
+        name="planned",
+        description="view your reminders",
+        guild_ids=config.slash_servers
+    )
+    async def show(self, ctx):
+        """Show the reminders set for a user.
+        """
+        reminders = [(id, item) for id, item in self.reminders.items() if item["user"] == ctx.author.id]
+
+        if not reminders:
+            return await ctx.response.send_message("You don't have any reminders set.", ephemeral=True)
+
+        message = f"You have {len(reminders)} reminders set.\n```"
+        for id, reminder in reminders:
+            message += f"{id}: {reminder['what']} at {datetime.datetime.fromisoformat(reminder['when'])}\n"
+
+        await ctx.author.send_message(message + "```")
 
     # Tasks --------------------------------------------------------------------
 
@@ -127,7 +196,7 @@ class Reminder(commands.Cog):
                             message += f" {user.mention}"
                     await channel.send(message, embed=embed)
 
-                self.reminders.pop(id)
+                self.reminders.pop(id, None)
                 self.save_reminders()
 
     # Functions ----------------------------------------------------------------

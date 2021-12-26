@@ -11,4 +11,4 @@ youtube_dl==2021.6.6
 newsapi-python==0.2.6
 disnake==2.2.2
 magic8ball==1.1.2
-imdbpy==2021.4.18
+python-dateutil==2.8.2
