@@ -68,7 +68,7 @@ class Info(commands.Cog):
         description="ask the magicall ball a question",
         guild_ids=config.slash_servers
     )
-    async def bell(self, ctx, question):
+    async def ball(self, ctx, question):
         """Ask the magicall ball a question.
 
         Parameters

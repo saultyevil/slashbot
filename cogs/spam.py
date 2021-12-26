@@ -241,6 +241,18 @@ class Spam(commands.Cog):
         else:
             await ctx.send(f"{message}\n>>> *Too cursed for comments*")
 
+    @commands.cooldown(1, config.cooldown_standard, cd_user)
+    @commands.slash_command(
+        name="spit",
+        description="i spit in your direction",
+        guild_ids=config.slash_servers
+    )
+    async def spit(self, ctx):
+        """Send the GIF of the girl spitting.
+        """
+        await ctx.response.defer()
+        await ctx.edit_original_message(file=disnake.File("data/spit.gif"))
+
     # Listeners ---------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
@@ -339,10 +351,16 @@ class Spam(commands.Cog):
             else:
                 sentence = self.markov.make_sentence()
 
+            # No matter what, don't allow @here and @everyone mentions, but
+            # allow user mentions, if mentions == True
+
             if "@here" not in sentence and "@everyone" not in sentence:
                 if mentions: break
                 else:
                     if "@" not in sentence: break
+
+        if not sentence:
+            sentence = self.markov.make_sentence()
 
         return sentence.strip()
 
