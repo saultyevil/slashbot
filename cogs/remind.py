@@ -14,8 +14,8 @@ import re
 
 cd_user = commands.BucketType.user
 time_units = {
-    "unix": 1,
     "time stamp": 1,
+    "unix": 1,
     "seconds": 1,
     "minutes": 60,
     "hours": 3600,
@@ -74,8 +74,6 @@ class Reminder(commands.Cog):
         who: str
             Who to remind, either "user" or "channel".
         """
-        if amount <= 0:
-            return await ctx.response.send_message("You can't set a reminder for 0 units or less.", ephemeral=True)
 
         if len(what) > 1024:
             return await ctx.response.send_message(
@@ -92,6 +90,8 @@ class Reminder(commands.Cog):
                 amount = float(amount)
             except ValueError:
                 return await ctx.response.send_message("That is not a valid number.", ephemeral=True)
+            if amount <= 0:
+                return await ctx.response.send_message("You can't set a reminder for 0 units or less.", ephemeral=True)
 
         now = datetime.datetime.now()
 
@@ -173,7 +173,7 @@ class Reminder(commands.Cog):
         for id, reminder in reminders:
             message += f"{id}: {reminder['what']} at {datetime.datetime.fromisoformat(reminder['when'])}\n"
 
-        await ctx.author.send_message(message + "```")
+        await ctx.author.send(message + "```")
 
     # Tasks --------------------------------------------------------------------
 
@@ -199,8 +199,9 @@ class Reminder(commands.Cog):
                     message = f"{user.mention}"
                     if user.id != config.id_user_adam:
                         for user_id in reminder["tag"]:
-                            user = self.bot.get_user(user_id)
-                            message += f" {user.mention}"
+                            user = self.bot.get_user(int(user_id))
+                            if user:
+                                message += f" {user.mention}"
                     await channel.send(message, embed=embed)
 
                 self.reminders.pop(id, None)
@@ -218,9 +219,10 @@ class Reminder(commands.Cog):
         """Replace mentions from a post with the user name.
         """
         user_ids = re.findall(r"\<@!(.*?)\>", sentence)
-        for id in user_ids:
-            id = self.bot.get_user(int(id))
-            sentence = sentence.replace(f"<!@{id.id}>", id.name)
+
+        for u_id in user_ids:
+            user = self.bot.get_user(int(u_id))
+            sentence = sentence.replace(f"<@!{u_id}>", user.name)
 
         return user_ids, sentence
 
