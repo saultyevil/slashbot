@@ -58,7 +58,7 @@ class Reminder(commands.Cog):
         guild_ids=config.slash_servers
     )
     async def add(
-        self, ctx, amount:float=commands.Param(), time_unit=commands.Param(autocomplete=list(time_units.keys())),
+        self, ctx, amount:str=commands.Param(), time_unit=commands.Param(autocomplete=list(time_units.keys())),
         what=commands.Param(), whofor=commands.Param(autocomplete=whofor)
     ):
         """Set a reminder.
@@ -86,6 +86,12 @@ class Reminder(commands.Cog):
         user_id = ctx.author.id
         server_id = ctx.guild.id
         channel_id = ctx.channel.id
+
+        if time_unit != "time stamp":
+            try:
+                amount = float(amount)
+            except ValueError:
+                return await ctx.response.send_message("That is not a valid number.", ephemeral=True)
 
         now = datetime.datetime.now()
 
