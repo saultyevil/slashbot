@@ -362,7 +362,7 @@ class Spam(commands.Cog):
         if not sentence:
             sentence = self.markov.make_sentence()
 
-        return sentence.strip()
+        return sentence.strip()[:1024]
 
     @staticmethod
     def rule34_comments(id=None):

@@ -10,7 +10,7 @@ import disnake
 import pyowm
 import requests
 import wolframalpha
-from disnake.ext import commands, tasks
+from disnake.ext import commands
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from newsapi import NewsApiClient

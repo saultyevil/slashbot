@@ -15,6 +15,7 @@ import re
 cd_user = commands.BucketType.user
 time_units = {
     "unix": 1,
+    "time stamp": 1,
     "seconds": 1,
     "minutes": 60,
     "hours": 3600,
@@ -93,10 +94,10 @@ class Reminder(commands.Cog):
                 unix = datetime.datetime.fromtimestamp(amount)
             except TypeError:
                 return await ctx.response.send_message("That is not a valid unix timestamp.", ephemeral=True)
-            future = unix.isoformat()
+            future = unix
         elif time_unit == "time stamp":
             try:
-                future = datetime.datetime.fromtimestamp(amount)
+                future = parser.parse(amount)
             except parser.ParserError:
                 return await ctx.response.send_message("That is not a valid timestamp.", ephemeral=True)
         else:
