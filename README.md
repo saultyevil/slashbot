@@ -10,13 +10,15 @@ Here are some of the main features
 
 * Markov Chain sentence generation (learns from the server)
 * Embed a YouTube search
-* Set reminders
+* Set, view and remove reminders
 * Connect to voice to stream audio
 * Generate sentences from God's temple
 * Post images from rule34.xxx
 * Get the news headlines
 * Check the weather and forecast
 * Ask Stephen Wolfram a question
+* Get a random Danny Dyer tweet
+* Send a gif of a spitting girl
 
 ## Requirements
 
