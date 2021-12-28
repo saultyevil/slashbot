@@ -294,7 +294,7 @@ class Spam(commands.Cog):
         """
         message = payload.cached_message
         if message is None: return
-        del self.messages[message.id]
+        del self.messages[str(message.id)]
         await self.bot.wait_until_ready()
 
     # Utility functions --------------------------------------------------------
