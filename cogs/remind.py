@@ -54,7 +54,7 @@ class Reminder(commands.Cog):
     )
     async def add(
         self, ctx, when:str=commands.Param(), time_unit=commands.Param(autocomplete=list(time_units.keys())),
-        reminder=commands.Param(), where=commands.Param(autocomplete=whofor)
+        reminder=commands.Param(), where=commands.Param(default="here", autocomplete=whofor)
     ):
         """Set a reminder.
 
