@@ -5,7 +5,6 @@ import datetime
 import json
 import random
 
-import config
 import disnake
 import magic8ball
 import pyowm
@@ -15,6 +14,8 @@ from disnake.ext import commands
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from newsapi import NewsApiClient
+
+import config
 
 cd_user = commands.BucketType.user
 

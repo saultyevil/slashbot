@@ -13,7 +13,6 @@ import shutil
 import string
 import xml
 
-import config
 import cowsay
 import disnake
 import pyfiglet
@@ -21,6 +20,8 @@ import requests
 import rule34 as r34
 import tweepy
 from disnake.ext import commands, tasks
+
+import config
 from markovify import markovify
 
 cd_user = commands.BucketType.user

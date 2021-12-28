@@ -31,15 +31,9 @@ id_server_bumpaper = 710120382144839691
 id_channel_idiots = 237647756049514498
 id_channel_spam = 627234669791805450
 
-slash_servers = [
-    id_server_adult_children,
-    id_server_freedom,
-    id_server_bumpaper
-]
+slash_servers = [id_server_adult_children, id_server_freedom, id_server_bumpaper]
 
-no_cooldown_users = [
-    id_user_saultyevil
-]
+no_cooldown_users = [id_user_saultyevil]
 
 # API keys and specific settings
 

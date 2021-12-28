@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """Badderbot is another discord bot.
 
 The sole purpose of this bot is to annoy Gareth.
 """
 
 import os
-import disnake
-from disnake.ext import commands
-import config
-import os
-from markovify import markovify
 import pickle
 
-import cogs.spam
+import disnake
+from disnake.ext import commands
+
 import cogs.info
 import cogs.music
 import cogs.remind
+import cogs.spam
+import config
+from markovify import markovify
 
 # Create the bot class, with extra clean up functionality ----------------------
 
+
 class Bot(commands.Bot):
+
     def __init__(self, **kwargs):
-        """Initialize the class.
-        """
+        """Initialize the class."""
         commands.Bot.__init__(self, **kwargs)
         self.cleanup_functions = []
 
@@ -38,15 +38,10 @@ class Bot(commands.Bot):
         args: tuple
             The arguments to pass to the function.
         """
-        self.cleanup_functions.append({
-            "name": name,
-            "function": function,
-            "args": args
-        })
+        self.cleanup_functions.append({"name": name, "function": function, "args": args})
 
     async def close(self):
-        """Clean up things on close.
-        """
+        """Clean up things on close."""
         for function in self.cleanup_functions:
             print("-- {}: with args {} -- ".format(function["name"], *function["args"]))
             if function["args"]:
@@ -95,10 +90,10 @@ bot.add_to_cleanup("markov learn", spam.learn, [None])
 
 # Functions --------------------------------------------------------------------
 
+
 @bot.event
 async def on_ready():
-    """Information to print on bot launch.
-    """
+    """Information to print on bot launch."""
     message = f"Logged in as {bot.user} in the current servers:"
     for n, server in enumerate(bot.guilds):
         message += "\n  {0}). {1.name} ({1.id})".format(n, server)
@@ -107,12 +102,12 @@ async def on_ready():
 
 @bot.event
 async def on_slash_command_error(ctx, error):
-    """Handle different types of errors.
-    """
+    """Handle different types of errors."""
     if isinstance(error, commands.errors.CommandOnCooldown):
         await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
     else:
         print(f"A command failed with error:\n{error}\n", "-" * 80)
+
 
 # Run the bot ------------------------------------------------------------------
 

@@ -4,12 +4,13 @@
 import asyncio
 from functools import partial
 
-import config
 import disnake
 from async_timeout import timeout
 from disnake.ext import commands
 from youtube_dl import YoutubeDL
 from youtube_dl.postprocessor import ffmpeg
+
+import config
 
 cd_user = commands.BucketType.user
 
