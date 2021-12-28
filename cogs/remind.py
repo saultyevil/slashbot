@@ -1,16 +1,15 @@
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import json
-import disnake
-import config
 import datetime
-from disnake.ext import commands, tasks
-from dateutil import parser
-import time
+import json
 import re
+import time
 
+import config
+import disnake
+from dateutil import parser
+from disnake.ext import commands, tasks
 
 cd_user = commands.BucketType.user
 time_units = {
@@ -23,8 +22,7 @@ whofor = ["here", "dm", "both"]
 
 
 class Reminder(commands.Cog):
-    """Commands to set up reminders.
-    """
+    """Commands to set up reminders."""
 
     def __init__(self, bot, generate_sentence):
         self.bot = bot
@@ -36,8 +34,7 @@ class Reminder(commands.Cog):
     # Before command invoke ----------------------------------------------------
 
     async def cog_before_slash_command_invoke(self, ctx):
-        """Reset the cooldown for some users and servers.
-        """
+        """Reset the cooldown for some users and servers."""
         if ctx.guild.id != config.id_server_adult_children:
             return ctx.application_command.reset_cooldown(ctx)
 
@@ -47,15 +44,13 @@ class Reminder(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="remind",
-        description="set a reminder",
-        guild_ids=config.slash_servers
-    )
-    async def add(
-        self, ctx, when:str=commands.Param(), time_unit=commands.Param(autocomplete=list(time_units.keys())),
-        reminder=commands.Param(), where=commands.Param(default="here", autocomplete=whofor)
-    ):
+    @commands.slash_command(name="remind", description="set a reminder", guild_ids=config.slash_servers)
+    async def add(self,
+                  ctx,
+                  when: str = commands.Param(),
+                  time_unit=commands.Param(autocomplete=list(time_units.keys())),
+                  reminder=commands.Param(),
+                  where=commands.Param(default="here", autocomplete=whofor)):
         """Set a reminder.
 
         Parameters
@@ -70,9 +65,8 @@ class Reminder(commands.Cog):
             Where to be reminded, either "here", "dm" or "both".
         """
         if len(reminder) > 1024:
-            return await ctx.response.send_message(
-                "That is too long of a reminder. 1024 characters is the max.", ephemeral=True
-            )
+            return await ctx.response.send_message("That is too long of a reminder. 1024 characters is the max.",
+                                                   ephemeral=True)
 
         tagged_users, reminder = self.replace_mentions(reminder)
         user_id = ctx.author.id
@@ -84,7 +78,8 @@ class Reminder(commands.Cog):
             except ValueError:
                 return await ctx.response.send_message("That is not a valid number.", ephemeral=True)
             if when <= 0:
-                return await ctx.response.send_message(f"You can't set a reminder for 0 {time_unit} or less.", ephemeral=True)
+                return await ctx.response.send_message(f"You can't set a reminder for 0 {time_unit} or less.",
+                                                       ephemeral=True)
 
         now = datetime.datetime.now()
 
@@ -119,11 +114,7 @@ class Reminder(commands.Cog):
             await ctx.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="forget",
-        description="clear your reminders",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="forget", description="clear your reminders", guild_ids=config.slash_servers)
     async def remove(self, ctx, m_id):
         """Clear a reminder or all of a user's reminders.
 
@@ -144,14 +135,9 @@ class Reminder(commands.Cog):
         await ctx.response.send_message(f"Reminder for {removed['what']} removed.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="planned",
-        description="view your reminders",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="planned", description="view your reminders", guild_ids=config.slash_servers)
     async def show(self, ctx):
-        """Show the reminders set for a user.
-        """
+        """Show the reminders set for a user."""
         reminders = [(id, item) for id, item in self.reminders.items() if item["user"] == ctx.author.id]
 
         if not reminders:
@@ -167,8 +153,7 @@ class Reminder(commands.Cog):
 
     @tasks.loop(seconds=5.0)
     async def check_reminders(self):
-        """Check if any reminders need to be sent.
-        """
+        """Check if any reminders need to be sent."""
         for m_id, reminder in list(self.reminders.items()):
             when = datetime.datetime.fromisoformat(reminder["when"])
 
@@ -199,14 +184,12 @@ class Reminder(commands.Cog):
     # Functions ----------------------------------------------------------------
 
     def load_reminders(self):
-        """Load the reminders from a file.
-        """
+        """Load the reminders from a file."""
         with open("data/reminders.json", "r") as fp:
             self.reminders = json.load(fp)
 
     def replace_mentions(self, sentence):
-        """Replace mentions from a post with the user name.
-        """
+        """Replace mentions from a post with the user name."""
         user_ids = re.findall(r"\<@!(.*?)\>", sentence)
 
         for u_id in user_ids:
@@ -216,7 +199,6 @@ class Reminder(commands.Cog):
         return user_ids, sentence
 
     def save_reminders(self):
-        """Dump the reminders to a file.
-        """
+        """Dump the reminders to a file."""
         with open("data/reminders.json", "w") as fp:
             json.dump(self.reminders, fp)

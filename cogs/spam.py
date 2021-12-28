@@ -1,35 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""Commands for sending spam to the chat."""
 
-"""Commands for sending spam to the chat.
-"""
-
-
-import disnake
-import random
-import xml
 import asyncio
-import json
-import datetime
-import tweepy
-import rule34 as r34
-import calendar
-import requests
-import config
-import string
 import atexit
-import shutil
-import pyfiglet
+import calendar
+import datetime
+import json
 import pickle
+import random
+import shutil
+import string
+import xml
+
+import config
 import cowsay
+import disnake
+import pyfiglet
+import requests
+import rule34 as r34
+import tweepy
 from disnake.ext import commands, tasks
 from markovify import markovify
 
 cd_user = commands.BucketType.user
 
+
 class Spam(commands.Cog):
-    """A collection of commands to spam the chat with.
-    """
+    """A collection of commands to spam the chat with."""
+
     def __init__(self, bot, markov, badwords, godwords, attempts=10):
         self.bot = bot
         self.markov = markov
@@ -52,8 +51,7 @@ class Spam(commands.Cog):
     # Before command invoke ----------------------------------------------------
 
     async def cog_before_slash_command_invoke(self, ctx):
-        """Reset the cooldown for some users and servers.
-        """
+        """Reset the cooldown for some users and servers."""
         if ctx.guild.id != config.id_server_adult_children:
             return ctx.application_command.reset_cooldown(ctx)
 
@@ -63,14 +61,9 @@ class Spam(commands.Cog):
     # Slash commands -----------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="badword",
-        description="send a naughty word",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="badword", description="send a naughty word", guild_ids=config.slash_servers)
     async def badword(self, ctx):
-        """Send a badword to the chat.
-        """
+        """Send a badword to the chat."""
         badword = random.choice(self.badwords)
 
         no_user_badword = True
@@ -119,14 +112,9 @@ class Spam(commands.Cog):
         await ctx.response.send_message(f"```{cow}```")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="danny",
-        description="get the latest danny dyer tweet",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="danny", description="get the latest danny dyer tweet", guild_ids=config.slash_servers)
     async def danny(self, ctx):
-        """Send the latest Danny Dyer tweet to the chat.
-        """
+        """Send the latest Danny Dyer tweet to the chat."""
         user = self.twitter.get_user(username="MrDDyer")[0]
         tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
         tweet = random.choice(tweets)
@@ -134,7 +122,7 @@ class Spam(commands.Cog):
         danny_pics = [
             "https://m.media-amazon.com/images/M/MV5BMTUyMzYxNTEwNV5BMl5BanBnXkFtZTYwNzQxOTEz._V1_UY317_CR6,0,214,317_AL_.jpg",
             "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Danny_Dyer_at_Upton_Park%2C_02_Oct_2010.jpg"
-                "/480px-Danny_Dyer_at_Upton_Park%2C_02_Oct_2010.jpg",
+            "/480px-Danny_Dyer_at_Upton_Park%2C_02_Oct_2010.jpg",
             "https://www.thesun.co.uk/wp-content/uploads/2021/01/c9df3413-00fd-4c0d-9b65-715cdba59ad0.jpg",
             "https://i2-prod.mylondon.news/incoming/article20765554.ece/ALTERNATES/s615/3_JS230006785.jpg",
             "https://www.irishnews.com/picturesarchive/irishnews/irishnews/2019/09/10/084044159-557339d9-0c46-40c1-b2f9-4ce7eee211cc.jpg",
@@ -148,11 +136,7 @@ class Spam(commands.Cog):
         await ctx.response.send_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="figlet",
-        description="encode text to a figlet",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="figlet", description="encode text to a figlet", guild_ids=config.slash_servers)
     async def figlet(self, ctx, text):
         """Send a figlet to the chat.
 
@@ -167,14 +151,9 @@ class Spam(commands.Cog):
         await ctx.response.send_message(f"```{figlet}```")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="learn",
-        description="force update the markov chain",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="learn", description="force update the markov chain", guild_ids=config.slash_servers)
     async def learn(self, ctx):
-        """Update the Markov chain model.
-        """
+        """Update the Markov chain model."""
         if len(self.messages) == 0:
             if ctx:
                 return await ctx.edit_original_message(f"No messages to learn from.")
@@ -214,23 +193,14 @@ class Spam(commands.Cog):
             print(f"Markov chain updated with {len(messages)} new messages.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="oracle",
-        description="a message from god",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="oracle", description="a message from god", guild_ids=config.slash_servers)
     async def oracle(self, ctx):
-        """Send a Terry Davis inspired "God message" to the chat.
-        """
+        """Send a Terry Davis inspired "God message" to the chat."""
         words = random.sample(self.godwords, random.randint(7, 15))
         await ctx.response.send_message(f"{' '.join(words)}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="rule34",
-        description="search for a naughty image",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="rule34", description="search for a naughty image", guild_ids=config.slash_servers)
     async def rule34(self, ctx, query):
         """Search rule34.xxx for a naughty image.
 
@@ -259,14 +229,9 @@ class Spam(commands.Cog):
             await ctx.send(f"{message}\n>>> *Too cursed for comments*")
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="spit",
-        description="i spit in your direction",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="spit", description="i spit in your direction", guild_ids=config.slash_servers)
     async def spit(self, ctx):
-        """Send the GIF of the girl spitting.
-        """
+        """Send the GIF of the girl spitting."""
         await ctx.response.defer()
         await ctx.edit_original_message(file=disnake.File("data/spit.gif"))
 
@@ -317,9 +282,12 @@ class Spam(commands.Cog):
             The scheduled second
         """
         next_date = time + datetime.timedelta(days=days)
-        when = datetime.datetime(
-            year=next_date.year, month=next_date.month, day=next_date.day, hour=hour, minute=minute, second=second
-        )
+        when = datetime.datetime(year=next_date.year,
+                                 month=next_date.month,
+                                 day=next_date.day,
+                                 hour=hour,
+                                 minute=minute,
+                                 second=second)
         next_date = when - time
 
         return next_date.days * 86400 + next_date.seconds
@@ -400,11 +368,10 @@ class Spam(commands.Cog):
             A string of when the comment was created
         """
         if id:
-            response = requests.get(
-                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index", params={"post_id": f"{id}"}
-            )
+            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
+                                    params={"post_id": f"{id}"})
         else:
-            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index",)
+            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index", )
         if response.status_code != 200:
             return None, None, None
 
@@ -427,58 +394,43 @@ class Spam(commands.Cog):
 
     @tasks.loop(hours=config.hours_in_week)
     async def monday_morning(self):
-        """Send a message on Monday morning.
-        """
+        """Send a message on Monday morning."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(
-            self.generate_sentence("monday").replace("monday", "**monday**"),
-            file=disnake.File("data/videos/monday.mp4")
-        )
+        await channel.send(self.generate_sentence("monday").replace("monday", "**monday**"),
+                           file=disnake.File("data/videos/monday.mp4"))
 
     @tasks.loop(hours=config.hours_in_week)
     async def wednesday_morning(self):
-        """Send a message on Wednesday morning.
-        """
+        """Send a message on Wednesday morning."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(
-            self.generate_sentence("wednesday").replace("wednesday", "**wednesday**"),
-            file=disnake.File("data/videos/wednesday.mp4")
-        )
+        await channel.send(self.generate_sentence("wednesday").replace("wednesday", "**wednesday**"),
+                           file=disnake.File("data/videos/wednesday.mp4"))
 
     @tasks.loop(hours=config.hours_in_week)
     async def friday_evening(self):
-        """Send a message on Friday evening.
-        """
+        """Send a message on Friday evening."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(
-            self.generate_sentence("weekend").replace("weekend", "**weekend**"),
-            file=disnake.File("data/videos/weekend.mp4")
-        )
+        await channel.send(self.generate_sentence("weekend").replace("weekend", "**weekend**"),
+                           file=disnake.File("data/videos/weekend.mp4"))
 
     @tasks.loop(hours=config.hours_in_week)
     async def friday_morning(self):
-        """Send a message on Friday morning.
-        """
+        """Send a message on Friday morning."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(
-            self.generate_sentence("friday").replace("friday", "**friday**"),
-            file=disnake.File("data/videos/friday.mp4")
-        )
+        await channel.send(self.generate_sentence("friday").replace("friday", "**friday**"),
+                           file=disnake.File("data/videos/friday.mp4"))
 
     @tasks.loop(hours=config.hours_in_week)
     async def sunday_morning(self):
-        """Send a message on Sunday morning.
-        """
+        """Send a message on Sunday morning."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(
-            self.generate_sentence("sunday").replace("sunday", "**sunday**"),
-            file=disnake.File("data/videos/sunday.mp4")
-        )
+        await channel.send(self.generate_sentence("sunday").replace("sunday", "**sunday**"),
+                           file=disnake.File("data/videos/sunday.mp4"))
 
     @tasks.loop(hours=12)
     async def update_markov_chains(self):
@@ -487,7 +439,7 @@ class Spam(commands.Cog):
 
     # Sleep tasks --------------------------------------------------------------
 
-    def calc_sleep_time(self, day , hour, minute):
+    def calc_sleep_time(self, day, hour, minute):
         """Calculate the time to sleep until the next specified week day.
 
         Parameters
@@ -507,9 +459,12 @@ class Spam(commands.Cog):
 
         now = datetime.datetime.now()
         next_date = now + datetime.timedelta(days=(day - now.weekday()) % 7)
-        when = datetime.datetime(
-            year = next_date.year, month=next_date.month, day=next_date.day, hour=hour, minute=minute, second=0
-        )
+        when = datetime.datetime(year=next_date.year,
+                                 month=next_date.month,
+                                 day=next_date.day,
+                                 hour=hour,
+                                 minute=minute,
+                                 second=0)
         next_date = when - now
         sleep = next_date.days * 86400 + next_date.seconds
         if sleep < 0:
@@ -519,35 +474,30 @@ class Spam(commands.Cog):
 
     @monday_morning.before_loop
     async def sleep_monday_morning(self):
-        """Sleep until Monday morning.
-        """
+        """Sleep until Monday morning."""
         await asyncio.sleep(self.calc_sleep_time(calendar.MONDAY, 8, 30))
         await self.bot.wait_until_ready()
 
     @wednesday_morning.before_loop
     async def sleep_wednesday_morning(self):
-        """Sleep until Wednesday morning.
-        """
+        """Sleep until Wednesday morning."""
         await asyncio.sleep(self.calc_sleep_time(calendar.WEDNESDAY, 8, 30))
         await self.bot.wait_until_ready()
 
     @friday_evening.before_loop
     async def sleep_friday_evening(self):
-        """Sleep until Monday morning.
-        """
+        """Sleep until Monday morning."""
         await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 17, 0))
         await self.bot.wait_until_ready()
 
     @friday_morning.before_loop
     async def sleep_friday_morning(self):
-        """Sleep until Friday morning.
-        """
+        """Sleep until Friday morning."""
         await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 8, 30))
         await self.bot.wait_until_ready()
 
     @sunday_morning.before_loop
     async def sleep_sunday_morning(self):
-        """Sleep until Monday morning.
-        """
+        """Sleep until Monday morning."""
         await asyncio.sleep(self.calc_sleep_time(calendar.SUNDAY, 10, 0))
         await self.bot.wait_until_ready()

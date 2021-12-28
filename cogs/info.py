@@ -4,9 +4,10 @@
 import datetime
 import json
 import random
+
 import config
-import magic8ball
 import disnake
+import magic8ball
 import pyowm
 import requests
 import wolframalpha
@@ -15,24 +16,21 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from newsapi import NewsApiClient
 
-
 cd_user = commands.BucketType.user
 
 news_sources = [
     'abc-news', 'al-jazeera-english', 'ars-technica', 'associated-press', 'bbc-news', 'blasting-news-br',
     'breitbart-news', 'buzzfeed', 'crypto-coins-news', 'fortune', 'fox-news', 'google-news', 'hacker-news', 'ign',
-    'independent', 'new-scientist', 'reddit-r-all', 'reuters', 'techradar', 'the-huffington-post','the-jerusalem-post',
-    'the-lad-bible', 'the-verge', 'the-wall-street-journal','vice-news'
+    'independent', 'new-scientist', 'reddit-r-all', 'reuters', 'techradar', 'the-huffington-post', 'the-jerusalem-post',
+    'the-lad-bible', 'the-verge', 'the-wall-street-journal', 'vice-news'
 ]
 
-set_options = [
-    "location", "badword"
-]
+set_options = ["location", "badword"]
 
 
 class Info(commands.Cog):
-    """Query information from the internet.
-    """
+    """Query information from the internet."""
+
     def __init__(self, bot, generate_sentence, badwords, godwords, attempts=10):
         self.bot = bot
         self.generate_sentence = generate_sentence
@@ -52,8 +50,7 @@ class Info(commands.Cog):
     # Before command invoke ----------------------------------------------------
 
     async def cog_before_slash_command_invoke(self, ctx):
-        """Reset the cooldown for some users and servers.
-        """
+        """Reset the cooldown for some users and servers."""
         if ctx.guild.id != config.id_server_adult_children:
             return ctx.application_command.reset_cooldown(ctx)
 
@@ -63,11 +60,9 @@ class Info(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="8ball",
-        description="ask the magicall ball a question",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="8ball",
+                            description="ask the magicall ball a question",
+                            guild_ids=config.slash_servers)
     async def ball(self, ctx, question):
         """Ask the magicall ball a question.
 
@@ -82,13 +77,9 @@ class Info(commands.Cog):
         await ctx.response.send_message(f"{question} {random.choice(magic8ball.list)}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="forecast",
-        description="get the weather forecast",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="forecast", description="get the weather forecast", guild_ids=config.slash_servers)
     async def forecast(self, ctx, where=None, country=None):
-        """Print the weather forecast for a location
+        """Print the weather forecast for a location.
 
         Parameters
         ----------
@@ -121,10 +112,10 @@ class Info(commands.Cog):
             temperature = day.temperature("celsius")
             wind = day.wind("km_hour")
 
-            embed.add_field(
-                name=f"{date}",
-                value=f"• {weather}\n• {temperature['max']:.1f}/{temperature['min']:.1f} °C\n"
-                      f"• {wind['speed']:.1f} km/h", inline=False)
+            embed.add_field(name=f"{date}",
+                            value=f"• {weather}\n• {temperature['max']:.1f}/{temperature['min']:.1f} °C\n"
+                            f"• {wind['speed']:.1f} km/h",
+                            inline=False)
 
         embed.set_footer(text=f"{self.generate_sentence('forecast')}")
         embed.set_thumbnail(url=one_call.forecast_daily[0].weather_icon_url())
@@ -132,11 +123,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="roll",
-        description="roll a dice",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="roll", description="roll a dice", guild_ids=config.slash_servers)
     async def roll(self, ctx, n: int):
         """Roll a random number from 1 to n.
 
@@ -149,11 +136,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(f"{ctx.author.mention} rolled a {num}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="news",
-        description="get the news",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="news", description="get the news", guild_ids=config.slash_servers)
     async def news(self, ctx, source=commands.Param(default="bbc-news", autocomplete=news_sources)):
         """Get the news headlines for the given source.
 
@@ -186,11 +169,7 @@ class Info(commands.Cog):
         await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="set",
-        description="set user data",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="set", description="set user data", guild_ids=config.slash_servers)
     async def set_userdata(self, ctx, thing=commands.Param(autocomplete=set_options), value=commands.Param()):
         """Set some user variables for a user.
 
@@ -214,11 +193,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="viva",
-        description="how long until the viva?",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="viva", description="how long until the viva?", guild_ids=config.slash_servers)
     async def viva(self, ctx):
         """Print how many days are left until the PhD viva."""
         viva = datetime.datetime(2022, 1, 19)
@@ -228,11 +203,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(f"There are {days_till.days} days until Ed ward's PhD viva...")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="weather",
-        description="get the weather",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="weather", description="get the weather", guild_ids=config.slash_servers)
     async def weather(self, ctx, where=None):
         """Get the current weather for a given location.
 
@@ -253,10 +224,8 @@ class Info(commands.Cog):
         temperature = weather.temperature("celsius")
         wind = weather.wind("km_hour")
 
-        embed = disnake.Embed(
-            title=f"Weather in {observation.location.name}, {observation.location.country}",
-            color=disnake.Color.default()
-        )
+        embed = disnake.Embed(title=f"Weather in {observation.location.name}, {observation.location.country}",
+                              color=disnake.Color.default())
 
         embed.add_field(name="Description", value=f"**{weather.detailed_status.capitalize()}**", inline=False)
         embed.add_field(name="Temperature", value=f"**{temperature['temp']:.1f} °C**", inline=False)
@@ -269,11 +238,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="wolfram",
-        description="ask wolfram a question",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="wolfram", description="ask wolfram a question", guild_ids=config.slash_servers)
     async def wolfram(self, ctx, question):
         """Submit a query to wolfram alpha.
 
@@ -286,16 +251,14 @@ class Info(commands.Cog):
         embed = disnake.Embed(title=f"Stephen Wolfram says", color=disnake.Color.default())
         embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
         embed.set_thumbnail(
-            url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
-        )
+            url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg")
 
         results = self.wolfram.query(question)
 
         if not results["@success"]:
-            embed.add_field(
-                name=f"{question}", value=f"You {random.choice(self.badwords)}, you asked an impossible question.",
-                inline=False
-            )
+            embed.add_field(name=f"{question}",
+                            value=f"You {random.choice(self.badwords)}, you asked an impossible question.",
+                            inline=False)
             return await ctx.edit_original_message(embed=embed)
 
         # Iterate through the first N results
@@ -307,11 +270,7 @@ class Info(commands.Cog):
         return await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="youtube",
-        description="search for a youtube video",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="youtube", description="search for a youtube video", guild_ids=config.slash_servers)
     async def youtube(self, ctx, query=None):
         """Embeds the first result on youtube for the search term.
 

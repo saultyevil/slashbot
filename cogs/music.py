@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from youtube_dl.postprocessor import ffmpeg
+import asyncio
+from functools import partial
+
 import config
 import disnake
-import asyncio
 from async_timeout import timeout
-from functools import partial
-from youtube_dl import YoutubeDL
 from disnake.ext import commands
+from youtube_dl import YoutubeDL
+from youtube_dl.postprocessor import ffmpeg
 
 cd_user = commands.BucketType.user
+
 
 class VoiceConnectionError(commands.CommandError):
     """Custom Exception class for connection errors."""
@@ -40,8 +42,8 @@ ytdl = YoutubeDL(ytdlopts)
 
 
 class YTDLSource(disnake.PCMVolumeTransformer):
-    """YouTube downloader class, for streaming to a discord voice channel.
-    """
+    """YouTube downloader class, for streaming to a discord voice channel."""
+
     def __init__(self, source, *, data, requester):
         super().__init__(source)
         self.requester = requester
@@ -61,10 +63,9 @@ class YTDLSource(disnake.PCMVolumeTransformer):
         if "entries" in data:
             data = data["entries"][0]
 
-        embed = disnake.Embed(
-            title="", description=f"Queued [{data['title']}]]({data['webpage_url']}) [{ctx.author.mention}]",
-            color=disnake.Color.default()
-        )
+        embed = disnake.Embed(title="",
+                              description=f"Queued [{data['title']}]]({data['webpage_url']}) [{ctx.author.mention}]",
+                              color=disnake.Color.default())
 
         await ctx.response.send_message(embed=embed)
 
@@ -87,9 +88,9 @@ class YTDLSource(disnake.PCMVolumeTransformer):
 
 
 class MusicPlayer:
-    """Actual music player class.
-    """
+    """Actual music player class."""
     __slots__ = ("bot", "guild", "channel", "cog", "queue", "next", "current", "np", "volume")
+
     def __init__(self, ctx):
         self.bot = ctx.bot
         self.guild = ctx.guild
@@ -126,10 +127,9 @@ class MusicPlayer:
             self.current = source
             self.guild.voice_client.play(source, after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set))
 
-            embed = disnake.Embed(
-                title="Now playing", description=f"[{source.title}]]({source.web_url}) [{source.requester.mention}]",
-                color=disnake.Color.default()
-            )
+            embed = disnake.Embed(title="Now playing",
+                                  description=f"[{source.title}]]({source.web_url}) [{source.requester.mention}]",
+                                  color=disnake.Color.default())
             self.np = await self.response.send_message(embed=embed)
 
             await self.next.wait()
@@ -141,8 +141,8 @@ class MusicPlayer:
 
 
 class Music(commands.Cog):
-    """Music playing commands.
-    """
+    """Music playing commands."""
+
     def __init__(self, bot):
         self.bot = bot
         self.players = {}
@@ -151,8 +151,7 @@ class Music(commands.Cog):
     # Before command invoke ----------------------------------------------------
 
     async def cog_before_slash_command_invoke(self, ctx):
-        """Reset the cooldown for some users and servers.
-        """
+        """Reset the cooldown for some users and servers."""
         if ctx.guild.id != config.id_server_adult_children:
             return ctx.application_command.reset_cooldown(ctx)
 
@@ -162,14 +161,9 @@ class Music(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="connect",
-        description="connect to voice",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="connect", description="connect to voice", guild_ids=config.slash_servers)
     async def connect(self, ctx, *, channel=None):
-        """Connect the bot to the voice channel the requester is in.
-        """
+        """Connect the bot to the voice channel the requester is in."""
         if not channel:
             try:
                 channel = ctx.author.voice.channel
@@ -194,14 +188,9 @@ class Music(commands.Cog):
         return await ctx.response.send_message(f"Connected to voice", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="play",
-        description="request a song",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="play", description="request a song", guild_ids=config.slash_servers)
     async def play(self, ctx, *, search=None):
-        """Add a song to the queue.
-        """
+        """Add a song to the queue."""
         vc = ctx.guild.voice_client
         if not vc:
             await self.connect(ctx)  # todo: should be invoke or smt
@@ -212,14 +201,9 @@ class Music(commands.Cog):
         await ctx.response.send_message(f"{ctx.author.name} added to queue: {source.title}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="leave",
-        description="disconnect from voice",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="leave", description="disconnect from voice", guild_ids=config.slash_servers)
     async def leave(self, ctx):
-        """Disconnect from the voice channel.
-        """
+        """Disconnect from the voice channel."""
         vc = ctx.guild.voice_client
         if not vc or not vc.is_connected():
             return await ctx.response.send_message("I am not connected to a voice channel.", ephemeral=True)
@@ -227,14 +211,9 @@ class Music(commands.Cog):
         await self.cleanup(ctx, ctx.guild)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="skip",
-        description="skip the song",
-        guild_ids=config.slash_servers
-    )
+    @commands.slash_command(name="skip", description="skip the song", guild_ids=config.slash_servers)
     async def skip(self, ctx):
-        """Skip the current song.
-        """
+        """Skip the current song."""
         vc = ctx.guild.voice_client
         if not vc or not vc.is_connected():
             return await ctx.response.send_message("I am not connected to a voice channel.", ephemeral=True)
@@ -268,8 +247,7 @@ class Music(commands.Cog):
 
     @commands.Cog.listener("on_voice_state_update")
     async def leave_when_voice_empty(self, member, before, after):
-        """Leave when the voice channel is empty.
-        """
+        """Leave when the voice channel is empty."""
         if member.id == self.bot.user.id: return
         if len(self.channels) == 0: return
         if member.guild.id not in self.channels.keys(): return
@@ -282,8 +260,7 @@ class Music(commands.Cog):
     # Functions ----------------------------------------------------------------
 
     async def cleanup(self, ctx, guild):
-        """Disconnect and remove guild from self.players.
-        """
+        """Disconnect and remove guild from self.players."""
         await guild.voice_client.disconnect()
         if len(self.players):
             del self.players[guild.id]
@@ -291,8 +268,7 @@ class Music(commands.Cog):
             return await ctx.response.send_message("Disconnected from voice channel.", ephemeral=True)
 
     def get_player(self, ctx):
-        """Get the guild player, or create one.
-        """
+        """Get the guild player, or create one."""
         try:
             player = self.players[ctx.guild.id]
         except KeyError:
