@@ -41,12 +41,6 @@ no_cooldown_users = [
     id_user_saultyevil
 ]
 
-
-# Constants for the chat bot
-
-badword = os.environ["BAD_WORD"].lower()
-badword_plural = badword + "s"
-
 # API keys and specific settings
 
 google_api_key = os.getenv("YT_VIDEO_KEY")

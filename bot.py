@@ -19,6 +19,38 @@ import cogs.info
 import cogs.music
 import cogs.remind
 
+# Create the bot class, with extra clean up functionality ----------------------
+
+class Bot(commands.Bot):
+    def __init__(self, **kwargs):
+        """Initialize the class.
+        """
+        commands.Bot.__init__(self, **kwargs)
+        self.cleanup_functions = []
+
+    def add_to_cleanup(self, function, args):
+        """Add a function to the cleanup list.
+
+        Parameters
+        ----------
+        function: function
+            The function to add to the clean up routine.
+        args: tuple
+            The arguments to pass to the function.
+        """
+        self.cleanup_functions.append({
+            "function": function,
+            "args": args
+        })
+
+    async def close(self):
+        """Clean up things on close.
+        """
+        for function in self.cleanup_functions:
+            await function["function"](*function["args"])
+        await super().close()
+
+
 # Load in the markov chain and various other data ------------------------------
 
 markovchain = markovify.Text("Jack is a naughty boy.")
@@ -42,7 +74,7 @@ intents = disnake.Intents.default()
 intents.members = True
 intents.invites = True
 
-bot = commands.Bot(command_prefix=config.symbol, intents=intents)
+bot = Bot(command_prefix=config.symbol, intents=intents)
 spam = cogs.spam.Spam(bot, markovchain, badwords, godwords)
 info = cogs.info.Info(bot, spam.generate_sentence, badwords, godwords)
 reminder = cogs.remind.Reminder(bot, spam.generate_sentence)
@@ -52,6 +84,7 @@ bot.add_cog(spam)
 bot.add_cog(info)
 bot.add_cog(reminder)
 bot.add_cog(music)
+bot.add_to_cleanup(spam.learn, (None))
 
 # Functions --------------------------------------------------------------------
 

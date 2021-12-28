@@ -14,10 +14,10 @@ import datetime
 import tweepy
 import rule34 as r34
 import calendar
-import atexit
 import requests
 import config
 import string
+import atexit
 import shutil
 import pyfiglet
 import pickle
@@ -175,11 +175,23 @@ class Spam(commands.Cog):
     async def learn(self, ctx):
         """Update the Markov chain model.
         """
-        await ctx.response.defer()
-        if len(self.messages) == 0: return
+        if len(self.messages) == 0:
+            if ctx:
+                return await ctx.edit_original_message(f"No messages to learn from.")
+            else:
+                return
+
+        if ctx:
+            await ctx.response.defer()
+        else:
+            print("Updating markov chain...")
+
         messages = self.clean_up_messages()
-        if len(messages) == 0: return
-        self.messages.clear()
+        if len(messages) == 0:
+            if ctx:
+                return await ctx.edit_original_message(f"No messages to learn from.")
+            else:
+                return
 
         shutil.copy2("data/chain.pickle", "data/chain.pickle.bak")
         try:
@@ -190,11 +202,16 @@ class Spam(commands.Cog):
         combined = markovify.combine([self.markov.chain, new_model.chain])
         with open("data/chain.pickle", "wb") as fp:
             pickle.dump(combined, fp)
-        with open("data/chain.pickle", "rb") as fp:
-            self.markov.chain = pickle.load(fp)
+        if ctx:
+            with open("data/chain.pickle", "rb") as fp:
+                self.markov.chain = pickle.load(fp)
+
+        self.messages.clear()
 
         if ctx:
             await ctx.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
+        else:
+            print(f"Markov chain updated with {len(messages)} new messages.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
