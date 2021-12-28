@@ -174,7 +174,7 @@ class Music(commands.Cog):
             try:
                 channel = ctx.author.voice.channel
             except AttributeError:
-                await ctx.response.send_message("You are not connected to a voice channel.")
+                await ctx.response.send_message("You are not connected to a voice channel.", ephemeral=True)
 
         vc = ctx.guild.voice_client
         if vc:
@@ -183,15 +183,15 @@ class Music(commands.Cog):
             try:
                 await vc.move_to(channel)
             except asyncio.TimeoutError:
-                raise VoiceConnectionError(f"Moving to channel: {channel} timed out.")
+                raise VoiceConnectionError(f"Moving to channel: {channel} timed out.", ephemeral=True)
         else:
             try:
                 await channel.connect()
             except asyncio.TimeoutError:
-                raise VoiceConnectionError(f"Connecting to channel: {channel} timed out.")
+                raise VoiceConnectionError(f"Connecting to channel: {channel} timed out.", ephemeral=True)
 
         self.channels[ctx.guild.id] = channel.id
-        return await ctx.response.send_message(f"Connected to voice")
+        return await ctx.response.send_message(f"Connected to voice", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
@@ -209,19 +209,7 @@ class Music(commands.Cog):
         player = self.get_player(ctx)
         source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
         await player.queue.put(source)
-
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="queue",
-        description="show the music queue",
-        guild_ids=config.slash_servers
-    )
-    async def queue(self, ctx):
-        """Display the queue of upcoming songs.
-        """
-        vc = ctx.guild.voice_client
-        if not vc or not vc.is_connected():
-            return await ctx.response.send_message("I am not connected to a voice channel.")
+        await ctx.response.send_message(f"{ctx.author.name} added to queue: {source.title}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
@@ -234,7 +222,7 @@ class Music(commands.Cog):
         """
         vc = ctx.guild.voice_client
         if not vc or not vc.is_connected():
-            return await ctx.response.send_message("I am not connected to a voice channel.")
+            return await ctx.response.send_message("I am not connected to a voice channel.", ephemeral=True)
 
         await self.cleanup(ctx, ctx.guild)
 
@@ -248,12 +236,33 @@ class Music(commands.Cog):
         """Skip the current song.
         """
         vc = ctx.guild.voice_client
-        if not vc or not vc.is_playing():
-            return await ctx.response.send_message("Not playing anything.")
+        if not vc or not vc.is_connected():
+            return await ctx.response.send_message("I am not connected to a voice channel.", ephemeral=True)
 
-        if not vc.is_playing(): return
+        if vc.is_paused():
+            pass
+        elif not vc.is_playing():
+            return
 
         vc.stop()
+        await ctx.response.send_message(f"{ctx.author.name} skipped the song.")
+
+    async def volume(self, ctx, volume=commands.Param(gt=0, lt=100)):
+        """Set the volume for the player.
+
+        Parameters
+        ----------
+        volume: float
+            The volume level, between 0 and 100.
+        """
+        vc = ctx.voice_client
+        if vc.source:
+            vc.source.volume = volume / 100
+
+        player = self.get_player(ctx)
+        player.volume = volume / 100
+
+        await ctx.response.send_message(f"Volume set to {volume}% by {ctx.author.name}.")
 
     # Listeners ----------------------------------------------------------------
 
@@ -279,7 +288,7 @@ class Music(commands.Cog):
         if len(self.players):
             del self.players[guild.id]
         if ctx:
-            return await ctx.response.send_message("Disconnected from voice channel.")
+            return await ctx.response.send_message("Disconnected from voice channel.", ephemeral=True)
 
     def get_player(self, ctx):
         """Get the guild player, or create one.
