@@ -281,7 +281,7 @@ class Spam(commands.Cog):
         message: disnake.Message
             The message to record.
         """
-        self.messages[message.id] = message.content
+        self.messages[str(message.id)] = message.content
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_delete_messages(self, payload):
@@ -294,7 +294,7 @@ class Spam(commands.Cog):
         """
         message = payload.cached_message
         if message is None: return
-        del self.messages[str(message.id)]
+        self.messages.pop(str(message.id), None)
         await self.bot.wait_until_ready()
 
     # Utility functions --------------------------------------------------------

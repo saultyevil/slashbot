@@ -28,7 +28,7 @@ class Bot(commands.Bot):
         commands.Bot.__init__(self, **kwargs)
         self.cleanup_functions = []
 
-    def add_to_cleanup(self, function, args):
+    def add_to_cleanup(self, name, function, args):
         """Add a function to the cleanup list.
 
         Parameters
@@ -39,6 +39,7 @@ class Bot(commands.Bot):
             The arguments to pass to the function.
         """
         self.cleanup_functions.append({
+            "name": name,
             "function": function,
             "args": args
         })
@@ -47,18 +48,24 @@ class Bot(commands.Bot):
         """Clean up things on close.
         """
         for function in self.cleanup_functions:
-            await function["function"](*function["args"])
+            print("-- {}: with args {} -- ".format(function["name"], *function["args"]))
+            if function["args"]:
+                await function["function"](*function["args"])
+            else:
+                await function["function"]()
         await super().close()
 
 
 # Load in the markov chain and various other data ------------------------------
 
-markovchain = markovify.Text("Jack is a naughty boy.")
+markovchain = markovify.Text("Jack is a naughty boy.", state_size=5)
 if os.path.exists("data/chain.pickle"):
     with open("data/chain.pickle", "rb") as fp:
         markovchain.chain = pickle.load(fp)
+
 with open("data/badwords.txt", "r") as fp:
     badwords = fp.readlines()[0].split()
+
 with open("data/godwords.txt", "r") as fp:
     godwords = fp.read().splitlines()
 
@@ -84,7 +91,7 @@ bot.add_cog(spam)
 bot.add_cog(info)
 bot.add_cog(reminder)
 bot.add_cog(music)
-bot.add_to_cleanup(spam.learn, (None))
+bot.add_to_cleanup("markov learn", spam.learn, [None])
 
 # Functions --------------------------------------------------------------------
 
