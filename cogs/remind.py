@@ -76,7 +76,6 @@ class Reminder(commands.Cog):
 
         tagged_users, reminder = self.replace_mentions(reminder)
         user_id = ctx.author.id
-        server_id = ctx.guild.id
         channel_id = ctx.channel.id
 
         if time_unit != "time":
@@ -179,7 +178,7 @@ class Reminder(commands.Cog):
                 embed.set_footer(text=f"{self.generate_sentence('reminder')}")
                 embed.set_thumbnail(url=user.avatar.url)
 
-                if reminder["whofor"] == "user" or reminder["whofor"] == "both":
+                if reminder["whofor"] == "dm" or reminder["whofor"] == "both":
                     await user.send(embed=embed)
 
                 if reminder["whofor"] == "here" or reminder["whofor"] == "both":
