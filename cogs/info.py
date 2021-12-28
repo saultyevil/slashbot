@@ -283,30 +283,26 @@ class Info(commands.Cog):
             The question to ask.
         """
         await ctx.response.defer()
-        result = self.wolfram.query(question)
         embed = disnake.Embed(title=f"Stephen Wolfram says", color=disnake.Color.default())
         embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
         )
 
-        if result["@success"]:
-            answer = next(result.results).text
+        results = self.wolfram.query(question)
 
-            if answer == "(data not available)":
-                embed.add_field(
-                    name=f"{question}", value=f"You {random.choice(self.badwords)}, you asked an impossible question.",
-                    inline=False
-                )
-                return await ctx.edit_original_message(embed=embed)
-
-            embed.add_field(name=f"{question}", value=f"{next(result.results).text}", inline=False)
+        if not results["@success"]:
+            embed.add_field(
+                name=f"{question}", value=f"You {random.choice(self.badwords)}, you asked an impossible question.",
+                inline=False
+            )
             return await ctx.edit_original_message(embed=embed)
 
-        embed.add_field(
-            name=f"{question}", value=f"You {random.choice(self.badwords)}, you asked an impossible question.",
-            inline=False
-        )
+        # Iterate through the first N results
+        n = 1
+
+        for result in [result for result in results.pods if result["@id"] == "Result"][:n]:
+            embed.add_field(name=f"{question}", value=result["subpod"]["plaintext"], inline=False)
 
         return await ctx.edit_original_message(embed=embed)
 
