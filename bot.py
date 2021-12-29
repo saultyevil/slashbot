@@ -43,7 +43,6 @@ class Bot(commands.Bot):
     async def close(self):
         """Clean up things on close."""
         for function in self.cleanup_functions:
-            print("-- {}: with args {} -- ".format(function["name"], *function["args"]))
             if function["args"]:
                 await function["function"](*function["args"])
             else:
@@ -106,7 +105,7 @@ async def on_slash_command_error(ctx, error):
     if isinstance(error, commands.errors.CommandOnCooldown):
         await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
     else:
-        print("-" * 80, f"\n{ctx.application_command.data.name} failed with error:")
+        print("-" * 80, f"\n{ctx.application_command.name} failed with error:")
         print(error, "\n")
 
 
