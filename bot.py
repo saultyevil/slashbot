@@ -104,9 +104,13 @@ async def on_slash_command_error(ctx, error):
     """Handle different types of errors."""
     if isinstance(error, commands.errors.CommandOnCooldown):
         await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
+    elif isinstance(error, disnake.InteractionTimedOut):
+        await ctx.response.send_message("This interaction timed out, pls tell Ed.", ephemeral=True)
     else:
-        print("-" * 80, f"\n{ctx.application_command.name} for {ctx.author.name} failed with error:")
-        print(error, "\n")
+        print("-" * 80)
+        print(f"{ctx.application_command.name} for {ctx.author.name} failed with error:")
+        print(error)
+        print("-" * 80)
 
 
 # Run the bot ------------------------------------------------------------------

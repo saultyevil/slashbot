@@ -85,6 +85,7 @@ class Spam(commands.Cog):
     )
     async def chat(self, ctx, words=""):
         """Generate a message from the Markov sentence model.
+        TODO: this might want to be deferred, as can be too long with a large state size
 
         Parameters
         ----------
