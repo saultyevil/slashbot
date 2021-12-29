@@ -106,7 +106,8 @@ async def on_slash_command_error(ctx, error):
     if isinstance(error, commands.errors.CommandOnCooldown):
         await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
     else:
-        print(f"A command failed with error:\n{error}\n", "-" * 80)
+        print("-" * 80, f"\n{ctx.application_command.data.name} failed with error:")
+        print(error)
 
 
 # Run the bot ------------------------------------------------------------------
