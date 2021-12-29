@@ -52,7 +52,7 @@ class Bot(commands.Bot):
 
 # Load in the markov chain and various other data ------------------------------
 
-markovchain = markovify.Text("Jack is a naughty boy.", state_size=5)
+markovchain = markovify.Text("Jack is a naughty boy.", state_size=2)
 if os.path.exists("data/chain.pickle"):
     with open("data/chain.pickle", "rb") as fp:
         markovchain.chain = pickle.load(fp)
