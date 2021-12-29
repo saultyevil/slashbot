@@ -22,7 +22,8 @@ from markovify import markovify
 
 
 class Bot(commands.Bot):
-
+    """Bot class, with changes for clean up on close.
+    """
     def __init__(self, **kwargs):
         """Initialize the class."""
         commands.Bot.__init__(self, **kwargs)
@@ -104,7 +105,7 @@ async def on_slash_command_error(ctx, error):
     """Handle different types of errors."""
     if isinstance(error, commands.errors.CommandOnCooldown):
         await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
-    elif isinstance(error, disnake.InteractionTimedOut):
+    elif isinstance(error, disnake.errors.InteractionTimedOut):
         await ctx.response.send_message("This interaction timed out, pls tell Ed.", ephemeral=True)
     else:
         print("-" * 80)

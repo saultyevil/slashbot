@@ -85,30 +85,31 @@ class Info(commands.Cog):
         where: str
             The location to get the weather forecast for.
         """
+        await ctx.response.defer()
+
         if where is None:
-            try:
-                where = self.userdata[str(ctx.author.id)].get("location", None)
-                if where is None:
-                    return await ctx.response.send_message("You need to set or specify your location.", ephemeral=True)
-            except KeyError:
-                return await ctx.response.send_message("You need to set or specify your location.", ephemeral=True)
+            if str(ctx.author.id) not in self.userdata:
+                return await ctx.edit_original_message("You need to set or specify your location.", ephemeral=True)
+            where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
 
         if country is None:
-            try:
-                country = self.userdata[str(ctx.author.id)].get("country", "gb")
-            except KeyError:
+            if str(ctx.author.id) not in self.userdata:
                 country = "gb"
+            else:
+                country = self.userdata[str(ctx.author.id)].get("country", "gb")
 
         locations = self.weather_city_register.locations_for(where, country)
         if len(locations) == 0:
-            return await ctx.response.send_message("Location not found in forecast database.", ephemeral=True)
+            return await ctx.edit_original_message("Location not found in forecast database.", ephemeral=True)
+
         location, country = locations[0].name, locations[0].country
         lat, lon = locations[0].lat, locations[0].lon
 
         try:
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
-            return await ctx.response.send_message("Could not find that location in one call forecast database.", ephemeral=True)
+            print("weather one_call error:", e)
+            return await ctx.edit_original_message("Could not find that location in one call forecast database.", ephemeral=True)
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -118,17 +119,17 @@ class Info(commands.Cog):
 
             weather = day.detailed_status.capitalize()
             temperature = day.temperature("celsius")
-            wind = day.wind("km_hour")
+            wind = day.wind("miles_hour")
 
             embed.add_field(name=f"{date}",
                             value=f"• {weather}\n• {temperature['max']:.1f}/{temperature['min']:.1f} °C\n"
-                            f"• {wind['speed']:.1f} km/h",
+                            f"• {wind['speed']:.1f} mph",
                             inline=False)
 
         embed.set_thumbnail(url=one_call.forecast_daily[0].weather_icon_url())
         embed.set_footer(text=f"{self.generate_sentence('forecast')}")
 
-        await ctx.response.send_message(embed=embed)
+        await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="roll", description="roll a dice", guild_ids=config.slash_servers)
@@ -210,19 +211,22 @@ class Info(commands.Cog):
         where: str
             The location to get the weather for.
         """
+        await ctx.response.defer()
+
         if where is None:
-            where = self.userdata[str(ctx.author.id)].get("location", None)
-            if where is None:
-                return await ctx.response.send_message("You need to set or specify your location.", ephemeral=True)
+            if str(ctx.author.id) not in self.userdata:
+                return await ctx.edit_original_message("You need to set or specify your location.", ephemeral=True)
+            where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
 
         try:
             observation = self.weather_manager.weather_at_place(where)
         except Exception as e:
-            return await ctx.response.send_message(content="Could not find that location.", ephemeral=True)
+            print("weather_at_place error:", e)
+            return await ctx.edit_original_message(content="Could not find that location.", ephemeral=True)
 
         weather = observation.weather
         temperature = weather.temperature("celsius")
-        wind = weather.wind("km_hour")
+        wind = weather.wind("miles_hour")
 
         embed = disnake.Embed(title=f"Weather in {observation.location.name}, {observation.location.country}",
                               color=disnake.Color.default())
@@ -230,12 +234,12 @@ class Info(commands.Cog):
         embed.add_field(name="Description", value=f"**{weather.detailed_status.capitalize()}**", inline=False)
         embed.add_field(name="Temperature", value=f"**{temperature['temp']:.1f} °C**", inline=False)
         embed.add_field(name="Feels like", value=f"**{temperature['feels_like']:.1f} °C**", inline=False)
-        embed.add_field(name="Wind speed", value=f"**{wind['speed']:.1f} km/h**", inline=False)
+        embed.add_field(name="Wind speed", value=f"**{wind['speed']:.1f} mph**", inline=False)
         embed.add_field(name="Humidity", value=f"**{weather.humidity:.0f}%**", inline=False)
         embed.set_footer(text=f"{self.generate_sentence('weather')}")
         embed.set_thumbnail(url=weather.weather_icon_url())
 
-        await ctx.response.send_message(embed=embed)
+        await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="wolfram", description="ask wolfram a question", guild_ids=config.slash_servers)
