@@ -18,15 +18,13 @@ from newsapi import NewsApiClient
 import config
 
 cd_user = commands.BucketType.user
-
 news_sources = [
     'abc-news', 'al-jazeera-english', 'ars-technica', 'associated-press', 'bbc-news', 'blasting-news-br',
     'breitbart-news', 'buzzfeed', 'crypto-coins-news', 'fortune', 'fox-news', 'google-news', 'hacker-news', 'ign',
     'independent', 'new-scientist', 'reddit-r-all', 'reuters', 'techradar', 'the-huffington-post', 'the-jerusalem-post',
     'the-lad-bible', 'the-verge', 'the-wall-street-journal', 'vice-news'
 ]
-
-set_options = ["location", "badword"]
+set_options = ["location", "country", "badword"]
 
 
 class Info(commands.Cog):
@@ -88,20 +86,29 @@ class Info(commands.Cog):
             The location to get the weather forecast for.
         """
         if where is None:
-            where = self.userdata[str(ctx.author.id)]["location"]
+            try:
+                where = self.userdata[str(ctx.author.id)].get("location", None)
+                if where is None:
+                    return await ctx.response.send_message("You need to set or specify your location.", ephemeral=True)
+            except KeyError:
+                return await ctx.response.send_message("You need to set or specify your location.", ephemeral=True)
+
         if country is None:
-            country = self.userdata[str(ctx.author.id)].get("country", None)
+            try:
+                country = self.userdata[str(ctx.author.id)].get("country", "gb")
+            except KeyError:
+                country = "gb"
 
         locations = self.weather_city_register.locations_for(where, country)
         if len(locations) == 0:
-            return await ctx.response.send_message("Location not found in forecast database.")
+            return await ctx.response.send_message("Location not found in forecast database.", ephemeral=True)
         location, country = locations[0].name, locations[0].country
         lat, lon = locations[0].lat, locations[0].lon
 
         try:
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
-            return await ctx.response.send_message("Could not find that location in one call forecast database.")
+            return await ctx.response.send_message("Could not find that location in one call forecast database.", ephemeral=True)
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -118,8 +125,8 @@ class Info(commands.Cog):
                             f"• {wind['speed']:.1f} km/h",
                             inline=False)
 
-        embed.set_footer(text=f"{self.generate_sentence('forecast')}")
         embed.set_thumbnail(url=one_call.forecast_daily[0].weather_icon_url())
+        embed.set_footer(text=f"{self.generate_sentence('forecast')}")
 
         await ctx.response.send_message(embed=embed)
 
@@ -170,8 +177,8 @@ class Info(commands.Cog):
         await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="set", description="set user data", guild_ids=config.slash_servers)
-    async def set_userdata(self, ctx, thing=commands.Param(autocomplete=set_options), value=commands.Param()):
+    @commands.slash_command(name="remember", description="set user data", guild_ids=config.slash_servers)
+    async def remember(self, ctx, thing=commands.Param(autocomplete=set_options), value=commands.Param()):
         """Set some user variables for a user.
 
         Parameters
@@ -191,17 +198,7 @@ class Info(commands.Cog):
         with open("data/users.json", "w") as fp:
             json.dump(self.userdata, fp)
 
-        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.")
-
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="viva", description="how long until the viva?", guild_ids=config.slash_servers)
-    async def viva(self, ctx):
-        """Print how many days are left until the PhD viva."""
-        viva = datetime.datetime(2022, 1, 19)
-        now = datetime.datetime.now()
-        days_till = viva - now
-
-        await ctx.response.send_message(f"There are {days_till.days} days until Ed ward's PhD viva...")
+        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="weather", description="get the weather", guild_ids=config.slash_servers)
@@ -214,12 +211,14 @@ class Info(commands.Cog):
             The location to get the weather for.
         """
         if where is None:
-            where = self.userdata[str(ctx.author.id)]["location"]
+            where = self.userdata[str(ctx.author.id)].get("location", None)
+            if where is None:
+                return await ctx.response.send_message("You need to set or specify your location.", ephemeral=True)
 
         try:
             observation = self.weather_manager.weather_at_place(where)
         except Exception as e:
-            return await ctx.response.send_message(content="Could not find that location.")
+            return await ctx.response.send_message(content="Could not find that location.", ephemeral=True)
 
         weather = observation.weather
         temperature = weather.temperature("celsius")

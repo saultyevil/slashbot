@@ -62,7 +62,7 @@ class Reminder(commands.Cog):
             The unit of time to wait before the reminder.
         reminder: str
             The reminder to set.
-        who: str
+        where: str
             Where to be reminded, either "here", "dm" or "both".
         """
         if len(reminder) > 1024:
