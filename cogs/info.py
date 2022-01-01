@@ -295,13 +295,16 @@ class Info(commands.Cog):
                             inline=False)
             return await ctx.edit_original_message(embed=embed)
 
-        # Iterate through the first N results
+        # only go through the first N results to add to embed
         n = 1
-
         for result in [result for result in results.pods if result["@id"] == "Result"][:n]:
-            if isinstance(result["subpod"], list): # If there are multiple subpods, dunno how this api is structured lol
-                result = result["subpod"][0]
-            embed.add_field(name=f"{question}", value=result["subpod"]["plaintext"], inline=False)
+            # have to check if the result is a list of results, or just a single result
+            # probably a better way to do this
+            if isinstance(result["subpod"], list):
+                result = result["subpod"][0]["plaintext"]
+            else:
+                result = result["subpod"]["plaintext"]
+            embed.add_field(name=f"{question}", value=result, inline=False)
 
         return await ctx.edit_original_message(embed=embed)
 

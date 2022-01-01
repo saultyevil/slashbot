@@ -109,8 +109,9 @@ async def on_slash_command_error(ctx, error):
     print("-" * 80)
     print(f"{ctx.application_command.name} for {ctx.author.name} failed with error:")
     print(error)
-    print(type(error))
     print("-" * 80)
+
+    await ctx.response.send_message(f"{error}", ephemeral=True)
 
 
 # Run the bot ------------------------------------------------------------------
