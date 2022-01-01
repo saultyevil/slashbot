@@ -192,7 +192,7 @@ class Music(commands.Cog):
         """Add a song to the queue."""
         vc = ctx.guild.voice_client
         if not vc:
-            await self.connect(ctx)  # todo: should be invoke or smt
+            return await ctx.response.send_message("Invite me to a voice channel first.", ephemeral=True)
 
         player = self.get_player(ctx)
         source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
