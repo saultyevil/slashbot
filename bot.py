@@ -111,7 +111,7 @@ async def on_slash_command_error(ctx, error):
     print(error)
     print("-" * 80)
 
-    await ctx.response.send_message(f"{error}", ephemeral=True)
+    await ctx.edit_original_message(f"{error}", ephemeral=True)
 
 
 # Run the bot ------------------------------------------------------------------

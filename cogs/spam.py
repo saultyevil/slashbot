@@ -236,7 +236,13 @@ class Spam(commands.Cog):
     async def spit(self, ctx, mention=None):
         """Send the GIF of the girl spitting."""
         await ctx.response.defer()
-        users = [user.mention for user in re.findall(r"\<@!(.*?)\>", mention)]
+
+        users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
+        message = ""
+        for user in users:
+            user = self.bot.get_user(int(user))
+            message += f"{user.mention} "
+
         await ctx.edit_original_message(content=" ".join(users), file=disnake.File("data/spit.gif"))
 
     # Listeners ---------------------------------------------------------------
