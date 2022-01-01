@@ -121,7 +121,7 @@ async def on_slash_command_error(ctx, error):
 
     try:
         await ctx.response.send_message(f"Oh no, there was an error! {error}.", ephemeral=True)
-    except disnake.errors.InteractionNotResponded:
+    except (disnake.errors.InteractionNotResponded, AttributeError):
         print("\nuser informed by another error message")
 
     print("\n\n", "-" * 80)
