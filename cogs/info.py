@@ -288,7 +288,7 @@ class Info(commands.Cog):
             The question to ask.
         """
         await ctx.response.defer()
-        embed = disnake.Embed(title=f"Stephen Wolfram says", color=disnake.Color.default())
+        embed = disnake.Embed(title=f"Stephen Wolfram says...", color=disnake.Color.default())
         embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg")
