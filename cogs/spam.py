@@ -243,7 +243,7 @@ class Spam(commands.Cog):
             user = self.bot.get_user(int(user))
             message += f"{user.mention} "
 
-        await ctx.edit_original_message(content=" ".join(users), file=disnake.File("data/spit.gif"))
+        await ctx.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
 
     # Listeners ---------------------------------------------------------------
 
