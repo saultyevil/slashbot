@@ -237,11 +237,19 @@ class Spam(commands.Cog):
         """Send the GIF of the girl spitting."""
         await ctx.response.defer()
 
-        users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
         message = ""
+        users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
+
+        mentions = ""
         for user in users:
             user = self.bot.get_user(int(user))
-            message += f"{user.mention} "
+            mentions += f"{user.mention} "
+
+        if users:
+            message = "I spit at " + ", ".join(mentions) + f"the {random.choice(self.badwords)}"
+            if len(users) > 1:
+                message += "s"
+            message += "."
 
         await ctx.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
 
