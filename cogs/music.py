@@ -160,7 +160,7 @@ class Music(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="connect", description="connect to voice", guild_ids=config.slash_servers)
+    @commands.slash_command(name="join", description="join a voice server", guild_ids=config.slash_servers)
     async def connect(self, ctx, *, channel=None):
         """Connect the bot to the voice channel the requester is in."""
         if not channel:
