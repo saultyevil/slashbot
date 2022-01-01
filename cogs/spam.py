@@ -30,7 +30,6 @@ cd_user = commands.BucketType.user
 
 class Spam(commands.Cog):
     """A collection of commands to spam the chat with."""
-
     def __init__(self, bot, markov, badwords, godwords, attempts=10):
         self.bot = bot
         self.markov = markov

@@ -44,7 +44,6 @@ ytdl = YoutubeDL(ytdlopts)
 
 class YTDLSource(disnake.PCMVolumeTransformer):
     """YouTube downloader class, for streaming to a discord voice channel."""
-
     def __init__(self, source, *, data, requester):
         super().__init__(source)
         self.requester = requester
@@ -143,7 +142,6 @@ class MusicPlayer:
 
 class Music(commands.Cog):
     """Music playing commands."""
-
     def __init__(self, bot):
         self.bot = bot
         self.players = {}

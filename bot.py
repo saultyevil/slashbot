@@ -22,8 +22,7 @@ from markovify import markovify
 
 
 class Bot(commands.Bot):
-    """Bot class, with changes for clean up on close.
-    """
+    """Bot class, with changes for clean up on close."""
     def __init__(self, **kwargs):
         """Initialize the class."""
         commands.Bot.__init__(self, **kwargs)
@@ -102,16 +101,22 @@ async def on_ready():
 
 @bot.event
 async def on_slash_command_error(ctx, error):
-    """Handle different types of errors."""
-    if isinstance(error, commands.errors.CommandOnCooldown):
+    """Handle different types of errors.
+
+    Parameters
+    ----------
+    error: Exception
+        The error that occurred.
+    """
+    if isinstance(error, disnake.errors.InteractionTimedOut):
+        return
+    elif isinstance(error, commands.errors.CommandOnCooldown):
         return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
-    print("-" * 80)
-    print(f"{ctx.application_command.name} for {ctx.author.name} failed with error:")
-    print(error)
-    print("-" * 80)
+    print("-" * 80, f"\n{ctx.application_command.name} for {ctx.author.name} failed with error:\n\n", error, "\n\n",
+          "-" * 80)
 
-    await ctx.edit_original_message(f"{error}", ephemeral=True)
+    await ctx.response.send_message(f"Oh no, there was an error! {error}.", ephemeral=True)
 
 
 # Run the bot ------------------------------------------------------------------

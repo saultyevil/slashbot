@@ -24,7 +24,6 @@ whofor = ["here", "dm", "both"]
 
 class Reminder(commands.Cog):
     """Commands to set up reminders."""
-
     def __init__(self, bot, generate_sentence):
         self.bot = bot
         self.generate_sentence = generate_sentence

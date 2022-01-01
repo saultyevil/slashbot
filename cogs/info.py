@@ -29,7 +29,6 @@ set_options = ["location", "country", "badword"]
 
 class Info(commands.Cog):
     """Query information from the internet."""
-
     def __init__(self, bot, generate_sentence, badwords, godwords, attempts=10):
         self.bot = bot
         self.generate_sentence = generate_sentence
@@ -109,7 +108,8 @@ class Info(commands.Cog):
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
             print("weather one_call error:", e)
-            return await ctx.edit_original_message("Could not find that location in one call forecast database.", ephemeral=True)
+            return await ctx.edit_original_message("Could not find that location in one call forecast database.",
+                                                   ephemeral=True)
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -146,14 +146,20 @@ class Info(commands.Cog):
 
         commands = sorted(commands, key=lambda x: x.name)
         commands = {
-            command.name: {"description": command.description, "options": command.options} for command in commands
+            command.name: {
+                "description": command.description,
+                "options": command.options
+            }
+            for command in commands
         }
 
         if command:
             if command not in commands:
                 return await ctx.response.send_message(f"Command `{command}` not found.", ephemeral=True)
-            command = commands["command"]
-            message = f"`{command}` - {command['description']}"
+            command = commands[command]
+            message = f"`{command}` - {command['description']}\n"
+            for option in command['options']:
+                message += f"• {option}\n"
         else:
             message = f"There are {len(commands)} commands registered in this server.\n\n"
             for command in commands:

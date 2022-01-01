@@ -1,4 +1,5 @@
 import os
+
 import wolframalpha
 
 api_key = os.environ.get('WOLFRAM_ID')
@@ -20,7 +21,6 @@ for result in [result for result in results.pods if result["@id"] == "Result"][:
 
     print(type(result["subpod"]), len(result["subpod"]))
     if isinstance(result["subpod"], list):
-        print("yeh")
+        result = result["subpod"][0]
 
-    # print(result["subpod"]["plaintext"])
-
+    print(result["plaintext"])

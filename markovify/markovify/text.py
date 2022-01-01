@@ -447,6 +447,5 @@ class NewlineText(Text):
     This one lets you markovify text where the sentences are separated
     by newlines instead of ". "
     """
-
     def sentence_split(self, text):
         return re.split(r"\s*\n\s*", text)
