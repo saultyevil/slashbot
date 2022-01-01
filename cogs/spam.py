@@ -246,7 +246,7 @@ class Spam(commands.Cog):
             mentions += f"{user.mention} "
 
         if users:
-            message = "I spit at " + ", ".join(mentions) + f"the {random.choice(self.badwords)}"
+            message = "I spit at " + ", ".join(mentions) + f" the {random.choice(self.badwords)}"
             if len(users) > 1:
                 message += "s"
             message += "."
