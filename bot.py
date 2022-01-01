@@ -113,7 +113,7 @@ async def on_slash_command_error(ctx, error):
         The error that occurred.
     """
 
-    print("\n", "-" * 80, f"\n{ctx.application_command.name} for {ctx.author.name} failed with error:\n\n", error)
+    print("\n", "-" * 80, f"\n {ctx.application_command.name} for {ctx.author.name} failed with error:\n\n", error)
 
     if isinstance(error, disnake.errors.InteractionTimedOut):
         error = "The interaction timed out, as it took > 3 seconds to run"
@@ -122,10 +122,10 @@ async def on_slash_command_error(ctx, error):
 
     try:
         await ctx.response.send_message(f"Oh no, there was an error! {error}.", ephemeral=True)
-    except (disnake.errors.InteractionNotResponded, AttributeError):
-        print("\nuser informed by another error message")
+    except AttributeError:
+        print("\nuser informed by another error message, as something had no attribute")
 
-    print("\n\n", "-" * 80)
+        print("\n\n", "-" * 80)
 
 # Run the bot ------------------------------------------------------------------
 

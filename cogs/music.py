@@ -167,7 +167,7 @@ class Music(commands.Cog):
             try:
                 channel = ctx.author.voice.channel
             except AttributeError:
-                await ctx.response.send_message("You are not connected to a voice channel.", ephemeral=True)
+                return await ctx.response.send_message("You are not connected to a voice channel.", ephemeral=True)
 
         vc = ctx.guild.voice_client
         if vc:
