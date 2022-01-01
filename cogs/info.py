@@ -131,6 +131,36 @@ class Info(commands.Cog):
 
         await ctx.edit_original_message(embed=embed)
 
+    @commands.slash_command(name="help", description="get some help", guild_ids=config.slash_servers)
+    async def help(self, ctx, command=None):
+        """Display help for the bot and commands.
+
+        Parameters
+        ----------
+        command: str
+            The name of a command to query.
+        """
+        commands = self.bot.get_guild_slash_commands(ctx.guild.id)
+        if not commands:
+            return await ctx.response.send_message(f"There are no commands registered for this server.", ephemeral=True)
+
+        commands = sorted(commands, key=lambda x: x.name)
+        commands = {
+            command.name: {"description": command.description, "options": command.options} for command in commands
+        }
+
+        if command:
+            if command not in commands:
+                return await ctx.response.send_message(f"Command `{command}` not found.", ephemeral=True)
+            command = commands["command"]
+            message = f"`{command}` - {command['description']}"
+        else:
+            message = f"There are {len(commands)} commands registered in this server.\n\n"
+            for command in commands:
+                message += f"• `{command}` - {commands[command]['description']}\n"
+
+        await ctx.response.send_message(message, ephemeral=True)
+
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="roll", description="roll a dice", guild_ids=config.slash_servers)
     async def roll(self, ctx, n: int):
@@ -269,6 +299,8 @@ class Info(commands.Cog):
         n = 1
 
         for result in [result for result in results.pods if result["@id"] == "Result"][:n]:
+            if isinstance(result["subpod"], list): # If there are multiple subpods, dunno how this api is structured lol
+                result = result["subpod"][0]
             embed.add_field(name=f"{question}", value=result["subpod"]["plaintext"], inline=False)
 
         return await ctx.edit_original_message(embed=embed)

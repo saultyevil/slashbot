@@ -9,6 +9,7 @@ import datetime
 import json
 import pickle
 import random
+import re
 import shutil
 import string
 import xml
@@ -232,10 +233,11 @@ class Spam(commands.Cog):
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
     @commands.slash_command(name="spit", description="i spit in your direction", guild_ids=config.slash_servers)
-    async def spit(self, ctx):
+    async def spit(self, ctx, mention=None):
         """Send the GIF of the girl spitting."""
         await ctx.response.defer()
-        await ctx.edit_original_message(file=disnake.File("data/spit.gif"))
+        users = [user.mention for user in re.findall(r"\<@!(.*?)\>", mention)]
+        await ctx.edit_original_message(content=" ".join(users), file=disnake.File("data/spit.gif"))
 
     # Listeners ---------------------------------------------------------------
 
