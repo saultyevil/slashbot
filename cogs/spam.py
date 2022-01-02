@@ -236,10 +236,13 @@ class Spam(commands.Cog):
         message = ""
         users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
 
-        mentions = ""
+        mentions = []
         for user in users:
             user = self.bot.get_user(int(user))
-            mentions += f"{user.mention} "
+            if ctx.author.id == config.id_user_adam:
+                mentions.append(f"{user.name}")
+            else:
+                mentions.append(f"{user.mention}")
 
         if users:
             message = "I spit at " + ", ".join(mentions) + f" the {random.choice(self.badwords)}"
