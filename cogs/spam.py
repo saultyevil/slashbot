@@ -248,7 +248,7 @@ class Spam(commands.Cog):
             badword = random.choice(self.badwords)
             if len(users) == 1 and badword[-1] == "s":
                 badword = badword[:-1]
-            message = "I spit at " + ", ".join(mentions) + f" the {badword}"
+            message = "I spit at " + ", ".join(mentions) + f", the {badword}"
             if len(users) > 1:
                 message += "s"
             message += "."
