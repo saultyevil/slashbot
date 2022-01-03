@@ -88,7 +88,7 @@ class Info(commands.Cog):
 
         if where is None:
             if str(ctx.author.id) not in self.userdata:
-                return await ctx.edit_original_message("You need to set or specify your location.", ephemeral=True)
+                return await ctx.edit_original_message("You need to set or specify your location.")
             where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
 
         if country is None:
@@ -99,7 +99,7 @@ class Info(commands.Cog):
 
         locations = self.weather_city_register.locations_for(where, country)
         if len(locations) == 0:
-            return await ctx.edit_original_message("Location not found in forecast database.", ephemeral=True)
+            return await ctx.edit_original_message("Location not found in forecast database.")
 
         location, country = locations[0].name, locations[0].country
         lat, lon = locations[0].lat, locations[0].lon
@@ -108,8 +108,7 @@ class Info(commands.Cog):
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
             print("weather one_call error:", e)
-            return await ctx.edit_original_message("Could not find that location in one call forecast database.",
-                                                   ephemeral=True)
+            return await ctx.edit_original_message("Could not find that location in one call forecast database.")
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -195,7 +194,7 @@ class Info(commands.Cog):
         try:
             articles = self.news.get_top_headlines(sources=source)["articles"]
         except:
-            await ctx.edit_original_message("Reached the maximum number of news requests for the day.")
+            return await ctx.edit_original_message("Reached the maximum number of news requests for the day.")
 
         if not len(articles):
             return await ctx.response.send_message(f"No articles were found for {source}.")
@@ -235,7 +234,7 @@ class Info(commands.Cog):
         with open("data/users.json", "w") as fp:
             json.dump(self.userdata, fp)
 
-        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.", ephemeral=True)
+        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="weather", description="get the weather", guild_ids=config.slash_servers)
@@ -251,14 +250,13 @@ class Info(commands.Cog):
 
         if where is None:
             if str(ctx.author.id) not in self.userdata:
-                return await ctx.edit_original_message("You need to set or specify your location.", ephemeral=True)
+                return await ctx.edit_original_message("You need to set or specify your location.")
             where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
 
         try:
             observation = self.weather_manager.weather_at_place(where)
-        except Exception as e:
-            print("weather_at_place error:", e)
-            return await ctx.edit_original_message(content="Could not find that location.", ephemeral=True)
+        except Exception: # pylint: disable=broad-except
+            return await ctx.edit_original_message(content="Could not find that location.")
 
         weather = observation.weather
         temperature = weather.temperature("celsius")

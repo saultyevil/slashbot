@@ -162,7 +162,7 @@ class Spam(commands.Cog):
                 return
 
         if ctx:
-            await ctx.response.defer()
+            await ctx.response.defer(ephemeral=True)
 
         messages = self.clean_up_messages()
         if len(messages) == 0:

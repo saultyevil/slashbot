@@ -121,11 +121,12 @@ async def on_slash_command_error(ctx, error):
         return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
     try:
-        await ctx.response.send_message(f"Oh no, there was an error! {error}.", ephemeral=True)
-    except AttributeError:
+        if not ctx.response.is_done():
+            await ctx.response.send_message(f"Oh no, there was an error! {error}.", ephemeral=True)
+    except (AttributeError, disnake.errors.InterationResponded):
         print("\nuser informed by another error message, as something had no attribute")
 
-        print("\n\n", "-" * 80)
+    print("\n\n", "-" * 80)
 
 # Run the bot ------------------------------------------------------------------
 
