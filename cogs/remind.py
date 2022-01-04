@@ -157,6 +157,28 @@ class Reminder(commands.Cog):
 
         await ctx.response.send_message(message, ephemeral=True)
 
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="allplanned", description="view all the reminders, if you're allowed to", guild_ids=config.slash_servers)
+    async def show_all(self, ctx):
+        """Show all the reminders.
+        """
+        if ctx.author.id not in config.no_cooldown_users:
+            return await ctx.response.send_message("You do not have permission to view all the reminders.", ephemeral=True)
+
+        reminders = [[m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]] for m_id, item in self.reminders.items()]
+        if not reminders:
+            return await ctx.response.send_message("There are no reminders.", ephemeral=True)
+
+        message = f"There are {len(reminders)} reminders set.\n```"
+        table = PrettyTable()
+        table.align = "r"
+        table.field_names = ["ID", "When", "What"]
+        table._max_width = {"ID": 10, "When": 10, "What": 50}
+        table.add_rows(reminders)
+        message += table.get_string(sortby="ID") + "```"
+
+        await ctx.response.send_message(message[:2000], ephemeral=True)
+
     # Tasks --------------------------------------------------------------------
 
     @tasks.loop(seconds=5.0)
