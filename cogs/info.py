@@ -315,7 +315,7 @@ class Info(commands.Cog):
             else:
                 result = result["subpod"]["plaintext"]
 
-            if n == 0:
+            if m == 0:
                 embed.add_field(name=f"{question}", value=result, inline=False)
             else:
                 embed.add_field(name=f"Result {m}", value=result, inline=False)
