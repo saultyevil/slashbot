@@ -5,6 +5,7 @@ import datetime
 import json
 import re
 import time
+from tabulate import tabulate
 
 import disnake
 from dateutil import parser
@@ -138,17 +139,16 @@ class Reminder(commands.Cog):
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="planned", description="view your reminders", guild_ids=config.slash_servers)
     async def show(self, ctx):
-        """Show the reminders set for a user."""
-        reminders = [(id, item) for id, item in self.reminders.items() if item["user"] == ctx.author.id]
-
+        """Show the reminders set for a user.
+        """
+        reminders = [[m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]] for m_id, item in self.reminders.items() if item["user"] == ctx.author.id]
         if not reminders:
             return await ctx.response.send_message("You don't have any reminders set.", ephemeral=True)
 
         message = f"You have {len(reminders)} reminders set.\n```"
-        for id, reminder in reminders:
-            message += f"{id}: {reminder['what']} at {datetime.datetime.fromisoformat(reminder['when'])}\n"
+        message += tabulate(reminders, headers=["id", "when", "reminder"], tablefmt="orgtbl")
 
-        await ctx.author.send(message + "```")
+        await ctx.response.send_message(message, ephemeral=True)
 
     # Tasks --------------------------------------------------------------------
 
