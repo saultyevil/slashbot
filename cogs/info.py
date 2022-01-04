@@ -318,7 +318,7 @@ class Info(commands.Cog):
             if  == 0:
                 embed.add_field(name=f"{question}", value=result, inline=False)
             else:
-                embed.add_field(name=f"Result {n}", value=result, inlfine=False)
+                embed.add_field(name=f"Result {n}", value=result, inline=False)
 
         return await ctx.edit_original_message(embed=embed)
 
