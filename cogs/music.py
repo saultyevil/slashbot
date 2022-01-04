@@ -44,7 +44,6 @@ ytdl = YoutubeDL(ytdlopts)
 
 class YTDLSource(disnake.PCMVolumeTransformer):
     """YouTube downloader class, for streaming to a discord voice channel."""
-
     def __init__(self, source, *, data, requester):
         super().__init__(source)
         self.requester = requester
@@ -143,7 +142,6 @@ class MusicPlayer:
 
 class Music(commands.Cog):
     """Music playing commands."""
-
     def __init__(self, bot):
         self.bot = bot
         self.players = {}
@@ -162,14 +160,14 @@ class Music(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="connect", description="connect to voice", guild_ids=config.slash_servers)
+    @commands.slash_command(name="join", description="join a voice server", guild_ids=config.slash_servers)
     async def connect(self, ctx, *, channel=None):
         """Connect the bot to the voice channel the requester is in."""
         if not channel:
             try:
                 channel = ctx.author.voice.channel
             except AttributeError:
-                await ctx.response.send_message("You are not connected to a voice channel.", ephemeral=True)
+                return await ctx.response.send_message("You are not connected to a voice channel.", ephemeral=True)
 
         vc = ctx.guild.voice_client
         if vc:
@@ -194,7 +192,7 @@ class Music(commands.Cog):
         """Add a song to the queue."""
         vc = ctx.guild.voice_client
         if not vc:
-            await self.connect(ctx)  # todo: should be invoke or smt
+            return await ctx.response.send_message("Invite me to a voice channel first.", ephemeral=True)
 
         player = self.get_player(ctx)
         source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)

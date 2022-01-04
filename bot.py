@@ -6,6 +6,7 @@ The sole purpose of this bot is to annoy Gareth.
 """
 
 import os
+import time
 import pickle
 
 import disnake
@@ -20,10 +21,10 @@ from markovify import markovify
 
 # Create the bot class, with extra clean up functionality ----------------------
 
+start = time.time()
 
 class Bot(commands.Bot):
-    """Bot class, with changes for clean up on close.
-    """
+    """Bot class, with changes for clean up on close."""
     def __init__(self, **kwargs):
         """Initialize the class."""
         commands.Bot.__init__(self, **kwargs)
@@ -44,6 +45,7 @@ class Bot(commands.Bot):
     async def close(self):
         """Clean up things on close."""
         for function in self.cleanup_functions:
+            print(f"{function['name']}")
             if function["args"]:
                 await function["function"](*function["args"])
             else:
@@ -86,7 +88,7 @@ bot.add_cog(spam)
 bot.add_cog(info)
 bot.add_cog(reminder)
 bot.add_cog(music)
-bot.add_to_cleanup("markov learn", spam.learn, [None])
+bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
 
 # Functions --------------------------------------------------------------------
 
@@ -98,20 +100,33 @@ async def on_ready():
     for n, server in enumerate(bot.guilds):
         message += "\n  {0}). {1.name} ({1.id})".format(n, server)
     print(message)
+    print(f"Started in {time.time() - start:.2f} seconds.")
 
 
 @bot.event
 async def on_slash_command_error(ctx, error):
-    """Handle different types of errors."""
-    if isinstance(error, commands.errors.CommandOnCooldown):
+    """Handle different types of errors.
+
+    Parameters
+    ----------
+    error: Exception
+        The error that occurred.
+    """
+
+    print("\n", "-" * 80, f"\n {ctx.application_command.name} for {ctx.author.name} failed with error:\n\n", error)
+
+    if isinstance(error, disnake.errors.InteractionTimedOut):
+        error = "The interaction timed out, as it took > 3 seconds to run"
+    elif isinstance(error, commands.errors.CommandOnCooldown):
         return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
-    print("-" * 80)
-    print(f"{ctx.application_command.name} for {ctx.author.name} failed with error:")
-    print(error)
-    print(type(error))
-    print("-" * 80)
+    try:
+        if not ctx.response.is_done():
+            await ctx.response.send_message(f"Oh no, there was an error! {error}.", ephemeral=True)
+    except (AttributeError, disnake.errors.InterationResponded):
+        print("\nuser informed by another error message, as something had no attribute")
 
+    print("\n\n", "-" * 80)
 
 # Run the bot ------------------------------------------------------------------
 

@@ -9,6 +9,7 @@ import datetime
 import json
 import pickle
 import random
+import re
 import shutil
 import string
 import xml
@@ -29,7 +30,6 @@ cd_user = commands.BucketType.user
 
 class Spam(commands.Cog):
     """A collection of commands to spam the chat with."""
-
     def __init__(self, bot, markov, badwords, godwords, attempts=10):
         self.bot = bot
         self.markov = markov
@@ -85,7 +85,6 @@ class Spam(commands.Cog):
     )
     async def chat(self, ctx, words=""):
         """Generate a message from the Markov sentence model.
-        TODO: this might want to be deferred, as can be too long with a large state size
 
         Parameters
         ----------
@@ -163,9 +162,7 @@ class Spam(commands.Cog):
                 return
 
         if ctx:
-            await ctx.response.defer()
-        else:
-            print("Updating markov chain...")
+            await ctx.response.defer(ephemeral=True)
 
         messages = self.clean_up_messages()
         if len(messages) == 0:
@@ -232,10 +229,31 @@ class Spam(commands.Cog):
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
     @commands.slash_command(name="spit", description="i spit in your direction", guild_ids=config.slash_servers)
-    async def spit(self, ctx):
+    async def spit(self, ctx, mention=None):
         """Send the GIF of the girl spitting."""
         await ctx.response.defer()
-        await ctx.edit_original_message(file=disnake.File("data/spit.gif"))
+
+        message = ""
+        users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
+
+        mentions = []
+        for user in users:
+            user = self.bot.get_user(int(user))
+            if ctx.author.id == config.id_user_adam:
+                mentions.append(f"{user.name}")
+            else:
+                mentions.append(f"{user.mention}")
+
+        if users:
+            badword = random.choice(self.badwords)
+            if len(users) == 1 and badword[-1] == "s":
+                badword = badword[:-1]
+            message = "I spit at " + ", ".join(mentions) + f", the {badword}"
+            if len(users) > 1:
+                message += "s"
+            message += "."
+
+        await ctx.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
 
     # Listeners ---------------------------------------------------------------
 

@@ -29,7 +29,6 @@ set_options = ["location", "country", "badword"]
 
 class Info(commands.Cog):
     """Query information from the internet."""
-
     def __init__(self, bot, generate_sentence, badwords, godwords, attempts=10):
         self.bot = bot
         self.generate_sentence = generate_sentence
@@ -89,7 +88,7 @@ class Info(commands.Cog):
 
         if where is None:
             if str(ctx.author.id) not in self.userdata:
-                return await ctx.edit_original_message("You need to set or specify your location.", ephemeral=True)
+                return await ctx.edit_original_message("You need to set or specify your location.")
             where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
 
         if country is None:
@@ -100,7 +99,7 @@ class Info(commands.Cog):
 
         locations = self.weather_city_register.locations_for(where, country)
         if len(locations) == 0:
-            return await ctx.edit_original_message("Location not found in forecast database.", ephemeral=True)
+            return await ctx.edit_original_message("Location not found in forecast database.")
 
         location, country = locations[0].name, locations[0].country
         lat, lon = locations[0].lat, locations[0].lon
@@ -109,7 +108,7 @@ class Info(commands.Cog):
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
             print("weather one_call error:", e)
-            return await ctx.edit_original_message("Could not find that location in one call forecast database.", ephemeral=True)
+            return await ctx.edit_original_message("Could not find that location in one call forecast database.")
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -130,6 +129,42 @@ class Info(commands.Cog):
         embed.set_footer(text=f"{self.generate_sentence('forecast')}")
 
         await ctx.edit_original_message(embed=embed)
+
+    @commands.slash_command(name="help", description="get some help", guild_ids=config.slash_servers)
+    async def help(self, ctx, command=None):
+        """Display help for the bot and commands.
+
+        Parameters
+        ----------
+        command: str
+            The name of a command to query.
+        """
+        commands = self.bot.get_guild_slash_commands(ctx.guild.id)
+        if not commands:
+            return await ctx.response.send_message(f"There are no commands registered for this server.", ephemeral=True)
+
+        commands = sorted(commands, key=lambda x: x.name)
+        commands = {
+            command.name: {
+                "description": command.description,
+                "options": command.options
+            }
+            for command in commands
+        }
+
+        if command:
+            if command not in commands:
+                return await ctx.response.send_message(f"Command `{command}` not found.", ephemeral=True)
+            command = commands[command]
+            message = f"`{command}` - {command['description']}\n"
+            for option in command['options']:
+                message += f"• {option}\n"
+        else:
+            message = f"There are {len(commands)} commands registered in this server.\n\n"
+            for command in commands:
+                message += f"• `{command}` - {commands[command]['description']}\n"
+
+        await ctx.response.send_message(message, ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="roll", description="roll a dice", guild_ids=config.slash_servers)
@@ -159,7 +194,7 @@ class Info(commands.Cog):
         try:
             articles = self.news.get_top_headlines(sources=source)["articles"]
         except:
-            await ctx.edit_original_message("Reached the maximum number of news requests for the day.")
+            return await ctx.edit_original_message("Reached the maximum number of news requests for the day.")
 
         if not len(articles):
             return await ctx.response.send_message(f"No articles were found for {source}.")
@@ -199,7 +234,7 @@ class Info(commands.Cog):
         with open("data/users.json", "w") as fp:
             json.dump(self.userdata, fp)
 
-        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.", ephemeral=True)
+        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="weather", description="get the weather", guild_ids=config.slash_servers)
@@ -215,14 +250,13 @@ class Info(commands.Cog):
 
         if where is None:
             if str(ctx.author.id) not in self.userdata:
-                return await ctx.edit_original_message("You need to set or specify your location.", ephemeral=True)
+                return await ctx.edit_original_message("You need to set or specify your location.")
             where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
 
         try:
             observation = self.weather_manager.weather_at_place(where)
-        except Exception as e:
-            print("weather_at_place error:", e)
-            return await ctx.edit_original_message(content="Could not find that location.", ephemeral=True)
+        except Exception: # pylint: disable=broad-except
+            return await ctx.edit_original_message(content="Could not find that location.")
 
         weather = observation.weather
         temperature = weather.temperature("celsius")
@@ -252,7 +286,7 @@ class Info(commands.Cog):
             The question to ask.
         """
         await ctx.response.defer()
-        embed = disnake.Embed(title=f"Stephen Wolfram says", color=disnake.Color.default())
+        embed = disnake.Embed(title=f"Stephen Wolfram says...", color=disnake.Color.default())
         embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg")
@@ -265,11 +299,16 @@ class Info(commands.Cog):
                             inline=False)
             return await ctx.edit_original_message(embed=embed)
 
-        # Iterate through the first N results
+        # only go through the first N results to add to embed
         n = 1
-
         for result in [result for result in results.pods if result["@id"] == "Result"][:n]:
-            embed.add_field(name=f"{question}", value=result["subpod"]["plaintext"], inline=False)
+            # have to check if the result is a list of results, or just a single result
+            # probably a better way to do this
+            if isinstance(result["subpod"], list):
+                result = result["subpod"][0]["plaintext"]
+            else:
+                result = result["subpod"]["plaintext"]
+            embed.add_field(name=f"{question}", value=result, inline=False)
 
         return await ctx.edit_original_message(embed=embed)
 

@@ -38,7 +38,6 @@ class Chain(object):
 
     For example: Sentences.
     """
-
     def __init__(self, corpus, state_size, model=None, model_reversed=None):
         """
         `corpus`: A list of lists, where each outer list is a "run"
