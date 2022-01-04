@@ -5,7 +5,7 @@ import datetime
 import json
 import re
 import time
-from tabulate import tabulate
+from prettytable import PrettyTable
 
 import disnake
 from dateutil import parser
@@ -98,8 +98,11 @@ class Reminder(commands.Cog):
         if future < now.isoformat():
             return await ctx.response.send_message("You can't set a reminder in the past.", ephemeral=True)
 
-        key = f"{int(time.time())}{user_id}"
-        self.reminders[key] = {
+        key = len(reminder) + 1
+        while str(key) in self.reminders:
+            key += 1
+
+        self.reminders[str(key)] = {
             "user": user_id,
             "whofor": where,
             "channel": channel_id,
@@ -145,7 +148,12 @@ class Reminder(commands.Cog):
             return await ctx.response.send_message("You don't have any reminders set.", ephemeral=True)
 
         message = f"You have {len(reminders)} reminders set.\n```"
-        message += tabulate(reminders, headers=["id", "when", "reminder"], tablefmt="orgtbl")
+        table = PrettyTable()
+        table.align = "r"
+        table.field_names = ["ID", "When", "What"]
+        table._max_width = {"ID": 10, "When": 10, "What": 50}
+        table.add_rows(reminders)
+        message += table.get_string(sortby="ID") + "```"
 
         await ctx.response.send_message(message, ephemeral=True)
 
