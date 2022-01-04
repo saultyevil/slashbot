@@ -234,24 +234,25 @@ class Spam(commands.Cog):
         await ctx.response.defer()
 
         message = ""
-        users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
 
-        mentions = []
-        for user in users:
-            user = self.bot.get_user(int(user))
-            if ctx.author.id == config.id_user_adam:
-                mentions.append(f"{user.name}")
-            else:
-                mentions.append(f"{user.mention}")
+        if mention:
+            users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
 
-        if users:
-            badword = random.choice(self.badwords)
-            if len(users) == 1 and badword[-1] == "s":
-                badword = badword[:-1]
-            message = "I spit at " + ", ".join(mentions) + f", the {badword}"
-            if len(users) > 1:
-                message += "s"
-            message += "."
+            mentions = []
+            for user in users:
+                user = self.bot.get_user(int(user))
+                if ctx.author.id == config.id_user_adam:
+                    mentions.append(f"{user.name}")
+                else:
+                    mentions.append(f"{user.mention}")
+            if users:
+                badword = random.choice(self.badwords)
+                if len(users) == 1 and badword[-1] == "s":
+                    badword = badword[:-1]
+                message = "I spit at " + ", ".join(mentions) + f", the {badword}"
+                if len(users) > 1:
+                    message += "s"
+                message += "."
 
         await ctx.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
 
