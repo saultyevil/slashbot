@@ -277,7 +277,7 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="wolfram", description="ask wolfram a question", guild_ids=config.slash_servers)
-    async def wolfram(self, ctx, question):
+    async def wolfram(self, ctx, question: str, n: int = 1):
         """Submit a query to wolfram alpha.
 
         Parameters
@@ -300,15 +300,25 @@ class Info(commands.Cog):
             return await ctx.edit_original_message(embed=embed)
 
         # only go through the first N results to add to embed
-        n = 1
-        for result in [result for result in results.pods if result["@id"] == "Result"][:n]:
+
+        results = [result for result in results.pods]
+
+        n += 1
+        if n > len(results):
+            n = len(results)
+
+        for m, result in enumerate(results[1:n]):
             # have to check if the result is a list of results, or just a single result
             # probably a better way to do this
             if isinstance(result["subpod"], list):
                 result = result["subpod"][0]["plaintext"]
             else:
                 result = result["subpod"]["plaintext"]
-            embed.add_field(name=f"{question}", value=result, inline=False)
+
+            if  == 0:
+                embed.add_field(name=f"{question}", value=result, inline=False)
+            else:
+                embed.add_field(name=f"Result {n}", value=result, inlfine=False)
 
         return await ctx.edit_original_message(embed=embed)
 

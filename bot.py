@@ -126,7 +126,7 @@ async def on_slash_command_error(ctx, error):
     # except (AttributeError, disnake.errors.InteractionResponded):
     #     print("\nuser informed by another error message, as something had no attribute")
 
-    print("\n\n", "-" * 80)
+    print("\n", "-" * 80)
 
 # Run the bot ------------------------------------------------------------------
 
