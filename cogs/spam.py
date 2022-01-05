@@ -443,7 +443,7 @@ class Spam(commands.Cog):
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
         await channel.send(self.generate_sentence("friday").replace("friday", "**friday**"),
-                           file=disnake.File("data/videos/friday.mp4"))
+                           file=disnake.File("data/videos/friday.mov"))
 
     @tasks.loop(hours=config.hours_in_week)
     async def sunday_morning(self):
