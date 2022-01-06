@@ -214,7 +214,8 @@ class Info(commands.Cog):
             embed.add_field(name=f"{n + 1}. {title}", value=f"{description[:128]}...\n{url}", inline=False)
 
         embed.set_footer(text=f"{self.generate_sentence('news')}")
-        if validators.url(image):
+
+        if image:
             embed.set_thumbnail(url=image)
 
         await ctx.edit_original_message(embed=embed)
