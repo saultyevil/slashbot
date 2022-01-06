@@ -10,6 +10,7 @@ import magic8ball
 import pyowm
 import requests
 import wolframalpha
+import validators
 from disnake.ext import commands
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -88,7 +89,7 @@ class Info(commands.Cog):
 
         if where is None:
             if str(ctx.author.id) not in self.userdata:
-                return await ctx.edit_original_message("You need to set or specify your location.")
+                return await ctx.edit_original_message(content="You need to set or specify your location.")
             where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
 
         if country is None:
@@ -96,10 +97,15 @@ class Info(commands.Cog):
                 country = "gb"
             else:
                 country = self.userdata[str(ctx.author.id)].get("country", "gb")
+        else:
+            if len(country) != 2:
+                await ctx.edit_original_message(content="Country has to be a 2 character symbol")
+            if country.lower() == "uk":
+                country = "gb"
 
-        locations = self.weather_city_register.locations_for(where, country)
+        locations = self.weather_city_register.locations_for(where, country=country.upper())
         if len(locations) == 0:
-            return await ctx.edit_original_message("Location not found in forecast database.")
+            return await ctx.edit_original_message(content="Location not found in forecast database.")
 
         location, country = locations[0].name, locations[0].country
         lat, lon = locations[0].lat, locations[0].lon
@@ -108,7 +114,7 @@ class Info(commands.Cog):
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
             print("weather one_call error:", e)
-            return await ctx.edit_original_message("Could not find that location in one call forecast database.")
+            return await ctx.edit_original_message(content="Could not find that location in one call forecast database.")
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -208,7 +214,8 @@ class Info(commands.Cog):
             embed.add_field(name=f"{n + 1}. {title}", value=f"{description[:128]}...\n{url}", inline=False)
 
         embed.set_footer(text=f"{self.generate_sentence('news')}")
-        embed.set_thumbnail(url=image)
+        if validators.url(image):
+            embed.set_thumbnail(url=image)
 
         await ctx.edit_original_message(embed=embed)
 

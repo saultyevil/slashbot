@@ -14,3 +14,4 @@ magic8ball==1.1.2
 python-dateutil==2.8.2
 tweepy==4.4.0
 prettytable==2.5.0
+validators==0.18.2
