@@ -265,12 +265,12 @@ class Spam(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="twat", description="get a random tweet")
-    async def twat(self, ctx, user: str):
+    async def twat(self, ctx, username: str):
         """Get a random tweet from a user."""
-        user = self.twitter.get_user(username=user)[0]
+        user = self.twitter.get_user(username=username)[0]
         if not user:
-            await ctx.response.send_message(f"There is no user with the name {user}.", ephemeral=True)
-        tweets = self.twitter.get_user_tweets(user.id, max_results=100, exclude="retweets")[0]
+            return await ctx.response.send_message(f"There is no user with the name {username}.", ephemeral=True)
+        tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
         tweet = random.choice(tweets)
 
         embed = disnake.Embed(title=f"{tweet.text}", color=disnake.Color.default())
