@@ -121,18 +121,13 @@ async def on_slash_command_error(ctx, error):
         The error that occurred.
     """
 
-    print(f"\n{ctx.application_command.name} for {ctx.author.name} failed with error:\n", error)
+    print(f"\n{ctx.application_command.name} for {ctx.author.name} failed with error:")
+    print(error)
 
     if isinstance(error, commands.errors.CommandOnCooldown):
         return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
-    # try:
-    #     if not ctx.response.is_done():
-    #         await ctx.response.send_message(f"Oh no, there was an error! {error}.", ephemeral=True)
-    # except (AttributeError, disnake.errors.InteractionResponded):
-    #     print("\nuser informed by another error message, as something had no attribute")
-
-    print("\n", "-" * 80)
+    print("-" * 80)
 
 # Run the bot ------------------------------------------------------------------
 
