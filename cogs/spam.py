@@ -276,8 +276,7 @@ class Spam(commands.Cog):
         tweet = random.choice(tweets)
 
         embed = disnake.Embed(title=f"{tweet.text}", color=disnake.Color.default())
-        embed.set_footer(text=f"{self.generate_sentence('twitter')}")
-        embed.set_foot(text=user.url)
+        embed.set_footer(text=user.url)
         profile_image = user.profile_image_url
         if profile_image:
             embed.set_thumbnail(url=profile_image)
