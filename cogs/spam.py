@@ -62,7 +62,7 @@ class Spam(commands.Cog):
     # Slash commands -----------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="badword", description="send a naughty word", guild_ids=config.slash_servers)
+    @commands.slash_command(name="badword", description="send a naughty word")
     async def badword(self, ctx):
         """Send a badword to the chat."""
         badword = random.choice(self.badwords)
@@ -113,9 +113,9 @@ class Spam(commands.Cog):
         await ctx.response.send_message(f"```{cow}```")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="danny", description="get the latest danny dyer tweet", guild_ids=config.slash_servers)
+    @commands.slash_command(name="danny", description="get a random danny dyer tweet")
     async def danny(self, ctx):
-        """Send the latest Danny Dyer tweet to the chat."""
+        """Get a random Danny Dyer tweet."""
         user = self.twitter.get_user(username="MrDDyer")[0]
         tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
         tweet = random.choice(tweets)
@@ -137,7 +137,7 @@ class Spam(commands.Cog):
         await ctx.response.send_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="figlet", description="encode text to a figlet", guild_ids=config.slash_servers)
+    @commands.slash_command(name="figlet", description="encode text to a figlet")
     async def figlet(self, ctx, text):
         """Send a figlet to the chat.
 
@@ -152,7 +152,7 @@ class Spam(commands.Cog):
         await ctx.response.send_message(f"```{figlet}```")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="learn", description="force update the markov chain", guild_ids=config.slash_servers)
+    @commands.slash_command(name="learn", description="force update the markov chain")
     async def learn(self, ctx):
         """Update the Markov chain model."""
         if len(self.messages) == 0:
@@ -192,14 +192,14 @@ class Spam(commands.Cog):
             print(f"Markov chain updated with {len(messages)} new messages.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="oracle", description="a message from god", guild_ids=config.slash_servers)
+    @commands.slash_command(name="oracle", description="a message from god")
     async def oracle(self, ctx):
         """Send a Terry Davis inspired "God message" to the chat."""
         words = random.sample(self.godwords, random.randint(7, 15))
         await ctx.response.send_message(f"{' '.join(words)}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="rule34", description="search for a naughty image", guild_ids=config.slash_servers)
+    @commands.slash_command(name="rule34", description="search for a naughty image")
     async def rule34(self, ctx, query):
         """Search rule34.xxx for a naughty image.
 
@@ -208,6 +208,10 @@ class Spam(commands.Cog):
         query: str
             The properly formatted query to search for.
         """
+        if ctx.channel_id == config.id_channel_idiots:
+            ctx.channel_id = config.id_channel_spam
+            ctx.channel = self.bot.get_channel(ctx.channel_id)
+
         search = query.replace(" ", "+")
         results = await self.rule34.getImages(search, fuzzy=False, randomPID=True)
         if results is None:
@@ -228,7 +232,7 @@ class Spam(commands.Cog):
             await ctx.send(f"{message}\n>>> *Too cursed for comments*")
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="spit", description="i spit in your direction", guild_ids=config.slash_servers)
+    @commands.slash_command(name="spit", description="i spit in your direction")
     async def spit(self, ctx, mention=None):
         """Send the GIF of the girl spitting."""
         await ctx.response.defer()
@@ -255,6 +259,21 @@ class Spam(commands.Cog):
                 message += "."
 
         await ctx.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="twat", description="get a random tweet")
+    async def twat(self, ctx, user: str):
+        """Get a random tweet from a user."""
+        user = self.twitter.get_user(username=user)[0]
+        if not user:
+            await ctx.response.send_message(f"There is no user with the name {user}.", ephemeral=True)
+        tweets = self.twitter.get_user_tweets(user.id, max_results=100, exclude="retweets")[0]
+        tweet = random.choice(tweets)
+
+        embed = disnake.Embed(title=f"{tweet.text}", color=disnake.Color.default())
+        embed.set_footer(text=f"{self.generate_sentence('twitter')}")
+
+        await ctx.response.send_message(embed=embed)
 
     # Listeners ---------------------------------------------------------------
 

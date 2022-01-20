@@ -160,7 +160,7 @@ class Music(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="join", description="join a voice server", guild_ids=config.slash_servers)
+    @commands.slash_command(name="join", description="join a voice server")
     async def connect(self, ctx, *, channel=None):
         """Connect the bot to the voice channel the requester is in."""
         if not channel:
@@ -187,7 +187,7 @@ class Music(commands.Cog):
         return await ctx.response.send_message(f"Connected to voice", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="play", description="request a song", guild_ids=config.slash_servers)
+    @commands.slash_command(name="play", description="request a song")
     async def play(self, ctx, *, search=None):
         """Add a song to the queue."""
         vc = ctx.guild.voice_client
@@ -200,7 +200,7 @@ class Music(commands.Cog):
         await ctx.response.send_message(f"{ctx.author.name} added to queue: {source.title}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="leave", description="disconnect from voice", guild_ids=config.slash_servers)
+    @commands.slash_command(name="leave", description="disconnect from voice")
     async def leave(self, ctx):
         """Disconnect from the voice channel."""
         vc = ctx.guild.voice_client
@@ -210,7 +210,7 @@ class Music(commands.Cog):
         await self.cleanup(ctx, ctx.guild)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="skip", description="skip the song", guild_ids=config.slash_servers)
+    @commands.slash_command(name="skip", description="skip the song")
     async def skip(self, ctx):
         """Skip the current song."""
         vc = ctx.guild.voice_client

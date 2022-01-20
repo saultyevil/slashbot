@@ -45,7 +45,7 @@ class Reminder(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="remind", description="set a reminder", guild_ids=config.slash_servers)
+    @commands.slash_command(name="remind", description="set a reminder")
     async def add(self,
                   ctx,
                   when: str = commands.Param(),
@@ -118,7 +118,7 @@ class Reminder(commands.Cog):
             await ctx.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="forget", description="clear your reminders", guild_ids=config.slash_servers)
+    @commands.slash_command(name="forget", description="clear your reminders")
     async def remove(self, ctx, m_id):
         """Clear a reminder or all of a user's reminders.
 
@@ -139,7 +139,7 @@ class Reminder(commands.Cog):
         await ctx.response.send_message(f"Reminder for {removed['what']} removed.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="planned", description="view your reminders", guild_ids=config.slash_servers)
+    @commands.slash_command(name="planned", description="view your reminders")
     async def show(self, ctx):
         """Show the reminders set for a user.
         """
@@ -158,7 +158,7 @@ class Reminder(commands.Cog):
         await ctx.response.send_message(message, ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="allplanned", description="view all the reminders, if you're allowed to", guild_ids=config.slash_servers)
+    @commands.slash_command(name="allplanned", description="view all the reminders, if you're allowed to")
     async def show_all(self, ctx):
         """Show all the reminders.
         """

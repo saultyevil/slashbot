@@ -76,7 +76,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(f"{question} {random.choice(magic8ball.list)}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="forecast", description="get the weather forecast", guild_ids=config.slash_servers)
+    @commands.slash_command(name="forecast", description="get the weather forecast")
     async def forecast(self, ctx, where=None, country=None):
         """Print the weather forecast for a location.
 
@@ -136,7 +136,7 @@ class Info(commands.Cog):
 
         await ctx.edit_original_message(embed=embed)
 
-    @commands.slash_command(name="help", description="get some help", guild_ids=config.slash_servers)
+    @commands.slash_command(name="help", description="get some help")
     async def help(self, ctx, command=None):
         """Display help for the bot and commands.
 
@@ -173,7 +173,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(message, ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="roll", description="roll a dice", guild_ids=config.slash_servers)
+    @commands.slash_command(name="roll", description="roll a dice")
     async def roll(self, ctx, n: int):
         """Roll a random number from 1 to n.
 
@@ -186,7 +186,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(f"{ctx.author.mention} rolled a {num}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="news", description="get the news", guild_ids=config.slash_servers)
+    @commands.slash_command(name="news", description="get the news")
     async def news(self, ctx, source=commands.Param(default="bbc-news", autocomplete=news_sources)):
         """Get the news headlines for the given source.
 
@@ -221,7 +221,7 @@ class Info(commands.Cog):
         await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="remember", description="set user data", guild_ids=config.slash_servers)
+    @commands.slash_command(name="remember", description="set user data")
     async def remember(self, ctx, thing=commands.Param(autocomplete=set_options), value=commands.Param()):
         """Set some user variables for a user.
 
@@ -245,7 +245,7 @@ class Info(commands.Cog):
         await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="weather", description="get the weather", guild_ids=config.slash_servers)
+    @commands.slash_command(name="weather", description="get the weather")
     async def weather(self, ctx, where=None):
         """Get the current weather for a given location.
 
@@ -284,7 +284,7 @@ class Info(commands.Cog):
         await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="wolfram", description="ask wolfram a question", guild_ids=config.slash_servers)
+    @commands.slash_command(name="wolfram", description="ask wolfram a question")
     async def wolfram(self, ctx, question: str, n: int = 1):
         """Submit a query to wolfram alpha.
 
@@ -331,7 +331,7 @@ class Info(commands.Cog):
         return await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="youtube", description="search for a youtube video", guild_ids=config.slash_servers)
+    @commands.slash_command(name="youtube", description="search for a youtube video")
     async def youtube(self, ctx, query=None):
         """Embeds the first result on youtube for the search term.
 
