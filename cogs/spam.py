@@ -91,7 +91,8 @@ class Spam(commands.Cog):
         words: str
             A seed word (or words) to generate a message from.
         """
-        await ctx.response.send_message(self.generate_sentence(words, mentions=False))
+        await ctx.response.defer()
+        await ctx.edit_original_message(self.generate_sentence(words, mentions=False))
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
@@ -212,6 +213,8 @@ class Spam(commands.Cog):
             ctx.channel_id = config.id_channel_spam
             ctx.channel = self.bot.get_channel(ctx.channel_id)
 
+        await ctx.response.defer()
+
         search = query.replace(" ", "+")
         results = await self.rule34.getImages(search, fuzzy=False, randomPID=True)
         if results is None:
@@ -227,9 +230,9 @@ class Spam(commands.Cog):
         comment, commentor, when = self.rule34_comments(image.id)
         message = f"|| {image.file_url} ||"
         if comment:
-            await ctx.send(f"{message}\n>>> \"{comment}\"\n*{commentor}*")
+            await ctx.edit_original_message(f"{message}\n>>> \"{comment}\"\n*{commentor}*")
         else:
-            await ctx.send(f"{message}\n>>> *Too cursed for comments*")
+            await ctx.edit_original_message(f"{message}\n>>> *Too cursed for comments*")
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
     @commands.slash_command(name="spit", description="i spit in your direction")

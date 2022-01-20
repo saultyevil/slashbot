@@ -10,7 +10,6 @@ import magic8ball
 import pyowm
 import requests
 import wolframalpha
-import validators
 from disnake.ext import commands
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
