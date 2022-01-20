@@ -92,7 +92,7 @@ class Spam(commands.Cog):
             A seed word (or words) to generate a message from.
         """
         await ctx.response.defer()
-        await ctx.edit_original_message(self.generate_sentence(words, mentions=False))
+        await ctx.edit_original_message(content=self.generate_sentence(words, mentions=False))
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
@@ -158,7 +158,7 @@ class Spam(commands.Cog):
         """Update the Markov chain model."""
         if len(self.messages) == 0:
             if ctx:
-                return await ctx.edit_original_message(f"No messages to learn from.")
+                return await ctx.edit_original_message(content=f"No messages to learn from.")
             else:
                 return
 
@@ -168,7 +168,7 @@ class Spam(commands.Cog):
         messages = self.clean_up_messages()
         if len(messages) == 0:
             if ctx:
-                return await ctx.edit_original_message(f"No messages to learn from.")
+                return await ctx.edit_original_message(content=f"No messages to learn from.")
             else:
                 return
 
@@ -230,9 +230,9 @@ class Spam(commands.Cog):
         comment, commentor, when = self.rule34_comments(image.id)
         message = f"|| {image.file_url} ||"
         if comment:
-            await ctx.edit_original_message(f"{message}\n>>> \"{comment}\"\n*{commentor}*")
+            await ctx.edit_original_message(content=f"{message}\n>>> \"{comment}\"\n*{commentor}*")
         else:
-            await ctx.edit_original_message(f"{message}\n>>> *Too cursed for comments*")
+            await ctx.edit_original_message(content=f"{message}\n>>> *Too cursed for comments*")
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
     @commands.slash_command(name="spit", description="i spit in your direction")
