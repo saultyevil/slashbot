@@ -271,10 +271,13 @@ class Spam(commands.Cog):
         if not user:
             return await ctx.response.send_message(f"There is no user with the name {username}.", ephemeral=True)
         tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
+        if not tweets:
+            return await ctx.response.send_message(f"{username} has no tweets.", ephemeral=True)
         tweet = random.choice(tweets)
 
         embed = disnake.Embed(title=f"{tweet.text}", color=disnake.Color.default())
         embed.set_footer(text=f"{self.generate_sentence('twitter')}")
+        embed.set_thumbnail(url=user.profile_image_url)
 
         await ctx.response.send_message(embed=embed)
 
