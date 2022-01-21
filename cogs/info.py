@@ -59,8 +59,7 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="8ball",
-                            description="ask the magicall ball a question",
-                            guild_ids=config.slash_servers)
+                            description="ask the magicall ball a question")
     async def ball(self, ctx, question):
         """Ask the magicall ball a question.
 

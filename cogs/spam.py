@@ -81,7 +81,6 @@ class Spam(commands.Cog):
     @commands.slash_command(
         name="chat",
         description="artificial intelligence",
-        guild_ids=config.slash_servers,
     )
     async def chat(self, ctx, words=""):
         """Generate a message from the Markov sentence model.
@@ -98,7 +97,6 @@ class Spam(commands.Cog):
     @commands.slash_command(
         name="cowsay",
         description="what the cow say",
-        guild_ids=config.slash_servers,
     )
     async def cow(self, ctx, text, cow=commands.Param(default="cow", autocomplete=list(cowsay.char_names))):
         """Generate a cow saying the given text.
@@ -279,7 +277,7 @@ class Spam(commands.Cog):
             return await ctx.response.send_message(f"There is no @{username}.", ephemeral=True)
         tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
         if not tweets:
-            return await ctx.response.send_message(f"@{username} has no tweets or is a private nonce.", ephemeral=True)
+            return await ctx.response.send_message(f"@{user.username} has no tweets or is a private nonce.", ephemeral=True)
         tweet = random.choice(tweets)
 
         text = tweet.text
