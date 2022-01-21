@@ -5,9 +5,10 @@
 The sole purpose of this bot is to annoy Gareth.
 """
 
+import logging
 import os
-import time
 import pickle
+import time
 
 import disnake
 from disnake.ext import commands
@@ -18,8 +19,6 @@ import cogs.remind
 import cogs.spam
 import config
 from markovify import markovify
-import logging
-
 
 logger = logging.getLogger("disnake")
 logger.setLevel(logging.DEBUG)
@@ -30,6 +29,7 @@ logger.addHandler(handler)
 # Create the bot class, with extra clean up functionality ----------------------
 
 start = time.time()
+
 
 class Bot(commands.Bot):
     """Bot class, with changes for clean up on close."""
@@ -128,6 +128,7 @@ async def on_slash_command_error(ctx, error):
         return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
     print("-" * 80)
+
 
 # Run the bot ------------------------------------------------------------------
 

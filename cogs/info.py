@@ -58,8 +58,7 @@ class Info(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="8ball",
-                            description="ask the magicall ball a question")
+    @commands.slash_command(name="8ball", description="ask the magicall ball a question")
     async def ball(self, ctx, question):
         """Ask the magicall ball a question.
 
@@ -112,7 +111,8 @@ class Info(commands.Cog):
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
             print("weather one_call error:", e)
-            return await ctx.edit_original_message(content="Could not find that location in one call forecast database.")
+            return await ctx.edit_original_message(content="Could not find that location in one call forecast database."
+                                                   )
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -261,7 +261,7 @@ class Info(commands.Cog):
 
         try:
             observation = self.weather_manager.weather_at_place(where)
-        except Exception: # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             return await ctx.edit_original_message(content="Could not find that location.")
 
         weather = observation.weather

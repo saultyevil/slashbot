@@ -277,7 +277,8 @@ class Spam(commands.Cog):
             return await ctx.response.send_message(f"There is no @{username}.", ephemeral=True)
         tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
         if not tweets:
-            return await ctx.response.send_message(f"@{user.username} has no tweets or is a private nonce.", ephemeral=True)
+            return await ctx.response.send_message(f"@{user.username} has no tweets or is a private nonce.",
+                                                   ephemeral=True)
         tweet = random.choice(tweets)
 
         text = tweet.text

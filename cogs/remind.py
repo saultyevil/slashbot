@@ -5,11 +5,11 @@ import datetime
 import json
 import re
 import time
-from prettytable import PrettyTable
 
 import disnake
 from dateutil import parser
 from disnake.ext import commands, tasks
+from prettytable import PrettyTable
 
 import config
 
@@ -141,9 +141,9 @@ class Reminder(commands.Cog):
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="planned", description="view your reminders")
     async def show(self, ctx):
-        """Show the reminders set for a user.
-        """
-        reminders = [[m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]] for m_id, item in self.reminders.items() if item["user"] == ctx.author.id]
+        """Show the reminders set for a user."""
+        reminders = [[m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]]
+                     for m_id, item in self.reminders.items() if item["user"] == ctx.author.id]
         if not reminders:
             return await ctx.response.send_message("You don't have any reminders set.", ephemeral=True)
 
@@ -160,12 +160,13 @@ class Reminder(commands.Cog):
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="allplanned", description="view all the reminders, if you're allowed to")
     async def show_all(self, ctx):
-        """Show all the reminders.
-        """
+        """Show all the reminders."""
         if ctx.author.id not in config.no_cooldown_users:
-            return await ctx.response.send_message("You do not have permission to view all the reminders.", ephemeral=True)
+            return await ctx.response.send_message("You do not have permission to view all the reminders.",
+                                                   ephemeral=True)
 
-        reminders = [[m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]] for m_id, item in self.reminders.items()]
+        reminders = [[m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]]
+                     for m_id, item in self.reminders.items()]
         if not reminders:
             return await ctx.response.send_message("There are no reminders.", ephemeral=True)
 
