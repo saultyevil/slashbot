@@ -143,9 +143,9 @@ class Info(commands.Cog):
         command: str
             The name of a command to query.
         """
-        commands = self.bot.get_guild_slash_commands(ctx.guild.id)
+        commands = self.bot.global_application_commands
         if not commands:
-            return await ctx.response.send_message(f"There are no commands registered for this server.", ephemeral=True)
+            return await ctx.response.send_message(f"There were no commands found.", ephemeral=True)
 
         commands = sorted(commands, key=lambda x: x.name)
         commands = {
@@ -159,12 +159,13 @@ class Info(commands.Cog):
         if command:
             if command not in commands:
                 return await ctx.response.send_message(f"Command `{command}` not found.", ephemeral=True)
+            name = command
             command = commands[command]
-            message = f"`{command}` - {command['description']}\n"
+            message = f"`{name}`-- {command['description']}\nParameters:\n"
             for option in command['options']:
-                message += f"• {option}\n"
+                message += f"  • {option.name} - {option.description}\n"
         else:
-            message = f"There are {len(commands)} commands registered in this server.\n\n"
+            message = f"There are {len(commands)} commands.\n\n"
             for command in commands:
                 message += f"• `{command}` - {commands[command]['description']}\n"
 
