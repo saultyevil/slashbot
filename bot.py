@@ -108,7 +108,7 @@ async def on_ready():
     for n, server in enumerate(bot.guilds):
         message += "\n  {0}). {1.name} ({1.id})".format(n, server)
     print(message)
-    print(f"Started in {time.time() - start:.2f} seconds.")
+    print(f"Started in {time.time() - start:.2f} seconds.\n")
 
 
 @bot.event
@@ -121,7 +121,7 @@ async def on_slash_command_error(ctx, error):
         The error that occurred.
     """
 
-    print(f"\n{ctx.application_command.name} for {ctx.author.name} failed with error:")
+    print(f"{ctx.application_command.name} for {ctx.author.name} failed with error:")
     print(error)
 
     if isinstance(error, commands.errors.CommandOnCooldown):

@@ -266,20 +266,29 @@ class Spam(commands.Cog):
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="twat", description="get a random tweet")
     async def twat(self, ctx, username: str):
-        """Get a random tweet from a user."""
-        user = self.twitter.get_user(username=username)[0]
+        """Get a random tweet from a user.
+
+        Parameters
+        ----------
+        username: str
+            The user to get a random tweet for.
+        """
+        username = username.lstrip("@")
+        user = self.twitter.get_user(username=username, user_fields="profile_image_url,url")[0]
         if not user:
-            return await ctx.response.send_message(f"There is no user with the name {username}.", ephemeral=True)
+            return await ctx.response.send_message(f"There is no @{username}.", ephemeral=True)
         tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
         if not tweets:
-            return await ctx.response.send_message(f"{username} has no tweets.", ephemeral=True)
+            return await ctx.response.send_message(f"@{username} has no tweets or is a private nonce.", ephemeral=True)
         tweet = random.choice(tweets)
 
-        embed = disnake.Embed(title=f"{tweet.text}", color=disnake.Color.default())
-        embed.set_footer(text=user.url)
-        profile_image = user.profile_image_url
-        if profile_image:
-            embed.set_thumbnail(url=profile_image)
+        text = tweet.text
+        if len(text) > 256:
+            text = text[252:] + "..."
+
+        embed = disnake.Embed(title=text, color=disnake.Color.default())
+        embed.set_footer(text=f"@{user.username}")
+        embed.set_thumbnail(url=user.profile_image_url)
 
         await ctx.response.send_message(embed=embed)
 
