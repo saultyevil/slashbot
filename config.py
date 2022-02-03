@@ -5,8 +5,8 @@ import os
 
 # Constants defined for controlling cooldowns
 
-cooldown_rate = 2
-cooldown_standard = 20
+cooldown_rate = 1
+cooldown_standard = 60
 cooldown_one_hour = 3600
 cooldown_ten_mins = 600
 hours_in_week = 168

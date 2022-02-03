@@ -151,6 +151,28 @@ class Spam(commands.Cog):
         await ctx.response.send_message(f"```{figlet}```")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="goodbye", description="goodbye")
+    async def goodbye(self, ctx):
+        """Send a clip of Marko saying goodbye."""
+        await ctx.response.defer()
+        await ctx.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
+
+    @commands.cooldown(1, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="goodmorning", description="good morning people")
+    async def goodmorning(self, ctx, mention=None):
+        """Send a video of Marko saying good morning people.
+        """
+        await ctx.response.defer()
+        await ctx.edit_original_message(file=disnake.File("data/videos/good_morning_people.mp4"))
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="haha", description="haha very funny")
+    async def laugh(self, ctx):
+        """Send a clip of Marko laughing."""
+        await ctx.response.defer()
+        await ctx.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="learn", description="force update the markov chain")
     async def learn(self, ctx):
         """Update the Markov chain model."""
@@ -290,6 +312,14 @@ class Spam(commands.Cog):
         embed.set_thumbnail(url=user.profile_image_url)
 
         await ctx.response.send_message(embed=embed)
+
+    @commands.cooldown(1, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="what", description="what is a?")
+    async def what(self, ctx):
+        """Send a video of Marko saying a naughty word.
+        """
+        await ctx.response.defer()
+        await ctx.edit_original_message(file=disnake.File("data/videos/what_is_a.mp4"))
 
     # Listeners ---------------------------------------------------------------
 
