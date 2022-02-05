@@ -93,11 +93,11 @@ class Spam(commands.Cog):
         await ctx.response.defer()
         await ctx.edit_original_message(content=self.generate_sentence(words, mentions=False))
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="cowsay",
-        description="what the cow say",
-    )
+    #@commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    #@commands.slash_command(
+    #    name="cowsay",
+    #    description="what the cow say",
+    #)
     async def cow(self, ctx, text, cow=commands.Param(default="cow", autocomplete=list(cowsay.char_names))):
         """Generate a cow saying the given text.
 
@@ -135,8 +135,8 @@ class Spam(commands.Cog):
 
         await ctx.response.send_message(embed=embed)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="figlet", description="encode text to a figlet")
+    #@commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    #@commands.slash_command(name="figlet", description="encode text to a figlet")
     async def figlet(self, ctx, text):
         """Send a figlet to the chat.
 

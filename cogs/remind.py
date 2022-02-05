@@ -190,6 +190,8 @@ class Reminder(commands.Cog):
 
             if when <= datetime.datetime.now():
                 user = self.bot.get_user(reminder["user"])
+                if user.id == config.id_user_adam:
+                    continue
                 embed = disnake.Embed(title=reminder["what"], color=disnake.Color.default())
                 embed.set_footer(text=f"{self.generate_sentence('reminder')}")
                 embed.set_thumbnail(url=user.avatar.url)
