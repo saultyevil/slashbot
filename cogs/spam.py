@@ -49,6 +49,7 @@ class Spam(commands.Cog):
         # twitter client
         self.twitter = tweepy.Client(config.twitter_bearer)
 
+
     # Before command invoke ----------------------------------------------------
 
     async def cog_before_slash_command_invoke(self, ctx):
@@ -254,8 +255,8 @@ class Spam(commands.Cog):
         else:
             await ctx.edit_original_message(content=f"{message}\n>>> *Too cursed for comments*")
 
-    @commands.cooldown(1, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="spit", description="i spit in your direction")
+    # @commands.cooldown(1, config.cooldown_standard, cd_user)
+    # @commands.slash_command(name="spit", description="i spit in your direction")
     async def spit(self, ctx, mention=None):
         """Send the GIF of the girl spitting."""
         await ctx.response.defer()
@@ -334,6 +335,13 @@ class Spam(commands.Cog):
         """
         self.messages[str(message.id)] = message.content
 
+        if "https://twitter.com/" in message.content:
+            new_url, old_url = self.convert_twitter_video_links(message.content)
+            message.content = message.content.replace(old_url, new_url)
+            await message.edit(suppress=True)
+            await message.channel.send(new_url)
+
+
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_delete_messages(self, payload):
         """Remove a deleted message from self.messages.
@@ -399,6 +407,32 @@ class Spam(commands.Cog):
             learnable.append(phrase)
 
         return learnable
+
+    def convert_twitter_video_links(self, tweet_url_from_message):
+        """Checks if a tweet has a video, and preprends the URL with fx -- to
+        embed a video -- and removes the previous message if it was just a
+        message containing a tweet URL.
+
+        Parameters
+        ----------
+        message: str
+            The message containing the URL
+
+        Returns
+        -------
+        message: str
+            The new message to send.
+        """
+
+        new_url = tweet_url_from_message = re.search("(?P<url>https?://[^\s]+)", tweet_url_from_message).group("url")
+        tweet_id = int(re.sub(r'\?.*$','',tweet_url_from_message.rsplit("/", 1)[-1])) # gets the tweet ID as a int from the passed url
+        tweet = self.twitter.get_tweet(id=tweet_id, media_fields="type", expansions="attachments.media_keys")
+        media_type = tweet[1]["media"][0].type
+
+        if media_type == "video":
+            new_url = new_url.replace("twitter", "fxtwitter")
+
+        return new_url, tweet_url_from_message
 
     def generate_sentence(self, seedword=None, mentions=False):
         """Generate a "safe" message from the markov chain model.
