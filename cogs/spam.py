@@ -351,11 +351,6 @@ class Spam(commands.Cog):
         if "https://twitter.com/" in message.content:
             new_url, old_url = self.convert_twitter_video_links(message.content)
             # Check if someone has opted out. If not set, default to enabled
-
-            print(self.userdata)
-            print(message.author)
-            print(message.author.id)
-
             try:
                 enabled = self.userdata[str(message.author.id)]["fxtwitter"]
             except KeyError:
@@ -458,7 +453,6 @@ class Spam(commands.Cog):
 
         try:
             media_type = tweet[1]["media"][0].type
-            print("media_type:", media_type)
         except IndexError:
             return tweet_url_from_message, tweet_url_from_message
 
