@@ -337,6 +337,8 @@ class Spam(commands.Cog):
 
         if "https://twitter.com/" in message.content:
             new_url, old_url = self.convert_twitter_video_links(message.content)
+            if new_url == old_url:
+                return
             message.content = message.content.replace(old_url, new_url)
             await message.edit(suppress=True)
             await message.channel.send(new_url)
