@@ -41,6 +41,7 @@ class Spam(commands.Cog):
         with open("data/users.json", "r") as fp:
             self.userdata = json.load(fp)
         atexit.unregister(self.rule34._exitHandler)
+        self.update_markov_chains.start()
         self.monday_morning.start()
         self.wednesday_morning.start()
         self.friday_morning.start()
