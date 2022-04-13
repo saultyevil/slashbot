@@ -19,16 +19,38 @@ import config
 
 cd_user = commands.BucketType.user
 news_sources = [
-    'abc-news', 'al-jazeera-english', 'ars-technica', 'associated-press', 'bbc-news', 'blasting-news-br',
-    'breitbart-news', 'buzzfeed', 'crypto-coins-news', 'fortune', 'fox-news', 'google-news', 'hacker-news', 'ign',
-    'independent', 'new-scientist', 'reddit-r-all', 'reuters', 'techradar', 'the-huffington-post', 'the-jerusalem-post',
-    'the-lad-bible', 'the-verge', 'the-wall-street-journal', 'vice-news'
+    "abc-news",
+    "al-jazeera-english",
+    "ars-technica",
+    "associated-press",
+    "bbc-news",
+    "blasting-news-br",
+    "breitbart-news",
+    "buzzfeed",
+    "crypto-coins-news",
+    "fortune",
+    "fox-news",
+    "google-news",
+    "hacker-news",
+    "ign",
+    "independent",
+    "new-scientist",
+    "reddit-r-all",
+    "reuters",
+    "techradar",
+    "the-huffington-post",
+    "the-jerusalem-post",
+    "the-lad-bible",
+    "the-verge",
+    "the-wall-street-journal",
+    "vice-news",
 ]
-set_options = ["location", "country", "badword"]
+set_options = ["location", "country", "badword", "fxtwitter"]
 
 
 class Info(commands.Cog):
     """Query information from the internet."""
+
     def __init__(self, bot, generate_sentence, badwords, godwords, attempts=10):
         self.bot = bot
         self.generate_sentence = generate_sentence
@@ -111,8 +133,9 @@ class Info(commands.Cog):
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
             print("weather one_call error:", e)
-            return await ctx.edit_original_message(content="Could not find that location in one call forecast database."
-                                                   )
+            return await ctx.edit_original_message(
+                content="Could not find that location in one call forecast database."
+            )
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -124,10 +147,12 @@ class Info(commands.Cog):
             temperature = day.temperature("celsius")
             wind = day.wind("miles_hour")
 
-            embed.add_field(name=f"{date}",
-                            value=f"• {weather}\n• {temperature['max']:.1f}/{temperature['min']:.1f} °C\n"
-                            f"• {wind['speed']:.1f} mph",
-                            inline=False)
+            embed.add_field(
+                name=f"{date}",
+                value=f"• {weather}\n• {temperature['max']:.1f}/{temperature['min']:.1f} °C\n"
+                f"• {wind['speed']:.1f} mph",
+                inline=False,
+            )
 
         embed.set_thumbnail(url=one_call.forecast_daily[0].weather_icon_url())
         embed.set_footer(text=f"{self.generate_sentence('forecast')}")
@@ -149,11 +174,7 @@ class Info(commands.Cog):
 
         commands = sorted(commands, key=lambda x: x.name)
         commands = {
-            command.name: {
-                "description": command.description,
-                "options": command.options
-            }
-            for command in commands
+            command.name: {"description": command.description, "options": command.options} for command in commands
         }
 
         if command:
@@ -162,7 +183,7 @@ class Info(commands.Cog):
             name = command
             command = commands[command]
             message = f"`{name}`-- {command['description']}\nParameters:\n"
-            for option in command['options']:
+            for option in command["options"]:
                 message += f"  • {option.name} - {option.description}\n"
         else:
             message = f"There are {len(commands)} commands.\n\n"
@@ -232,6 +253,15 @@ class Info(commands.Cog):
             The value of the thing to set.
         """
         value = value.lower()
+
+        if thing == "fxtwitter":
+            if value not in ["enable", "disable"]:
+                return await ctx.response.send_message(f"Use either enable or disable.", ephemeral=True)
+            if value == "enable":
+                value = True
+            else:
+                value = False
+
         try:
             self.userdata[str(ctx.author.id)][thing] = value
         except KeyError:
@@ -269,8 +299,10 @@ class Info(commands.Cog):
         temperature = weather.temperature("celsius")
         wind = weather.wind("miles_hour")
 
-        embed = disnake.Embed(title=f"Weather in {observation.location.name}, {observation.location.country}",
-                              color=disnake.Color.default())
+        embed = disnake.Embed(
+            title=f"Weather in {observation.location.name}, {observation.location.country}",
+            color=disnake.Color.default(),
+        )
 
         embed.add_field(name="Description", value=f"**{weather.detailed_status.capitalize()}**", inline=False)
         embed.add_field(name="Temperature", value=f"**{temperature['temp']:.1f} °C**", inline=False)
@@ -296,14 +328,17 @@ class Info(commands.Cog):
         embed = disnake.Embed(title=f"Stephen Wolfram says...", color=disnake.Color.default())
         embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
         embed.set_thumbnail(
-            url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg")
+            url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
+        )
 
         results = self.wolfram.query(question)
 
         if not results["@success"]:
-            embed.add_field(name=f"{question}",
-                            value=f"You {random.choice(self.badwords)}, you asked an impossible question.",
-                            inline=False)
+            embed.add_field(
+                name=f"{question}",
+                value=f"You {random.choice(self.badwords)}, you asked an impossible question.",
+                inline=False,
+            )
             return await ctx.edit_original_message(embed=embed)
 
         # only go through the first N results to add to embed

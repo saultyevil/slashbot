@@ -14,6 +14,9 @@ import shutil
 import string
 import xml
 
+from watchdog.observers import Observer
+from watchdog.events import PatternMatchingEventHandler
+
 import cowsay
 import disnake
 import pyfiglet
@@ -30,6 +33,7 @@ cd_user = commands.BucketType.user
 
 class Spam(commands.Cog):
     """A collection of commands to spam the chat with."""
+
     def __init__(self, bot, markov, badwords, godwords, attempts=10):
         self.bot = bot
         self.markov = markov
@@ -50,6 +54,16 @@ class Spam(commands.Cog):
         # twitter client
         self.twitter = tweepy.Client(config.twitter_bearer)
 
+        def on_modify(event):
+            with open("data/users.json", "r") as fp:
+                self.userdata = json.load(fp)
+            print(f"Reloaded user data: {event.src_path}.")
+
+        observer = Observer()
+        event_handler = PatternMatchingEventHandler(["*"], None, False, True)
+        event_handler.on_modified = on_modify
+        observer.schedule(event_handler, "data/users.json", False)
+        observer.start()
 
     # Before command invoke ----------------------------------------------------
 
@@ -95,11 +109,11 @@ class Spam(commands.Cog):
         await ctx.response.defer()
         await ctx.edit_original_message(content=self.generate_sentence(words, mentions=False))
 
-    #@commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    #@commands.slash_command(
+    # @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    # @commands.slash_command(
     #    name="cowsay",
     #    description="what the cow say",
-    #)
+    # )
     async def cow(self, ctx, text, cow=commands.Param(default="cow", autocomplete=list(cowsay.char_names))):
         """Generate a cow saying the given text.
 
@@ -128,7 +142,7 @@ class Spam(commands.Cog):
             "https://www.thesun.co.uk/wp-content/uploads/2021/01/c9df3413-00fd-4c0d-9b65-715cdba59ad0.jpg",
             "https://i2-prod.mylondon.news/incoming/article20765554.ece/ALTERNATES/s615/3_JS230006785.jpg",
             "https://www.irishnews.com/picturesarchive/irishnews/irishnews/2019/09/10/084044159-557339d9-0c46-40c1-b2f9-4ce7eee211cc.jpg",
-            "https://thebigissue581.wpengine.com/wp-content/uploads/2018/11/DYER02.jpg"
+            "https://thebigissue581.wpengine.com/wp-content/uploads/2018/11/DYER02.jpg",
         ]
 
         embed = disnake.Embed(title=f"{tweet.text}", color=disnake.Color.default())
@@ -137,8 +151,8 @@ class Spam(commands.Cog):
 
         await ctx.response.send_message(embed=embed)
 
-    #@commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    #@commands.slash_command(name="figlet", description="encode text to a figlet")
+    # @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    # @commands.slash_command(name="figlet", description="encode text to a figlet")
     async def figlet(self, ctx, text):
         """Send a figlet to the chat.
 
@@ -162,8 +176,7 @@ class Spam(commands.Cog):
     @commands.cooldown(1, config.cooldown_standard, cd_user)
     @commands.slash_command(name="goodmorning", description="good morning people")
     async def goodmorning(self, ctx, mention=None):
-        """Send a video of Marko saying good morning people.
-        """
+        """Send a video of Marko saying good morning people."""
         await ctx.response.defer()
         await ctx.edit_original_message(file=disnake.File("data/videos/good_morning_people.mp4"))
 
@@ -252,7 +265,7 @@ class Spam(commands.Cog):
         comment, commentor, when = self.rule34_comments(image.id)
         message = f"|| {image.file_url} ||"
         if comment:
-            await ctx.edit_original_message(content=f"{message}\n>>> \"{comment}\"\n*{commentor}*")
+            await ctx.edit_original_message(content=f'{message}\n>>> "{comment}"\n*{commentor}*')
         else:
             await ctx.edit_original_message(content=f"{message}\n>>> *Too cursed for comments*")
 
@@ -301,8 +314,9 @@ class Spam(commands.Cog):
             return await ctx.response.send_message(f"There is no @{username}.", ephemeral=True)
         tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
         if not tweets:
-            return await ctx.response.send_message(f"@{user.username} has no tweets or is a private nonce.",
-                                                   ephemeral=True)
+            return await ctx.response.send_message(
+                f"@{user.username} has no tweets or is a private nonce.", ephemeral=True
+            )
         tweet = random.choice(tweets)
 
         text = tweet.text
@@ -318,8 +332,7 @@ class Spam(commands.Cog):
     @commands.cooldown(1, config.cooldown_standard, cd_user)
     @commands.slash_command(name="what", description="what is a?")
     async def what(self, ctx):
-        """Send a video of Marko saying a naughty word.
-        """
+        """Send a video of Marko saying a naughty word."""
         await ctx.response.defer()
         await ctx.edit_original_message(file=disnake.File("data/videos/what_is_a.mp4"))
 
@@ -338,10 +351,20 @@ class Spam(commands.Cog):
 
         if "https://twitter.com/" in message.content:
             new_url, old_url = self.convert_twitter_video_links(message.content)
-            message.content = message.content.replace(old_url, new_url)
-            await message.edit(suppress=True)
-            await message.channel.send(new_url)
-
+            # Check if someone has opted out. If not set, default to enabled
+            try:
+                enabled = self.userdata[str(message.author.id)]["fxtwitter"]
+            except KeyError:
+                print("User not found in userdata, defaulting to enabled.")
+                enabled = True
+            # i.e. if twitter.com was changed to fxtwitter -- removed embed to
+            # avoid upsetting Gareth
+            if new_url != old_url and enabled:
+                await message.channel.send(new_url)
+                try:
+                    await message.edit(suppress=True)
+                except disnake.errors.Forbidden:
+                    pass
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_delete_messages(self, payload):
@@ -353,7 +376,8 @@ class Spam(commands.Cog):
             The payload containing the message.
         """
         message = payload.cached_message
-        if message is None: return
+        if message is None:
+            return
         self.messages.pop(str(message.id), None)
         await self.bot.wait_until_ready()
 
@@ -377,12 +401,9 @@ class Spam(commands.Cog):
             The scheduled second
         """
         next_date = time + datetime.timedelta(days=days)
-        when = datetime.datetime(year=next_date.year,
-                                 month=next_date.month,
-                                 day=next_date.day,
-                                 hour=hour,
-                                 minute=minute,
-                                 second=second)
+        when = datetime.datetime(
+            year=next_date.year, month=next_date.month, day=next_date.day, hour=hour, minute=minute, second=second
+        )
         next_date = when - time
 
         return next_date.days * 86400 + next_date.seconds
@@ -426,11 +447,17 @@ class Spam(commands.Cog):
         """
 
         new_url = tweet_url_from_message = re.search("(?P<url>https?://[^\s]+)", tweet_url_from_message).group("url")
-        tweet_id = int(re.sub(r'\?.*$','',tweet_url_from_message.rsplit("/", 1)[-1])) # gets the tweet ID as a int from the passed url
+        tweet_id = int(
+            re.sub(r"\?.*$", "", tweet_url_from_message.rsplit("/", 1)[-1])
+        )  # gets the tweet ID as a int from the passed url
         tweet = self.twitter.get_tweet(id=tweet_id, media_fields="type", expansions="attachments.media_keys")
-        media_type = tweet[1]["media"][0].type
 
-        if media_type == "video":
+        try:
+            media_type = tweet[1]["media"][0].type
+        except IndexError:
+            return tweet_url_from_message, tweet_url_from_message
+
+        if media_type == "video" or media_type == "gif":
             new_url = new_url.replace("twitter", "fxtwitter")
 
         return new_url, tweet_url_from_message
@@ -461,9 +488,11 @@ class Spam(commands.Cog):
             # allow user mentions, if mentions == True
 
             if "@here" not in sentence and "@everyone" not in sentence:
-                if mentions: break
+                if mentions:
+                    break
                 else:
-                    if "@" not in sentence: break
+                    if "@" not in sentence:
+                        break
 
         if not sentence:
             sentence = self.markov.make_sentence()
@@ -489,10 +518,13 @@ class Spam(commands.Cog):
             A string of when the comment was created
         """
         if id:
-            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
-                                    params={"post_id": f"{id}"})
+            response = requests.get(
+                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index", params={"post_id": f"{id}"}
+            )
         else:
-            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index", )
+            response = requests.get(
+                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
+            )
         if response.status_code != 200:
             return None, None, None
 
@@ -518,40 +550,50 @@ class Spam(commands.Cog):
         """Send a message on Monday morning."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(self.generate_sentence("monday").replace("monday", "**monday**"),
-                           file=disnake.File("data/videos/monday.mp4"))
+        await channel.send(
+            self.generate_sentence("monday").replace("monday", "**monday**"),
+            file=disnake.File("data/videos/monday.mp4"),
+        )
 
     @tasks.loop(hours=config.hours_in_week)
     async def wednesday_morning(self):
         """Send a message on Wednesday morning."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(self.generate_sentence("wednesday").replace("wednesday", "**wednesday**"),
-                           file=disnake.File("data/videos/wednesday.mp4"))
+        await channel.send(
+            self.generate_sentence("wednesday").replace("wednesday", "**wednesday**"),
+            file=disnake.File("data/videos/wednesday.mp4"),
+        )
 
     @tasks.loop(hours=config.hours_in_week)
     async def friday_evening(self):
         """Send a message on Friday evening."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(self.generate_sentence("weekend").replace("weekend", "**weekend**"),
-                           file=disnake.File("data/videos/weekend.mp4"))
+        await channel.send(
+            self.generate_sentence("weekend").replace("weekend", "**weekend**"),
+            file=disnake.File("data/videos/weekend.mp4"),
+        )
 
     @tasks.loop(hours=config.hours_in_week)
     async def friday_morning(self):
         """Send a message on Friday morning."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(self.generate_sentence("friday").replace("friday", "**friday**"),
-                           file=disnake.File("data/videos/friday.mov"))
+        await channel.send(
+            self.generate_sentence("friday").replace("friday", "**friday**"),
+            file=disnake.File("data/videos/friday.mov"),
+        )
 
     @tasks.loop(hours=config.hours_in_week)
     async def sunday_morning(self):
         """Send a message on Sunday morning."""
         server = self.bot.get_guild(config.id_server_adult_children)
         channel = server.get_channel(config.id_channel_idiots)
-        await channel.send(self.generate_sentence("sunday").replace("sunday", "**sunday**"),
-                           file=disnake.File("data/videos/sunday.mp4"))
+        await channel.send(
+            self.generate_sentence("sunday").replace("sunday", "**sunday**"),
+            file=disnake.File("data/videos/sunday.mp4"),
+        )
 
     @tasks.loop(hours=12)
     async def update_markov_chains(self):
@@ -580,12 +622,9 @@ class Spam(commands.Cog):
 
         now = datetime.datetime.now()
         next_date = now + datetime.timedelta(days=(day - now.weekday()) % 7)
-        when = datetime.datetime(year=next_date.year,
-                                 month=next_date.month,
-                                 day=next_date.day,
-                                 hour=hour,
-                                 minute=minute,
-                                 second=0)
+        when = datetime.datetime(
+            year=next_date.year, month=next_date.month, day=next_date.day, hour=hour, minute=minute, second=0
+        )
         next_date = when - now
         sleep = next_date.days * 86400 + next_date.seconds
         if sleep < 0:
