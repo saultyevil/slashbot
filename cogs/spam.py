@@ -269,8 +269,8 @@ class Spam(commands.Cog):
         else:
             await ctx.edit_original_message(content=f"{message}\n>>> *Too cursed for comments*")
 
-    # @commands.cooldown(1, config.cooldown_standard, cd_user)
-    # @commands.slash_command(name="spit", description="i spit in your direction")
+    @commands.cooldown(1, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="spit", description="i spit in your direction")
     async def spit(self, ctx, mention=None):
         """Send the GIF of the girl spitting."""
         await ctx.response.defer()
@@ -355,7 +355,6 @@ class Spam(commands.Cog):
             try:
                 enabled = self.userdata[str(message.author.id)]["fxtwitter"]
             except KeyError:
-                print("User not found in userdata, defaulting to enabled.")
                 enabled = True
             # i.e. if twitter.com was changed to fxtwitter -- removed embed to
             # avoid upsetting Gareth
@@ -454,7 +453,7 @@ class Spam(commands.Cog):
 
         try:
             media_type = tweet[1]["media"][0].type
-        except IndexError:
+        except (IndexError, KeyError) as e:
             return tweet_url_from_message, tweet_url_from_message
 
         if media_type == "video" or media_type == "gif":
