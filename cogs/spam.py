@@ -128,6 +128,19 @@ class Spam(commands.Cog):
         await ctx.response.send_message(f"```{cow}```")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="clap", description="send a clapped out message")
+    async def clap(self, ctx, text):
+        """Replace spaces in a message with claps
+
+        Parameters
+        ---------
+        text: str
+            The text to replace spaces with claps.
+        """
+        await ctx.response.send_message(":clap:" + ":clap:".join(text.split()) + ":clap:")
+
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="danny", description="get a random danny dyer tweet")
     async def danny(self, ctx):
         """Get a random Danny Dyer tweet."""
@@ -349,16 +362,17 @@ class Spam(commands.Cog):
         """
         self.messages[str(message.id)] = message.content
 
-        if "https://twitter.com/" in message.content:
+        # Replace twitter video links with fx/vx twitter links
+        # Check if someone has opted out. If not set, default to enabled
+        try:
+            fx_enabled = self.userdata[str(message.author.id)]["fxtwitter"]
+        except KeyError:
+            fx_enabled = False
+        if fx_enabled and "https://twitter.com/" in message.content:
             new_url, old_url = self.convert_twitter_video_links(message.content)
-            # Check if someone has opted out. If not set, default to enabled
-            try:
-                enabled = self.userdata[str(message.author.id)]["fxtwitter"]
-            except KeyError:
-                enabled = True
-            # i.e. if twitter.com was changed to fxtwitter -- removed embed to
+            # i.e. if twitter.com was changed to vxtwitter -- removed embed to
             # avoid upsetting Gareth
-            if new_url != old_url and enabled:
+            if new_url != old_url:
                 await message.channel.send(new_url)
                 try:
                     await message.edit(suppress=True)
@@ -457,7 +471,7 @@ class Spam(commands.Cog):
             return tweet_url_from_message, tweet_url_from_message
 
         if media_type == "video" or media_type == "gif":
-            new_url = new_url.replace("twitter", "fxtwitter")
+            new_url = new_url.replace("twitter", "vxtwitter")
 
         return new_url, tweet_url_from_message
 

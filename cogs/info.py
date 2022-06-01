@@ -46,6 +46,7 @@ news_sources = [
     "vice-news",
 ]
 set_options = ["location", "country", "badword", "fxtwitter"]
+set_choices = [[], [], [], ["enable", "disable"]]
 
 
 class Info(commands.Cog):
