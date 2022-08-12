@@ -98,7 +98,7 @@ content = cogs.content.Content(bot)
 bot.add_cog(spam)
 bot.add_cog(info)
 bot.add_cog(reminder)
-bot.add_cog(music)
+# bot.add_cog(music)
 bot.add_cog(content)
 # bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
 
@@ -115,23 +115,21 @@ async def on_ready():
     print(f"Started in {time.time() - start:.2f} seconds.\n")
 
 
-# @bot.event
-# async def on_slash_command_error(ctx, error):
-#     """Handle different types of errors.
+@bot.event
+async def on_slash_command_error(ctx, error):
+    """Handle different types of errors.
 
-#     Parameters
-#     ----------
-#     error: Exception
-#         The error that occurred.
-#     """
+    Parameters
+    ----------
+    error: Exception
+        The error that occurred.
+    """
 
-#     # print(f"{ctx.application_command.name} for {ctx.author.name} failed with error:")
-#     # print(error)
+    print(f"{ctx.application_command.name} for {ctx.author.name} failed with error:")
+    print(error)
 
-#     if isinstance(error, commands.errors.CommandOnCooldown):
-#         return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
-
-#     # print("-" * 80)
+    if isinstance(error, commands.errors.CommandOnCooldown):
+        return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
 
 # Run the bot ------------------------------------------------------------------
