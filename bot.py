@@ -22,7 +22,7 @@ from markovify import markovify
 
 logger = logging.getLogger("disnake")
 logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename="slashbot_disnake.log", encoding="utf-8", mode="w")
+handler = logging.FileHandler(filename="slashbot_disnake.log", encoding="utf-8", mode="a")
 handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
 logger.addHandler(handler)
 
@@ -35,7 +35,8 @@ class Bot(commands.Bot):
     """Bot class, with changes for clean up on close."""
     def __init__(self, **kwargs):
         """Initialize the class."""
-        commands.Bot.__init__(self, **kwargs)
+        # commands.Bot.__init__(self, **kwargs)
+        super().__init__(**kwargs)
         self.cleanup_functions = []
 
     def add_to_cleanup(self, name, function, args):
