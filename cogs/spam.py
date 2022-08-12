@@ -140,7 +140,6 @@ class Spam(commands.Cog):
         """
         await ctx.response.send_message(":clap:" + ":clap:".join(text.split()) + ":clap:")
 
-
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="danny", description="get a random danny dyer tweet")
     async def danny(self, ctx):
