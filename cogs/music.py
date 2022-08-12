@@ -95,7 +95,7 @@ class MusicPlayer:
         self.bot = ctx.bot
         self.guild = ctx.guild
         self.channel = ctx.channel
-        self.response = ctx.response
+        # self.response = ctx.response
         self.cog = self.bot.get_cog("Music")
         self.queue = asyncio.Queue()
         self.next = asyncio.Event()
@@ -130,7 +130,8 @@ class MusicPlayer:
             embed = disnake.Embed(title="Now playing",
                                   description=f"[{source.title}]]({source.web_url}) [{source.requester.mention}]",
                                   color=disnake.Color.default())
-            self.np = await self.response.send_message(embed=embed)
+
+            # self.np = await self.response.send_message(embed=embed)
 
             await self.next.wait()
             source.cleanup()
@@ -190,14 +191,15 @@ class Music(commands.Cog):
     @commands.slash_command(name="play", description="request a song")
     async def play(self, ctx, *, search=None):
         """Add a song to the queue."""
+        await ctx.response.defer(ephemeral=True)
         vc = ctx.guild.voice_client
         if not vc:
-            return await ctx.response.send_message("Invite me to a voice channel first.", ephemeral=True)
+            return await ctx.edit_original_message("Invite me to a voice channel first.", ephemeral=True)
 
         player = self.get_player(ctx)
         source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
         await player.queue.put(source)
-        await ctx.response.send_message(f"{ctx.author.name} added to queue: {source.title}")
+        # await ctx.edit_original_message(f"{ctx.author.name} added to queue: {source.title}")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="leave", description="disconnect from voice")
@@ -252,9 +254,15 @@ class Music(commands.Cog):
         if member.guild.id not in self.channels.keys(): return
 
         channel = self.channels[member.guild.id]
-        members = channel.members
-        if self.bot.user in members and len(members) == 1:
-            await self.cleanup(None, member.guild)
+
+        try:
+            members = channel.members
+            if self.bot.user in members and len(members) == 1:
+                await self.cleanup(None, member.guild)
+        except Exception as e:
+            # print(e)
+            # print(channel)
+            _ = e
 
     # Functions ----------------------------------------------------------------
 

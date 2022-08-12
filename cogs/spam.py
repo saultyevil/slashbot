@@ -13,6 +13,7 @@ import re
 import shutil
 import string
 import xml
+from datetime import datetime
 
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
@@ -69,7 +70,7 @@ class Spam(commands.Cog):
 
     async def cog_before_slash_command_invoke(self, ctx):
         """Reset the cooldown for some users and servers."""
-        if ctx.guild.id != config.id_server_adult_children:
+        if ctx.guild and ctx.guild.id != config.id_server_adult_children:
             return ctx.application_command.reset_cooldown(ctx)
 
         if ctx.author.id in config.no_cooldown_users:
@@ -191,7 +192,23 @@ class Spam(commands.Cog):
     async def goodmorning(self, ctx, mention=None):
         """Send a video of Marko saying good morning people."""
         await ctx.response.defer()
-        await ctx.edit_original_message(file=disnake.File("data/videos/good_morning_people.mp4"))
+        time = datetime.now()
+        if time.hour >= 12:
+            lee_videos = [
+                "data/videos/good_morning_afternoon_1.mp4",
+                "data/videos/good_morning_afternoon_2.mp4",
+                "data/videos/good_morning_afternoon_3.mp4"
+            ]
+        else:
+            lee_videos = [
+                "data/videos/good_morning_vlog.mp4",
+                "data/videos/good_morning_still_is.mp4"
+            ]
+
+        video_choices = (1 * len(lee_videos) * ["data/videos/good_morning_people.mp4"]) + lee_videos
+        video = random.choice(video_choices)
+
+        await ctx.edit_original_message(file=disnake.File(video))
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="haha", description="haha very funny")
@@ -362,22 +379,32 @@ class Spam(commands.Cog):
         """
         self.messages[str(message.id)] = message.content
 
+        # react a snowflake to adam :-)
+        # if message.author.id == config.id_user_adam:
+        #    try:
+        #        await message.add_reaction("\N{SNOWFLAKE}")
+        #    except disnake.errors.Forbidden:
+        #        # await message.channel.send(":snowflake:")
+        #        pass
+
         # Replace twitter video links with fx/vx twitter links
         # Check if someone has opted out. If not set, default to enabled
         try:
             fx_enabled = self.userdata[str(message.author.id)]["fxtwitter"]
         except KeyError:
             fx_enabled = False
+
         if fx_enabled and "https://twitter.com/" in message.content:
             new_url, old_url = self.convert_twitter_video_links(message.content)
             # i.e. if twitter.com was changed to vxtwitter -- removed embed to
             # avoid upsetting Gareth
             if new_url != old_url:
-                await message.channel.send(new_url)
                 try:
                     await message.edit(suppress=True)
                 except disnake.errors.Forbidden:
-                    pass
+                    return print(f"Unable to suppress embed for {message.author}")
+
+                await message.channel.send(new_url)
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_delete_messages(self, payload):
@@ -657,20 +684,20 @@ class Spam(commands.Cog):
         await asyncio.sleep(self.calc_sleep_time(calendar.WEDNESDAY, 8, 30))
         await self.bot.wait_until_ready()
 
-    @friday_evening.before_loop
-    async def sleep_friday_evening(self):
-        """Sleep until Monday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 17, 0))
-        await self.bot.wait_until_ready()
-
     @friday_morning.before_loop
     async def sleep_friday_morning(self):
         """Sleep until Friday morning."""
         await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 8, 30))
         await self.bot.wait_until_ready()
 
+    @friday_evening.before_loop
+    async def sleep_friday_evening(self):
+        """Sleep until Friday evening."""
+        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 18, 0))
+        await self.bot.wait_until_ready()
+
     @sunday_morning.before_loop
     async def sleep_sunday_morning(self):
-        """Sleep until Monday morning."""
+        """Sleep until Sunday morning."""
         await asyncio.sleep(self.calc_sleep_time(calendar.SUNDAY, 10, 0))
         await self.bot.wait_until_ready()

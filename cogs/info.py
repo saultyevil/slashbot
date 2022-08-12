@@ -47,6 +47,7 @@ news_sources = [
 ]
 set_options = ["location", "country", "badword", "fxtwitter"]
 set_choices = [[], [], [], ["enable", "disable"]]
+weather_units = ["metric", "imperial"]
 
 
 class Info(commands.Cog):
@@ -72,7 +73,7 @@ class Info(commands.Cog):
 
     async def cog_before_slash_command_invoke(self, ctx):
         """Reset the cooldown for some users and servers."""
-        if ctx.guild.id != config.id_server_adult_children:
+        if ctx.guild and ctx.guild.id != config.id_server_adult_children:
             return ctx.application_command.reset_cooldown(ctx)
 
         if ctx.author.id in config.no_cooldown_users:
@@ -276,19 +277,21 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="weather", description="get the weather")
-    async def weather(self, ctx, where=None):
+    async def weather(self, ctx, where=None, units=commands.Param(default="metric", autocomplete=weather_units)):
         """Get the current weather for a given location.
 
         Parameters
         ----------
         where: str
             The location to get the weather for.
+        units: str
+            The unit system to use.
         """
         await ctx.response.defer()
 
         if where is None:
             if str(ctx.author.id) not in self.userdata:
-                return await ctx.edit_original_message("You need to set or specify your location.")
+                return await ctx.edit_original_message(content="You need to set or specify your location.")
             where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
 
         try:
@@ -296,9 +299,17 @@ class Info(commands.Cog):
         except Exception:  # pylint: disable=broad-except
             return await ctx.edit_original_message(content="Could not find that location.")
 
+        if units == "imperial":
+            t_units, t_units_fmt, w_units, w_units_fmt = "fahrenheit", "F", "miles_hour", "mph"
+        else:
+            t_units, t_units_fmt, w_units, w_units_fmt = "celsius", "C", "meters_sec", "km/h"
+
         weather = observation.weather
-        temperature = weather.temperature("celsius")
-        wind = weather.wind("miles_hour")
+        temperature = weather.temperature(t_units)
+        wind = weather.wind(w_units)
+
+        if units == "metric":
+            wind["speed"] *= 3.6
 
         embed = disnake.Embed(
             title=f"Weather in {observation.location.name}, {observation.location.country}",
@@ -306,9 +317,9 @@ class Info(commands.Cog):
         )
 
         embed.add_field(name="Description", value=f"**{weather.detailed_status.capitalize()}**", inline=False)
-        embed.add_field(name="Temperature", value=f"**{temperature['temp']:.1f} °C**", inline=False)
-        embed.add_field(name="Feels like", value=f"**{temperature['feels_like']:.1f} °C**", inline=False)
-        embed.add_field(name="Wind speed", value=f"**{wind['speed']:.1f} mph**", inline=False)
+        embed.add_field(name="Temperature", value=f"**{temperature['temp']:.1f} °{t_units_fmt}**", inline=False)
+        embed.add_field(name="Feels like", value=f"**{temperature['feels_like']:.1f} °{t_units_fmt}**", inline=False)
+        embed.add_field(name="Wind speed", value=f"**{wind['speed']:.1f} {w_units_fmt}**", inline=False)
         embed.add_field(name="Humidity", value=f"**{weather.humidity:.0f}%**", inline=False)
         embed.set_footer(text=f"{self.generate_sentence('weather')}")
         embed.set_thumbnail(url=weather.weather_icon_url())
@@ -337,7 +348,7 @@ class Info(commands.Cog):
         if not results["@success"]:
             embed.add_field(
                 name=f"{question}",
-                value=f"You {random.choice(self.badwords)}, you asked an impossible question.",
+                value=f"You {random.choice(self.badwords)}, you asked a question Stephen Wolfram couldn't answer.",
                 inline=False,
             )
             return await ctx.edit_original_message(embed=embed)

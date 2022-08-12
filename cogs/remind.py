@@ -36,7 +36,7 @@ class Reminder(commands.Cog):
 
     async def cog_before_slash_command_invoke(self, ctx):
         """Reset the cooldown for some users and servers."""
-        if ctx.guild.id != config.id_server_adult_children:
+        if ctx.guild and ctx.guild.id != config.id_server_adult_children:
             return ctx.application_command.reset_cooldown(ctx)
 
         if ctx.author.id in config.no_cooldown_users:
