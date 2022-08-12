@@ -135,9 +135,8 @@ class Info(commands.Cog):
             one_call = self.weather_manager.one_call(lat, lon)
         except Exception as e:
             print("weather one_call error:", e)
-            return await ctx.edit_original_message(
-                content="Could not find that location in one call forecast database."
-            )
+            return await ctx.edit_original_message(content="Could not find that location in one call forecast database."
+                                                   )
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
 
@@ -176,7 +175,11 @@ class Info(commands.Cog):
 
         commands = sorted(commands, key=lambda x: x.name)
         commands = {
-            command.name: {"description": command.description, "options": command.options} for command in commands
+            command.name: {
+                "description": command.description,
+                "options": command.options
+            }
+            for command in commands
         }
 
         if command:
@@ -340,8 +343,7 @@ class Info(commands.Cog):
         embed = disnake.Embed(title=f"Stephen Wolfram says...", color=disnake.Color.default())
         embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
         embed.set_thumbnail(
-            url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
-        )
+            url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg")
 
         results = self.wolfram.query(question)
 

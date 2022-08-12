@@ -13,11 +13,11 @@ import time
 import disnake
 from disnake.ext import commands
 
+import cogs.content
 import cogs.info
 import cogs.music
 import cogs.remind
 import cogs.spam
-import cogs.content
 import config
 from markovify import markovify
 
@@ -34,6 +34,7 @@ start = time.time()
 
 class Bot(commands.Bot):
     """Bot class, with changes for clean up on close."""
+
     def __init__(self, **kwargs):
         """Initialize the class."""
         # commands.Bot.__init__(self, **kwargs)

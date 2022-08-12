@@ -14,9 +14,6 @@ import shutil
 import string
 import xml
 
-from watchdog.observers import Observer
-from watchdog.events import PatternMatchingEventHandler
-
 import cowsay
 import disnake
 import pyfiglet
@@ -24,6 +21,8 @@ import requests
 import rule34 as r34
 import tweepy
 from disnake.ext import commands, tasks
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
 
 import config
 from markovify import markovify
@@ -130,7 +129,7 @@ class Spam(commands.Cog):
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="clap", description="send a clapped out message")
     async def clap(self, ctx, text):
-        """Replace spaces in a message with claps
+        """Replace spaces in a message with claps.
 
         Parameters
         ---------
@@ -193,15 +192,11 @@ class Spam(commands.Cog):
         time = datetime.datetime.now()
         if time.hour >= 12:
             lee_videos = [
-                "data/videos/good_morning_afternoon_1.mp4",
-                "data/videos/good_morning_afternoon_2.mp4",
+                "data/videos/good_morning_afternoon_1.mp4", "data/videos/good_morning_afternoon_2.mp4",
                 "data/videos/good_morning_afternoon_3.mp4"
             ]
         else:
-            lee_videos = [
-                "data/videos/good_morning_vlog.mp4",
-                "data/videos/good_morning_still_is.mp4"
-            ]
+            lee_videos = ["data/videos/good_morning_vlog.mp4", "data/videos/good_morning_still_is.mp4"]
 
         video_choices = (1 * len(lee_videos) * ["data/videos/good_morning_people.mp4"]) + lee_videos
         video = random.choice(video_choices)
@@ -342,9 +337,8 @@ class Spam(commands.Cog):
             return await ctx.response.send_message(f"There is no @{username}.", ephemeral=True)
         tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
         if not tweets:
-            return await ctx.response.send_message(
-                f"@{user.username} has no tweets or is a private nonce.", ephemeral=True
-            )
+            return await ctx.response.send_message(f"@{user.username} has no tweets or is a private nonce.",
+                                                   ephemeral=True)
         tweet = random.choice(tweets)
 
         text = tweet.text
@@ -439,9 +433,12 @@ class Spam(commands.Cog):
             The scheduled second
         """
         next_date = time + datetime.timedelta(days=days)
-        when = datetime.datetime(
-            year=next_date.year, month=next_date.month, day=next_date.day, hour=hour, minute=minute, second=second
-        )
+        when = datetime.datetime(year=next_date.year,
+                                 month=next_date.month,
+                                 day=next_date.day,
+                                 hour=hour,
+                                 minute=minute,
+                                 second=second)
         next_date = when - time
 
         return next_date.days * 86400 + next_date.seconds
@@ -485,9 +482,9 @@ class Spam(commands.Cog):
         """
 
         new_url = tweet_url_from_message = re.search("(?P<url>https?://[^\s]+)", tweet_url_from_message).group("url")
-        tweet_id = int(
-            re.sub(r"\?.*$", "", tweet_url_from_message.rsplit("/", 1)[-1])
-        )  # gets the tweet ID as a int from the passed url
+        tweet_id = int(re.sub(r"\?.*$", "",
+                              tweet_url_from_message.rsplit("/",
+                                                            1)[-1]))  # gets the tweet ID as a int from the passed url
         tweet = self.twitter.get_tweet(id=tweet_id, media_fields="type", expansions="attachments.media_keys")
 
         try:
@@ -556,13 +553,10 @@ class Spam(commands.Cog):
             A string of when the comment was created
         """
         if id:
-            response = requests.get(
-                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index", params={"post_id": f"{id}"}
-            )
+            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
+                                    params={"post_id": f"{id}"})
         else:
-            response = requests.get(
-                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
-            )
+            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index", )
         if response.status_code != 200:
             return None, None, None
 
@@ -660,9 +654,12 @@ class Spam(commands.Cog):
 
         now = datetime.datetime.now()
         next_date = now + datetime.timedelta(days=(day - now.weekday()) % 7)
-        when = datetime.datetime(
-            year=next_date.year, month=next_date.month, day=next_date.day, hour=hour, minute=minute, second=0
-        )
+        when = datetime.datetime(year=next_date.year,
+                                 month=next_date.month,
+                                 day=next_date.day,
+                                 hour=hour,
+                                 minute=minute,
+                                 second=0)
         next_date = when - now
         sleep = next_date.days * 86400 + next_date.seconds
         if sleep < 0:

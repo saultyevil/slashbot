@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from dis import dis
-import json
 import datetime
-import disnake
-from disnake.utils import get
-from disnake.ext import commands, tasks
+import json
+from dis import dis
 from pathlib import Path
 
-import config
+import disnake
+from disnake.ext import commands, tasks
+from disnake.utils import get
 
+import config
 
 cd_user = commands.BucketType.user
 
@@ -43,18 +43,20 @@ class Content(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="abandon", description="Leave the leech notification squad", guild_ids=config.slash_servers)
+    @commands.slash_command(name="abandon",
+                            description="Leave the leech notification squad",
+                            guild_ids=config.slash_servers)
     async def abandon(self, ctx):
-        """Leave the leech notification squad.
-        """
+        """Leave the leech notification squad."""
         await self._leave_leech_role(ctx.guild, ctx.author)
         await ctx.response.send_message("You have left the leech notification squad.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="balance", description="Check how many leech coins you have", guild_ids=config.slash_servers)
+    @commands.slash_command(name="balance",
+                            description="Check how many leech coins you have",
+                            guild_ids=config.slash_servers)
     async def balance(self, ctx):
-        """Check your leech coin balance.
-        """
+        """Check your leech coin balance."""
         print(self.bank)
 
         user_id = ctx.author.id
@@ -91,8 +93,7 @@ class Content(commands.Cog):
         if balance <= 0:
             return await ctx.response.send_message(
                 f"{mention} your fellow leech, {ctx.author.name}, wants content BUT IS TOO POOR TO REQUEST IT. They "
-                f"have a balance of {balance} Leech coins."
-            )
+                f"have a balance of {balance} Leech coins.")
 
         # Add request to queue of requests to be answered
         now = datetime.datetime.now()
@@ -103,23 +104,24 @@ class Content(commands.Cog):
         }
         self.current_requests.append(request)
 
-
         await ctx.response.send_message(f"{mention} your fellow leech, {ctx.author.name}, is requesting content")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="notifsquad", description="Join the leech notification squad", guild_ids=config.slash_servers)
+    @commands.slash_command(name="notifsquad",
+                            description="Join the leech notification squad",
+                            guild_ids=config.slash_servers)
     async def notifsquad(self, ctx):
-        """Join the leech notification squad.
-        """
+        """Join the leech notification squad."""
         await self._get_or_create_leech_role(ctx.guild)
         await ctx.response.send_message("You have joined the leech notification squad.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="provide", description="Provide content like a good boy", guild_ids=config.slash_servers)
+    @commands.slash_command(name="provide",
+                            description="Provide content like a good boy",
+                            guild_ids=config.slash_servers)
     async def provide(self, ctx):
-        """Provide content from the goodness of your heart, or heed the call for
-        content.
-        """
+        """Provide content from the goodness of your heart, or heed the call
+        for content."""
         user_id, role = await self._prepare_for_leech_command(ctx.guild, ctx.author)
         self.current_providers.append(user_id)
         print(self.current_providers)
@@ -131,8 +133,7 @@ class Content(commands.Cog):
 
     @commands.Cog.listener("on_voice_state_update")
     async def check_if_user_started_streaming(self, member, before, after):
-        """Check if a user starts streaming after a request
-        """
+        """Check if a user starts streaming after a request."""
         now = datetime.datetime.now()
         num_requests = len(self.current_requests)
         started_streaming = before.self_stream == False and after.self_stream == True
@@ -228,7 +229,7 @@ class Content(commands.Cog):
     # Functions ----------------------------------------------------------------
 
     async def _prepare_for_leech_command(self, guild, user):
-        """Check a bank account exists and assigbn to role
+        """Check a bank account exists and assigbn to role.
 
         Parameters
         ----------
@@ -287,8 +288,7 @@ class Content(commands.Cog):
         await self._save_bank()
 
     async def _save_bank(self):
-        """Save changes to the bank to file.
-        """
+        """Save changes to the bank to file."""
         with open(self.bank_file, "w") as fp:
             json.dump(self.bank, fp)
         print("banked saved", self.bank)
@@ -308,8 +308,7 @@ class Content(commands.Cog):
 
     @tasks.loop(seconds=CHECK_FREQUENCY_SECONDS)
     async def check_for_stale_requests(self):
-        """Check periodically for stale requests.
-        """
+        """Check periodically for stale requests."""
         if len(self.current_requests) == 0:
             return
 
