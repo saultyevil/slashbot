@@ -13,7 +13,6 @@ import re
 import shutil
 import string
 import xml
-from datetime import datetime
 
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
@@ -191,7 +190,7 @@ class Spam(commands.Cog):
     async def goodmorning(self, ctx, mention=None):
         """Send a video of Marko saying good morning people."""
         await ctx.response.defer()
-        time = datetime.now()
+        time = datetime.datetime.now()
         if time.hour >= 12:
             lee_videos = [
                 "data/videos/good_morning_afternoon_1.mp4",
