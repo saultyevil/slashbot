@@ -23,8 +23,12 @@ from markovify import markovify
 
 logger = logging.getLogger("disnake")
 logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename="slashbot_disnake.log", encoding="utf-8", mode="a")
-handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+handler = logging.FileHandler(
+    filename="slashbot_disnake.log", encoding="utf-8", mode="a"
+)
+handler.setFormatter(
+    logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s")
+)
 logger.addHandler(handler)
 
 # Create the bot class, with extra clean up functionality ----------------------
@@ -51,7 +55,9 @@ class Bot(commands.Bot):
         args: tuple
             The arguments to pass to the function.
         """
-        self.cleanup_functions.append({"name": name, "function": function, "args": args})
+        self.cleanup_functions.append(
+            {"name": name, "function": function, "args": args}
+        )
 
     async def close(self):
         """Clean up things on close."""
@@ -130,7 +136,9 @@ async def on_slash_command_error(ctx, error):
     print(error)
 
     if isinstance(error, commands.errors.CommandOnCooldown):
-        return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
+        return await ctx.response.send_message(
+            "This command is on cooldown for you.", ephemeral=True
+        )
 
 
 # Run the bot ------------------------------------------------------------------

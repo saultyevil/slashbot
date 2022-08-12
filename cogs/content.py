@@ -43,18 +43,24 @@ class Content(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="abandon",
-                            description="Leave the leech notification squad",
-                            guild_ids=config.slash_servers)
+    @commands.slash_command(
+        name="abandon",
+        description="Leave the leech notification squad",
+        guild_ids=config.slash_servers,
+    )
     async def abandon(self, ctx):
         """Leave the leech notification squad."""
         await self._leave_leech_role(ctx.guild, ctx.author)
-        await ctx.response.send_message("You have left the leech notification squad.", ephemeral=True)
+        await ctx.response.send_message(
+            "You have left the leech notification squad.", ephemeral=True
+        )
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="balance",
-                            description="Check how many leech coins you have",
-                            guild_ids=config.slash_servers)
+    @commands.slash_command(
+        name="balance",
+        description="Check how many leech coins you have",
+        guild_ids=config.slash_servers,
+    )
     async def balance(self, ctx):
         """Check your leech coin balance."""
         print(self.bank)
@@ -72,12 +78,18 @@ class Content(commands.Cog):
         elif balance == 0:
             message = "You Leech coin bank is empty!"
         else:
-            message = f"You filthy little Leech, you owe the Leech bank {abs(balance)} coins!"
+            message = (
+                f"You filthy little Leech, you owe the Leech bank {abs(balance)} coins!"
+            )
 
         await ctx.response.send_message(message, ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="content", description="Demand content, filthy leech", guild_ids=config.slash_servers)
+    @commands.slash_command(
+        name="content",
+        description="Demand content, filthy leech",
+        guild_ids=config.slash_servers,
+    )
     async def content(self, ctx):
         """Demand that there be content, filthy little leech.
 
@@ -93,32 +105,43 @@ class Content(commands.Cog):
         if balance <= 0:
             return await ctx.response.send_message(
                 f"{mention} your fellow leech, {ctx.author.name}, wants content BUT IS TOO POOR TO REQUEST IT. They "
-                f"have a balance of {balance} Leech coins.")
+                f"have a balance of {balance} Leech coins."
+            )
 
         # Add request to queue of requests to be answered
         now = datetime.datetime.now()
         request = {
             "when": now.isoformat(),
-            "stale_after": (now + datetime.timedelta(minutes=STALE_MINUTES)).isoformat(),
-            "who": user_id
+            "stale_after": (
+                now + datetime.timedelta(minutes=STALE_MINUTES)
+            ).isoformat(),
+            "who": user_id,
         }
         self.current_requests.append(request)
 
-        await ctx.response.send_message(f"{mention} your fellow leech, {ctx.author.name}, is requesting content")
+        await ctx.response.send_message(
+            f"{mention} your fellow leech, {ctx.author.name}, is requesting content"
+        )
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="notifsquad",
-                            description="Join the leech notification squad",
-                            guild_ids=config.slash_servers)
+    @commands.slash_command(
+        name="notifsquad",
+        description="Join the leech notification squad",
+        guild_ids=config.slash_servers,
+    )
     async def notifsquad(self, ctx):
         """Join the leech notification squad."""
         await self._get_or_create_leech_role(ctx.guild)
-        await ctx.response.send_message("You have joined the leech notification squad.", ephemeral=True)
+        await ctx.response.send_message(
+            "You have joined the leech notification squad.", ephemeral=True
+        )
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="provide",
-                            description="Provide content like a good boy",
-                            guild_ids=config.slash_servers)
+    @commands.slash_command(
+        name="provide",
+        description="Provide content like a good boy",
+        guild_ids=config.slash_servers,
+    )
     async def provide(self, ctx):
         """Provide content from the goodness of your heart, or heed the call
         for content."""
@@ -127,7 +150,9 @@ class Content(commands.Cog):
         print(self.current_providers)
 
         mention = role.mention if role else ROLE_NAME
-        await ctx.response.send_message(f"ALART {mention}, {ctx.author.name} will be providing content")
+        await ctx.response.send_message(
+            f"ALART {mention}, {ctx.author.name} will be providing content"
+        )
 
     # Events -------------------------------------------------------------------
 
@@ -139,9 +164,11 @@ class Content(commands.Cog):
         started_streaming = before.self_stream == False and after.self_stream == True
 
         channel = after.channel
-        if not channel: return
+        if not channel:
+            return
         users_in_channel = len(channel.members) - 1
-        if users_in_channel == 0: return
+        if users_in_channel == 0:
+            return
 
         # If there are requests, and this member just started streaming
         if num_requests and started_streaming:

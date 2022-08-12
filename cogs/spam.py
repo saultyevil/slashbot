@@ -87,7 +87,9 @@ class Spam(commands.Cog):
             if badword == items.get("badword", None):
                 no_user_badword = False
                 user = ctx.guild.get_member(int(user_id))
-                await ctx.response.send_message(f"Here's one for ya, {user.mention} pal ... {badword}!")
+                await ctx.response.send_message(
+                    f"Here's one for ya, {user.mention} pal ... {badword}!"
+                )
 
         if no_user_badword:
             await ctx.response.send_message(f"{badword.capitalize()}.")
@@ -106,14 +108,21 @@ class Spam(commands.Cog):
             A seed word (or words) to generate a message from.
         """
         await ctx.response.defer()
-        await ctx.edit_original_message(content=self.generate_sentence(words, mentions=False))
+        await ctx.edit_original_message(
+            content=self.generate_sentence(words, mentions=False)
+        )
 
     # @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     # @commands.slash_command(
     #    name="cowsay",
     #    description="what the cow say",
     # )
-    async def cow(self, ctx, text, cow=commands.Param(default="cow", autocomplete=list(cowsay.char_names))):
+    async def cow(
+        self,
+        ctx,
+        text,
+        cow=commands.Param(default="cow", autocomplete=list(cowsay.char_names)),
+    ):
         """Generate a cow saying the given text.
 
         Parameters
@@ -136,14 +145,18 @@ class Spam(commands.Cog):
         text: str
             The text to replace spaces with claps.
         """
-        await ctx.response.send_message(":clap:" + ":clap:".join(text.split()) + ":clap:")
+        await ctx.response.send_message(
+            ":clap:" + ":clap:".join(text.split()) + ":clap:"
+        )
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="danny", description="get a random danny dyer tweet")
     async def danny(self, ctx):
         """Get a random Danny Dyer tweet."""
         user = self.twitter.get_user(username="MrDDyer")[0]
-        tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
+        tweets = self.twitter.get_users_tweets(
+            user.id, max_results=100, exclude="retweets"
+        )[0]
         tweet = random.choice(tweets)
 
         danny_pics = [
@@ -192,13 +205,19 @@ class Spam(commands.Cog):
         time = datetime.datetime.now()
         if time.hour >= 12:
             lee_videos = [
-                "data/videos/good_morning_afternoon_1.mp4", "data/videos/good_morning_afternoon_2.mp4",
-                "data/videos/good_morning_afternoon_3.mp4"
+                "data/videos/good_morning_afternoon_1.mp4",
+                "data/videos/good_morning_afternoon_2.mp4",
+                "data/videos/good_morning_afternoon_3.mp4",
             ]
         else:
-            lee_videos = ["data/videos/good_morning_vlog.mp4", "data/videos/good_morning_still_is.mp4"]
+            lee_videos = [
+                "data/videos/good_morning_vlog.mp4",
+                "data/videos/good_morning_still_is.mp4",
+            ]
 
-        video_choices = (1 * len(lee_videos) * ["data/videos/good_morning_people.mp4"]) + lee_videos
+        video_choices = (
+            1 * len(lee_videos) * ["data/videos/good_morning_people.mp4"]
+        ) + lee_videos
         video = random.choice(video_choices)
 
         await ctx.edit_original_message(file=disnake.File(video))
@@ -208,7 +227,9 @@ class Spam(commands.Cog):
     async def laugh(self, ctx):
         """Send a clip of Marko laughing."""
         await ctx.response.defer()
-        await ctx.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
+        await ctx.edit_original_message(
+            file=disnake.File("data/videos/marko_laugh.mp4")
+        )
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="learn", description="force update the markov chain")
@@ -216,7 +237,9 @@ class Spam(commands.Cog):
         """Update the Markov chain model."""
         if len(self.messages) == 0:
             if ctx:
-                return await ctx.edit_original_message(content=f"No messages to learn from.")
+                return await ctx.edit_original_message(
+                    content=f"No messages to learn from."
+                )
             else:
                 return
 
@@ -226,7 +249,9 @@ class Spam(commands.Cog):
         messages = self.clean_up_messages()
         if len(messages) == 0:
             if ctx:
-                return await ctx.edit_original_message(content=f"No messages to learn from.")
+                return await ctx.edit_original_message(
+                    content=f"No messages to learn from."
+                )
             else:
                 return
 
@@ -234,7 +259,9 @@ class Spam(commands.Cog):
         try:
             new_model = markovify.NewlineText(messages)
         except KeyError:
-            await ctx.response.send_message("Something bad happened when trying to update the Markov chain.")
+            await ctx.response.send_message(
+                "Something bad happened when trying to update the Markov chain."
+            )
 
         combined = markovify.combine([self.markov.chain, new_model.chain])
         with open("data/chain.pickle", "wb") as fp:
@@ -246,7 +273,9 @@ class Spam(commands.Cog):
         self.messages.clear()
 
         if ctx:
-            await ctx.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
+            await ctx.edit_original_message(
+                content=f"Markov chain updated with {len(messages)} new messages."
+            )
         else:
             print(f"Markov chain updated with {len(messages)} new messages.")
 
@@ -288,9 +317,13 @@ class Spam(commands.Cog):
         comment, commentor, when = self.rule34_comments(image.id)
         message = f"|| {image.file_url} ||"
         if comment:
-            await ctx.edit_original_message(content=f'{message}\n>>> "{comment}"\n*{commentor}*')
+            await ctx.edit_original_message(
+                content=f'{message}\n>>> "{comment}"\n*{commentor}*'
+            )
         else:
-            await ctx.edit_original_message(content=f"{message}\n>>> *Too cursed for comments*")
+            await ctx.edit_original_message(
+                content=f"{message}\n>>> *Too cursed for comments*"
+            )
 
     @commands.cooldown(1, config.cooldown_standard, cd_user)
     @commands.slash_command(name="spit", description="i spit in your direction")
@@ -319,7 +352,9 @@ class Spam(commands.Cog):
                     message += "s"
                 message += "."
 
-        await ctx.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
+        await ctx.edit_original_message(
+            content=message, file=disnake.File("data/spit.gif")
+        )
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="twat", description="get a random tweet")
@@ -332,13 +367,20 @@ class Spam(commands.Cog):
             The user to get a random tweet for.
         """
         username = username.lstrip("@")
-        user = self.twitter.get_user(username=username, user_fields="profile_image_url,url")[0]
+        user = self.twitter.get_user(
+            username=username, user_fields="profile_image_url,url"
+        )[0]
         if not user:
-            return await ctx.response.send_message(f"There is no @{username}.", ephemeral=True)
-        tweets = self.twitter.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
+            return await ctx.response.send_message(
+                f"There is no @{username}.", ephemeral=True
+            )
+        tweets = self.twitter.get_users_tweets(
+            user.id, max_results=100, exclude="retweets"
+        )[0]
         if not tweets:
-            return await ctx.response.send_message(f"@{user.username} has no tweets or is a private nonce.",
-                                                   ephemeral=True)
+            return await ctx.response.send_message(
+                f"@{user.username} has no tweets or is a private nonce.", ephemeral=True
+            )
         tweet = random.choice(tweets)
 
         text = tweet.text
@@ -433,12 +475,14 @@ class Spam(commands.Cog):
             The scheduled second
         """
         next_date = time + datetime.timedelta(days=days)
-        when = datetime.datetime(year=next_date.year,
-                                 month=next_date.month,
-                                 day=next_date.day,
-                                 hour=hour,
-                                 minute=minute,
-                                 second=second)
+        when = datetime.datetime(
+            year=next_date.year,
+            month=next_date.month,
+            day=next_date.day,
+            hour=hour,
+            minute=minute,
+            second=second,
+        )
         next_date = when - time
 
         return next_date.days * 86400 + next_date.seconds
@@ -481,11 +525,15 @@ class Spam(commands.Cog):
             The new message to send.
         """
 
-        new_url = tweet_url_from_message = re.search("(?P<url>https?://[^\s]+)", tweet_url_from_message).group("url")
-        tweet_id = int(re.sub(r"\?.*$", "",
-                              tweet_url_from_message.rsplit("/",
-                                                            1)[-1]))  # gets the tweet ID as a int from the passed url
-        tweet = self.twitter.get_tweet(id=tweet_id, media_fields="type", expansions="attachments.media_keys")
+        new_url = tweet_url_from_message = re.search(
+            "(?P<url>https?://[^\s]+)", tweet_url_from_message
+        ).group("url")
+        tweet_id = int(
+            re.sub(r"\?.*$", "", tweet_url_from_message.rsplit("/", 1)[-1])
+        )  # gets the tweet ID as a int from the passed url
+        tweet = self.twitter.get_tweet(
+            id=tweet_id, media_fields="type", expansions="attachments.media_keys"
+        )
 
         try:
             media_type = tweet[1]["media"][0].type
@@ -553,10 +601,14 @@ class Spam(commands.Cog):
             A string of when the comment was created
         """
         if id:
-            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
-                                    params={"post_id": f"{id}"})
+            response = requests.get(
+                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
+                params={"post_id": f"{id}"},
+            )
         else:
-            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index", )
+            response = requests.get(
+                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
+            )
         if response.status_code != 200:
             return None, None, None
 
@@ -565,7 +617,10 @@ class Spam(commands.Cog):
         except xml.etree.ElementTree.ParseError:
             return None, None, None
 
-        comments = [(elem.get("body"), elem.get("creator"), elem.get("created_at")) for elem in tree.iter("comment")]
+        comments = [
+            (elem.get("body"), elem.get("creator"), elem.get("created_at"))
+            for elem in tree.iter("comment")
+        ]
         if len(comments) == 0:
             return None, None, None
 
@@ -654,12 +709,14 @@ class Spam(commands.Cog):
 
         now = datetime.datetime.now()
         next_date = now + datetime.timedelta(days=(day - now.weekday()) % 7)
-        when = datetime.datetime(year=next_date.year,
-                                 month=next_date.month,
-                                 day=next_date.day,
-                                 hour=hour,
-                                 minute=minute,
-                                 second=0)
+        when = datetime.datetime(
+            year=next_date.year,
+            month=next_date.month,
+            day=next_date.day,
+            hour=hour,
+            minute=minute,
+            second=0,
+        )
         next_date = when - now
         sleep = next_date.days * 86400 + next_date.seconds
         if sleep < 0:

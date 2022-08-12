@@ -55,12 +55,14 @@ class Chain(object):
         corpus_clone = copy.deepcopy(corpus)
 
         self.model = model or self.build(corpus, self.state_size)
-        self.model_reversed = model_reversed or self.build_reverse(corpus_clone, self.state_size)
+        self.model_reversed = model_reversed or self.build_reverse(
+            corpus_clone, self.state_size
+        )
 
-        self.compiled = (
-            (len(self.model) > 0) and
-            (len(self.model_reversed) > 0)) and (isinstance(self.model[tuple([BEGIN] * state_size)], list) and
-                                                 (isinstance(self.model_reversed[tuple([BEGIN] * state_size)], list)))
+        self.compiled = ((len(self.model) > 0) and (len(self.model_reversed) > 0)) and (
+            isinstance(self.model[tuple([BEGIN] * state_size)], list)
+            and (isinstance(self.model_reversed[tuple([BEGIN] * state_size)], list))
+        )
 
         if not self.compiled:
             self.precompute_begin_state()
@@ -69,17 +71,26 @@ class Chain(object):
         if self.compiled:
             if inplace:
                 return self
-            return Chain(None,
-                         self.state_size,
-                         model=copy.deepcopy(self.model),
-                         model_reversed=copy.deepcopy(self.model_reversed))
+            return Chain(
+                None,
+                self.state_size,
+                model=copy.deepcopy(self.model),
+                model_reversed=copy.deepcopy(self.model_reversed),
+            )
 
-        mdict = {state: compile_next(next_dict) for (state, next_dict) in self.model.items()}
+        mdict = {
+            state: compile_next(next_dict) for (state, next_dict) in self.model.items()
+        }
 
-        mdict_reversed = {state: compile_next(next_dict) for (state, next_dict) in self.model_reversed.items()}
+        mdict_reversed = {
+            state: compile_next(next_dict)
+            for (state, next_dict) in self.model_reversed.items()
+        }
 
         if not inplace:
-            return Chain(None, self.state_size, model=mdict, model_reversed=mdict_reversed)
+            return Chain(
+                None, self.state_size, model=mdict, model_reversed=mdict_reversed
+            )
         self.model = mdict
         self.model_reversed = mdict_reversed
         self.compiled = True
@@ -103,7 +114,7 @@ class Chain(object):
         for run in corpus:
             items = ([BEGIN] * state_size) + run + [END]
             for i in range(len(run) + 1):
-                state = tuple(items[i:i + state_size])
+                state = tuple(items[i : i + state_size])
                 follow = items[i + state_size]
                 if state not in model:
                     model[state] = {}
@@ -130,7 +141,7 @@ class Chain(object):
             run.reverse()
             items = ([BEGIN] * state_size) + run + [END]
             for i in range(len(run) + 1):
-                state = tuple(items[i:i + state_size])
+                state = tuple(items[i : i + state_size])
                 follow = items[i + state_size]
                 if state not in model:
                     model[state] = {}
@@ -183,25 +194,25 @@ class Chain(object):
         """Starting either with a naive BEGIN state, or the provided
         `init_state` (as a tuple), return a generator that will yield
         successive items until the chain reaches the END state."""
-        state = init_state or (BEGIN, ) * self.state_size
+        state = init_state or (BEGIN,) * self.state_size
         while True:
             next_word = self.move(state)
             if next_word == END:
                 break
             yield next_word
-            state = tuple(state[1:]) + (next_word, )
+            state = tuple(state[1:]) + (next_word,)
 
     def gen_back(self, init_state=None):
         """Starting either with a naive BEGIN state, or the provided
         `init_state` (as a tuple), return a generator that will yield
         successive items until the chain reaches the END state."""
-        state = init_state or (BEGIN, ) * self.state_size
+        state = init_state or (BEGIN,) * self.state_size
         while True:
             next_word = self.move_back(state)
             if next_word == END:
                 break
             yield next_word
-            state = tuple(state[1:]) + (next_word, )
+            state = tuple(state[1:]) + (next_word,)
 
     def walk_back(self, init_state=None):
         """Return a list representing a single run of the Markov model, either
@@ -226,7 +237,9 @@ class Chain(object):
 
     def to_json(self):
         """Dump the model as a JSON object, for loading later."""
-        return json.dumps(list(self.model.items())), json.dumps(list(self.model_reversed.items()))
+        return json.dumps(list(self.model.items())), json.dumps(
+            list(self.model_reversed.items())
+        )
 
     @classmethod
     def from_json(cls, json_thing):

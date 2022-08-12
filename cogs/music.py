@@ -24,17 +24,17 @@ class InvalidVoiceChannel(VoiceConnectionError):
 
 
 ytdlopts = {
-    'format': 'bestaudio/best',
-    'outtmpl': 'downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0'  # ipv6 addresses cause issues sometimes
+    "format": "bestaudio/best",
+    "outtmpl": "downloads/%(extractor)s-%(id)s-%(title)s.%(ext)s",
+    "restrictfilenames": True,
+    "noplaylist": True,
+    "nocheckcertificate": True,
+    "ignoreerrors": False,
+    "logtostderr": False,
+    "quiet": True,
+    "no_warnings": True,
+    "default_search": "auto",
+    "source_address": "0.0.0.0",  # ipv6 addresses cause issues sometimes
 }
 
 ffmpeg_options = {"options": "-vn"}
@@ -64,18 +64,28 @@ class YTDLSource(disnake.PCMVolumeTransformer):
         if "entries" in data:
             data = data["entries"][0]
 
-        embed = disnake.Embed(title="",
-                              description=f"Queued [{data['title']}]]({data['webpage_url']}) [{ctx.author.mention}]",
-                              color=disnake.Color.default())
+        embed = disnake.Embed(
+            title="",
+            description=f"Queued [{data['title']}]]({data['webpage_url']}) [{ctx.author.mention}]",
+            color=disnake.Color.default(),
+        )
 
         await ctx.response.send_message(embed=embed)
 
         if download:
             source = ytdl.prepare_filename(data)
         else:
-            return {"webpage_url": data["webpage_url"], "requester": ctx.author, "title": data["title"]}
+            return {
+                "webpage_url": data["webpage_url"],
+                "requester": ctx.author,
+                "title": data["title"],
+            }
 
-        return cls(disnake.FFmpegPCMAudio(source, **ffmpeg_options), data=data, requester=ctx.author)
+        return cls(
+            disnake.FFmpegPCMAudio(source, **ffmpeg_options),
+            data=data,
+            requester=ctx.author,
+        )
 
     @classmethod
     async def regather_stream(cls, data, *, loop):
@@ -85,12 +95,27 @@ class YTDLSource(disnake.PCMVolumeTransformer):
         to_run = partial(ytdl.extract_info, url=data["webpage_url"], download=False)
         data = await loop.run_in_executor(None, to_run)
 
-        return cls(disnake.FFmpegPCMAudio(data["url"], **ffmpeg_options), data=data, requester=requester)
+        return cls(
+            disnake.FFmpegPCMAudio(data["url"], **ffmpeg_options),
+            data=data,
+            requester=requester,
+        )
 
 
 class MusicPlayer:
     """Actual music player class."""
-    __slots__ = ("bot", "guild", "channel", "cog", "queue", "next", "current", "np", "volume")
+
+    __slots__ = (
+        "bot",
+        "guild",
+        "channel",
+        "cog",
+        "queue",
+        "next",
+        "current",
+        "np",
+        "volume",
+    )
 
     def __init__(self, ctx):
         self.bot = ctx.bot
@@ -101,7 +126,7 @@ class MusicPlayer:
         self.queue = asyncio.Queue()
         self.next = asyncio.Event()
         self.np = None
-        self.volume = .5
+        self.volume = 0.5
         self.current = None
         ctx.bot.loop.create_task(self.player_loop())
 
@@ -119,18 +144,27 @@ class MusicPlayer:
 
             if not isinstance(source, YTDLSource):
                 try:
-                    source = await YTDLSource.regather_stream(source, loop=self.bot.loop)
+                    source = await YTDLSource.regather_stream(
+                        source, loop=self.bot.loop
+                    )
                 except Exception as e:
-                    await self.channel.send(f"There was an error processing your song.\n```css\n[{e}]\n```")
+                    await self.channel.send(
+                        f"There was an error processing your song.\n```css\n[{e}]\n```"
+                    )
                     continue
 
             source.volume = self.volume
             self.current = source
-            self.guild.voice_client.play(source, after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set))
+            self.guild.voice_client.play(
+                source,
+                after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set),
+            )
 
-            embed = disnake.Embed(title="Now playing",
-                                  description=f"[{source.title}]]({source.web_url}) [{source.requester.mention}]",
-                                  color=disnake.Color.default())
+            embed = disnake.Embed(
+                title="Now playing",
+                description=f"[{source.title}]]({source.web_url}) [{source.requester.mention}]",
+                color=disnake.Color.default(),
+            )
 
             # self.np = await self.response.send_message(embed=embed)
 
@@ -170,7 +204,9 @@ class Music(commands.Cog):
             try:
                 channel = ctx.author.voice.channel
             except AttributeError:
-                return await ctx.response.send_message("You are not connected to a voice channel.", ephemeral=True)
+                return await ctx.response.send_message(
+                    "You are not connected to a voice channel.", ephemeral=True
+                )
 
         vc = ctx.guild.voice_client
         if vc:
@@ -179,12 +215,16 @@ class Music(commands.Cog):
             try:
                 await vc.move_to(channel)
             except asyncio.TimeoutError:
-                raise VoiceConnectionError(f"Moving to channel: {channel} timed out.", ephemeral=True)
+                raise VoiceConnectionError(
+                    f"Moving to channel: {channel} timed out.", ephemeral=True
+                )
         else:
             try:
                 await channel.connect()
             except asyncio.TimeoutError:
-                raise VoiceConnectionError(f"Connecting to channel: {channel} timed out.", ephemeral=True)
+                raise VoiceConnectionError(
+                    f"Connecting to channel: {channel} timed out.", ephemeral=True
+                )
 
         self.channels[ctx.guild.id] = channel.id
         return await ctx.response.send_message(f"Connected to voice", ephemeral=True)
@@ -196,10 +236,14 @@ class Music(commands.Cog):
         await ctx.response.defer(ephemeral=True)
         vc = ctx.guild.voice_client
         if not vc:
-            return await ctx.edit_original_message("Invite me to a voice channel first.", ephemeral=True)
+            return await ctx.edit_original_message(
+                "Invite me to a voice channel first.", ephemeral=True
+            )
 
         player = self.get_player(ctx)
-        source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
+        source = await YTDLSource.create_source(
+            ctx, search, loop=self.bot.loop, download=False
+        )
         await player.queue.put(source)
         # await ctx.edit_original_message(f"{ctx.author.name} added to queue: {source.title}")
 
@@ -209,7 +253,9 @@ class Music(commands.Cog):
         """Disconnect from the voice channel."""
         vc = ctx.guild.voice_client
         if not vc or not vc.is_connected():
-            return await ctx.response.send_message("I am not connected to a voice channel.", ephemeral=True)
+            return await ctx.response.send_message(
+                "I am not connected to a voice channel.", ephemeral=True
+            )
 
         await self.cleanup(ctx, ctx.guild)
 
@@ -219,7 +265,9 @@ class Music(commands.Cog):
         """Skip the current song."""
         vc = ctx.guild.voice_client
         if not vc or not vc.is_connected():
-            return await ctx.response.send_message("I am not connected to a voice channel.", ephemeral=True)
+            return await ctx.response.send_message(
+                "I am not connected to a voice channel.", ephemeral=True
+            )
 
         if vc.is_paused():
             pass
@@ -244,16 +292,21 @@ class Music(commands.Cog):
         player = self.get_player(ctx)
         player.volume = volume / 100
 
-        await ctx.response.send_message(f"Volume set to {volume}% by {ctx.author.name}.")
+        await ctx.response.send_message(
+            f"Volume set to {volume}% by {ctx.author.name}."
+        )
 
     # Listeners ----------------------------------------------------------------
 
     @commands.Cog.listener("on_voice_state_update")
     async def leave_when_voice_empty(self, member, before, after):
         """Leave when the voice channel is empty."""
-        if member.id == self.bot.user.id: return
-        if len(self.channels) == 0: return
-        if member.guild.id not in self.channels.keys(): return
+        if member.id == self.bot.user.id:
+            return
+        if len(self.channels) == 0:
+            return
+        if member.guild.id not in self.channels.keys():
+            return
 
         channel = self.channels[member.guild.id]
 
@@ -274,7 +327,9 @@ class Music(commands.Cog):
         if len(self.players):
             del self.players[guild.id]
         if ctx:
-            return await ctx.response.send_message("Disconnected from voice channel.", ephemeral=True)
+            return await ctx.response.send_message(
+                "Disconnected from voice channel.", ephemeral=True
+            )
 
     def get_player(self, ctx):
         """Get the guild player, or create one."""

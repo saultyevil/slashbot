@@ -2,7 +2,7 @@ import os
 
 import wolframalpha
 
-api_key = os.environ.get('WOLFRAM_ID')
+api_key = os.environ.get("WOLFRAM_ID")
 client = wolframalpha.Client(api_key)
 
 question = "160cm in feet and inches"
