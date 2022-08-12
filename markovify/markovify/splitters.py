@@ -60,11 +60,7 @@ def split_into_sentences(text):
         re.U,
     )
     dot_iter = re.finditer(potential_end_pat, text)
-    end_indices = [
-        (x.start() + len(x.group(1)) + len(x.group(2)))
-        for x in dot_iter
-        if is_sentence_ender(x.group(1))
-    ]
+    end_indices = [(x.start() + len(x.group(1)) + len(x.group(2))) for x in dot_iter if is_sentence_ender(x.group(1))]
     spans = zip([None] + end_indices, end_indices + [None])
     sentences = [text[start:end].strip() for start, end in spans]
     return sentences

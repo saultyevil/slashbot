@@ -82,9 +82,7 @@ class Reminder(commands.Cog):
             try:
                 when = float(when)
             except ValueError:
-                return await ctx.response.send_message(
-                    "That is not a valid number.", ephemeral=True
-                )
+                return await ctx.response.send_message("That is not a valid number.", ephemeral=True)
             if when <= 0:
                 return await ctx.response.send_message(
                     f"You can't set a reminder for 0 {time_unit} or less.",
@@ -97,9 +95,7 @@ class Reminder(commands.Cog):
             try:
                 future = parser.parse(when)
             except parser.ParserError:
-                return await ctx.response.send_message(
-                    "That is not a valid timestamp.", ephemeral=True
-                )
+                return await ctx.response.send_message("That is not a valid timestamp.", ephemeral=True)
         else:
             seconds = when * time_units[time_unit]
             future = now + datetime.timedelta(seconds=seconds)
@@ -107,9 +103,7 @@ class Reminder(commands.Cog):
         future = future.isoformat()
 
         if future < now.isoformat():
-            return await ctx.response.send_message(
-                "You can't set a reminder in the past.", ephemeral=True
-            )
+            return await ctx.response.send_message("You can't set a reminder in the past.", ephemeral=True)
 
         key = len(reminder) + 1
         while str(key) in self.reminders:
@@ -128,9 +122,7 @@ class Reminder(commands.Cog):
         if time_unit == "time":
             await ctx.response.send_message(f"Reminder set for {when}.", ephemeral=True)
         else:
-            await ctx.response.send_message(
-                f"Reminder set for {when} {time_unit}.", ephemeral=True
-            )
+            await ctx.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="forget", description="clear your reminders")
@@ -143,21 +135,15 @@ class Reminder(commands.Cog):
             The id of the reminder to remove.
         """
         if m_id not in self.reminders:
-            return await ctx.response.send_message(
-                "That reminder doesn't exist.", ephemeral=True
-            )
+            return await ctx.response.send_message("That reminder doesn't exist.", ephemeral=True)
 
         if self.reminders[m_id]["user"] != ctx.author.id:
-            return await ctx.response.send_message(
-                "You can't remove someone else's reminder.", ephemeral=True
-            )
+            return await ctx.response.send_message("You can't remove someone else's reminder.", ephemeral=True)
 
         removed = self.reminders.pop(m_id, None)
         self.save_reminders()
 
-        await ctx.response.send_message(
-            f"Reminder for {removed['what']} removed.", ephemeral=True
-        )
+        await ctx.response.send_message(f"Reminder for {removed['what']} removed.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="planned", description="view your reminders")
@@ -169,9 +155,7 @@ class Reminder(commands.Cog):
             if item["user"] == ctx.author.id
         ]
         if not reminders:
-            return await ctx.response.send_message(
-                "You don't have any reminders set.", ephemeral=True
-            )
+            return await ctx.response.send_message("You don't have any reminders set.", ephemeral=True)
 
         message = f"You have {len(reminders)} reminders set.\n```"
         table = PrettyTable()
@@ -184,9 +168,7 @@ class Reminder(commands.Cog):
         await ctx.response.send_message(message, ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(
-        name="allplanned", description="view all the reminders, if you're allowed to"
-    )
+    @commands.slash_command(name="allplanned", description="view all the reminders, if you're allowed to")
     async def show_all(self, ctx):
         """Show all the reminders."""
         if ctx.author.id not in config.no_cooldown_users:
@@ -195,13 +177,10 @@ class Reminder(commands.Cog):
             )
 
         reminders = [
-            [m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]]
-            for m_id, item in self.reminders.items()
+            [m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]] for m_id, item in self.reminders.items()
         ]
         if not reminders:
-            return await ctx.response.send_message(
-                "There are no reminders.", ephemeral=True
-            )
+            return await ctx.response.send_message("There are no reminders.", ephemeral=True)
 
         message = f"There are {len(reminders)} reminders set.\n```"
         table = PrettyTable()
@@ -225,9 +204,7 @@ class Reminder(commands.Cog):
                 user = self.bot.get_user(reminder["user"])
                 if user.id == config.id_user_adam:
                     continue
-                embed = disnake.Embed(
-                    title=reminder["what"], color=disnake.Color.default()
-                )
+                embed = disnake.Embed(title=reminder["what"], color=disnake.Color.default())
                 embed.set_footer(text=f"{self.generate_sentence('reminder')}")
                 embed.set_thumbnail(url=user.avatar.url)
 

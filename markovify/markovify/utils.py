@@ -16,9 +16,7 @@ def get_model_dict(thing):
     if isinstance(thing, dict):
         return thing[0], thing[1]
 
-    raise ValueError(
-        "`models` should be instances of list, dict, markovify.Chain, or markovify.Text"
-    )
+    raise ValueError("`models` should be instances of list, dict, markovify.Chain, or markovify.Text")
 
 
 def combine(models, weights=None):

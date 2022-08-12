@@ -56,14 +56,10 @@ class Text(object):
         self.state_size = state_size
 
         if self.retain_original:
-            self.parsed_sentences = parsed_sentences or list(
-                self.generate_corpus(input_text)
-            )
+            self.parsed_sentences = parsed_sentences or list(self.generate_corpus(input_text))
 
             # Rejoined text lets us assess the novelty of generated sentences
-            self.rejoined_text = self.sentence_join(
-                map(self.word_join, self.parsed_sentences)
-            )
+            self.rejoined_text = self.sentence_join(map(self.word_join, self.parsed_sentences))
             self.chain = chain or Chain(self.parsed_sentences, state_size)
         else:
             if not chain:
@@ -229,9 +225,7 @@ class Text(object):
 
         for _ in range(tries):
             words = prefix + self.chain.walk(init_state)
-            if (max_words is not None and len(words) > max_words) or (
-                min_words is not None and len(words) < min_words
-            ):
+            if (max_words is not None and len(words) > max_words) or (min_words is not None and len(words) < min_words):
                 continue  # pragma: no cover # see https://github.com/nedbat/coveragepy/issues/198
             if test_output and hasattr(self, "rejoined_text"):
                 if self.test_sentence_output(words, mor, mot):
@@ -276,9 +270,7 @@ class Text(object):
 
         for _ in range(tries):
             words = prefix + self.chain.walk_back(init_state)
-            if (max_words is not None and len(words) > max_words) or (
-                min_words is not None and len(words) < min_words
-            ):
+            if (max_words is not None and len(words) > max_words) or (min_words is not None and len(words) < min_words):
                 continue  # pragma: no cover # see https://github.com/nedbat/coveragepy/issues/198
             if test_output and hasattr(self, "rejoined_text"):
                 if self.test_sentence_output(words, mor, mot):
@@ -341,11 +333,7 @@ class Text(object):
             output = self.make_sentence(init_state, **kwargs)
             if output is not None:
                 return output
-        err_msg = (
-            "`make_sentence_with_start` can't find sentence beginning with {0}".format(
-                beginning
-            )
-        )
+        err_msg = "`make_sentence_with_start` can't find sentence beginning with {0}".format(beginning)
         raise ParamError(err_msg)
 
     def make_sentence_that_finish(self, finishing, **kwargs):
@@ -381,11 +369,7 @@ class Text(object):
             if output is not None:
                 reversed_output = reversed(output.split(" "))
                 return " ".join(reversed_output)
-        err_msg = (
-            "`make_sentence_that_finish` can't find sentence finishing with {0}".format(
-                finishing
-            )
-        )
+        err_msg = "`make_sentence_that_finish` can't find sentence finishing with {0}".format(finishing)
         raise ParamError(err_msg)
 
     def make_sentence_that_contains(self, contains, **kwargs):
@@ -425,9 +409,7 @@ class Text(object):
                 end_of_sentence_first_word = end_of_sentence.split(" ")[1]
                 # print(contains)
                 # print(end_of_sentence_first_word)
-                output = self.make_sentence_that_finish(
-                    contains + " " + end_of_sentence_first_word, **kwargs
-                )
+                output = self.make_sentence_that_finish(contains + " " + end_of_sentence_first_word, **kwargs)
                 if output is not None:
                     output = output.split(" ")
                     # pop 2 words that are in the other sentence
@@ -438,9 +420,7 @@ class Text(object):
                     begin_of_sentence_ordered = " ".join(begin_of_sentence)
 
                     return begin_of_sentence_ordered + " " + end_of_sentence
-        err_msg = "`make_sentence_that_contains` can't find sentence that contains {0}".format(
-            contains
-        )
+        err_msg = "`make_sentence_that_contains` can't find sentence that contains {0}".format(contains)
         raise ParamError(err_msg)
 
     def update(self, input_text=None, parsed_sentences=None):
@@ -462,9 +442,7 @@ class Text(object):
         new_parsed_sentences = parsed_sentences or self.generate_corpus(input_text)
         if self.retain_original:
             self.parsed_sentences += new_parsed_sentences
-            self.rejoined_text += self.sentence_join(
-                map(self.word_join, self.parsed_sentences)
-            )
+            self.rejoined_text += self.sentence_join(map(self.word_join, self.parsed_sentences))
         self.chain.update(new_parsed_sentences)
 
     @classmethod
