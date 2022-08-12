@@ -21,8 +21,8 @@ class Content(commands.cog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user, guild_ids=config.slash_servers)
-    @commands.slash_command(name="balance", description="Check how many leech coins you have")
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="balance", description="Check how many leech coins you have", guild_ids=config.slash_servers)
     async def balance(self, ctx):
         """Check your leech coin balance.
         """
@@ -56,8 +56,8 @@ class Content(commands.cog):
         await self.remove_leech_coin(int(ctx.author.id))
         await ctx.response.send_message(f"{ctx.author.name}, the leech, has requested content")
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user, guild_ids=config.slash_servers)
-    @commands.slash_command(name="provide", description="Provide content like a good boy")
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="provide", description="Provide content like a good boy", guild_ids=config.slash_servers)
     async def provide(self, ctx):
         """Provide content from the goodness of your heart, or heed the call for
         content.
