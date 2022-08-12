@@ -17,6 +17,7 @@ import cogs.info
 import cogs.music
 import cogs.remind
 import cogs.spam
+import cogs.content
 import config
 from markovify import markovify
 
@@ -92,11 +93,13 @@ spam = cogs.spam.Spam(bot, markovchain, badwords, godwords)
 info = cogs.info.Info(bot, spam.generate_sentence, badwords, godwords)
 reminder = cogs.remind.Reminder(bot, spam.generate_sentence)
 music = cogs.music.Music(bot)
+content = cogs.content.Content(bot)
 
 bot.add_cog(spam)
 bot.add_cog(info)
 bot.add_cog(reminder)
 bot.add_cog(music)
+bot.add_bot(content)
 bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
 
 # Functions --------------------------------------------------------------------
