@@ -29,7 +29,6 @@ class Content(commands.Cog):
         with open(self.bank_file, "r") as fp:
             self.bank = json.load(fp)
 
-        self.bank = tuple(self.bank.keys())
         self.requests = []
         self.providers = []
 
@@ -77,11 +76,11 @@ class Content(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
-        name="content",
+        name="needcontent",
         description="Demand content, filthy leech",
         guild_ids=config.slash_servers,
     )
-    async def content(self, ctx):
+    async def needcontent(self, ctx):
         """Demand that there be content, filthy little leech.
 
         Parameters
@@ -95,8 +94,7 @@ class Content(commands.Cog):
 
         if balance <= 0:
             return await ctx.response.send_message(
-                f"{mention} your fellow leech {ctx.author.name} wants content, But is too poor to deserve it. They "
-                f"have a balance of {balance} Leech coins."
+                "You don't have enough Leech coins to ask for content.", ephemeral=True
             )
 
         # Add request to queue of requests to be answered
@@ -108,7 +106,7 @@ class Content(commands.Cog):
         }
         self.requests.append(request)
 
-        user = self.bot.fetch_user(user_id)
+        user = await self.bot.fetch_user(user_id)
         print(f"{user.name} has been added to the list of requests")
 
         await ctx.response.send_message(f"{mention} your fellow leech {ctx.author.name} is requesting content.")
@@ -136,7 +134,7 @@ class Content(commands.Cog):
         user_id, role = await self.prepare_for_leech_command(ctx.guild, ctx.author)
         self.providers.append(user_id)
 
-        user = self.bot.fetch_user(user_id)
+        user = await self.bot.fetch_user(user_id)
         print(f"{user.name} has been added to the list of providers")
 
         mention = role.mention if role else self.role_name
@@ -177,13 +175,13 @@ class Content(commands.Cog):
         # is providing on the voice channel
         if self.providers:
             for member in channel.members:
-                print(f"{member.name} is streaming when they said they would provide")
                 is_member_streaming = member.voice.self_stream
                 is_member_provider = member.id in self.providers
 
                 if is_member_provider and is_member_streaming:
-                    await self.add_leech_coin(member.id)
                     self.providers.remove(member.id)
+                    await self.add_leech_coin(member.id)
+                    print(f"{member.name} is streaming when they said they would provide")
 
     # Role generation ----------------------------------------------------------
 
