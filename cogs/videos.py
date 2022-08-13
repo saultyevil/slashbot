@@ -23,6 +23,12 @@ class Videos(commands.Cog):
         self.badwords = badwords
         self.generate_sentence = generate_sentence
 
+        self.monday_morning.start()  # pylint: disable=no-member
+        self.wednesday_morning.start()  # pylint: disable=no-member
+        self.friday_morning.start()  # pylint: disable=no-member
+        self.friday_evening.start()  # pylint: disable=no-member
+        self.sunday_morning.start()  # pylint: disable=no-member
+
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="goodbye", description="goodbye")
     async def goodbye(self, inter):

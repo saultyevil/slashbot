@@ -38,13 +38,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.attempts = attempts
         self.messages = {}
         self.rule34_api = r34.Rule34()
-
         self.update_markov_chains.start()  # pylint: disable=no-member
-        self.monday_morning.start()  # pylint: disable=no-member
-        self.wednesday_morning.start()  # pylint: disable=no-member
-        self.friday_morning.start()  # pylint: disable=no-member
-        self.friday_evening.start()  # pylint: disable=no-member
-        self.sunday_morning.start()  # pylint: disable=no-member
         self.twitter = tweepy.Client(config.TWITTER_BEARER_KEY)
 
         with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
