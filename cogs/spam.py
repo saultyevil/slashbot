@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 """Commands for sending spam to the chat."""
 
-import asyncio
+
 import atexit
-import calendar
 import datetime
 import json
 import pickle
