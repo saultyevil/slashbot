@@ -45,9 +45,36 @@ news_sources = [
     "the-wall-street-journal",
     "vice-news",
 ]
-set_options = ["location", "country", "badword", "fxtwitter"]
-set_choices = [[], [], [], ["enable", "disable"]]
+
+
 weather_units = ["metric", "imperial"]
+
+remember_options = ["location", "country", "badword", "fxtwitter"]
+
+
+async def autocomplete_remember_choices(ctx, _):
+    """Autocompletion for choices for the remember command."""
+    thing_chosen = ctx.filled_options["thing"]
+    return ["enable", "disable"] if thing_chosen == "fxtwitter" else ""
+
+
+async def convert_fxtwitter_to_bool(ctx, choice):
+    """Convert the fxtwitter option (enable/disable) to a bool.
+
+    Parameters
+    ----------
+    choice: str
+        The choice to convert.
+
+    Returns
+    -------
+    choice: Union[str, bool]
+        The converted choice.
+    """
+    if ctx.filled_options["thing"] == "fxtwitter":
+        return choice == "enable"
+
+    return choice
 
 
 class Info(commands.Cog):
@@ -213,7 +240,7 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="news", description="get the news")
-    async def news(self, ctx, source=commands.Param(default="bbc-news", autocomplete=news_sources)):
+    async def news(self, ctx, source=commands.Param(default="bbc-news", choices=news_sources)):
         """Get the news headlines for the given source.
 
         Parameters
@@ -259,8 +286,8 @@ class Info(commands.Cog):
     async def remember(
         self,
         ctx,
-        thing=commands.Param(autocomplete=set_options),
-        value=commands.Param(),
+        thing=commands.Param(choices=remember_options),
+        value=commands.Param(autocomplete=autocomplete_remember_choices, converter=convert_fxtwitter_to_bool),
     ):
         """Set some user variables for a user.
 
@@ -271,15 +298,7 @@ class Info(commands.Cog):
         value: str
             The value of the thing to set.
         """
-        value = value.lower()
-
-        if thing == "fxtwitter":
-            if value not in ["enable", "disable"]:
-                return await ctx.response.send_message(f"Use either enable or disable.", ephemeral=True)
-            if value == "enable":
-                value = True
-            else:
-                value = False
+        value = value.lower() if type(value) is str else value
 
         try:
             self.userdata[str(ctx.author.id)][thing] = value
@@ -290,7 +309,77 @@ class Info(commands.Cog):
         with open("data/users.json", "w") as fp:
             json.dump(self.userdata, fp)
 
-        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.")
+        await ctx.response.send_message(f"{thing.capitalize()} has been set to {value}.", ephemeral=True)
+
+    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.slash_command(name="temperature", description="get the temperature", guild_ids=config.slash_servers)
+    async def temperature(
+        self,
+        ctx,
+        where=None,
+        units=commands.Param(default="metric", choices=weather_units),
+    ):
+        """Get the current weather for a given location.
+
+        Parameters
+        ----------
+        where: str
+            The location to get the weather for.
+        units: str
+            The unit system to use.
+        """
+        await ctx.response.defer()
+
+        if where is None:
+            if str(ctx.author.id) not in self.userdata or "location" not in self.userdata[str(ctx.author.id)]:
+                return await ctx.edit_original_message(
+                    content="You need to either specify a location, or set your location and/or country using /remember."
+                )
+            else:
+                where = self.userdata[str(ctx.author.id)].get("location")
+
+        try:
+            observation = self.weather_manager.weather_at_place(where)
+        except Exception:  # pylint: disable=broad-except
+            return await ctx.edit_original_message(content=f"Could not find {where} in OpenWeatherMap.")
+
+        if units == "imperial":
+            t_units, t_units_fmt, = (
+                "fahrenheit",
+                "F",
+            )
+        else:
+            t_units, t_units_fmt, = (
+                "celsius",
+                "C",
+            )
+
+        weather = observation.weather
+        temperature = weather.temperature(t_units)
+
+        embed = disnake.Embed(
+            title=f"Temperature at {observation.location.name}, {observation.location.country}",
+            color=disnake.Color.default(),
+        )
+        embed.add_field(
+            name="Temperature",
+            value=f"**{temperature['temp']:.1f} °{t_units_fmt}**",
+            inline=True,
+        )
+        embed.add_field(
+            name="Min/Max",
+            value=f"**{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{t_units_fmt}**",
+            inline=True,
+        )
+        embed.add_field(
+            name="Feels like",
+            value=f"**{temperature['feels_like']:.1f} °{t_units_fmt}**",
+            inline=False,
+        )
+        embed.set_footer(text=f"{self.generate_sentence('temperature')}")
+        embed.set_thumbnail(url=weather.weather_icon_url())
+
+        await ctx.edit_original_message(embed=embed)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="weather", description="get the weather")
@@ -298,7 +387,7 @@ class Info(commands.Cog):
         self,
         ctx,
         where=None,
-        units=commands.Param(default="metric", autocomplete=weather_units),
+        units=commands.Param(default="metric", choices=weather_units),
     ):
         """Get the current weather for a given location.
 
@@ -313,13 +402,16 @@ class Info(commands.Cog):
 
         if where is None:
             if str(ctx.author.id) not in self.userdata:
-                return await ctx.edit_original_message(content="You need to set or specify your location.")
-            where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
+                return await ctx.edit_original_message(
+                    content="You need to either specify a location, or set your location and/or country using /remember."
+                )
+            else:
+                where = self.userdata[str(ctx.author.id)]
 
         try:
             observation = self.weather_manager.weather_at_place(where)
         except Exception:  # pylint: disable=broad-except
-            return await ctx.edit_original_message(content="Could not find that location.")
+            return await ctx.edit_original_message(content=f"Could not find {where} in OpenWeatherMap.")
 
         if units == "imperial":
             t_units, t_units_fmt, w_units, w_units_fmt = (
@@ -347,7 +439,6 @@ class Info(commands.Cog):
             title=f"Weather in {observation.location.name}, {observation.location.country}",
             color=disnake.Color.default(),
         )
-
         embed.add_field(
             name="Description",
             value=f"**{weather.detailed_status.capitalize()}**",
@@ -356,6 +447,11 @@ class Info(commands.Cog):
         embed.add_field(
             name="Temperature",
             value=f"**{temperature['temp']:.1f} °{t_units_fmt}**",
+            inline=False,
+        )
+        embed.add_field(
+            name="Min/Max",
+            value=f"**{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{t_units_fmt}**",
             inline=False,
         )
         embed.add_field(
