@@ -146,7 +146,12 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="forecast", description="get the weather forecast")
-    async def forecast(self, ctx, where=None, country=commands.Param(converter=owm_convert_uk_to_gb)):
+    async def forecast(
+        self,
+        ctx,
+        where=commands.Param(default=None),
+        country=commands.Param(default=None, converter=owm_convert_uk_to_gb),
+    ):
         """Print the weather forecast for a location.
 
         Parameters
@@ -253,7 +258,7 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="roll", description="roll a dice")
-    async def roll(self, ctx, n: int):
+    async def roll(self, ctx, n):
         """Roll a random number from 1 to n.
 
         Parameters
@@ -261,7 +266,7 @@ class Info(commands.Cog):
         n: int
             The number of sides of the dice.
         """
-        num = random.randint(1, n)
+        num = random.randint(1, int(n))
         await ctx.response.send_message(f"{ctx.author.mention} rolled a {num}.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
@@ -342,7 +347,7 @@ class Info(commands.Cog):
     async def temperature(
         self,
         ctx,
-        where=None,
+        where=commands.Param(default=None),
         units=commands.Param(default="metric", choices=weather_units),
     ):
         """Get the current weather for a given location.
@@ -412,7 +417,7 @@ class Info(commands.Cog):
     async def weather(
         self,
         ctx,
-        where=None,
+        where=commands.Param(default=None),
         units=commands.Param(default="metric", choices=weather_units),
     ):
         """Get the current weather for a given location.
