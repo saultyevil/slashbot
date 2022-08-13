@@ -51,9 +51,9 @@ class Reminder(commands.Cog):
         self,
         ctx,
         when: str = commands.Param(),
-        time_unit=commands.Param(autocomplete=list(time_units.keys())),
+        time_unit=commands.Param(choices=list(time_units.keys())),
         reminder=commands.Param(),
-        where=commands.Param(default="here", autocomplete=whofor),
+        where=commands.Param(default="here", choices=whofor),
     ):
         """Set a reminder.
 

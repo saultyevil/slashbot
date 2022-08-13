@@ -77,6 +77,24 @@ async def convert_fxtwitter_to_bool(ctx, choice):
     return choice
 
 
+def owm_convert_uk_to_gb(ctx, choice):
+    """Convert UK to GB for use in OWM.
+
+    Parameters
+    ----------
+    choice: str
+        The choice to convert.
+
+    Returns
+    -------
+    choice: str
+        The converted choice.
+    """
+    if choice.lower() == "uk":
+        return "gb"
+    return choice
+
+
 class Info(commands.Cog):
     """Query information from the internet."""
 
@@ -125,21 +143,27 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(name="forecast", description="get the weather forecast")
-    async def forecast(self, ctx, where=None, country=None):
+    async def forecast(self, ctx, where=None, country=commands.Param(converter=owm_convert_uk_to_gb)):
         """Print the weather forecast for a location.
 
         Parameters
         ----------
         where: str
             The location to get the weather forecast for.
+        country: str [optional]
+            The country the location is in.
         """
         await ctx.response.defer()
 
         if where is None:
             if str(ctx.author.id) not in self.userdata:
-                return await ctx.edit_original_message(content="You need to set or specify your location.")
-            where = self.userdata[str(ctx.author.id)].get("location", "Worcester")
+                return await ctx.edit_original_message(
+                    content="You need to either specify a location, or set your location and/or country using /remember."
+                )
+            else:
+                where = self.userdata[str(ctx.author.id)]
 
+        # TODO: wtd happening here
         if country is None:
             if str(ctx.author.id) not in self.userdata:
                 country = "gb"
@@ -148,8 +172,6 @@ class Info(commands.Cog):
         else:
             if len(country) != 2:
                 await ctx.edit_original_message(content="Country has to be a 2 character symbol")
-            if country.lower() == "uk":
-                country = "gb"
 
         locations = self.weather_city_register.locations_for(where, country=country.upper())
         if len(locations) == 0:
@@ -374,7 +396,7 @@ class Info(commands.Cog):
         embed.add_field(
             name="Feels like",
             value=f"**{temperature['feels_like']:.1f} °{t_units_fmt}**",
-            inline=False,
+            inline=True,
         )
         embed.set_footer(text=f"{self.generate_sentence('temperature')}")
         embed.set_thumbnail(url=weather.weather_icon_url())

@@ -56,7 +56,6 @@ class Spam(commands.Cog):
         def on_modify(event):
             with open("data/users.json", "r") as fp:
                 self.userdata = json.load(fp)
-            print(f"Reloaded user data: {event.src_path}.")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
@@ -117,7 +116,7 @@ class Spam(commands.Cog):
         self,
         ctx,
         text,
-        cow=commands.Param(default="cow", autocomplete=list(cowsay.char_names)),
+        cow=commands.Param(default="cow", choices=list(cowsay.char_names)),
     ):
         """Generate a cow saying the given text.
 
@@ -331,8 +330,8 @@ class Spam(commands.Cog):
         await ctx.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
-    @commands.slash_command(name="twat", description="get a random tweet")
-    async def twat(self, ctx, username: str):
+    @commands.slash_command(name="twatter", description="get a random tweet")
+    async def twatter(self, ctx, username: str):
         """Get a random tweet from a user.
 
         Parameters
@@ -390,11 +389,8 @@ class Spam(commands.Cog):
         #        pass
 
         # Replace twitter video links with fx/vx twitter links
-        # Check if someone has opted out. If not set, default to enabled
-        try:
-            fx_enabled = self.userdata[str(message.author.id)]["fxtwitter"]
-        except KeyError:
-            fx_enabled = False
+        # Check if someone has opted out. If not set, default to False
+        fx_enabled = self.userdata.get(str(message.author.id), {}).get("fxtwitter", False)
 
         if fx_enabled and "https://twitter.com/" in message.content:
             new_url, old_url = self.convert_twitter_video_links(message.content)
@@ -403,7 +399,7 @@ class Spam(commands.Cog):
             if new_url != old_url:
                 try:
                     await message.edit(suppress=True)
-                except disnake.errors.Forbidden:
+                except disnake.errors.Forbidden:  # If we fail, then don't send the message
                     return print(f"Unable to suppress embed for {message.author}")
 
                 await message.channel.send(new_url)
@@ -528,8 +524,16 @@ class Spam(commands.Cog):
                         sentence = self.markov.make_sentence_that_contains(seedword)
                 except (IndexError, KeyError, markovify.text.ParamError):
                     sentence = self.markov.make_sentence()
+
+                # need a fallback here, in case the chain is too sparse
+                if not sentence:
+                    sentence = seedword
             else:
                 sentence = self.markov.make_sentence()
+
+            # another fallback case, in case the chain is too sparse
+            if not sentence:
+                sentence = "I have no idea what I'm doing."
 
             # No matter what, don't allow @here and @everyone mentions, but
             # allow user mentions, if mentions == True
@@ -544,7 +548,11 @@ class Spam(commands.Cog):
         if not sentence:
             sentence = self.markov.make_sentence()
 
-        return sentence.strip()[:1024]
+        sentence = sentence.strip()
+        if len(sentence) > 1024:
+            sentence = sentence[:1020] + "..."
+
+        return sentence
 
     @staticmethod
     def rule34_comments(id=None):
