@@ -18,6 +18,8 @@ from newsapi import NewsApiClient
 import config
 
 cd_user = commands.BucketType.user
+weather_units = ["metric", "imperial"]
+remember_options = ["location", "country", "badword", "fxtwitter"]
 news_sources = [
     "abc-news",
     "al-jazeera-english",
@@ -47,13 +49,14 @@ news_sources = [
 ]
 
 
-weather_units = ["metric", "imperial"]
-
-remember_options = ["location", "country", "badword", "fxtwitter"]
-
-
 async def autocomplete_remember_choices(ctx, _):
-    """Autocompletion for choices for the remember command."""
+    """Autocompletion for choices for the remember command.
+
+    Returns
+    -------
+    choice: Union[str, List[str]]
+        The converted choice.
+    """
     thing_chosen = ctx.filled_options["thing"]
     return ["enable", "disable"] if thing_chosen == "fxtwitter" else ""
 
@@ -156,22 +159,23 @@ class Info(commands.Cog):
         await ctx.response.defer()
 
         if where is None:
-            if str(ctx.author.id) not in self.userdata:
+            if str(ctx.author.id) not in self.userdata or "location" not in self.userdata[str(ctx.author.id)]:
                 return await ctx.edit_original_message(
                     content="You need to either specify a location, or set your location and/or country using /remember."
                 )
             else:
-                where = self.userdata[str(ctx.author.id)]
+                where = self.userdata[str(ctx.author.id)].get("location")
 
-        # TODO: wtd happening here
         if country is None:
-            if str(ctx.author.id) not in self.userdata:
-                country = "gb"
+            if str(ctx.author.id) not in self.userdata or "country" not in self.userdata[str(ctx.author.id)]:
+                return await ctx.edit_original_message(
+                    content="You need to specify a country, or set your location and/or country using /remember."
+                )
             else:
                 country = self.userdata[str(ctx.author.id)].get("country", "gb")
         else:
             if len(country) != 2:
-                await ctx.edit_original_message(content="Country has to be a 2 character symbol")
+                await ctx.edit_original_message(content="Country has to be a 2 character symbol, e.g. GB or US.")
 
         locations = self.weather_city_register.locations_for(where, country=country.upper())
         if len(locations) == 0:
@@ -423,12 +427,12 @@ class Info(commands.Cog):
         await ctx.response.defer()
 
         if where is None:
-            if str(ctx.author.id) not in self.userdata:
+            if str(ctx.author.id) not in self.userdata or "location" not in self.userdata[str(ctx.author.id)]:
                 return await ctx.edit_original_message(
                     content="You need to either specify a location, or set your location and/or country using /remember."
                 )
             else:
-                where = self.userdata[str(ctx.author.id)]
+                where = self.userdata[str(ctx.author.id)].get("location")
 
         try:
             observation = self.weather_manager.weather_at_place(where)
