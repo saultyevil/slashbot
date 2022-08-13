@@ -33,7 +33,7 @@ def owm_convert_uk_to_gb(_, choice):
 
 
 class Weather(commands.Cog):
-    """Query information from the internet."""
+    """Query information about the weather."""
 
     def __init__(
         self,
