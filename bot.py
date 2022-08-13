@@ -97,7 +97,7 @@ reminder = cogs.remind.Reminder(bot, spam.generate_sentence)
 music = cogs.music.Music(bot)
 content = cogs.content.Content(bot)
 weather = cogs.weather.Weather(bot, spam.generate_sentence)
-videos = cogs.videos.Videos(bot, badwords)
+videos = cogs.videos.Videos(bot, badwords, spam.generate_sentence)
 
 # bot.add_cog(music)
 bot.add_cog(spam)
