@@ -77,7 +77,7 @@ with open("data/badwords.txt", "r") as fp:
 with open("data/godwords.txt", "r") as fp:
     godwords = fp.read().splitlines()
 
-for file in ["data/users.json", "data/reminders.json"]:
+for file in ["data/users.json", "data/reminders.json", "data/bank.json"]:
     if not os.path.exists(file):
         with open(file, "w") as fp:
             fp.write("{}")

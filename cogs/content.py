@@ -13,32 +13,27 @@ from disnake.utils import get
 import config
 
 cd_user = commands.BucketType.user
-
-STARTING_BALANCE = 3
-ROLE_NAME = "Content Leeches"
-STALE_MINUTES = 30
 CHECK_FREQUENCY_SECONDS = 60
 
 
 class Content(commands.Cog):
     """Demand and provide content, and track leech balance."""
 
-    def __init__(self, bot):
+    def __init__(self, bot, starting_balance=5, role_name="Content Leeches", stale_minutes=30):
         self.bot = bot
+        self.starting_balance = starting_balance
+        self.role_name = role_name
+        self.stale_minutes = stale_minutes
 
-        self.bank_file = Path("data/content_bank.json")
-        if not self.bank_file.is_file():
-            with open(self.bank_file, "w") as fp:
-                fp.write("{}")
-
+        self.bank_file = Path("data/bank.json")
         with open(self.bank_file, "r") as fp:
             self.bank = json.load(fp)
 
-        self.accounts = tuple(self.bank.keys())
-        self.current_requests = []
-        self.current_providers = []
+        self.bank = tuple(self.bank.keys())
+        self.requests = []
+        self.providers = []
 
-        self.check_for_stale_requests.start()
+        self.remove_stale_requests.start()
 
     # Commands -----------------------------------------------------------------
 
@@ -50,8 +45,8 @@ class Content(commands.Cog):
     )
     async def abandon(self, ctx):
         """Leave the leech notification squad."""
-        await self._leave_leech_role(ctx.guild, ctx.author)
-        await ctx.response.send_message("You have left the leech notification squad.", ephemeral=True)
+        await self.leave_leech_role(ctx.guild, ctx.author)
+        await ctx.response.send_message(f"You have left the {self.role_name} notification squad.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
@@ -64,7 +59,7 @@ class Content(commands.Cog):
         print(self.bank)
 
         user_id = ctx.author.id
-        await self._prepare_for_leech_command(ctx.guild, ctx.author)
+        await self.prepare_for_leech_command(ctx.guild, ctx.author)
 
         try:
             balance = self.bank[user_id]
@@ -72,11 +67,11 @@ class Content(commands.Cog):
             balance = await self.create_bank_account(user_id)
 
         if balance > 0:
-            message = f"You have {balance} Leech coins to spend."
+            message = f"You have {balance} Leech coins in your bank account."
         elif balance == 0:
-            message = "You Leech coin bank is empty!"
+            message = "You bank account is empty, povvo!"
         else:
-            message = f"You filthy little Leech, you owe the Leech bank {abs(balance)} coins!"
+            message = f"You filthy little Leech, you owe the bank {abs(balance)} Leech coins!"
 
         await ctx.response.send_message(message, ephemeral=True)
 
@@ -94,13 +89,13 @@ class Content(commands.Cog):
         who: str
             The name of the user who should provide content.
         """
-        user_id, role = await self._prepare_for_leech_command(ctx.guild, ctx.author)
-        mention = role.mention if role else ROLE_NAME
+        user_id, role = await self.prepare_for_leech_command(ctx.guild, ctx.author)
+        mention = role.mention if role else self.role_name
         balance = self.bank[user_id]
 
         if balance <= 0:
             return await ctx.response.send_message(
-                f"{mention} your fellow leech, {ctx.author.name}, wants content BUT IS TOO POOR TO REQUEST IT. They "
+                f"{mention} your fellow leech {ctx.author.name} wants content, But is too poor to deserve it. They "
                 f"have a balance of {balance} Leech coins."
             )
 
@@ -108,12 +103,15 @@ class Content(commands.Cog):
         now = datetime.datetime.now()
         request = {
             "when": now.isoformat(),
-            "stale_after": (now + datetime.timedelta(minutes=STALE_MINUTES)).isoformat(),
+            "stale_after": (now + datetime.timedelta(minutes=self.stale_minutes)).isoformat(),
             "who": user_id,
         }
-        self.current_requests.append(request)
+        self.requests.append(request)
 
-        await ctx.response.send_message(f"{mention} your fellow leech, {ctx.author.name}, is requesting content")
+        user = self.bot.fetch_user(user_id)
+        print(f"{user.name} has been added to the list of requests")
+
+        await ctx.response.send_message(f"{mention} your fellow leech {ctx.author.name} is requesting content.")
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
@@ -123,8 +121,8 @@ class Content(commands.Cog):
     )
     async def notifsquad(self, ctx):
         """Join the leech notification squad."""
-        await self._get_or_create_leech_role(ctx.guild)
-        await ctx.response.send_message("You have joined the leech notification squad.", ephemeral=True)
+        await self.get_or_create_leech_role(ctx.guild)
+        await ctx.response.send_message(f"You've joined the {self.role_name} notification squad.", ephemeral=True)
 
     @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
     @commands.slash_command(
@@ -135,12 +133,14 @@ class Content(commands.Cog):
     async def provide(self, ctx):
         """Provide content from the goodness of your heart, or heed the call
         for content."""
-        user_id, role = await self._prepare_for_leech_command(ctx.guild, ctx.author)
-        self.current_providers.append(user_id)
-        print(self.current_providers)
+        user_id, role = await self.prepare_for_leech_command(ctx.guild, ctx.author)
+        self.providers.append(user_id)
 
-        mention = role.mention if role else ROLE_NAME
-        await ctx.response.send_message(f"ALART {mention}, {ctx.author.name} will be providing content")
+        user = self.bot.fetch_user(user_id)
+        print(f"{user.name} has been added to the list of providers")
+
+        mention = role.mention if role else self.role_name
+        await ctx.response.send_message(f"{mention}: {ctx.author.name} will be providing content soon.")
 
     # Events -------------------------------------------------------------------
 
@@ -148,7 +148,6 @@ class Content(commands.Cog):
     async def check_if_user_started_streaming(self, member, before, after):
         """Check if a user starts streaming after a request."""
         now = datetime.datetime.now()
-        num_requests = len(self.current_requests)
         started_streaming = before.self_stream == False and after.self_stream == True
 
         channel = after.channel
@@ -159,34 +158,36 @@ class Content(commands.Cog):
             return
 
         # If there are requests, and this member just started streaming
-        if num_requests and started_streaming:
+        if self.requests and started_streaming:
+            print(f"{member.name} started streaming when someone requested")
             # then remove all stale requests
             n_removed = 0
-            for idx, request in enumerate(self.current_requests):
+            for idx, request in enumerate(self.requests):
                 user_id = int(request["who"])
                 when = datetime.datetime.fromisoformat(request["when"])
                 if when < now:
                     await self.remove_leech_coin(user_id)
-                    self.current_requests.pop(idx)
+                    self.requests.pop(idx)
                     n_removed += 1
 
             # give them some number of leech coins, depending on number of requests
-            await self.add_leech_coin(member.id, n_removed)
-            return
+            return await self.add_leech_coin(member.id, n_removed)
 
         # If no requests, but the person is a provider then check if someone
         # is providing on the voice channel
-        for member in channel.members:
-            is_member_streaming = member.voice.self_stream
-            is_member_provider = member.id in self.current_providers
+        if self.providers:
+            for member in channel.members:
+                print(f"{member.name} is streaming when they said they would provide")
+                is_member_streaming = member.voice.self_stream
+                is_member_provider = member.id in self.providers
 
-            if is_member_provider and is_member_streaming:
-                await self.add_leech_coin(member.id)
-                self.current_providers.remove(member.id)
+                if is_member_provider and is_member_streaming:
+                    await self.add_leech_coin(member.id)
+                    self.providers.remove(member.id)
 
     # Role generation ----------------------------------------------------------
 
-    async def _get_or_create_leech_role(self, guild):
+    async def get_or_create_leech_role(self, guild):
         """Create a leech role if it doesn't already exist, and add user to it.
 
         Parameters
@@ -196,18 +197,18 @@ class Content(commands.Cog):
         user: disnake.User
             The user
         """
-        leech_role = get(guild.roles, name=ROLE_NAME)
+        leech_role = get(guild.roles, name=self.role_name)
 
         if not leech_role:
             try:
-                leech_role = await guild.create_role(name=ROLE_NAME, mentionable=True)
+                leech_role = await guild.create_role(name=self.role_name, mentionable=True)
             except Exception as e:
                 print("Can't create role: ", e)
                 return None
 
         return leech_role
 
-    async def _join_leech_role(self, guild, user):
+    async def join_leech_role(self, guild, user):
         """Add user to leech squad.
 
         Parameters
@@ -217,14 +218,14 @@ class Content(commands.Cog):
         user: disnake.User
             The user
         """
-        leech_role = get(guild.roles, name=ROLE_NAME)
+        leech_role = get(guild.roles, name=self.role_name)
 
         if not leech_role:
             return
 
         await user.add_roles(leech_role)
 
-    async def _leave_leech_role(self, guild, user):
+    async def leave_leech_role(self, guild, user):
         """Remove user from leech squad.
 
         Parameters
@@ -234,7 +235,7 @@ class Content(commands.Cog):
         user: disnake.User
             The user
         """
-        leech_role = get(guild.roles, name=ROLE_NAME)
+        leech_role = get(guild.roles, name=self.role_name)
 
         if not leech_role:
             return
@@ -243,7 +244,7 @@ class Content(commands.Cog):
 
     # Functions ----------------------------------------------------------------
 
-    async def _prepare_for_leech_command(self, guild, user):
+    async def prepare_for_leech_command(self, guild, user):
         """Check a bank account exists and assigbn to role.
 
         Parameters
@@ -258,8 +259,8 @@ class Content(commands.Cog):
         user.id: int
             The id of the user.
         """
-        await self._check_for_account(user.id)
-        leech_role = await self._get_or_create_leech_role(guild)
+        await self.check_or_create_account(user.id)
+        leech_role = await self.get_or_create_leech_role(guild)
 
         return user.id, leech_role
 
@@ -271,10 +272,12 @@ class Content(commands.Cog):
         user_id: int
             The ID of the user.
         """
-        await self._check_for_account(user_id)
+        await self.check_or_create_account(user_id)
         self.bank[user_id] = self.bank[user_id] + to_add
-        print(f"adding coin to {user_id}, balance is {self.bank[user_id]}")
-        await self._save_bank()
+        await self.save_bank()
+
+        user = await self.bot.fetch_user(user_id)
+        print(f"Added {to_add} coins to {user.name}. New balance:", self.bank[user_id])
 
     async def create_bank_account(self, user_id):
         """Add a user to the bank JSON.
@@ -284,9 +287,7 @@ class Content(commands.Cog):
         user_id: int
             The ID of the user.
         """
-        self.bank[user_id] = STARTING_BALANCE
-        self.accounts = tuple(self.bank.keys())
-
+        self.bank[user_id] = self.starting_balance
         return self.bank[user_id]
 
     async def remove_leech_coin(self, user_id):
@@ -297,18 +298,19 @@ class Content(commands.Cog):
         user_id: int
             The ID of the user.
         """
-        await self._check_for_account(user_id)
+        await self.check_or_create_account(user_id)
         self.bank[user_id] = self.bank[user_id] - 1
-        print(f"removing coin from {user_id}, balance is {self.bank[user_id]}")
-        await self._save_bank()
+        await self.save_bank()
 
-    async def _save_bank(self):
+        user = await self.bot.fetch_user(user_id)
+        print(f"Removed coin from {user.name}. New balance:", self.bank[user_id])
+
+    async def save_bank(self):
         """Save changes to the bank to file."""
         with open(self.bank_file, "w") as fp:
             json.dump(self.bank, fp)
-        self.accounts = tuple(self.bank.keys())
 
-    async def _check_for_account(self, user_id):
+    async def check_or_create_account(self, user_id):
         """Check a bank account exists for a user.
 
         Parameters
@@ -316,19 +318,19 @@ class Content(commands.Cog):
         user_id: int
             The ID of the user.
         """
-        if user_id not in self.accounts:
+        if user_id not in self.bank:
             await self.create_bank_account(user_id)
 
     # Tasks --------------------------------------------------------------------
 
     @tasks.loop(seconds=CHECK_FREQUENCY_SECONDS)
-    async def check_for_stale_requests(self):
+    async def remove_stale_requests(self):
         """Check periodically for stale requests."""
-        if len(self.current_requests) == 0:
+        if len(self.requests) == 0:
             return
 
         now = datetime.datetime.now()
-        for idx, request in enumerate(self.current_requests):
+        for idx, request in enumerate(self.requests):
             when_stale = datetime.datetime.fromisoformat(request["stale_after"])
             if when_stale < now:
-                self.current_requests.pop(idx)
+                self.requests.pop(idx)
