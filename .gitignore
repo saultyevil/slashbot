@@ -1,7 +1,9 @@
 data/reminders.json
 data/users.json
+data/bank.json
 data/chain.pickle
 data/chain.pickle.bak
+.vscode
 .DS_Store
 
 # Project specific files to ignore
