@@ -36,7 +36,6 @@ class Content(commands.Cog):
     @commands.slash_command(
         name="abandon",
         description="Leave the leech notification squad",
-        guild_ids=config.SLASH_SERVERS,
     )
     async def abandon(self, inter):
         """Leave the leech notification squad."""
@@ -47,7 +46,6 @@ class Content(commands.Cog):
     @commands.slash_command(
         name="balance",
         description="Check how many leech coins you have",
-        guild_ids=config.SLASH_SERVERS,
     )
     async def balance(self, inter):
         """Check your leech coin balance."""
@@ -74,7 +72,6 @@ class Content(commands.Cog):
     @commands.slash_command(
         name="needcontent",
         description="Demand content, filthy leech",
-        guild_ids=config.SLASH_SERVERS,
     )
     async def needcontent(self, inter):
         """Demand that there be content, filthy little leech.
@@ -111,7 +108,6 @@ class Content(commands.Cog):
     @commands.slash_command(
         name="notifsquad",
         description="Join the leech notification squad",
-        guild_ids=config.SLASH_SERVERS,
     )
     async def notifsquad(self, inter):
         """Join the leech notification squad."""
@@ -122,7 +118,6 @@ class Content(commands.Cog):
     @commands.slash_command(
         name="provide",
         description="Provide content like a good boy",
-        guild_ids=config.SLASH_SERVERS,
     )
     async def provide(self, inter):
         """Provide content from the goodness of your heart, or heed the call
