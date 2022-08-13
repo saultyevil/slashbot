@@ -5,40 +5,52 @@ import os
 
 # Constants defined for controlling cooldowns
 
-cooldown_rate = 3
-cooldown_standard = 60
-cooldown_one_hour = 3600
-cooldown_ten_mins = 600
-hours_in_week = 168
+COOLDOWN_RATE = 3
+COOLDOWN_STANDARD = 60
+COOLDOWN_ONE_HOUR = 3600
+COOLDOWN_TEN_MINS = 600
+HOURS_IN_WEEK = 168
 
 # Constants for general discord things
 
-symbol = "%"
-max_chars = 1994
+SYMBOL = "%"
+MAX_CHARS = 1994
 
 # Constants to define users, roles and channels. Note that users are supposed
 # to be set as environment variables for privacy reasons.
 
-id_bot = 815234903251091456
-id_user_adam = 261097001301704704
-id_user_zadeth = 737239706214858783
-id_user_lime = 121310675132743680
-id_user_saultyevil = 151378138612367360
-id_user_hypnotized = 176726054256377867
-id_server_adult_children = 237647756049514498
-id_server_freedom = 815237689775357992
-id_server_bumpaper = 710120382144839691
-id_channel_idiots = 237647756049514498
-id_channel_spam = 627234669791805450
+ID_BOT = 815234903251091456
+ID_USER_ADAM = 261097001301704704
+ID_USER_ZADETH = 737239706214858783
+ID_USER_LIME = 121310675132743680
+ID_USER_SAULTYEVIL = 151378138612367360
+ID_USER_HYPNOTIZED = 176726054256377867
+ID_SERVER_ADULT_CHILDREN = 237647756049514498
+ID_SERVER_FREEDOM = 815237689775357992
+ID_SERVER_BUMPAPER = 710120382144839691
+ID_CHANNEL_IDIOTS = 237647756049514498
+ID_CHANNEL_SPAM = 627234669791805450
 
-slash_servers = [id_server_adult_children, id_server_freedom, id_server_bumpaper]
+SLASH_SERVERS = [ID_SERVER_ADULT_CHILDREN, ID_SERVER_FREEDOM, ID_SERVER_BUMPAPER]
 
-no_cooldown_users = [id_user_saultyevil]
+NO_COOLDOWN_USERS = [ID_USER_SAULTYEVIL]
 
 # API keys and specific settings
 
-google_api_key = os.getenv("YT_VIDEO_KEY")
-wolfram_api_key = os.getenv("WOLFRAM_ID")
-openweathermap_api_key = os.getenv("OWM_KEY")
-newsapi_key = os.getenv("NEWS_API")
-twitter_bearer = os.getenv("TWITTER_BEARER")
+GOOGLE_API_KEY = os.getenv("YT_VIDEO_KEY")
+WOLFRAM_API_KEY = os.getenv("WOLFRAM_ID")
+OWN_API_KEY = os.getenv("OWM_KEY")
+NEWS_API_KEY = os.getenv("NEWS_API")
+TWITTER_BEARER_KEY = os.getenv("TWITTER_BEARER")
+
+# File locations for staring data
+
+USERS_FILES = "data/users.json"
+REMINDERS_FILE = "data/reminders.json"
+BANK_FILE = "data/bank.json"
+ALL_FILES = [USERS_FILES, REMINDERS_FILE, BANK_FILE]
+
+# Special files
+
+BADWORDS_FILE = "data/badwords.txt"
+GODWORDS_FILE = "data/godwords.txt"

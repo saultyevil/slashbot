@@ -56,7 +56,7 @@ class YTDLSource(disnake.PCMVolumeTransformer):
         return self.__getattribute__(item)
 
     @classmethod
-    async def create_source(cls, ctx, search: str, *, loop, download=False):
+    async def create_source(cls, inter, search: str, *, loop, download=False):
         loop = loop or asyncio.get_event_loop()
         to_run = partial(ytdl.extract_info, url=search, download=download)
         data = await loop.run_in_executor(None, to_run)
@@ -66,25 +66,25 @@ class YTDLSource(disnake.PCMVolumeTransformer):
 
         embed = disnake.Embed(
             title="",
-            description=f"Queued [{data['title']}]]({data['webpage_url']}) [{ctx.author.mention}]",
+            description=f"Queued [{data['title']}]]({data['webpage_url']}) [{inter.author.mention}]",
             color=disnake.Color.default(),
         )
 
-        await ctx.response.send_message(embed=embed)
+        await inter.response.send_message(embed=embed)
 
         if download:
             source = ytdl.prepare_filename(data)
         else:
             return {
                 "webpage_url": data["webpage_url"],
-                "requester": ctx.author,
+                "requester": inter.author,
                 "title": data["title"],
             }
 
         return cls(
             disnake.FFmpegPCMAudio(source, **ffmpeg_options),
             data=data,
-            requester=ctx.author,
+            requester=inter.author,
         )
 
     @classmethod
@@ -117,18 +117,18 @@ class MusicPlayer:
         "volume",
     )
 
-    def __init__(self, ctx):
-        self.bot = ctx.bot
-        self.guild = ctx.guild
-        self.channel = ctx.channel
-        # self.response = ctx.response
+    def __init__(self, inter):
+        self.bot = inter.bot
+        self.guild = inter.guild
+        self.channel = inter.channel
+        # self.response = inter.response
         self.cog = self.bot.get_cog("Music")
         self.queue = asyncio.Queue()
         self.next = asyncio.Event()
         self.np = None
         self.volume = 0.5
         self.current = None
-        ctx.bot.loop.create_task(self.player_loop())
+        inter.bot.loop.create_task(self.player_loop())
 
     async def player_loop(self):
         await self.bot.wait_until_ready()
@@ -182,27 +182,27 @@ class Music(commands.Cog):
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, ctx):
+    async def cog_before_slash_command_invoke(self, inter):
         """Reset the cooldown for some users and servers."""
-        if ctx.guild.id != config.id_server_adult_children:
-            return ctx.application_command.reset_cooldown(ctx)
+        if inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+            return inter.application_command.reset_cooldown(inter)
 
-        if ctx.author.id in config.no_cooldown_users:
-            return ctx.application_command.reset_cooldown(ctx)
+        if inter.author.id in config.NO_COOLDOWN_USERS:
+            return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="join", description="join a voice server")
-    async def connect(self, ctx, *, channel=None):
+    async def connect(self, inter, *, channel=None):
         """Connect the bot to the voice channel the requester is in."""
         if not channel:
             try:
-                channel = ctx.author.voice.channel
+                channel = inter.author.voice.channel
             except AttributeError:
-                return await ctx.response.send_message("You are not connected to a voice channel.", ephemeral=True)
+                return await inter.response.send_message("You are not connected to a voice channel.", ephemeral=True)
 
-        vc = ctx.guild.voice_client
+        vc = inter.guild.voice_client
         if vc:
             if vc.channel.id == channel.id:
                 return
@@ -216,40 +216,40 @@ class Music(commands.Cog):
             except asyncio.TimeoutError:
                 raise VoiceConnectionError(f"Connecting to channel: {channel} timed out.", ephemeral=True)
 
-        self.channels[ctx.guild.id] = channel.id
-        return await ctx.response.send_message(f"Connected to voice", ephemeral=True)
+        self.channels[inter.guild.id] = channel.id
+        return await inter.response.send_message(f"Connected to voice", ephemeral=True)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="play", description="request a song")
-    async def play(self, ctx, *, search=None):
+    async def play(self, inter, *, search=None):
         """Add a song to the queue."""
-        await ctx.response.defer(ephemeral=True)
-        vc = ctx.guild.voice_client
+        await inter.response.defer(ephemeral=True)
+        vc = inter.guild.voice_client
         if not vc:
-            return await ctx.edit_original_message("Invite me to a voice channel first.", ephemeral=True)
+            return await inter.edit_original_message("Invite me to a voice channel first.", ephemeral=True)
 
-        player = self.get_player(ctx)
-        source = await YTDLSource.create_source(ctx, search, loop=self.bot.loop, download=False)
+        player = self.get_player(inter)
+        source = await YTDLSource.create_source(inter, search, loop=self.bot.loop, download=False)
         await player.queue.put(source)
-        # await ctx.edit_original_message(f"{ctx.author.name} added to queue: {source.title}")
+        # await inter.edit_original_message(f"{inter.author.name} added to queue: {source.title}")
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="leave", description="disconnect from voice")
-    async def leave(self, ctx):
+    async def leave(self, inter):
         """Disconnect from the voice channel."""
-        vc = ctx.guild.voice_client
+        vc = inter.guild.voice_client
         if not vc or not vc.is_connected():
-            return await ctx.response.send_message("I am not connected to a voice channel.", ephemeral=True)
+            return await inter.response.send_message("I am not connected to a voice channel.", ephemeral=True)
 
-        await self.cleanup(ctx, ctx.guild)
+        await self.cleanup(inter, inter.guild)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="skip", description="skip the song")
-    async def skip(self, ctx):
+    async def skip(self, inter):
         """Skip the current song."""
-        vc = ctx.guild.voice_client
+        vc = inter.guild.voice_client
         if not vc or not vc.is_connected():
-            return await ctx.response.send_message("I am not connected to a voice channel.", ephemeral=True)
+            return await inter.response.send_message("I am not connected to a voice channel.", ephemeral=True)
 
         if vc.is_paused():
             pass
@@ -257,9 +257,9 @@ class Music(commands.Cog):
             return
 
         vc.stop()
-        await ctx.response.send_message(f"{ctx.author.name} skipped the song.")
+        await inter.response.send_message(f"{inter.author.name} skipped the song.")
 
-    async def volume(self, ctx, volume=commands.Param(gt=0, lt=100)):
+    async def volume(self, inter, volume=commands.Param(gt=0, lt=100)):
         """Set the volume for the player.
 
         Parameters
@@ -267,14 +267,14 @@ class Music(commands.Cog):
         volume: float
             The volume level, between 0 and 100.
         """
-        vc = ctx.voice_client
+        vc = inter.voice_client
         if vc.source:
             vc.source.volume = volume / 100
 
-        player = self.get_player(ctx)
+        player = self.get_player(inter)
         player.volume = volume / 100
 
-        await ctx.response.send_message(f"Volume set to {volume}% by {ctx.author.name}.")
+        await inter.response.send_message(f"Volume set to {volume}% by {inter.author.name}.")
 
     # Listeners ----------------------------------------------------------------
 
@@ -301,20 +301,20 @@ class Music(commands.Cog):
 
     # Functions ----------------------------------------------------------------
 
-    async def cleanup(self, ctx, guild):
+    async def cleanup(self, inter, guild):
         """Disconnect and remove guild from self.players."""
         await guild.voice_client.disconnect()
         if len(self.players):
             del self.players[guild.id]
-        if ctx:
-            return await ctx.response.send_message("Disconnected from voice channel.", ephemeral=True)
+        if inter:
+            return await inter.response.send_message("Disconnected from voice channel.", ephemeral=True)
 
-    def get_player(self, ctx):
+    def get_player(self, inter):
         """Get the guild player, or create one."""
         try:
-            player = self.players[ctx.guild.id]
+            player = self.players[inter.guild.id]
         except KeyError:
-            player = MusicPlayer(ctx)
-            self.players[ctx.guild.id] = player
+            player = MusicPlayer(inter)
+            self.players[inter.guild.id] = player
 
         return player

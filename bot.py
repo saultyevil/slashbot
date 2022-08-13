@@ -18,6 +18,7 @@ import cogs.info
 import cogs.music
 import cogs.remind
 import cogs.spam
+import cogs.weather
 import config
 from markovify import markovify
 
@@ -37,7 +38,6 @@ class Bot(commands.Bot):
 
     def __init__(self, **kwargs):
         """Initialize the class."""
-        # commands.Bot.__init__(self, **kwargs)
         super().__init__(**kwargs)
         self.cleanup_functions = []
 
@@ -71,36 +71,38 @@ if os.path.exists("data/chain.pickle"):
     with open("data/chain.pickle", "rb") as fp:
         markovchain.chain = pickle.load(fp)
 
-with open("data/badwords.txt", "r") as fp:
+with open(config.BADWORDS_FILE, "r", encoding="utf-8") as fp:
     badwords = fp.readlines()[0].split()
 
-with open("data/godwords.txt", "r") as fp:
+with open(config.GODWORDS_FILE, "r", encoding="utf-8") as fp:
     godwords = fp.read().splitlines()
 
-for file in ["data/users.json", "data/reminders.json", "data/bank.json"]:
+for file in config.ALL_FILES:
     if not os.path.exists(file):
-        with open(file, "w") as fp:
+        with open(file, "w", encoding="utf-8") as fp:
             fp.write("{}")
 
 # Set up the bot and cogs ------------------------------------------------------
 
 intents = disnake
 intents = disnake.Intents.default()
-intents.members = True
-intents.invites = True
+intents.members = True  # pylint: disable=assigning-non-slot
+intents.invites = True  # pylint: disable=assigning-non-slot
 
-bot = Bot(command_prefix=config.symbol, intents=intents)
+bot = Bot(command_prefix=config.SYMBOL, intents=intents)
 spam = cogs.spam.Spam(bot, markovchain, badwords, godwords)
 info = cogs.info.Info(bot, spam.generate_sentence, badwords, godwords)
 reminder = cogs.remind.Reminder(bot, spam.generate_sentence)
 music = cogs.music.Music(bot)
 content = cogs.content.Content(bot)
+weather = cogs.weather.Weather(bot, spam.generate_sentence)
 
 bot.add_cog(spam)
 bot.add_cog(info)
 bot.add_cog(reminder)
 # bot.add_cog(music)
 bot.add_cog(content)
+bot.add_cog(weather)
 # bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
 
 # Functions --------------------------------------------------------------------
@@ -110,8 +112,8 @@ bot.add_cog(content)
 async def on_ready():
     """Information to print on bot launch."""
     message = f"Logged in as {bot.user} in the current servers:"
-    for n, server in enumerate(bot.guilds):
-        message += "\n  {0}). {1.name} ({1.id})".format(n, server)
+    for n_server, server in enumerate(bot.guilds):
+        message += f"\n  {n_server}). {server.name} ({server.id})"
     print(message)
     print(f"Started in {time.time() - start:.2f} seconds.\n")
 

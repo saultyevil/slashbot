@@ -4,7 +4,6 @@
 import datetime
 import json
 import re
-import time
 
 import disnake
 from dateutil import parser
@@ -31,25 +30,25 @@ class Reminder(commands.Cog):
         self.generate_sentence = generate_sentence
         self.reminders = {}
         self.load_reminders()
-        self.check_reminders.start()
+        self.check_reminders.start()  # pylint: disable=no-member
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, ctx):
+    async def cog_before_slash_command_invoke(self, inter):
         """Reset the cooldown for some users and servers."""
-        if ctx.guild and ctx.guild.id != config.id_server_adult_children:
-            return ctx.application_command.reset_cooldown(ctx)
+        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+            return inter.application_command.reset_cooldown(inter)
 
-        if ctx.author.id in config.no_cooldown_users:
-            return ctx.application_command.reset_cooldown(ctx)
+        if inter.author.id in config.NO_COOLDOWN_USERS:
+            return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(1, config.cooldown_standard, cd_user)
+    @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="remind", description="set a reminder")
     async def add(
         self,
-        ctx,
+        inter,
         when: str = commands.Param(),
         time_unit=commands.Param(choices=list(time_units.keys())),
         reminder=commands.Param(),
@@ -69,22 +68,22 @@ class Reminder(commands.Cog):
             Where to be reminded, either "here", "dm" or "both".
         """
         if len(reminder) > 1024:
-            return await ctx.response.send_message(
+            return await inter.response.send_message(
                 "That is too long of a reminder. 1024 characters is the max.",
                 ephemeral=True,
             )
 
         tagged_users, reminder = self.replace_mentions(reminder)
-        user_id = ctx.author.id
-        channel_id = ctx.channel.id
+        user_id = inter.author.id
+        channel_id = inter.channel.id
 
         if time_unit != "time":
             try:
                 when = float(when)
             except ValueError:
-                return await ctx.response.send_message("That is not a valid number.", ephemeral=True)
+                return await inter.response.send_message("That is not a valid number.", ephemeral=True)
             if when <= 0:
-                return await ctx.response.send_message(
+                return await inter.response.send_message(
                     f"You can't set a reminder for 0 {time_unit} or less.",
                     ephemeral=True,
                 )
@@ -95,7 +94,7 @@ class Reminder(commands.Cog):
             try:
                 future = parser.parse(when)
             except parser.ParserError:
-                return await ctx.response.send_message("That is not a valid timestamp.", ephemeral=True)
+                return await inter.response.send_message("That is not a valid timestamp.", ephemeral=True)
         else:
             seconds = when * time_units[time_unit]
             future = now + datetime.timedelta(seconds=seconds)
@@ -103,7 +102,7 @@ class Reminder(commands.Cog):
         future = future.isoformat()
 
         if future < now.isoformat():
-            return await ctx.response.send_message("You can't set a reminder in the past.", ephemeral=True)
+            return await inter.response.send_message("You can't set a reminder in the past.", ephemeral=True)
 
         key = len(reminder) + 1
         while str(key) in self.reminders:
@@ -120,13 +119,13 @@ class Reminder(commands.Cog):
         self.save_reminders()
 
         if time_unit == "time":
-            await ctx.response.send_message(f"Reminder set for {when}.", ephemeral=True)
+            await inter.response.send_message(f"Reminder set for {when}.", ephemeral=True)
         else:
-            await ctx.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
+            await inter.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="forget", description="clear your reminders")
-    async def remove(self, ctx, m_id):
+    async def remove(self, inter, m_id):
         """Clear a reminder or all of a user's reminders.
 
         Parameters
@@ -135,44 +134,44 @@ class Reminder(commands.Cog):
             The id of the reminder to remove.
         """
         if m_id not in self.reminders:
-            return await ctx.response.send_message("That reminder doesn't exist.", ephemeral=True)
+            return await inter.response.send_message("That reminder doesn't exist.", ephemeral=True)
 
-        if self.reminders[m_id]["user"] != ctx.author.id:
-            return await ctx.response.send_message("You can't remove someone else's reminder.", ephemeral=True)
+        if self.reminders[m_id]["user"] != inter.author.id:
+            return await inter.response.send_message("You can't remove someone else's reminder.", ephemeral=True)
 
         removed = self.reminders.pop(m_id, None)
         self.save_reminders()
 
-        await ctx.response.send_message(f"Reminder for {removed['what']} removed.", ephemeral=True)
+        await inter.response.send_message(f"Reminder for {removed['what']} removed.", ephemeral=True)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="planned", description="view your reminders")
-    async def show(self, ctx):
+    async def show(self, inter):
         """Show the reminders set for a user."""
         reminders = [
             [m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]]
             for m_id, item in self.reminders.items()
-            if item["user"] == ctx.author.id
+            if item["user"] == inter.author.id
         ]
         if not reminders:
-            return await ctx.response.send_message("You don't have any reminders set.", ephemeral=True)
+            return await inter.response.send_message("You don't have any reminders set.", ephemeral=True)
 
         message = f"You have {len(reminders)} reminders set.\n```"
         table = PrettyTable()
         table.align = "r"
         table.field_names = ["ID", "When", "What"]
-        table._max_width = {"ID": 10, "When": 10, "What": 50}
+        table._max_width = {"ID": 10, "When": 10, "What": 50}  # pylint: disable=protected-access
         table.add_rows(reminders)
         message += table.get_string(sortby="ID") + "```"
 
-        await ctx.response.send_message(message, ephemeral=True)
+        await inter.response.send_message(message, ephemeral=True)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="allplanned", description="view all the reminders, if you're allowed to")
-    async def show_all(self, ctx):
+    async def show_all(self, inter):
         """Show all the reminders."""
-        if ctx.author.id not in config.no_cooldown_users:
-            return await ctx.response.send_message(
+        if inter.author.id not in config.NO_COOLDOWN_USERS:
+            return await inter.response.send_message(
                 "You do not have permission to view all the reminders.", ephemeral=True
             )
 
@@ -180,17 +179,17 @@ class Reminder(commands.Cog):
             [m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]] for m_id, item in self.reminders.items()
         ]
         if not reminders:
-            return await ctx.response.send_message("There are no reminders.", ephemeral=True)
+            return await inter.response.send_message("There are no reminders.", ephemeral=True)
 
         message = f"There are {len(reminders)} reminders set.\n```"
         table = PrettyTable()
         table.align = "r"
         table.field_names = ["ID", "When", "What"]
-        table._max_width = {"ID": 10, "When": 10, "What": 50}
+        table._max_width = {"ID": 10, "When": 10, "What": 50}  # pylint: disable=protected-access
         table.add_rows(reminders)
         message += table.get_string(sortby="ID") + "```"
 
-        await ctx.response.send_message(message[:2000], ephemeral=True)
+        await inter.response.send_message(message[:2000], ephemeral=True)
 
     # Tasks --------------------------------------------------------------------
 
@@ -202,7 +201,7 @@ class Reminder(commands.Cog):
 
             if when <= datetime.datetime.now():
                 user = self.bot.get_user(reminder["user"])
-                if user.id == config.id_user_adam:
+                if user.id == config.ID_USER_ADAM:
                     continue
                 embed = disnake.Embed(title=reminder["what"], color=disnake.Color.default())
                 embed.set_footer(text=f"{self.generate_sentence('reminder')}")
@@ -215,7 +214,7 @@ class Reminder(commands.Cog):
                     channel = self.bot.get_channel(reminder["channel"])
                     message = f"{user.mention}"
 
-                    if user.id != config.id_user_adam:
+                    if user.id != config.ID_USER_ADAM:
                         for user_id in reminder["tag"]:
                             user = self.bot.get_user(int(user_id))
                             if user:
@@ -230,7 +229,7 @@ class Reminder(commands.Cog):
 
     def load_reminders(self):
         """Load the reminders from a file."""
-        with open("data/reminders.json", "r") as fp:
+        with open(config.REMINDERS_FILE, "r", encoding="utf-8") as fp:
             self.reminders = json.load(fp)
 
     def replace_mentions(self, sentence):
@@ -245,5 +244,5 @@ class Reminder(commands.Cog):
 
     def save_reminders(self):
         """Dump the reminders to a file."""
-        with open("data/reminders.json", "w") as fp:
+        with open(config.REMINDERS_FILE, "w", encoding="utf-8") as fp:
             json.dump(self.reminders, fp)

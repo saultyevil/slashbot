@@ -3,10 +3,8 @@
 
 import datetime
 import json
-from dis import dis
 from pathlib import Path
 
-import disnake
 from disnake.ext import commands, tasks
 from disnake.utils import get
 
@@ -24,41 +22,39 @@ class Content(commands.Cog):
         self.starting_balance = starting_balance
         self.role_name = role_name
         self.stale_minutes = stale_minutes
-
-        self.bank_file = Path("data/bank.json")
-        with open(self.bank_file, "r") as fp:
+        self.bank_file = Path(config.BANK_FILE)
+        with open(self.bank_file, "r", encoding="utf-8") as fp:
             self.bank = json.load(fp)
-
         self.requests = []
         self.providers = []
 
-        self.remove_stale_requests.start()
+        self.remove_stale_requests.start()  # pylint: disable=no-member
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
         name="abandon",
         description="Leave the leech notification squad",
-        guild_ids=config.slash_servers,
+        guild_ids=config.SLASH_SERVERS,
     )
-    async def abandon(self, ctx):
+    async def abandon(self, inter):
         """Leave the leech notification squad."""
-        await self.leave_leech_role(ctx.guild, ctx.author)
-        await ctx.response.send_message(f"You have left the {self.role_name} notification squad.", ephemeral=True)
+        await self.leave_leech_role(inter.guild, inter.author)
+        await inter.response.send_message(f"You have left the {self.role_name} notification squad.", ephemeral=True)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
         name="balance",
         description="Check how many leech coins you have",
-        guild_ids=config.slash_servers,
+        guild_ids=config.SLASH_SERVERS,
     )
-    async def balance(self, ctx):
+    async def balance(self, inter):
         """Check your leech coin balance."""
         print(self.bank)
 
-        user_id = ctx.author.id
-        await self.prepare_for_leech_command(ctx.guild, ctx.author)
+        user_id = inter.author.id
+        await self.prepare_for_leech_command(inter.guild, inter.author)
 
         try:
             balance = self.bank[user_id]
@@ -72,15 +68,15 @@ class Content(commands.Cog):
         else:
             message = f"You filthy little Leech, you owe the bank {abs(balance)} Leech coins!"
 
-        await ctx.response.send_message(message, ephemeral=True)
+        await inter.response.send_message(message, ephemeral=True)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
         name="needcontent",
         description="Demand content, filthy leech",
-        guild_ids=config.slash_servers,
+        guild_ids=config.SLASH_SERVERS,
     )
-    async def needcontent(self, ctx):
+    async def needcontent(self, inter):
         """Demand that there be content, filthy little leech.
 
         Parameters
@@ -88,12 +84,12 @@ class Content(commands.Cog):
         who: str
             The name of the user who should provide content.
         """
-        user_id, role = await self.prepare_for_leech_command(ctx.guild, ctx.author)
+        user_id, role = await self.prepare_for_leech_command(inter.guild, inter.author)
         mention = role.mention if role else self.role_name
         balance = self.bank[user_id]
 
         if balance <= 0:
-            return await ctx.response.send_message(
+            return await inter.response.send_message(
                 "You don't have enough Leech coins to ask for content.", ephemeral=True
             )
 
@@ -109,36 +105,36 @@ class Content(commands.Cog):
         user = await self.bot.fetch_user(user_id)
         print(f"{user.name} has been added to the list of requests")
 
-        await ctx.response.send_message(f"{mention} your fellow leech {ctx.author.name} is requesting content.")
+        await inter.response.send_message(f"{mention} your fellow leech {inter.author.name} is requesting content.")
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
         name="notifsquad",
         description="Join the leech notification squad",
-        guild_ids=config.slash_servers,
+        guild_ids=config.SLASH_SERVERS,
     )
-    async def notifsquad(self, ctx):
+    async def notifsquad(self, inter):
         """Join the leech notification squad."""
-        await self.get_or_create_leech_role(ctx.guild)
-        await ctx.response.send_message(f"You've joined the {self.role_name} notification squad.", ephemeral=True)
+        await self.get_or_create_leech_role(inter.guild)
+        await inter.response.send_message(f"You've joined the {self.role_name} notification squad.", ephemeral=True)
 
-    @commands.cooldown(config.cooldown_rate, config.cooldown_standard, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
         name="provide",
         description="Provide content like a good boy",
-        guild_ids=config.slash_servers,
+        guild_ids=config.SLASH_SERVERS,
     )
-    async def provide(self, ctx):
+    async def provide(self, inter):
         """Provide content from the goodness of your heart, or heed the call
         for content."""
-        user_id, role = await self.prepare_for_leech_command(ctx.guild, ctx.author)
+        user_id, role = await self.prepare_for_leech_command(inter.guild, inter.author)
         self.providers.append(user_id)
 
         user = await self.bot.fetch_user(user_id)
         print(f"{user.name} has been added to the list of providers")
 
         mention = role.mention if role else self.role_name
-        await ctx.response.send_message(f"{mention}: {ctx.author.name} will be providing content soon.")
+        await inter.response.send_message(f"{mention}: {inter.author.name} will be providing content soon.")
 
     # Events -------------------------------------------------------------------
 
@@ -200,8 +196,8 @@ class Content(commands.Cog):
         if not leech_role:
             try:
                 leech_role = await guild.create_role(name=self.role_name, mentionable=True)
-            except Exception as e:
-                print("Can't create role: ", e)
+            except Exception as exception:  # pylint: disable=broad-except
+                print("Can't create role: ", exception)
                 return None
 
         return leech_role
@@ -305,7 +301,7 @@ class Content(commands.Cog):
 
     async def save_bank(self):
         """Save changes to the bank to file."""
-        with open(self.bank_file, "w") as fp:
+        with open(self.bank_file, "w", encoding="utf-8") as fp:
             json.dump(self.bank, fp)
 
     async def check_or_create_account(self, user_id):
