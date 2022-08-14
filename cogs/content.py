@@ -125,12 +125,13 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         if len(self.requests) > 1:
             requesters = (
-                ", ".join(map(lambda r: r["who"].name, self.requests[:-1])) + f" and {self.requests[-1]['who'].name}"
+                ", ".join(map(lambda r: r["who"].name, self.requests[:-1]))
+                + f" and {self.requests[-1]['who'].name} *need*"
             )
         else:
-            requesters = f"{self.requests[0]['who'].name}"
+            requesters = f"{self.requests[0]['who'].name} *needs*"
 
-        await inter.response.send_message(f"{mention} {requesters} *need* content.", ephemeral=True)
+        await inter.response.send_message(f"{mention} {requesters} content.")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
