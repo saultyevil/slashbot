@@ -95,7 +95,7 @@ spam = cogs.spam.Spam(bot, markovchain, badwords, godwords)
 info = cogs.info.Info(bot, spam.generate_sentence, badwords, godwords)
 reminder = cogs.remind.Reminder(bot, spam.generate_sentence)
 music = cogs.music.Music(bot)
-content = cogs.content.Content(bot)
+content = cogs.content.Content(bot, spam.generate_sentence)
 weather = cogs.weather.Weather(bot, spam.generate_sentence)
 videos = cogs.videos.Videos(bot, badwords, spam.generate_sentence)
 

@@ -5,8 +5,10 @@ import datetime
 import json
 from pathlib import Path
 
+import disnake
 from disnake.ext import commands, tasks
 from disnake.utils import get
+from prettytable import PrettyTable
 
 import config
 
@@ -17,8 +19,16 @@ CHECK_FREQUENCY_SECONDS = 60
 class Content(commands.Cog):
     """Demand and provide content, and track leech balance."""
 
-    def __init__(self, bot, starting_balance=5, role_name="Content Leeches", stale_minutes=30):
+    def __init__(
+        self,
+        bot,
+        generate_sentence,
+        starting_balance=5,
+        role_name="Content Leeches",
+        stale_minutes=30,
+    ):
         self.bot = bot
+        self.generate_sentence = generate_sentence
         self.starting_balance = starting_balance
         self.role_name = role_name
         self.stale_minutes = stale_minutes
@@ -49,24 +59,23 @@ class Content(commands.Cog):
     )
     async def balance(self, inter):
         """Check your leech coin balance."""
-        print(self.bank)
-
-        user_id = inter.author.id
-        await self.prepare_for_leech_command(inter.guild, inter.author)
-
-        try:
-            balance = self.bank[user_id]
-        except KeyError:
-            balance = await self.create_bank_account(user_id)
+        user_id, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
+        balance = self.bank[user_id]["balance"]
 
         if balance > 0:
-            message = f"You have {balance} Leech coins in your bank account."
+            message = "You have Leech coins in your bank account."
         elif balance == 0:
-            message = "You bank account is empty, povvo!"
+            message = "You're broke, povvo!"
         else:
-            message = f"You filthy little Leech, you owe the bank {abs(balance)} Leech coins!"
+            message = "You filthy little Leech, you owe the bank!"
 
-        await inter.response.send_message(message, ephemeral=True)
+        embed = disnake.Embed(title="Content Leech Balance", color=disnake.Color.default(), description=message)
+        embed.set_footer(text=f"{self.generate_sentence('leech')}")
+        embed.set_thumbnail(url="https://www.nicepng.com/png/full/258-2581153_cartoon-leech.png")
+        embed.add_field(name="Balance", value=f"{balance} Leech coins")
+        embed.add_field(name="Status", value=f"{self.bank[user_id]['status']}")
+
+        await inter.response.send_message(embed=embed, ephemeral=True)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
@@ -131,13 +140,35 @@ class Content(commands.Cog):
         mention = role.mention if role else self.role_name
         await inter.response.send_message(f"{mention}: {inter.author.name} will be providing content soon.")
 
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.slash_command(
+        name="leechscore",
+        description="Leech coin leaderboard",
+    )
+    async def leechscore(self, inter):
+        """Show the balance for all users."""
+        if not self.bank:
+            await inter.response.send_message("There are no accounts.")
+
+        # Use list comprehension to get a list of name, balance and status for
+        # each account
+        rows = [[account["name"], account["balance"], account["status"]] for account in self.bank.values()]
+
+        # PrettyTable to create a nicely formatted table
+        table = PrettyTable()
+        table.align = "r"
+        table.field_names = ["Name", "Balance", "Status"]
+        table.add_rows(rows)
+
+        await inter.response.send_message(f"```{table.get_string(sortby='Name')}```", ephemeral=True)
+
     # Events -------------------------------------------------------------------
 
     @commands.Cog.listener("on_voice_state_update")
     async def check_if_user_started_streaming(self, member, before, after):
         """Check if a user starts streaming after a request."""
         now = datetime.datetime.now()
-        started_streaming = before.self_stream == False and after.self_stream == True
+        started_streaming = before.self_stream is False and after.self_stream is True
 
         channel = after.channel
         if not channel:
@@ -152,7 +183,7 @@ class Content(commands.Cog):
             # then remove all stale requests
             n_removed = 0
             for idx, request in enumerate(self.requests):
-                user_id = int(request["who"])
+                user_id = str(request["who"])
                 when = datetime.datetime.fromisoformat(request["when"])
                 if when < now:
                     await self.remove_leech_coin(user_id)
@@ -160,19 +191,19 @@ class Content(commands.Cog):
                     n_removed += 1
 
             # give them some number of leech coins, depending on number of requests
-            return await self.add_leech_coin(member.id, n_removed)
+            return await self.add_leech_coin(str(member.id), n_removed)
 
         # If no requests, but the person is a provider then check if someone
         # is providing on the voice channel
         if self.providers:
-            for member in channel.members:
-                is_member_streaming = member.voice.self_stream
-                is_member_provider = member.id in self.providers
+            for this_member in channel.members:
+                is_member_streaming = this_member.voice.self_stream
+                is_member_provider = this_member.id in self.providers
 
                 if is_member_provider and is_member_streaming:
-                    self.providers.remove(member.id)
-                    await self.add_leech_coin(member.id)
-                    print(f"{member.name} is streaming when they said they would provide")
+                    self.providers.remove(this_member.id)
+                    await self.add_leech_coin(str(this_member.id))
+                    print(f"{this_member.name} is streaming when they said they would provide")
 
     # Role generation ----------------------------------------------------------
 
@@ -248,10 +279,10 @@ class Content(commands.Cog):
         user.id: int
             The id of the user.
         """
-        await self.check_or_create_account(user.id)
+        await self.check_or_create_account(str(user.id))
         leech_role = await self.get_or_create_leech_role(guild)
 
-        return user.id, leech_role
+        return str(user.id), leech_role
 
     async def add_leech_coin(self, user_id, to_add=1):
         """Add a leech coin to a user's bank.
@@ -261,11 +292,13 @@ class Content(commands.Cog):
         user_id: int
             The ID of the user.
         """
+        user = await self.bot.fetch_user(user_id)
+
         await self.check_or_create_account(user_id)
         self.bank[user_id] = self.bank[user_id] + to_add
+        await self.update_account_status(user_id, user.name)
         await self.save_bank()
 
-        user = await self.bot.fetch_user(user_id)
         print(f"Added {to_add} coins to {user.name}. New balance:", self.bank[user_id])
 
     async def create_bank_account(self, user_id):
@@ -276,8 +309,35 @@ class Content(commands.Cog):
         user_id: int
             The ID of the user.
         """
-        self.bank[user_id] = self.starting_balance
-        return self.bank[user_id]
+        user = await self.bot.fetch_user(user_id)
+        account = {"user_id": user_id, "name": user.name, "balance": self.starting_balance, "status": "Newfag"}
+
+        print("Created bank account for", user.name, "user_id", user_id, type(user_id))
+        self.bank[user_id] = account
+        await self.save_bank()
+
+        return account
+
+    async def update_account_status(self, user_id, user_name):
+        """Update the account status depending on balance.
+
+        Parameters
+        ----------
+        user_id: int
+            The ID of the user.
+        user_name: str
+            The name of the user.
+        """
+        balance = self.bank[user_id]["balance"]
+        new_status = self.bank[user_id]["status"]
+
+        if balance > 0:
+            new_status = "Valued content provider"
+        else:
+            new_status = "Despicble leech"
+
+        print(f"{user_name} status changed from {self.bank[user_id]['status']} to {new_status}")
+        self.bank[user_id]["status"] = new_status
 
     async def remove_leech_coin(self, user_id):
         """Remove a leech coin to a user's bank.
@@ -287,11 +347,13 @@ class Content(commands.Cog):
         user_id: int
             The ID of the user.
         """
+        user = await self.bot.fetch_user(user_id)
+
         await self.check_or_create_account(user_id)
         self.bank[user_id] = self.bank[user_id] - 1
+        await self.update_account_status(user_id, user.name)
         await self.save_bank()
 
-        user = await self.bot.fetch_user(user_id)
         print(f"Removed coin from {user.name}. New balance:", self.bank[user_id])
 
     async def save_bank(self):
