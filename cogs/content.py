@@ -16,7 +16,14 @@ cd_user = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 60
 
 
-class Content(commands.Cog):
+async def convert_yes_to_false(_, inp):
+    """Swap Yes to False, so, e.g., if share == yes, then ephemeral=False."""
+    if inp == "Yes":
+        return False
+    return True
+
+
+class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
     """Demand and provide content, and track leech balance."""
 
     def __init__(
@@ -44,10 +51,10 @@ class Content(commands.Cog):
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
-        name="abandon",
+        name="leaveleech",
         description="Leave the leech notification squad",
     )
-    async def abandon(self, inter):
+    async def leaveleech(self, inter):
         """Leave the leech notification squad."""
         await self.leave_leech_role(inter.guild, inter.author)
         await inter.response.send_message(f"You have left the {self.role_name} notification squad.", ephemeral=True)
@@ -57,7 +64,9 @@ class Content(commands.Cog):
         name="balance",
         description="Check how many leech coins you have",
     )
-    async def balance(self, inter):
+    async def balance(
+        self, inter, share=commands.Param(default="No", choices=["Yes", "No"], converter=convert_yes_to_false)
+    ):
         """Check your leech coin balance."""
         user_id, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
         balance = self.bank[user_id]["balance"]
@@ -69,13 +78,15 @@ class Content(commands.Cog):
         else:
             message = "You filthy little Leech, you owe the bank!"
 
-        embed = disnake.Embed(title="Content Leech Balance", color=disnake.Color.default(), description=message)
+        embed = disnake.Embed(
+            title=f"{inter.author.name}'s Leech Balance", color=disnake.Color.default(), description=message
+        )
         embed.set_footer(text=f"{self.generate_sentence('leech')}")
         embed.set_thumbnail(url="https://www.nicepng.com/png/full/258-2581153_cartoon-leech.png")
         embed.add_field(name="Balance", value=f"{balance} Leech coins")
         embed.add_field(name="Status", value=f"{self.bank[user_id]['status']}")
 
-        await inter.response.send_message(embed=embed, ephemeral=True)
+        await inter.response.send_message(embed=embed, ephemeral=share)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
@@ -92,7 +103,9 @@ class Content(commands.Cog):
         """
         user_id, role = await self.prepare_for_leech_command(inter.guild, inter.author)
         mention = role.mention if role else self.role_name
-        balance = self.bank[user_id]
+        current_requesters = [r["who"].id for r in self.requests]
+
+        balance = self.bank[user_id]["balance"]
 
         if balance <= 0:
             return await inter.response.send_message(
@@ -100,45 +113,66 @@ class Content(commands.Cog):
             )
 
         # Add request to queue of requests to be answered
-        now = datetime.datetime.now()
-        request = {
-            "when": now.isoformat(),
-            "stale_after": (now + datetime.timedelta(minutes=self.stale_minutes)).isoformat(),
-            "who": user_id,
-        }
-        self.requests.append(request)
+        if inter.author.id not in current_requesters:
+            now = datetime.datetime.now()
+            request = {
+                "when": now.isoformat(),
+                "stale_after": (now + datetime.timedelta(minutes=self.stale_minutes)).isoformat(),
+                "who": inter.author,
+            }
+            self.requests.append(request)
+            print(f"{inter.user.name} has been added to the list of requests")
 
-        user = await self.bot.fetch_user(user_id)
-        print(f"{user.name} has been added to the list of requests")
+        if len(self.requests) > 1:
+            requesters = (
+                ", ".join(map(lambda r: r["who"].name, self.requests[:-1])) + f" and {self.requests[-1]['who'].name}"
+            )
+        else:
+            requesters = f"{self.requests[0]['who'].name}"
 
-        await inter.response.send_message(f"{mention} your fellow leech {inter.author.name} is requesting content.")
+        await inter.response.send_message(f"{mention} {requesters} *need* content.", ephemeral=True)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
-        name="notifsquad",
+        name="leechsquad",
         description="Join the leech notification squad",
     )
-    async def notifsquad(self, inter):
+    async def leechsquad(self, inter):
         """Join the leech notification squad."""
         await self.get_or_create_leech_role(inter.guild)
         await inter.response.send_message(f"You've joined the {self.role_name} notification squad.", ephemeral=True)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
-        name="provide",
+        name="contentcreator",
         description="Provide content like a good boy",
     )
-    async def provide(self, inter):
+    async def contentcreator(self, inter):
         """Provide content from the goodness of your heart, or heed the call
         for content."""
-        user_id, role = await self.prepare_for_leech_command(inter.guild, inter.author)
-        self.providers.append(user_id)
-
-        user = await self.bot.fetch_user(user_id)
-        print(f"{user.name} has been added to the list of providers")
-
+        _, role = await self.prepare_for_leech_command(inter.guild, inter.author)
         mention = role.mention if role else self.role_name
-        await inter.response.send_message(f"{mention}: {inter.author.name} will be providing content soon.")
+        current_providers = [p["who"].id for p in self.providers]
+
+        if inter.author.id not in current_providers:
+            # same data structure as when requesting for content
+            now = datetime.datetime.now()
+            request = {
+                "when": now.isoformat(),
+                "stale_after": (now + datetime.timedelta(minutes=self.stale_minutes)).isoformat(),
+                "who": inter.author,
+            }
+            self.providers.append(request)
+            print(f"{inter.author.name} has been added to the list of providers")
+
+        if len(self.providers) > 1:
+            providers = (
+                ", ".join(map(lambda r: r["who"].name, self.providers[:-1])) + f" and {self.providers[-1]['who'].name}"
+            )
+        else:
+            providers = f"{self.providers[0]['who'].name}"
+
+        await inter.response.send_message(f"{mention} {providers} will be providing content.")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
@@ -147,8 +181,9 @@ class Content(commands.Cog):
     )
     async def leechscore(self, inter):
         """Show the balance for all users."""
+        _, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
         if not self.bank:
-            await inter.response.send_message("There are no accounts.")
+            await inter.response.send_message("There are no accounts.", ephemeral=True)
 
         # Use list comprehension to get a list of name, balance and status for
         # each account
@@ -183,7 +218,7 @@ class Content(commands.Cog):
             # then remove all stale requests
             n_removed = 0
             for idx, request in enumerate(self.requests):
-                user_id = str(request["who"])
+                user_id = str(request["who"].id)
                 when = datetime.datetime.fromisoformat(request["when"])
                 if when < now:
                     await self.remove_leech_coin(user_id)
@@ -198,7 +233,7 @@ class Content(commands.Cog):
         if self.providers:
             for this_member in channel.members:
                 is_member_streaming = this_member.voice.self_stream
-                is_member_provider = this_member.id in self.providers
+                is_member_provider = this_member in self.providers
 
                 if is_member_provider and is_member_streaming:
                     self.providers.remove(this_member.id)
@@ -334,7 +369,7 @@ class Content(commands.Cog):
         if balance > 0:
             new_status = "Valued content provider"
         else:
-            new_status = "Despicble leech"
+            new_status = "Despicable leech"
 
         print(f"{user_name} status changed from {self.bank[user_id]['status']} to {new_status}")
         self.bank[user_id]["status"] = new_status
@@ -381,7 +416,18 @@ class Content(commands.Cog):
             return
 
         now = datetime.datetime.now()
+
+        # Remove requests that are older than the threshold
+
         for idx, request in enumerate(self.requests):
             when_stale = datetime.datetime.fromisoformat(request["stale_after"])
             if when_stale < now:
                 self.requests.pop(idx)
+
+        # Then do same for providers. Done separately because they can be
+        # different length lists
+
+        for idx, provider in enumerate(self.providers):
+            when_stale = datetime.datetime.fromisoformat(provider["stale_after"])
+            if when_stale < now:
+                self.providers.pop(idx)
