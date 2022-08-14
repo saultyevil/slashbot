@@ -179,7 +179,9 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         name="leechscore",
         description="Leech coin leaderboard",
     )
-    async def leechscore(self, inter):
+    async def leechscore(
+        self, inter, share=commands.Param(default="No", choices=["Yes", "No"], converter=convert_yes_to_false)
+    ):
         """Show the balance for all users."""
         _, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
         if not self.bank:
@@ -195,7 +197,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         table.field_names = ["Name", "Balance", "Status"]
         table.add_rows(rows)
 
-        await inter.response.send_message(f"```{table.get_string(sortby='Name')}```", ephemeral=True)
+        await inter.response.send_message(f"```{table.get_string(sortby='Name')}```", ephemeral=share)
 
     # Events -------------------------------------------------------------------
 
