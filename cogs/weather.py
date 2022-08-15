@@ -7,6 +7,8 @@ import json
 import disnake
 import pyowm
 from disnake.ext import commands
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
 
 import config
 
@@ -43,16 +45,26 @@ class Weather(commands.Cog):
         self.bot = bot
         self.generate_sentence = generate_sentence
 
-        with open("data/users.json", "r", encoding="utf-8") as fp:
-            self.userdata = json.load(fp)
-
         self.weather_api = pyowm.OWM(config.OWN_API_KEY)
         self.weather_api_city_register = self.weather_api.city_id_registry()
         self.weather_api_manager = self.weather_api.weather_manager()
 
+        with open("data/users.json", "r", encoding="utf-8") as fp:
+            self.userdata = json.load(fp)
+
+        def on_modify(_):
+            with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
+                self.userdata = json.load(fp)
+
+        observer = Observer()
+        event_handler = PatternMatchingEventHandler(["*"], None, False, True)
+        event_handler.on_modified = on_modify
+        observer.schedule(event_handler, config.USERS_FILES, False)
+        observer.start()
+
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="forecast", description="get the weather forecast")
-    async def forecast(
+    async def forecast(  # pylint: disable=too-many-locals
         self,
         inter,
         where=commands.Param(default=None),
@@ -258,17 +270,17 @@ class Weather(commands.Cog):
         embed.add_field(
             name="Temperature",
             value=f"**{temperature['temp']:.1f} °{t_units_fmt}**",
-            inline=False,
+            inline=True,
         )
         embed.add_field(
             name="Min/Max",
             value=f"**{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{t_units_fmt}**",
-            inline=False,
+            inline=True,
         )
         embed.add_field(
             name="Feels like",
             value=f"**{temperature['feels_like']:.1f} °{t_units_fmt}**",
-            inline=False,
+            inline=True,
         )
         embed.add_field(
             name="Wind speed",
@@ -276,6 +288,7 @@ class Weather(commands.Cog):
             inline=False,
         )
         embed.add_field(name="Humidity", value=f"**{weather.humidity:.0f}%**", inline=False)
+
         embed.set_footer(text=f"{self.generate_sentence('weather')}")
         embed.set_thumbnail(url=weather.weather_icon_url())
 
