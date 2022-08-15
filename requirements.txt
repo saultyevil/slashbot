@@ -19,3 +19,4 @@ watchdog==2.1.9
 black==22.6.0
 docformatter==1.4
 isort==5.10.1
+pylint==2.14.5
