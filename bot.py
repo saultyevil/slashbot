@@ -18,10 +18,11 @@ import cogs.info
 import cogs.music
 import cogs.remind
 import cogs.spam
+import cogs.users
 import cogs.videos
 import cogs.weather
 import config
-from markovify import markovify
+from markovify import markovify  # pylint: disable=import-error
 
 logger = logging.getLogger("disnake")
 logger.setLevel(logging.DEBUG)
@@ -98,6 +99,7 @@ music = cogs.music.Music(bot)
 content = cogs.content.Content(bot, spam.generate_sentence)
 weather = cogs.weather.Weather(bot, spam.generate_sentence)
 videos = cogs.videos.Videos(bot, badwords, spam.generate_sentence)
+users = cogs.users.Users(bot)
 
 # bot.add_cog(music)
 bot.add_cog(spam)
@@ -106,6 +108,7 @@ bot.add_cog(reminder)
 bot.add_cog(content)
 bot.add_cog(weather)
 bot.add_cog(videos)
+bot.add_cog(users)
 bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
 
 # Functions --------------------------------------------------------------------

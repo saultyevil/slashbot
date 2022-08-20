@@ -47,6 +47,16 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         self.remove_stale_requests.start()  # pylint: disable=no-member
 
+    # Before command invoke ----------------------------------------------------
+
+    async def cog_before_slash_command_invoke(self, inter):
+        """Reset the cooldown for some users and servers."""
+        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+            return inter.application_command.reset_cooldown(inter)
+
+        if inter.author.id in config.NO_COOLDOWN_USERS:
+            return inter.application_command.reset_cooldown(inter)
+
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)

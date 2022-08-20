@@ -47,11 +47,12 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         def on_modify(_):
             with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
                 self.userdata = json.load(fp)
+            print("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
         event_handler.on_modified = on_modify
-        observer.schedule(event_handler, "data/users.json", False)
+        observer.schedule(event_handler, config.USERS_FILES, False)
         observer.start()
 
         # if we don't unregister this, the bot is weird on close down

@@ -55,12 +55,25 @@ class Weather(commands.Cog):
         def on_modify(_):
             with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
                 self.userdata = json.load(fp)
+            print("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
         event_handler.on_modified = on_modify
         observer.schedule(event_handler, config.USERS_FILES, False)
         observer.start()
+
+    # Before command invoke ----------------------------------------------------
+
+    async def cog_before_slash_command_invoke(self, inter):
+        """Reset the cooldown for some users and servers."""
+        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+            return inter.application_command.reset_cooldown(inter)
+
+        if inter.author.id in config.NO_COOLDOWN_USERS:
+            return inter.application_command.reset_cooldown(inter)
+
+    # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="forecast", description="get the weather forecast")

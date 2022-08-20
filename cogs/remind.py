@@ -9,6 +9,8 @@ import disnake
 from dateutil import parser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
 
 import config
 
@@ -32,6 +34,16 @@ class Reminder(commands.Cog):
         self.load_reminders()
         self.check_reminders.start()  # pylint: disable=no-member
 
+        def on_modify(_):
+            self.load_reminders()
+            print("Reloaded reminders")
+
+        observer = Observer()
+        event_handler = PatternMatchingEventHandler(["*"], None, False, True)
+        event_handler.on_modified = on_modify
+        observer.schedule(event_handler, config.REMINDERS_FILE, False)
+        observer.start()
+
     # Before command invoke ----------------------------------------------------
 
     async def cog_before_slash_command_invoke(self, inter):
@@ -46,7 +58,7 @@ class Reminder(commands.Cog):
 
     @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="remind", description="set a reminder")
-    async def add(
+    async def add(  # pylint: disable=too-many-arguments
         self,
         inter,
         when: str = commands.Param(),
