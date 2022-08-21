@@ -430,7 +430,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
 
     # Scheduled tasks ----------------------------------------------------------
 
-    @tasks.loop(hours=12)
+    @tasks.loop(hours=4)
     async def update_markov_chains(self):
-        """Get the bot to update the chain every 12 hours."""
+        """Get the bot to update the chain every 4 hours."""
         await self.learn(None)
