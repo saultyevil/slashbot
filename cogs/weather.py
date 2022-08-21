@@ -14,6 +14,7 @@ import config
 
 cd_user = commands.BucketType.user
 weather_units = ["metric", "imperial"]
+weather_choices = ["forecast", "temperature", "rain", "wind"]
 
 
 def owm_convert_uk_to_gb(_, choice):
@@ -74,6 +75,223 @@ class Weather(commands.Cog):
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
+
+    def get_units_for_system(self, system):
+        """Get the units for the system.
+
+        Parameters
+        ----------
+        system: str
+            The system of units to use, either metric or imperial.
+
+        Returns
+        -------
+        units: dict
+            The units in use, with keys t_units, t_units_fmt, w_units,
+            w_units_fmt.
+        """
+        if system == "imperial":
+            return {
+                "t_units": "fahrenheit",
+                "t_units_fmt": "F",
+                "w_units": "miles_hour",
+                "w_units_fmt": "mph",
+            }
+
+        return {
+            "t_units": "celsius",
+            "t_units_fmt": "C",
+            "w_units": "meters_sec",
+            "w_units_fmt": "km/h",
+        }
+
+    def _add_temperature_to_embed(self, weather, embed, units):
+        """Put the temperature into the embed.
+
+        Parameters
+        ----------
+        weather: pyowm.weather.Weather
+            The weather object.
+        embed: disnake.Embed
+            The embed to put the temperature into.
+        units: dict
+            The units to use.
+
+        Returns
+        -------
+        embed: disnake.Embed
+            The updated Embed.
+        """
+
+        temperature = weather.temperature(units["t_units"])
+        embed.add_field(
+            name="Temperature",
+            value=f"**{temperature['temp']:.1f} °{units['t_units_fmt']} but feels like "
+            "{temperature['feels_like']:.1f} °{units['t_units_fmt']} **",
+            inline=True,
+        )
+
+        embed.add_field(
+            name="Min/Max Temperature",
+            value=f"**{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{units['t_units_fmt']}**",
+            inline=True,
+        )
+
+        embed.add_field(name="Relative Humidity", value=f"**{weather.humidity:.0f}%**", inline=False)
+
+        return embed
+
+    def _add_rain_to_embed(self, weather, embed, _units):
+        """Put the rain into the embed.
+
+        Parameters
+        ----------
+        weather: pyowm.weather.Weather
+            The weather object.
+        embed: disnake.Embed
+            The embed to put the temperature into.
+        units: dict
+            The units to use.
+
+        Returns
+        -------
+        embed: disnake.Embed
+            The updated Embed.
+        """
+        rain = weather.rain
+
+        if not rain:
+            rain = {"1h": 0, "3h": 0}
+
+        embed.add_field(
+            name="Rain in 1 hour",
+            value=f"**{rain['1h']:.1f} mm**",
+            inline=True,
+        )
+
+        embed.add_field(
+            name="Rain in 3 hours",
+            value=f"**{rain['3h']:.1f} mm**",
+            inline=True,
+        )
+
+        return embed
+
+    def _add_wind_to_embed(self, weather, embed, units):
+        """Put temperature into the embed.
+
+        Parameters
+        ----------
+        weather: pyowm.weather.Weather
+            The weather object.
+        embed: disnake.Embed
+            The embed to put the temperature into.
+        units: dict
+            The units to use.
+
+        Returns
+        -------
+        embed: disnake.Embed
+            The updated Embed.
+        """
+
+        wind = weather.wind(units["w_units"])
+
+        if units["w_units"] == "meters_sec":  # conver m/s to km/h
+            wind["speed"] *= 3.6
+
+        embed.add_field(
+            name="Wind speed",
+            value=f"**{wind['speed']:.1f} {units['w_units_fmt']} at {wind['deg']:.0f}°**",
+            inline=False,
+        )
+
+        return embed
+
+    def _add_everything_to_embed(self, weather, embed, units):
+        """Put all three observables into a single embed.
+
+        Parameters
+        ----------
+        weather: pyowm.weather.Weather
+            The weather object.
+        embed: disnake.Embed
+            The embed to put the temperature into.
+        units: dict
+            The units to use.
+
+        Returns
+        -------
+        embed: disnake.Embed
+            The updated Embed.
+        """
+
+        embed = self._add_temperature_to_embed(weather, embed, units)
+        embed = self._add_rain_to_embed(weather, embed, units)
+        embed = self._add_wind_to_embed(weather, embed, units)
+
+        return embed
+
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.slash_command(name="weather", description="get the weather", guild_ids=config.SLASH_SERVERS)
+    async def weather(
+        self,
+        inter,
+        where=commands.Param(default=None),
+        what=commands.Param(default="forecast", choices=weather_choices),
+        units=commands.Param(default="metric", choices=weather_units),
+    ):
+        """Get the weather for a location.
+
+        Parameters
+        ----------
+        where: str
+            The location to get the weather for.
+        what: str
+            What to get, either the whole forecast, temperature, rain or wind.
+        units: str
+            The units to use, either metric or imperial.
+        """
+
+        await inter.response.defer()
+
+        if where is None:
+            if str(inter.author.id) not in self.userdata or "location" not in self.userdata[str(inter.author.id)]:
+                return await inter.edit_original_message(
+                    content="You need to specify a location, or set your location and/or country using /remember."
+                )
+            where = self.userdata[str(inter.author.id)].get("location")
+
+        try:
+            observation = self.weather_api_manager.weather_at_place(where)
+        except Exception:  # pylint: disable=broad-except
+            return await inter.edit_original_message(content=f"Could not find {where} in OpenWeatherMap.")
+
+        weather = observation.weather
+        units = self.get_units_for_system(units)
+
+        embed = disnake.Embed(
+            title=f"{what.capitalize()} in {observation.location.name}, {observation.location.country}",
+            description=f"{weather.detailed_status.capitalize()}",
+            color=disnake.Color.default(),
+        )
+
+        match what:
+            case "forecast":
+                embed = self._add_everything_to_embed(weather, embed, units)
+            case "temperature":
+                embed = self._add_temperature_to_embed(weather, embed, units)
+            case "rain":
+                embed = self._add_rain_to_embed(weather, embed, units)
+            case "wind":
+                embed = self._add_wind_to_embed(weather, embed, units)
+            case _:
+                return await inter.edit_original_message(content="Somehow got to an 'unreachable' branch.")
+
+        embed.set_footer(text=f"{self.generate_sentence('weather')}")
+        embed.set_thumbnail(url=weather.weather_icon_url())
+
+        await inter.edit_original_message(embed=embed)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="forecast", description="get the weather forecast")
@@ -145,164 +363,5 @@ class Weather(commands.Cog):
 
         embed.set_thumbnail(url=one_call.forecast_daily[0].weather_icon_url())
         embed.set_footer(text=f"{self.generate_sentence('forecast')}")
-
-        await inter.edit_original_message(embed=embed)
-
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="temperature", description="get the temperature", guild_ids=config.SLASH_SERVERS)
-    async def temperature(
-        self,
-        inter,
-        where=commands.Param(default=None),
-        units=commands.Param(default="metric", choices=weather_units),
-    ):
-        """Get the current weather for a given location.
-
-        Parameters
-        ----------
-        where: str
-            The location to get the weather for.
-        units: str
-            The unit system to use.
-        """
-        await inter.response.defer()
-
-        if where is None:
-            if str(inter.author.id) not in self.userdata or "location" not in self.userdata[str(inter.author.id)]:
-                return await inter.edit_original_message(
-                    content="You need to either specify a location, or set your location and/or country using /remember."
-                )
-            else:
-                where = self.userdata[str(inter.author.id)].get("location")
-
-        try:
-            observation = self.weather_api_manager.weather_at_place(where)
-        except Exception:  # pylint: disable=broad-except
-            return await inter.edit_original_message(content=f"Could not find {where} in OpenWeatherMap.")
-
-        if units == "imperial":
-            t_units, t_units_fmt, = (
-                "fahrenheit",
-                "F",
-            )
-        else:
-            t_units, t_units_fmt, = (
-                "celsius",
-                "C",
-            )
-
-        weather = observation.weather
-        temperature = weather.temperature(t_units)
-
-        embed = disnake.Embed(
-            title=f"Temperature at {observation.location.name}, {observation.location.country}",
-            color=disnake.Color.default(),
-        )
-        embed.add_field(
-            name="Temperature",
-            value=f"**{temperature['temp']:.1f} °{t_units_fmt}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="Min/Max",
-            value=f"**{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{t_units_fmt}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="Feels like",
-            value=f"**{temperature['feels_like']:.1f} °{t_units_fmt}**",
-            inline=True,
-        )
-        embed.set_footer(text=f"{self.generate_sentence('temperature')}")
-        embed.set_thumbnail(url=weather.weather_icon_url())
-
-        await inter.edit_original_message(embed=embed)
-
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="weather", description="get the weather")
-    async def weather(
-        self,
-        inter,
-        where=commands.Param(default=None),
-        units=commands.Param(default="metric", choices=weather_units),
-    ):
-        """Get the current weather for a given location.
-
-        Parameters
-        ----------
-        where: str
-            The location to get the weather for.
-        units: str
-            The unit system to use.
-        """
-        await inter.response.defer()
-
-        if where is None:
-            if str(inter.author.id) not in self.userdata or "location" not in self.userdata[str(inter.author.id)]:
-                return await inter.edit_original_message(
-                    content="You need to either specify a location, or set your location and/or country using /remember."
-                )
-            where = self.userdata[str(inter.author.id)].get("location")
-
-        try:
-            observation = self.weather_api_manager.weather_at_place(where)
-        except Exception:  # pylint: disable=broad-except
-            return await inter.edit_original_message(content=f"Could not find {where} in OpenWeatherMap.")
-
-        if units == "imperial":
-            t_units, t_units_fmt, w_units, w_units_fmt = (
-                "fahrenheit",
-                "F",
-                "miles_hour",
-                "mph",
-            )
-        else:
-            t_units, t_units_fmt, w_units, w_units_fmt = (
-                "celsius",
-                "C",
-                "meters_sec",
-                "km/h",
-            )
-
-        weather = observation.weather
-        temperature = weather.temperature(t_units)
-        wind = weather.wind(w_units)
-
-        if units == "metric":
-            wind["speed"] *= 3.6
-
-        embed = disnake.Embed(
-            title=f"Weather in {observation.location.name}, {observation.location.country}",
-            color=disnake.Color.default(),
-        )
-        embed.add_field(
-            name="Description",
-            value=f"**{weather.detailed_status.capitalize()}**",
-            inline=False,
-        )
-        embed.add_field(
-            name="Temperature",
-            value=f"**{temperature['temp']:.1f} °{t_units_fmt}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="Min/Max",
-            value=f"**{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{t_units_fmt}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="Feels like",
-            value=f"**{temperature['feels_like']:.1f} °{t_units_fmt}**",
-            inline=True,
-        )
-        embed.add_field(
-            name="Wind speed",
-            value=f"**{wind['speed']:.1f} {w_units_fmt}**",
-            inline=False,
-        )
-        embed.add_field(name="Humidity", value=f"**{weather.humidity:.0f}%**", inline=False)
-
-        embed.set_footer(text=f"{self.generate_sentence('weather')}")
-        embed.set_thumbnail(url=weather.weather_icon_url())
 
         await inter.edit_original_message(embed=embed)
