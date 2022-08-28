@@ -173,20 +173,19 @@ class Weather(commands.Cog):
             if _units:
                 embed.add_field(
                     name="Rain",
-                    values="There is no rain forecast",
+                    value="There is no rain forecast",
                     inline=False,
                 )
         else:
             embed.add_field(
                 name="Rain 1 hour",
                 value=f"{rain['1h']:.1f} mm",
-                inline=True,
+                inline=False,
             )
-
             embed.add_field(
                 name="Rain 3 hours",
                 value=f"{rain['3h']:.1f} mm",
-                inline=True,
+                inline=False,
             )
 
         return embed
@@ -288,14 +287,13 @@ class Weather(commands.Cog):
             color=disnake.Color.default(),
         )
 
-        embed.add_field(
-            name="Description",
-            value=f"{weather.detailed_status.capitalize()}",
-            inline=False,
-        )
-
         match what:
             case "forecast":
+                embed.add_field(
+                    name="Description",
+                    value=f"{weather.detailed_status.capitalize()}",
+                    inline=False,
+                )
                 embed = self._add_everything_to_embed(weather, embed, units)
             case "temperature":
                 embed = self._add_temperature_to_embed(weather, embed, units)
