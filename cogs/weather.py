@@ -17,6 +17,15 @@ weather_units = ["metric", "imperial"]
 weather_choices = ["forecast", "temperature", "rain", "wind"]
 
 
+def degrees_to_cardinal(d):
+    """
+    note: this is highly approximate...
+    """
+    dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    ix = round(d / (360.0 / len(dirs)))
+    return dirs[ix % 16]
+
+
 def owm_convert_uk_to_gb(_, choice):
     """Convert UK to GB for use in OWM.
 
@@ -126,18 +135,18 @@ class Weather(commands.Cog):
         temperature = weather.temperature(units["t_units"])
         embed.add_field(
             name="Temperature",
-            value=f"**{temperature['temp']:.1f} °{units['t_units_fmt']} but feels like "
-            "{temperature['feels_like']:.1f} °{units['t_units_fmt']} **",
-            inline=True,
+            value=f"{temperature['temp']:.1f} °{units['t_units_fmt']}",
+            inline=False,
         )
-
+        # embed.add_field(
+        #     name="Feels Like", value=f"{temperature['feels_like']:.1f} °{units['t_units_fmt']}", inline=False
+        # )
         embed.add_field(
-            name="Min/Max Temperature",
-            value=f"**{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{units['t_units_fmt']}**",
-            inline=True,
+            name="Min/Max",
+            value=f"{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{units['t_units_fmt']}",
+            inline=False,
         )
-
-        embed.add_field(name="Relative Humidity", value=f"**{weather.humidity:.0f}%**", inline=False)
+        embed.add_field(name="Humidity", value=f"{weather.humidity:.0f}%", inline=False)
 
         return embed
 
@@ -161,19 +170,24 @@ class Weather(commands.Cog):
         rain = weather.rain
 
         if not rain:
-            rain = {"1h": 0, "3h": 0}
+            if _units:
+                embed.add_field(
+                    name="Rain",
+                    values="There is no rain forecast",
+                    inline=False,
+                )
+        else:
+            embed.add_field(
+                name="Rain 1 hour",
+                value=f"{rain['1h']:.1f} mm",
+                inline=True,
+            )
 
-        embed.add_field(
-            name="Rain in 1 hour",
-            value=f"**{rain['1h']:.1f} mm**",
-            inline=True,
-        )
-
-        embed.add_field(
-            name="Rain in 3 hours",
-            value=f"**{rain['3h']:.1f} mm**",
-            inline=True,
-        )
+            embed.add_field(
+                name="Rain 3 hours",
+                value=f"{rain['3h']:.1f} mm",
+                inline=True,
+            )
 
         return embed
 
@@ -200,10 +214,9 @@ class Weather(commands.Cog):
         if units["w_units"] == "meters_sec":  # conver m/s to km/h
             wind["speed"] *= 3.6
 
+        embed.add_field(name="Wind speed", value=f"{wind['speed']:.1f} {units['w_units_fmt']}", inline=False)
         embed.add_field(
-            name="Wind speed",
-            value=f"**{wind['speed']:.1f} {units['w_units_fmt']} at {wind['deg']:.0f}°**",
-            inline=False,
+            name="Wind bearing", value=f"{wind['deg']:.01f}° ({degrees_to_cardinal(wind['deg'])})", inline=False
         )
 
         return embed
@@ -227,7 +240,7 @@ class Weather(commands.Cog):
         """
 
         embed = self._add_temperature_to_embed(weather, embed, units)
-        embed = self._add_rain_to_embed(weather, embed, units)
+        embed = self._add_rain_to_embed(weather, embed, None)
         embed = self._add_wind_to_embed(weather, embed, units)
 
         return embed
@@ -272,8 +285,13 @@ class Weather(commands.Cog):
 
         embed = disnake.Embed(
             title=f"{what.capitalize()} in {observation.location.name}, {observation.location.country}",
-            description=f"{weather.detailed_status.capitalize()}",
             color=disnake.Color.default(),
+        )
+
+        embed.add_field(
+            name="Description",
+            value=f"{weather.detailed_status.capitalize()}",
+            inline=False,
         )
 
         match what:
@@ -282,7 +300,7 @@ class Weather(commands.Cog):
             case "temperature":
                 embed = self._add_temperature_to_embed(weather, embed, units)
             case "rain":
-                embed = self._add_rain_to_embed(weather, embed, units)
+                embed = self._add_rain_to_embed(weather, embed, "mm")
             case "wind":
                 embed = self._add_wind_to_embed(weather, embed, units)
             case _:
