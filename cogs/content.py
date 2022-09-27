@@ -4,6 +4,7 @@
 import datetime
 import json
 from pathlib import Path
+import re
 
 import disnake
 from disnake.ext import commands, tasks
@@ -235,6 +236,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 when = datetime.datetime.fromisoformat(request["when"])
                 if when < now:
                     await self.remove_leech_coin(user_id)
+                    print(f"removing {request['who']} from list")
                     self.requests.pop(idx)
                     n_removed += 1
 
@@ -252,6 +254,9 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                     self.providers.remove(this_member.id)
                     await self.add_leech_coin(str(this_member.id))
                     print(f"{this_member.name} is streaming when they said they would provide")
+
+        print("reqests: ", self.requests)
+        print("providers: ", self.providers)
 
     # Role generation ----------------------------------------------------------
 
@@ -435,6 +440,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         for idx, request in enumerate(self.requests):
             when_stale = datetime.datetime.fromisoformat(request["stale_after"])
             if when_stale < now:
+                print(f"removing {request['who']} from content requesters")
                 self.requests.pop(idx)
 
         # Then do same for providers. Done separately because they can be
@@ -443,4 +449,5 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         for idx, provider in enumerate(self.providers):
             when_stale = datetime.datetime.fromisoformat(provider["stale_after"])
             if when_stale < now:
+                print(f"removing {provider['who']} from content providers")
                 self.providers.pop(idx)
