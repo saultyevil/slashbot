@@ -213,6 +213,8 @@ class Reminder(commands.Cog):
 
             if when <= datetime.datetime.now():
                 user = self.bot.get_user(reminder["user"])
+                if not user:
+                    continue
                 if user.id == config.ID_USER_ADAM:
                     continue
                 embed = disnake.Embed(title=reminder["what"], color=disnake.Color.default())
