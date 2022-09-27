@@ -198,6 +198,17 @@ class Videos(commands.Cog):
             file=disnake.File("data/videos/sunday.mp4"),
         )
 
+    @tasks.loop(hours=config.HOURS_IN_WEEK)
+    async def jack_bin_day(self):
+        """Send a bin reminder for Jack."""
+        server = self.bot.get_guild(config.ID_SERVER_ADULT_CHILDREN)
+        channel = server.get_channel(config.ID_CHANNEL_IDIOTS)
+        user = self.bot.get_user(config.ID_USER_LIME)
+        await channel.send(
+            f"{user.mention} it's time to take the bins out!!! " + self.generate_sentence("bin"),
+            file = disnake.File("data/bin.png")
+        )
+
     # Sleep tasks --------------------------------------------------------------
 
     def calc_sleep_time(self, day, hour, minute):
@@ -262,4 +273,10 @@ class Videos(commands.Cog):
     async def sleep_sunday_morning(self):
         """Sleep until Sunday morning."""
         await asyncio.sleep(self.calc_sleep_time(calendar.SUNDAY, 10, 0))
+        await self.bot.wait_until_ready()
+
+    @jack_bin_day.before_loop
+    async def sleep_jack_bin_day(self):
+        """Sleep until Friday 5:45 am"""
+        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 5, 45))
         await self.bot.wait_until_ready()
