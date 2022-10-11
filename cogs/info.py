@@ -173,7 +173,9 @@ class Info(commands.Cog):
         if not articles:
             return await inter.response.send_message(f"No articles were found for {source}.")
 
-        author = articles[0]["source"]["name"]
+        print(articles[0])
+
+        author = articles[0]["source"]["Name"]
         image = articles[0]["urlToImage"]
         embed = disnake.Embed(title=f"Top articles from {author}", color=disnake.Color.default())
 
