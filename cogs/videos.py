@@ -28,6 +28,7 @@ class Videos(commands.Cog):
         self.friday_morning.start()  # pylint: disable=no-member
         self.friday_evening.start()  # pylint: disable=no-member
         self.sunday_morning.start()  # pylint: disable=no-member
+        self.jack_bin_day.start()  # pylint: disable=no-member
 
     # Before command invoke ----------------------------------------------------
 
