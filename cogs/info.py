@@ -166,28 +166,35 @@ class Info(commands.Cog):
         await inter.response.defer()
 
         try:
-            articles = self.news_api.get_top_headlines(sources=source)["articles"]
+            api_return = self.news_api.get_top_headlines(sources=source)
+            articles = api_return["articles"]
         except:  # pylint: disable=bare-except
             return await inter.edit_original_message("Reached the maximum number of news requests for the day.")
 
         if not articles:
             return await inter.response.send_message(f"No articles were found for {source}.")
 
-        print(articles[0])
+        print(api_return)
+        print(articles[0], articles[1])
 
         author = articles[0]["source"]["Name"]
-        image = articles[0]["urlToImage"]
+        image = articles[0].get("urlToImage", None)
         embed = disnake.Embed(title=f"Top articles from {author}", color=disnake.Color.default())
 
         for n, article in enumerate(articles[:3]):
-            title, url, description = (
+            # title, url, description = (
+            #     article["title"],
+            #     article["url"],
+            #     article["description"],
+            # )
+            title, url = (
                 article["title"],
                 article["url"],
-                article["description"],
             )
             embed.add_field(
                 name=f"{n + 1}. {title}",
-                value=f"{description[:128]}...\n{url}",
+                # value=f"{description[:128]}...\n{url}",
+                value=f"{url}",
                 inline=False,
             )
 

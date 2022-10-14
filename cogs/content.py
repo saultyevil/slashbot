@@ -60,7 +60,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    ecommands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
         name="leaveleech",
         description="Leave the leech notification squad",
@@ -255,8 +255,10 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                     await self.add_leech_coin(str(this_member.id))
                     print(f"{this_member.name} is streaming when they said they would provide")
 
-        print("reqests: ", self.requests)
-        print("providers: ", self.providers)
+        if len(self.requests) > 0:
+            print("reqests: ", self.requests)
+        if len(self.providers) > 0:
+            print("providers: ", self.providers)
 
     # Role generation ----------------------------------------------------------
 
