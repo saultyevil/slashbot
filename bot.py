@@ -25,6 +25,24 @@ import cogs.weather
 import config
 from markovify import markovify  # pylint: disable=import-error
 
+# Check that there is an internet connection, or wait for one ------------------
+
+n = 0
+while True:
+    try:
+        request = requests.get("https://www.google.co.uk", timeout=5)
+        if n > 0:
+            print(" connected!")
+        break 
+    except requests.ConnectTimeout:
+        if n == 0:
+            print("Trying to connect to the internet", endl="")
+        else:
+            print(".", endl="")
+        n += 1
+
+# Set up logger ----------------------------------------------------------------
+
 logger = logging.getLogger("disnake")
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename="slashbot_disnake.log", encoding="utf-8", mode="a")
@@ -142,21 +160,6 @@ async def on_slash_command_error(ctx, error):
         return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
 
-# Check that there is an internet connection, or wait for one ------------------
-
-n = 0
-while True:
-    try:
-        request = requests.get("https://www.google.co.uk", timeout=5)
-        if n > 0:
-            print(" connected!")
-        break 
-    except requests.ConnectTimeout:
-        if n == 0:
-            print("Trying to connect to the internet", endl="")
-        else:
-            print(".", endl="")
-        n += 1
 
 
 # Run the bot ------------------------------------------------------------------
