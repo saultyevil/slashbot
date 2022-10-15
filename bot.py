@@ -38,6 +38,7 @@ file_handler = logging.FileHandler(filename="slashbot.log", encoding="utf-8", mo
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 logger.propagate = False
+logger.setLevel(logging.INFO)
 
 
 def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
@@ -124,11 +125,10 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
     @bot.event
     async def on_ready():
         """Information to print on bot launch."""
-        message = f"Logged in as {bot.user} in the current servers:"
+        logger.info("Logged in as %s in the current servers:", bot.user)
         for n_server, server in enumerate(bot.guilds):
-            message += f"\n  {n_server}). {server.name} ({server.id})"
-        logger.info(message)
-        logger.info("Started in %.2f seconds.\n", time.time() - start)
+            logger.info("\t%d). %s (%d)", n_server, server.name, server.id)
+        logger.info("Started in %.2f seconds", time.time() - start)
 
     @bot.event
     async def on_slash_command_error(ctx, error):
