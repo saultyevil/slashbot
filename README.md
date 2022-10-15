@@ -20,9 +20,20 @@ Here are some of the main features
 * Get a random Danny Dyer tweet
 * Send a gif of a spitting girl
 
+## Deployment
+
+slashbot can be deployed using docker and docker-compose,
+
+```bash
+$ docker-compose up
+```
+
+You will need the evnvironment variables listed in the next section in a file
+named `docker-env.env`.
+
 ## Requirements
 
-Python 3.8+ is required. All other requirements are in requirements.txt, and
+Python 3.10 is required. All other requirements are in requirements.txt, and
 can be installed as such,
 
 ```bash
