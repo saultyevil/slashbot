@@ -4,6 +4,7 @@
 import datetime
 import json
 import re
+import logging
 
 import disnake
 from dateutil import parser
@@ -13,6 +14,8 @@ from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 import config
+
+logger = logging.getLogger("slashbot")
 
 cd_user = commands.BucketType.user
 time_units = {
@@ -36,7 +39,7 @@ class Reminder(commands.Cog):
 
         def on_modify(_):
             self.load_reminders()
-            print("Reloaded reminders")
+            logger.info("Reloaded reminders")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)

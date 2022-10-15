@@ -3,6 +3,7 @@
 
 import json
 import random
+import logging
 
 import disnake
 import magic8ball
@@ -16,6 +17,8 @@ from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 import config
+
+logger = logging.getLogger("slashbot")
 
 cd_user = commands.BucketType.user
 
@@ -64,7 +67,7 @@ class Info(commands.Cog):
         def on_modify(_):
             with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
                 self.userdata = json.load(fp)
-            print("Reloaded userdata")
+            logger.info("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
@@ -174,8 +177,8 @@ class Info(commands.Cog):
         if not articles:
             return await inter.response.send_message(f"No articles were found for {source}.")
 
-        print(api_return)
-        print(articles[0], articles[1])
+        logger.info(api_return)
+        logger.info(articles[0], articles[1])
 
         author = articles[0]["source"]["Name"]
         image = articles[0].get("urlToImage", None)

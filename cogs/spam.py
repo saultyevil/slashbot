@@ -12,6 +12,7 @@ import re
 import shutil
 import string
 import xml
+import logging
 
 import disnake
 import requests
@@ -23,6 +24,8 @@ from watchdog.observers import Observer
 
 import config
 from markovify import markovify
+
+logger = logging.getLogger("slashbot")
 
 cd_user = commands.BucketType.user
 
@@ -47,7 +50,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         def on_modify(_):
             with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
                 self.userdata = json.load(fp)
-            print("Reloaded userdata")
+            logger.info("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
@@ -152,7 +155,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         if inter:
             await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
         else:
-            print(f"Markov chain updated with {len(messages)} new messages.")
+            logger.info(f"Markov chain updated with {len(messages)} new messages.")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="oracle", description="a message from god")
@@ -260,7 +263,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
                 try:
                     await message.edit(suppress=True)
                 except disnake.errors.Forbidden:  # If we fail, then don't send the message
-                    return print(f"Unable to suppress embed for {message.author}")
+                    return logger.info(f"Unable to suppress embed for {message.author}")
 
                 await message.channel.send(new_url)
 

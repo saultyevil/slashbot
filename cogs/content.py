@@ -5,6 +5,7 @@ import datetime
 import json
 from pathlib import Path
 import re
+import logging
 
 import disnake
 from disnake.ext import commands, tasks
@@ -15,6 +16,8 @@ import config
 
 cd_user = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 60
+
+logger = logging.getLogger("slashbot")
 
 
 async def convert_yes_to_false(_, inp):
@@ -132,7 +135,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 "who": inter.author,
             }
             self.requests.append(request)
-            print(f"{inter.user.name} has been added to the list of requests")
+            logger.info(f"{inter.user.name} has been added to the list of requests")
 
         if len(self.requests) > 1:
             requesters = (
@@ -175,7 +178,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 "who": inter.author,
             }
             self.providers.append(request)
-            print(f"{inter.author.name} has been added to the list of providers")
+            logger.info(f"{inter.author.name} has been added to the list of providers")
 
         if len(self.providers) > 1:
             providers = (
@@ -228,7 +231,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         # If there are requests, and this member just started streaming
         if self.requests and started_streaming:
-            print(f"{member.name} started streaming when someone requested")
+            logger.info(f"{member.name} started streaming when someone requested")
             # then remove all stale requests
             n_removed = 0
             for idx, request in enumerate(self.requests):
@@ -236,7 +239,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 when = datetime.datetime.fromisoformat(request["when"])
                 if when < now:
                     await self.remove_leech_coin(user_id)
-                    print(f"removing {request['who']} from list")
+                    logger.info(f"removing {request['who']} from list")
                     self.requests.pop(idx)
                     n_removed += 1
 
@@ -253,12 +256,12 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 if is_member_provider and is_member_streaming:
                     self.providers.remove(this_member.id)
                     await self.add_leech_coin(str(this_member.id))
-                    print(f"{this_member.name} is streaming when they said they would provide")
+                    logger.info(f"{this_member.name} is streaming when they said they would provide")
 
         if len(self.requests) > 0:
-            print("reqests: ", self.requests)
+            logger.info("reqests: %s", self.requests)
         if len(self.providers) > 0:
-            print("providers: ", self.providers)
+            logger.info("providers: %s", self.providers)
 
     # Role generation ----------------------------------------------------------
 
@@ -278,7 +281,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
             try:
                 leech_role = await guild.create_role(name=self.role_name, mentionable=True)
             except Exception as exception:  # pylint: disable=broad-except
-                print("Can't create role: ", exception)
+                logger.info("Can't create role: %s", exception)
                 return None
 
         return leech_role
@@ -354,7 +357,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         await self.update_account_status(user_id, user.name)
         await self.save_bank()
 
-        print(f"Added {to_add} coins to {user.name}. New balance:", self.bank[user_id])
+        logger.info(f"Added {to_add} coins to {user.name}. New balance:", self.bank[user_id])
 
     async def create_bank_account(self, user_id):
         """Add a user to the bank JSON.
@@ -367,7 +370,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         user = await self.bot.fetch_user(user_id)
         account = {"user_id": user_id, "name": user.name, "balance": self.starting_balance, "status": "Newfag"}
 
-        print("Created bank account for", user.name, "user_id", user_id, type(user_id))
+        logger.info("Created bank account for %s user_id %d %s", user.name, user_id, type(user_id))
         self.bank[user_id] = account
         await self.save_bank()
 
@@ -391,7 +394,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         else:
             new_status = "Despicable leech"
 
-        print(f"{user_name} status changed from {self.bank[user_id]['status']} to {new_status}")
+        logger.info(f"{user_name} status changed from {self.bank[user_id]['status']} to {new_status}")
         self.bank[user_id]["status"] = new_status
 
     async def remove_leech_coin(self, user_id):
@@ -409,7 +412,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         await self.update_account_status(user_id, user.name)
         await self.save_bank()
 
-        print(f"Removed coin from {user.name}. New balance:", self.bank[user_id])
+        logger.info(f"Removed coin from {user.name}. New balance:", self.bank[user_id])
 
     async def save_bank(self):
         """Save changes to the bank to file."""
@@ -442,7 +445,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         for idx, request in enumerate(self.requests):
             when_stale = datetime.datetime.fromisoformat(request["stale_after"])
             if when_stale < now:
-                print(f"removing {request['who']} from content requesters")
+                logger.info(f"removing {request['who']} from content requesters")
                 self.requests.pop(idx)
 
         # Then do same for providers. Done separately because they can be
@@ -451,5 +454,5 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         for idx, provider in enumerate(self.providers):
             when_stale = datetime.datetime.fromisoformat(provider["stale_after"])
             if when_stale < now:
-                print(f"removing {provider['who']} from content providers")
+                logger.info(f"removing {provider['who']} from content providers")
                 self.providers.pop(idx)

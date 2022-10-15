@@ -3,6 +3,7 @@
 
 import asyncio
 from functools import partial
+import logging
 
 import disnake
 from async_timeout import timeout
@@ -11,6 +12,8 @@ from youtube_dl import YoutubeDL
 from youtube_dl.postprocessor import ffmpeg
 
 import config
+
+logger = logging.getLogger("slashbot")
 
 cd_user = commands.BucketType.user
 
@@ -295,8 +298,8 @@ class Music(commands.Cog):
             if self.bot.user in members and len(members) == 1:
                 await self.cleanup(None, member.guild)
         except Exception as e:
-            # print(e)
-            # print(channel)
+            # logger.info(e)
+            # logger.info(channel)
             _ = e
 
     # Functions ----------------------------------------------------------------

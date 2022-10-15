@@ -3,12 +3,15 @@
 
 import datetime
 import json
+import logging
 
 import disnake
 import pyowm
 from disnake.ext import commands
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
+
+logger = logging.getLogger("slashbot")
 
 import config
 
@@ -65,7 +68,7 @@ class Weather(commands.Cog):
         def on_modify(_):
             with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
                 self.userdata = json.load(fp)
-            print("Reloaded userdata")
+            logger.info("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
@@ -317,7 +320,7 @@ class Weather(commands.Cog):
         where=commands.Param(default=None),
         country=commands.Param(default=None, converter=owm_convert_uk_to_gb),
     ):
-        """Print the weather forecast for a location.
+        """logger.info the weather forecast for a location.
 
         Parameters
         ----------
@@ -355,7 +358,7 @@ class Weather(commands.Cog):
         try:
             one_call = self.weather_api_manager.one_call(lat, lon)
         except Exception as exception:  # pylint: disable=broad-except
-            print("weather one_call error:", exception)
+            logger.info("weather one_call error: %s", exception)
             return await inter.edit_original_message(
                 content="Could not find that location in one call forecast database."
             )

@@ -3,12 +3,15 @@
 
 
 import json
+import logging
 
 from disnake.ext import commands
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 import config
+
+logger = logging.getLogger("slashbot")
 
 cd_user = commands.BucketType.user
 remember_options = ["location", "country", "badword", "fxtwitter"]
@@ -57,7 +60,7 @@ class Users(commands.Cog):
         def on_modify(_):
             with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
                 self.userdata = json.load(fp)
-            print("Reloaded userdata")
+            logger.info("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
@@ -102,7 +105,7 @@ class Users(commands.Cog):
             self.userdata[str(inter.author.id)] = {}
             self.userdata[str(inter.author.id)][thing] = value
 
-        print(f"{inter.author.name} has set {thing} to {value}")
+        logger.info(f"{inter.author.name} has set {thing} to {value}")
 
         with open(config.USERS_FILES, "w", encoding="utf-8") as fp:
             json.dump(self.userdata, fp)
