@@ -60,7 +60,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
     # Commands -----------------------------------------------------------------
 
-    ecommands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
         name="leaveleech",
         description="Leave the leech notification squad",
