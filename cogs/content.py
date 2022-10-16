@@ -20,7 +20,7 @@ CHECK_FREQUENCY_SECONDS = 60
 logger = logging.getLogger("slashbot")
 
 
-async def convert_yes_to_false(_, inp):
+async def convert_yes_to_false(_, inp: str) -> bool:
     """Swap Yes to False, so, e.g., if share == yes, then ephemeral=False."""
     if inp == "Yes":
         return False

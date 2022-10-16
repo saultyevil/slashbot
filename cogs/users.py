@@ -17,7 +17,7 @@ cd_user = commands.BucketType.user
 remember_options = ["location", "country", "badword", "fxtwitter"]
 
 
-async def autocomplete_remember_choices(inter, _):
+async def autocomplete_remember_choices(inter, _: str):
     """Autocompletion for choices for the remember command.
 
     Returns
@@ -29,7 +29,7 @@ async def autocomplete_remember_choices(inter, _):
     return ["enable", "disable"] if thing_chosen == "fxtwitter" else ""
 
 
-async def convert_fxtwitter_to_bool(inter, choice):
+async def convert_fxtwitter_to_bool(inter, choice: str) -> str:
     """Convert the fxtwitter option (enable/disable) to a bool.
 
     Parameters

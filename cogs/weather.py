@@ -29,7 +29,7 @@ def degrees_to_cardinal(d):
     return dirs[ix % 16]
 
 
-def owm_convert_uk_to_gb(_, choice):
+def owm_convert_uk_to_gb(_, choice: str) -> str:
     """Convert UK to GB for use in OWM.
 
     Parameters
