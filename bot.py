@@ -50,7 +50,7 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
     """Create the bot and run it."""
     start = time.time()
 
-    class Bot(commands.Bot):
+    class Bot(commands.InteractionBot):
         """Bot class, with changes for clean up on close."""
 
         def __init__(self, **kwargs):
@@ -105,7 +105,7 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
     intents.members = True  # pylint: disable=assigning-non-slot
     intents.invites = True  # pylint: disable=assigning-non-slot
 
-    bot = Bot(command_prefix=config.SYMBOL, intents=intents)
+    bot = Bot(intents=intents)
     spam = cogs.spam.Spam(bot, markovchain, badwords, godwords)
     info = cogs.info.Info(bot, spam.generate_sentence, badwords, godwords)
     reminder = cogs.remind.Reminder(bot, spam.generate_sentence)
