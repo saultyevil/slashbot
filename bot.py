@@ -9,6 +9,7 @@ import logging
 import os
 import pickle
 import time
+from pathlib import Path
 
 import disnake
 from disnake.ext import commands
@@ -23,7 +24,10 @@ import cogs.spam
 import cogs.users
 import cogs.videos
 import cogs.weather
+import cogs.admin
+
 import config
+
 from markovify import markovify  # pylint: disable=import-error
 
 # Set up logger ----------------------------------------------------------------
@@ -34,7 +38,8 @@ formatter = logging.Formatter(
 )
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
-file_handler = logging.FileHandler(filename="slashbot.log", encoding="utf-8", mode="w")
+log_path = Path("./slashbot.log")
+file_handler = logging.FileHandler(filename=log_path, encoding="utf-8", mode="w")
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 logger.propagate = False
@@ -109,6 +114,7 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
     weather = cogs.weather.Weather(bot, spam.generate_sentence)
     videos = cogs.videos.Videos(bot, badwords, spam.generate_sentence)
     users = cogs.users.Users(bot)
+    admin = cogs.admin.Admin(bot, log_path)
 
     # bot.add_cog(music)
     bot.add_cog(spam)
@@ -118,6 +124,7 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
     bot.add_cog(weather)
     bot.add_cog(videos)
     bot.add_cog(users)
+    bot.add_cog(admin)
     bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
 
     # Functions ------------------------------------------------------------
