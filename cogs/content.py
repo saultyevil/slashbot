@@ -4,7 +4,6 @@
 import datetime
 import json
 from pathlib import Path
-import re
 import logging
 
 import disnake
@@ -30,7 +29,7 @@ async def convert_yes_to_false(_, inp: str) -> bool:
 class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
     """Demand and provide content, and track leech balance."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         bot,
         generate_sentence,
@@ -103,10 +102,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         await inter.response.send_message(embed=embed, ephemeral=share)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(
-        name="needcontent",
-        description="Demand content, filthy leech",
-    )
+    @commands.slash_command(name="needcontent", description="Demand content, filthy leech", dm_permission=False)
     async def needcontent(self, inter):
         """Demand that there be content, filthy little leech.
 
@@ -158,10 +154,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         await inter.response.send_message(f"You've joined the {self.role_name} notification squad.", ephemeral=True)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(
-        name="contentcreator",
-        description="Provide content like a good boy",
-    )
+    @commands.slash_command(name="contentcreator", description="Provide content like a good boy", dm_permission=False)
     async def contentcreator(self, inter):
         """Provide content from the goodness of your heart, or heed the call
         for content."""

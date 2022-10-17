@@ -39,7 +39,9 @@ formatter = logging.Formatter(
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 log_path = Path("./slashbot.log")
-file_handler = logging.FileHandler(filename=log_path, encoding="utf-8", mode="w")
+file_handler = logging.handlers.RotatingFileHandler(
+    filename=log_path, encoding="utf-8", maxBytes=int(1e6), backupCount=5
+)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 logger.propagate = False
