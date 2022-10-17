@@ -1,3 +1,4 @@
+docker-env.env
 data/reminders.json
 data/users.json
 data/bank.json
