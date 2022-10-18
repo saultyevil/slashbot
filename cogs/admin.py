@@ -53,9 +53,10 @@ class Admin(commands.Cog):
         with open(self.log_path, "r", encoding="utf-8") as file_in:
             log_lines = file_in.readlines()
 
-        tail = log_lines[-n_lines:][-1990:]
+        tail = log_lines[-n_lines:]
+        formatted = " ".join(tail)[-:1990]
 
-        await inter.edit_original_message(f"```{tail}```")
+        await inter.edit_original_message(f"```{formatted}```")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="externip", description="get the external ip address for the bot")
@@ -68,6 +69,9 @@ class Admin(commands.Cog):
         ip_addr = requests.get("https://api.ipify.org").content.decode("utf-8")
         await inter.response.send_message(f"```{ip_addr}```", ephemeral=True)
 
+    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.slash_command(name="reboot", description="reboot the bot")
+    @commands.default_member_permissions(administrator=True)
     async def reboot(self, inter):
         """Restart the bot."""
         if inter.author.id != config.ID_USER_SAULTYEVIL:
