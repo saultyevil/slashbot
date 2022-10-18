@@ -6,6 +6,7 @@ The sole purpose of this bot is now to annoy Gareth.
 """
 
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import pickle
 import time
@@ -39,7 +40,7 @@ formatter = logging.Formatter(
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 log_path = Path("./slashbot.log")
-file_handler = logging.handlers.RotatingFileHandler(
+file_handler = RotatingFileHandler(
     filename=log_path, encoding="utf-8", maxBytes=int(1e6), backupCount=5
 )
 logger.addHandler(console_handler)
