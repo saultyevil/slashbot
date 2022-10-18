@@ -43,6 +43,7 @@ log_path = Path("./slashbot.log")
 file_handler = RotatingFileHandler(
     filename=log_path, encoding="utf-8", maxBytes=int(1e6), backupCount=5
 )
+file_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 logger.propagate = False
