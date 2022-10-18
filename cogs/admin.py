@@ -54,7 +54,7 @@ class Admin(commands.Cog):
             log_lines = file_in.readlines()
 
         tail = log_lines[-n_lines:]
-        formatted = " ".join(tail)[-:1990]
+        formatted = " ".join(tail)[-1990:]
 
         await inter.edit_original_message(f"```{formatted}```")
 
