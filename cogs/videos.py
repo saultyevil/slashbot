@@ -37,7 +37,7 @@ class Videos(commands.Cog):
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOLDOWN_USERS:
+        if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
@@ -207,7 +207,7 @@ class Videos(commands.Cog):
         user = self.bot.get_user(config.ID_USER_LIME)
         await channel.send(
             f"{user.mention} it's time to take the bins out!!! " + self.generate_sentence("bin"),
-            file = disnake.File("data/bin.png")
+            file=disnake.File("data/bin.png"),
         )
 
     # Sleep tasks --------------------------------------------------------------
@@ -278,6 +278,6 @@ class Videos(commands.Cog):
 
     @jack_bin_day.before_loop
     async def sleep_jack_bin_day(self):
-        """Sleep until Friday 5:45 am"""
+        """Sleep until Friday 5:45 am."""
         await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 5, 45))
         await self.bot.wait_until_ready()

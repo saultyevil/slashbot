@@ -3,8 +3,8 @@
 
 import datetime
 import json
-from pathlib import Path
 import logging
+from pathlib import Path
 
 import disnake
 from disnake.ext import commands, tasks
@@ -57,7 +57,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOLDOWN_USERS:
+        if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------

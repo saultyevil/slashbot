@@ -6,13 +6,13 @@
 import atexit
 import datetime
 import json
+import logging
 import pickle
 import random
 import re
 import shutil
 import string
 import xml
-import logging
 
 import disnake
 import requests
@@ -69,7 +69,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOLDOWN_USERS:
+        if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
 
     # Slash commands -----------------------------------------------------------

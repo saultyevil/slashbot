@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import json
-import random
 import logging
+import random
 
 import disnake
 import magic8ball
@@ -87,7 +87,7 @@ class Info(commands.Cog):
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOLDOWN_USERS:
+        if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------

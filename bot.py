@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 """Slashbot is another discord bot, using slash command.
 
 The sole purpose of this bot is now to annoy Gareth.
 """
 
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 import pickle
 import time
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-import disnake
-from disnake.ext import commands
 import aiohttp
+import disnake
 import requests
+from disnake.ext import commands
 
+import cogs.admin
 import cogs.content
 import cogs.info
 import cogs.music
@@ -25,76 +27,73 @@ import cogs.spam
 import cogs.users
 import cogs.videos
 import cogs.weather
-import cogs.admin
-
 import config
-
 from markovify import markovify  # pylint: disable=import-error
 
 # Set up logger ----------------------------------------------------------------
 
-logger = logging.getLogger("slashbot")
+logger = logging.getLogger(config.LOGGER_NAME)
 formatter = logging.Formatter(
     "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
 )
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
-log_path = Path("./slashbot.log")
-file_handler = RotatingFileHandler(
-    filename=log_path, encoding="utf-8", maxBytes=int(1e6), backupCount=5
-)
+file_handler = RotatingFileHandler(filename=config.LOGFILE_NAME, encoding="utf-8", maxBytes=int(5e5), backupCount=5)
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
-logger.propagate = False
 logger.setLevel(logging.INFO)
+logger.propagate = False
 
 
-def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
+class Bot(commands.InteractionBot):
+    """Bot class, with changes for clean up on close."""
+
+    def __init__(self, **kwargs):
+        """Initialize the class."""
+        super().__init__(**kwargs)
+        self.cleanup_functions = []
+
+    def add_to_cleanup(self, name, function, args):
+        """Add a function to the cleanup list.
+
+        Parameters
+        ----------
+        function: function
+            The function to add to the clean up routine.
+        args: tuple
+            The arguments to pass to the function.
+        """
+        self.cleanup_functions.append({"name": name, "function": function, "args": args})
+
+    async def close(self):
+        """Clean up things on close."""
+        for function in self.cleanup_functions:
+            print(f"{function['name']}")
+            if function["args"]:
+                await function["function"](*function["args"])
+            else:
+                await function["function"]()
+        await super().close()
+
+
+def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-statements
     """Create the bot and run it."""
     start = time.time()
 
-    class Bot(commands.InteractionBot):
-        """Bot class, with changes for clean up on close."""
-
-        def __init__(self, **kwargs):
-            """Initialize the class."""
-            super().__init__(**kwargs)
-            self.cleanup_functions = []
-
-        def add_to_cleanup(self, name, function, args):
-            """Add a function to the cleanup list.
-
-            Parameters
-            ----------
-            function: function
-                The function to add to the clean up routine.
-            args: tuple
-                The arguments to pass to the function.
-            """
-            self.cleanup_functions.append({"name": name, "function": function, "args": args})
-
-        async def close(self):
-            """Clean up things on close."""
-            for function in self.cleanup_functions:
-                print(f"{function['name']}")
-                if function["args"]:
-                    await function["function"](*function["args"])
-                else:
-                    await function["function"]()
-            await super().close()
-
     # Load in the markov chain and various other data --------------------------
 
-    markovchain = markovify.Text("Jack is a naughty boy.", state_size=2)
+    markov_chain = markovify.Text("Jack is a naughty boy.", state_size=2)
     if os.path.exists("data/chain.pickle"):
         with open("data/chain.pickle", "rb") as file_in:
-            markovchain.chain = pickle.load(file_in)
+            markov_chain.chain = pickle.load(file_in)
 
-    with open(config.BADWORDS_FILE, "r", encoding="utf-8") as file_in:
-        badwords = file_in.readlines()[0].split()
+    with open(config.BAD_WORDS_FILE, "r", encoding="utf-8") as file_in:
+        bad_words = file_in.readlines()[0].split()
 
-    with open(config.GODWORDS_FILE, "r", encoding="utf-8") as file_in:
-        godwords = file_in.read().splitlines()
+    with open(config.GOD_WORDS_FILE, "r", encoding="utf-8") as file_in:
+        god_words = file_in.read().splitlines()
+
+    # Check for files which don't exist, and create empty files if they dont
 
     for file in config.ALL_FILES:
         if not os.path.exists(file):
@@ -103,23 +102,22 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
 
     # Set up the bot and cogs --------------------------------------------------
 
-    intents = disnake
     intents = disnake.Intents.default()
     intents.members = True  # pylint: disable=assigning-non-slot
     intents.invites = True  # pylint: disable=assigning-non-slot
 
+    # Create bot and the various different cogs
     bot = Bot(intents=intents)
-    spam = cogs.spam.Spam(bot, markovchain, badwords, godwords)
-    info = cogs.info.Info(bot, spam.generate_sentence, badwords, godwords)
+    spam = cogs.spam.Spam(bot, markov_chain, bad_words, god_words)
+    info = cogs.info.Info(bot, spam.generate_sentence, bad_words, god_words)
     reminder = cogs.remind.Reminder(bot, spam.generate_sentence)
-    # music = cogs.music.Music(bot)
     content = cogs.content.Content(bot, spam.generate_sentence)
     weather = cogs.weather.Weather(bot, spam.generate_sentence)
-    videos = cogs.videos.Videos(bot, badwords, spam.generate_sentence)
+    videos = cogs.videos.Videos(bot, bad_words, spam.generate_sentence)
     users = cogs.users.Users(bot)
-    admin = cogs.admin.Admin(bot, log_path)
+    admin = cogs.admin.Admin(bot, config.LOGFILE_NAME)
 
-    # bot.add_cog(music)
+    # Add all the cogs to the bot
     bot.add_cog(spam)
     bot.add_cog(info)
     bot.add_cog(reminder)
@@ -128,9 +126,12 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
     bot.add_cog(videos)
     bot.add_cog(users)
     bot.add_cog(admin)
+
+    # This part is adding various clean up functions to run when the bot
+    # closes, e.g. on keyboard interrupt
     bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
 
-    # Functions ------------------------------------------------------------
+    # Bot events ---------------------------------------------------------------
 
     @bot.event
     async def on_ready():
@@ -141,7 +142,7 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
         logger.info("Started in %.2f seconds", time.time() - start)
 
     @bot.event
-    async def on_slash_command_error(ctx, error):
+    async def on_slash_command_error(inter, error):
         """Handle different types of errors.
 
         Parameters
@@ -149,12 +150,13 @@ def create_and_run_bot():  # pylint: disable=too-many-locals too-many-statements
         error: Exception
             The error that occurred.
         """
-
-        logger.info("%s for %s failed with error:", ctx.application_command.name, ctx.author.name)
+        logger.info("%s for %s failed with error:", inter.application_command.name, inter.author.name)
         logger.info(error)
 
         if isinstance(error, commands.errors.CommandOnCooldown):
-            return await ctx.response.send_message("This command is on cooldown for you.", ephemeral=True)
+            return await inter.response.send_message("This command is on cool down for you.", ephemeral=True)
+
+    # This finally runs the bot
 
     bot.run(os.environ["BOT_TOKEN"])
 
@@ -169,5 +171,5 @@ if __name__ == "__main__":
             create_and_run_bot()
             break  # exit for other errors
         except (ConnectionError, aiohttp.ClientConnectorError, requests.exceptions.ConnectionError):
-            logger.error("Attempting to restart bot in 10s")  # pylint: disable=logging-fstring-interpolation
+            logger.error("No network connection, attempting to restart in 10s")
             time.sleep(10)

@@ -3,8 +3,8 @@
 
 import datetime
 import json
-import re
 import logging
+import re
 
 import disnake
 from dateutil import parser
@@ -54,7 +54,7 @@ class Reminder(commands.Cog):
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOLDOWN_USERS:
+        if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
@@ -185,7 +185,7 @@ class Reminder(commands.Cog):
     @commands.slash_command(name="allplanned", description="view all the reminders, if you're allowed to")
     async def show_all(self, inter):
         """Show all the reminders."""
-        if inter.author.id not in config.NO_COOLDOWN_USERS:
+        if inter.author.id not in config.NO_COOL_DOWN_USERS:
             return await inter.response.send_message(
                 "You do not have permission to view all the reminders.", ephemeral=True
             )
