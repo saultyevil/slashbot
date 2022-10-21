@@ -96,7 +96,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
     @commands.slash_command(name="8ball", description="ask the magic 8 ball a question")
     async def ball(
         self,
-        inter: disnake.ApplicationCommand,
+        inter: disnake.ApplicationCommandInteraction,
         question: str = commands.Param(description="The question to ask the 8ball."),
     ) -> coroutine:
         """Ask the magical ball a question.
