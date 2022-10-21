@@ -106,43 +106,6 @@ class Info(commands.Cog):
             question += "?"
         await inter.response.send_message(f"*{question}* {random.choice(magic8ball.list)}")
 
-    @commands.slash_command(name="help", description="get some help")
-    async def help(self, inter, one_command=None):
-        """Display help for the bot and commands.
-
-        Parameters
-        ----------
-        command: str
-            The name of a command to query.
-        """
-        global_commands = self.bot.global_application_commands
-        if not global_commands:
-            return await inter.response.send_message("There were no commands found.", ephemeral=True)
-
-        global_commands = sorted(global_commands, key=lambda x: x.name)
-        global_commands = {
-            command.name: {
-                "description": command.description,
-                "options": command.options,
-            }
-            for command in global_commands
-        }
-
-        if one_command:
-            if one_command not in global_commands:
-                return await inter.response.send_message(f"Command `{one_command}` not found.", ephemeral=True)
-            name = one_command
-            one_command = global_commands[one_command]
-            message = f"`{name}`-- {one_command['description']}\nParameters:\n"
-            for option in one_command["options"]:
-                message += f"  • {option.name} - {option.description}\n"
-        else:
-            message = f"There are {len(global_commands)} commands.\n\n"
-            for this_command in global_commands:
-                message += f"• `{this_command}` - {global_commands[this_command]['description']}\n"
-
-        await inter.response.send_message(message, ephemeral=True)
-
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="roll", description="roll a dice")
     async def roll(self, inter, n):
