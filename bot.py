@@ -11,7 +11,6 @@ import os
 import pickle
 import time
 from logging.handlers import RotatingFileHandler
-from pathlib import Path
 
 import aiohttp
 import disnake
@@ -21,7 +20,6 @@ from disnake.ext import commands
 import cogs.admin
 import cogs.content
 import cogs.info
-import cogs.music
 import cogs.remind
 import cogs.spam
 import cogs.users

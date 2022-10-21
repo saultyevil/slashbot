@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Admin commands for the bot.
-"""
+"""Admin commands for the bot."""
 
 import logging
 import os
 import sys
 from pathlib import Path
 
-import requests
 import disnake
+import requests
 from disnake.ext import commands
 
 import config
@@ -47,7 +46,7 @@ class Admin(commands.Cog):
         inter: disnake.ApplicationCommandInteraction,
         num_lines: int = commands.Param(
             default=10,
-            name="Number of lines",
+            name="num_lines",
             description="The number of lines to include in the tail of the log file.",
             max_value=50,
             min_value=1,
