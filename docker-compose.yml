@@ -5,9 +5,8 @@ services:
     restart: unless-stopped
     environment:
       - BOT_TOKEN
-      - YT_VIDEO_KEY
-      - OWM_KEY
-      - WOLFRAM_ID
-      - NEWS_API
-      - TWITTER_BEARER
+      - GOOGLE_API_KEY
+      - OWM_API_KEY
+      - WOLFRAM_API_KEY
+      - TWITTER_API_KEY
     env_file: docker-env.env
