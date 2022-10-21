@@ -12,7 +12,6 @@ import wolframalpha
 from disnake.ext import commands
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from newsapi import NewsApiClient
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
@@ -20,35 +19,6 @@ import config
 
 logger = logging.getLogger(config.LOGGER_NAME)
 cd_user = commands.BucketType.user
-
-
-news_sources = [
-    "abc-news",
-    "al-jazeera-english",
-    "ars-technica",
-    "associated-press",
-    "bbc-news",
-    "blasting-news-br",
-    "breitbart-news",
-    "buzzfeed",
-    "crypto-coins-news",
-    "fortune",
-    "fox-news",
-    "google-news",
-    "hacker-news",
-    "ign",
-    "independent",
-    "new-scientist",
-    "reddit-r-all",
-    "reuters",
-    "techradar",
-    "the-huffington-post",
-    "the-jerusalem-post",
-    "the-lad-bible",
-    "the-verge",
-    "the-wall-street-journal",
-    "vice-news",
-]
 
 
 class Info(commands.Cog):
@@ -76,8 +46,6 @@ class Info(commands.Cog):
 
         self.wolfram_api = wolframalpha.Client(config.WOLFRAM_API_KEY)
         self.youtube_api = build("youtube", "v3", developerKey=config.GOOGLE_API_KEY)
-        self.news_api = NewsApiClient(api_key=config.NEWS_API_KEY)
-        self.news_api_sources = [source["id"] for source in self.news_api.get_sources()["sources"]]
 
     # Before command invoke ----------------------------------------------------
 
@@ -117,58 +85,6 @@ class Info(commands.Cog):
             The number of sides of the dice.
         """
         await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(n))}.")
-
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="news", description="get the news")
-    async def news(self, inter, source=commands.Param(default="bbc-news", choices=news_sources)):
-        """Get the news headlines for the given source.
-
-        Parameters
-        ----------
-        source: str
-            The news source.
-        """
-        await inter.response.defer()
-
-        try:
-            api_return = self.news_api.get_top_headlines(sources=source)
-            articles = api_return["articles"]
-        except:  # pylint: disable=bare-except
-            return await inter.edit_original_message("Reached the maximum number of news requests for the day.")
-
-        if not articles:
-            return await inter.response.send_message(f"No articles were found for {source}.")
-
-        logger.info(api_return)
-        logger.info(articles[0], articles[1])
-
-        author = articles[0]["source"]["Name"]
-        image = articles[0].get("urlToImage", None)
-        embed = disnake.Embed(title=f"Top articles from {author}", color=disnake.Color.default())
-
-        for n, article in enumerate(articles[:3]):
-            # title, url, description = (
-            #     article["title"],
-            #     article["url"],
-            #     article["description"],
-            # )
-            title, url = (
-                article["title"],
-                article["url"],
-            )
-            embed.add_field(
-                name=f"{n + 1}. {title}",
-                # value=f"{description[:128]}...\n{url}",
-                value=f"{url}",
-                inline=False,
-            )
-
-        embed.set_footer(text=f"{self.generate_sentence('news')}")
-
-        if image:
-            embed.set_thumbnail(url=image)
-
-        await inter.edit_original_message(embed=embed)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")

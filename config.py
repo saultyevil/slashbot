@@ -45,7 +45,6 @@ NO_COOL_DOWN_USERS = [ID_USER_SAULTYEVIL]
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 WOLFRAM_API_KEY = os.getenv("WOLFRAM_API_KEY")
 OWN_API_KEY = os.getenv("OWM_API_KEY")
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 TWITTER_BEARER_KEY = os.getenv("TWITTER_BEARER_KEY")
 
 # File locations for staring data
