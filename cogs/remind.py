@@ -15,7 +15,7 @@ from watchdog.observers import Observer
 
 import config
 
-logger = logging.getLogger("slashbot")
+logger = logging.getLogger(config.LOGGER_NAME)
 
 cd_user = commands.BucketType.user
 time_units = {
@@ -24,7 +24,7 @@ time_units = {
     "minutes": 60,
     "hours": 3600,
 }
-whofor = ["here", "dm", "both"]
+who_for = ["here", "dm", "both"]
 
 
 class Reminder(commands.Cog):
@@ -67,7 +67,7 @@ class Reminder(commands.Cog):
         when: str = commands.Param(),
         time_unit=commands.Param(choices=list(time_units.keys())),
         reminder=commands.Param(),
-        where=commands.Param(default="here", choices=whofor),
+        where=commands.Param(default="here", choices=who_for),
     ):
         """Set a reminder.
 

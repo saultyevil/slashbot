@@ -25,7 +25,7 @@ from watchdog.observers import Observer
 import config
 from markovify import markovify
 
-logger = logging.getLogger("slashbot")
+logger = logging.getLogger(config.LOGGER_NAME)
 
 cd_user = commands.BucketType.user
 
@@ -33,11 +33,11 @@ cd_user = commands.BucketType.user
 class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """A collection of commands to spam the chat with."""
 
-    def __init__(self, bot, markov, badwords, godwords, attempts=10):  # pylint: disable=too-many-arguments
+    def __init__(self, bot, markov, bad_words, god_words, attempts=10):  # pylint: disable=too-many-arguments
         self.bot = bot
         self.markov = markov
-        self.badwords = badwords
-        self.godwords = godwords
+        self.bad_words = bad_words
+        self.god_words = god_words
         self.attempts = attempts
         self.messages = {}
         self.rule34_api = r34.Rule34()
@@ -45,11 +45,11 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.twitter = tweepy.Client(config.TWITTER_BEARER_KEY)
 
         with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-            self.userdata = json.load(fp)
+            self.user_data = json.load(fp)
 
         def on_modify(_):
             with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-                self.userdata = json.load(fp)
+                self.user_data = json.load(fp)
             logger.info("Reloaded userdata")
 
         observer = Observer()
@@ -78,17 +78,17 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
     @commands.slash_command(name="badword", description="send a naughty word")
     async def badword(self, inter):
         """Send a badword to the chat."""
-        badword = random.choice(self.badwords)
+        bad_word = random.choice(self.bad_words)
 
-        no_user_badword = True
-        for user_id, items in self.userdata.items():
-            if badword == items.get("badword", None):
-                no_user_badword = False
+        no_user_bad_word = True
+        for user_id, items in self.user_data.items():
+            if bad_word == items.get("badword", None):
+                no_user_bad_word = False
                 user = inter.guild.get_member(int(user_id))
-                await inter.response.send_message(f"Here's one for ya, {user.mention} pal ... {badword}!")
+                await inter.response.send_message(f"Here's one for ya, {user.mention} pal ... {bad_word}!")
 
-        if no_user_badword:
-            await inter.response.send_message(f"{badword.capitalize()}.")
+        if no_user_bad_word:
+            await inter.response.send_message(f"{bad_word.capitalize()}.")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
@@ -161,7 +161,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
     @commands.slash_command(name="oracle", description="a message from god")
     async def oracle(self, inter):
         """Send a Terry Davis inspired "God message" to the chat."""
-        words = random.sample(self.godwords, random.randint(7, 15))
+        words = random.sample(self.god_words, random.randint(7, 15))
         await inter.response.send_message(f"{' '.join(words)}")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
@@ -253,7 +253,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
 
         # Replace twitter video links with fx/vx twitter links
         # Check if someone has opted out. If not set, default to False
-        fx_enabled = self.userdata.get(str(message.author.id), {}).get("fxtwitter", False)
+        fx_enabled = self.user_data.get(str(message.author.id), {}).get("fxtwitter", False)
 
         if fx_enabled and "https://twitter.com/" in message.content:
             new_url, old_url = self.convert_twitter_video_links(message.content)

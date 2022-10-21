@@ -18,8 +18,7 @@ from watchdog.observers import Observer
 
 import config
 
-logger = logging.getLogger("slashbot")
-
+logger = logging.getLogger(config.LOGGER_NAME)
 cd_user = commands.BucketType.user
 
 
@@ -55,18 +54,18 @@ news_sources = [
 class Info(commands.Cog):
     """Query information from the internet."""
 
-    def __init__(self, bot, generate_sentence, badwords, godwords, attempts=10):
+    def __init__(self, bot, generate_sentence, bad_words, god_words, attempts=10):
         self.bot = bot
         self.generate_sentence = generate_sentence
         self.attempts = attempts
-        self.badwords = badwords
-        self.godwords = godwords
+        self.bad_words = bad_words
+        self.god_words = god_words
         with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-            self.userdata = json.load(fp)
+            self.user_data = json.load(fp)
 
         def on_modify(_):
             with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-                self.userdata = json.load(fp)
+                self.user_data = json.load(fp)
             logger.info("Reloaded userdata")
 
         observer = Observer()
@@ -95,7 +94,7 @@ class Info(commands.Cog):
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="8ball", description="ask the magicall ball a question")
     async def ball(self, inter, question):
-        """Ask the magicall ball a question.
+        """Ask the magical ball a question.
 
         Parameters
         ----------
@@ -232,7 +231,7 @@ class Info(commands.Cog):
         if not results["@success"]:
             embed.add_field(
                 name=f"{question}",
-                value=f"You {random.choice(self.badwords)}, you asked a question Stephen Wolfram couldn't answer.",
+                value=f"You {random.choice(self.bad_words)}, you asked a question Stephen Wolfram couldn't answer.",
                 inline=False,
             )
             return await inter.edit_original_message(embed=embed)
@@ -272,7 +271,7 @@ class Info(commands.Cog):
         """
         await inter.response.defer()
         if query is None:
-            query = random.sample(self.godwords, random.randint(1, 5))
+            query = random.sample(self.god_words, random.randint(1, 5))
 
         try:
             # pylint: disable=no-member

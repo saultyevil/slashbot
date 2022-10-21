@@ -5,7 +5,6 @@ import asyncio
 import calendar
 import datetime
 import random
-import re
 
 import disnake
 from disnake.ext import commands, tasks
@@ -18,9 +17,9 @@ cd_user = commands.BucketType.user
 class Videos(commands.Cog):
     """Send short clips to the channel."""
 
-    def __init__(self, bot, badwords, generate_sentence):
+    def __init__(self, bot, bad_words, generate_sentence):
         self.bot = bot
-        self.badwords = badwords
+        self.bad_words = bad_words
         self.generate_sentence = generate_sentence
 
         self.monday_morning.start()  # pylint: disable=no-member
@@ -50,8 +49,8 @@ class Videos(commands.Cog):
         await inter.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
 
     @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="goodmorning", description="good morning people")
-    async def goodmorning(self, inter):
+    @commands.slash_command(name="good_morning", description="good morning people")
+    async def good_morning(self, inter):
         """Send a video of Marko saying good morning people."""
         await inter.response.defer()
         time = datetime.datetime.now()
@@ -79,41 +78,41 @@ class Videos(commands.Cog):
         await inter.response.defer()
         await inter.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
 
-    @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="spit", description="i spit in your direction")
-    async def spit(self, inter, mention=None):
-        """Send the GIF of the girl spitting."""
-        await inter.response.defer()
+    # @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
+    # @commands.slash_command(name="spit", description="i spit in your direction")
+    # async def spit(self, inter, mention=None):
+    #     """Send the GIF of the girl spitting."""
+    #     await inter.response.defer()
 
-        message = ""
+    #     message = ""
 
-        if mention:
-            users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
+    #     if mention:
+    #         users = [user for user in re.findall(r"\<@!(.*?)\>", mention)]
 
-            mentions = []
-            for user in users:
-                user = self.bot.get_user(int(user))
-                if inter.author.id == config.ID_USER_ADAM:
-                    mentions.append(f"{user.name}")
-                else:
-                    mentions.append(f"{user.mention}")
-            if users:
-                badword = random.choice(self.badwords)
-                if len(users) == 1 and badword[-1] == "s":
-                    badword = badword[:-1]
-                message = "I spit at " + ", ".join(mentions) + f", the {badword}"
-                if len(users) > 1:
-                    message += "s"
-                message += "."
+    #         mentions = []
+    #         for user in users:
+    #             user = self.bot.get_user(int(user))
+    #             if inter.author.id == config.ID_USER_ADAM:
+    #                 mentions.append(f"{user.name}")
+    #             else:
+    #                 mentions.append(f"{user.mention}")
+    #         if users:
+    #             badword = random.choice(self.bad_words)
+    #             if len(users) == 1 and badword[-1] == "s":
+    #                 badword = badword[:-1]
+    #             message = "I spit at " + ", ".join(mentions) + f", the {badword}"
+    #             if len(users) > 1:
+    #                 message += "s"
+    #             message += "."
 
-        await inter.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
+    #     await inter.edit_original_message(content=message, file=disnake.File("data/spit.gif"))
 
-    @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="what", description="what is a?")
-    async def what(self, inter):
-        """Send a video of Marko saying a naughty word."""
-        await inter.response.defer()
-        await inter.edit_original_message(file=disnake.File("data/videos/what_is_a.mp4"))
+    # @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
+    # @commands.slash_command(name="what", description="what is a?")
+    # async def what(self, inter):
+    #     """Send a video of Marko saying a naughty word."""
+    #     await inter.response.defer()
+    #     await inter.edit_original_message(file=disnake.File("data/videos/what_is_a.mp4"))
 
     # Utility functions --------------------------------------------------------
 
@@ -147,7 +146,7 @@ class Videos(commands.Cog):
 
         return next_date.days * 86400 + next_date.seconds
 
-    # Sheduled videos ----------------------------------------------------------
+    # Scheduled videos ---------------------------------------------------------
 
     @tasks.loop(hours=config.HOURS_IN_WEEK)
     async def monday_morning(self):

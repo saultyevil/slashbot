@@ -10,10 +10,10 @@ import pyowm
 from disnake.ext import commands
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
-
-logger = logging.getLogger("slashbot")
-
 import config
+
+logger = logging.getLogger(config.LOGGER_NAME)
+
 
 cd_user = commands.BucketType.user
 weather_units = ["metric", "imperial"]

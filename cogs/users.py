@@ -11,7 +11,7 @@ from watchdog.observers import Observer
 
 import config
 
-logger = logging.getLogger("slashbot")
+logger = logging.getLogger(config.LOGGER_NAME)
 
 cd_user = commands.BucketType.user
 remember_options = ["location", "country", "badword", "fxtwitter"]
@@ -54,12 +54,12 @@ class Users(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-            self.userdata = json.load(fp)
+        with open(config.USERS_FILES, "r", encoding="utf-8") as file_in:
+            self.user_data = json.load(file_in)
 
         def on_modify(_):
-            with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-                self.userdata = json.load(fp)
+            with open(config.USERS_FILES, "r", encoding="utf-8") as file_in:
+                self.user_data = json.load(file_in)
             logger.info("Reloaded userdata")
 
         observer = Observer()
@@ -100,14 +100,14 @@ class Users(commands.Cog):
         value = value.lower() if isinstance(value, str) else value
 
         try:
-            self.userdata[str(inter.author.id)][thing] = value
+            self.user_data[str(inter.author.id)][thing] = value
         except KeyError:
-            self.userdata[str(inter.author.id)] = {}
-            self.userdata[str(inter.author.id)][thing] = value
+            self.user_data[str(inter.author.id)] = {}
+            self.user_data[str(inter.author.id)][thing] = value
 
         logger.info(f"{inter.author.name} has set {thing} to {value}")
 
         with open(config.USERS_FILES, "w", encoding="utf-8") as fp:
-            json.dump(self.userdata, fp)
+            json.dump(self.user_data, fp)
 
         await inter.response.send_message(f"{thing.capitalize()} has been set to {value}.", ephemeral=True)
