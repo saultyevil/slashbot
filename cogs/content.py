@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """Commands for requesting and providing content, as well as tracking leech
-coins.
-"""
+coins."""
 
 import datetime
 import json
@@ -80,8 +79,16 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 

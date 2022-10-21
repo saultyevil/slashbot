@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Commands for searching for stuff on the internet, and etc."""
+
 import json
 import logging
 import random
+from types import coroutine
+from typing import List
 
 import disnake
 import magic8ball
@@ -21,21 +25,42 @@ logger = logging.getLogger(config.LOGGER_NAME)
 cd_user = commands.BucketType.user
 
 
-class Info(commands.Cog):
+class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
-    def __init__(self, bot, generate_sentence, bad_words, god_words, attempts=10):
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        bot: commands.InteractionBot,
+        generate_sentence: callable,
+        bad_words: List[str],
+        god_words: List[str],
+        attempts: int = 10,
+    ) -> None:
+        """Initialize the bot.
+        Parameters
+        ----------
+        bot: commands.InteractionBot
+            The bot object.
+        generate_sentence: callable
+            A function to generate sentences given a seed word.
+        bad_words: List[str]
+            A list of bad words.
+        god_words: List[str]
+            A list of god words
+        attempts: int
+            The number of attempts to try and generate a sentence for.
+        """
         self.bot = bot
         self.generate_sentence = generate_sentence
         self.attempts = attempts
         self.bad_words = bad_words
         self.god_words = god_words
-        with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-            self.user_data = json.load(fp)
+        with open(config.USERS_FILES, "r", encoding="utf-8") as file_in:
+            self.user_data = json.load(file_in)
 
         def on_modify(_):
-            with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-                self.user_data = json.load(fp)
+            with open(config.USERS_FILES, "r", encoding="utf-8") as file_in:
+                self.user_data = json.load(file_in)
             logger.info("Reloaded userdata")
 
         observer = Observer()
@@ -49,8 +74,16 @@ class Info(commands.Cog):
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
@@ -60,8 +93,12 @@ class Info(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="8ball", description="ask the magicall ball a question")
-    async def ball(self, inter, question):
+    @commands.slash_command(name="8ball", description="ask the magic 8 ball a question")
+    async def ball(
+        self,
+        inter: disnake.ApplicationCommand,
+        question: str = commands.Param(description="The question to ask the 8ball."),
+    ) -> coroutine:
         """Ask the magical ball a question.
 
         Parameters
@@ -72,30 +109,40 @@ class Info(commands.Cog):
         question = question.capitalize()
         if question[-1] != "?":
             question += "?"
-        await inter.response.send_message(f"*{question}* {random.choice(magic8ball.list)}")
+
+        return await inter.response.send_message(f"*{question}*\n{random.choice(magic8ball.list)}")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="roll", description="roll a dice")
-    async def roll(self, inter, n):
-        """Roll a random number from 1 to n.
+    async def roll(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        num_sides: int = commands.Param(default=6, description="The number of sides to the dice.", min_value=1),
+    ) -> coroutine:
+        """Roll a random number from 1 to num_sides.
 
         Parameters
         ----------
         n: int
             The number of sides of the dice.
         """
-        await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(n))}.")
+        return await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")
-    async def wolfram(self, inter, question: str, n_sols: int = 1):
+    async def wolfram(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        question: str = commands.Param(description="The question to ask Stephen Wolfram."),
+        num_solutions: int = commands.Param(default=1, description="The number of solutions to display.", min_value=1),
+    ) -> coroutine:
         """Submit a query to wolfram alpha.
 
         Parameters
         ----------
         question: str
             The question to ask.
-        n_sols: int
+        n_solutions: int
             The number of solutions to return.
         """
         await inter.response.defer()
@@ -117,13 +164,13 @@ class Info(commands.Cog):
 
         # only go through the first N results to add to embed
 
-        results = [result for result in results.pods]
+        results = list(results.pods)
 
-        n_sols += 1
-        if n_sols > len(results):
-            n_sols = len(results)
+        num_solutions += 1
+        if num_solutions > len(results):
+            num_solutions = len(results)
 
-        for n_sol, result in enumerate(results[1:n_sols]):
+        for n_sol, result in enumerate(results[1:num_solutions]):
             # have to check if the result is a list of results, or just a single result
             # probably a better way to do this
             if isinstance(result["subpod"], list):
@@ -140,7 +187,11 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="youtube", description="search for a youtube video")
-    async def youtube(self, inter, query=None):
+    async def youtube(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        query: str = commands.Param(default=None, description="The term to search on YouTube."),
+    ) -> coroutine:
         """Embeds the first result on youtube for the search term.
 
         Parameters
@@ -156,8 +207,7 @@ class Info(commands.Cog):
             # pylint: disable=no-member
             response = self.youtube_api.search().list(q=query, part="snippet", maxResults=1).execute()
         except HttpError:
-            await inter.edit_original_message(content="Maximum number of daily YouTube calls has been reached.")
-            return
+            return await inter.edit_original_message(content="Maximum number of daily YouTube calls has been reached.")
 
         video_id = response["items"][0]["id"]["videoId"]
         request = (
@@ -166,6 +216,6 @@ class Info(commands.Cog):
         response = json.loads(requests.get(request).text)
         views = int(response["items"][0]["statistics"]["viewCount"])
 
-        await inter.edit_original_message(
+        return await inter.edit_original_message(
             content=f"https://www.youtube.com/watch?v={video_id}\n>>> View count: {views:,}"
         )

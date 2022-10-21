@@ -28,8 +28,16 @@ class Admin(commands.Cog):
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
@@ -46,7 +54,6 @@ class Admin(commands.Cog):
         inter: disnake.ApplicationCommandInteraction,
         num_lines: int = commands.Param(
             default=10,
-            name="num_lines",
             description="The number of lines to include in the tail of the log file.",
             max_value=50,
             min_value=1,

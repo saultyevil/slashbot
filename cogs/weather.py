@@ -10,6 +10,7 @@ import pyowm
 from disnake.ext import commands
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
+
 import config
 
 logger = logging.getLogger(config.LOGGER_NAME)
