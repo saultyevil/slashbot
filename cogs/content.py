@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Commands for requesting and providing content, as well as tracking leech
+coins.
+"""
+
 import datetime
 import json
 import logging
 from pathlib import Path
 from types import coroutine
+from typing import Union
 
 import disnake
 from disnake.ext import commands, tasks
@@ -282,9 +287,9 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
     # Events -------------------------------------------------------------------
 
     @commands.Cog.listener("on_voice_state_update")
-    async def check_if_user_started_streaming(
+    async def check_if_user_started_streaming(  # pylint: disable=too-many-locals
         self, member: disnake.Member, before: disnake.VoiceState, after: disnake.VoiceState
-    ) -> None:  # pylint: disable=too-many-locals
+    ) -> None:
         """Check if a user starts streaming after a request.
 
         Parameters
@@ -404,7 +409,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
     # Functions ----------------------------------------------------------------
 
-    async def prepare_for_leech_command(self, guild, user):
+    async def prepare_for_leech_command(self, guild: disnake.Guild, user: disnake.User) -> Union[str, disnake.Role]:
         """Check a bank account exists and assign to role.
 
         Parameters
@@ -418,19 +423,23 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         -------
         user.id: int
             The id of the user.
+        leech_role: disnake.Role
+            The Role object for the guild.
         """
         await self.check_or_create_account(str(user.id))
         leech_role = await self.get_or_create_leech_role(guild)
 
         return str(user.id), leech_role
 
-    async def add_leech_coin(self, user_id, to_add=1):
+    async def add_leech_coin(self, user_id: int, to_add: int = 1) -> None:
         """Add a leech coin to a user's bank.
 
         Parameters
         ----------
         user_id: int
             The ID of the user.
+        to_add: int
+            The number of coins to add.
         """
         user = await self.bot.fetch_user(user_id)
 
@@ -439,15 +448,20 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         await self.update_account_status(user_id, user.name)
         await self.save_bank()
 
-        logger.info(f"Added {to_add} coins to {user.name}. New balance:", self.bank[user_id])
+        logger.info("Added %i coins to %s. New balance: %i", to_add, user.name, self.bank[user_id])
 
-    async def create_bank_account(self, user_id):
+    async def create_bank_account(self, user_id: int) -> dict:
         """Add a user to the bank JSON.
 
         Parameters
         ----------
         user_id: int
             The ID of the user.
+
+        Returns
+        -------
+        account: dict
+            The account for the user.
         """
         user = await self.bot.fetch_user(user_id)
         account = {"user_id": user_id, "name": user.name, "balance": self.starting_balance, "status": "Newfag"}
@@ -458,7 +472,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return account
 
-    async def update_account_status(self, user_id, user_name):
+    async def update_account_status(self, user_id: int, user_name: str) -> None:
         """Update the account status depending on balance.
 
         Parameters
@@ -476,10 +490,10 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         else:
             new_status = "Despicable leech"
 
-        logger.info(f"{user_name} status changed from {self.bank[user_id]['status']} to {new_status}")
+        logger.info("%s status changed from %s to %s", user_name, self.bank[user_id], new_status)
         self.bank[user_id]["status"] = new_status
 
-    async def remove_leech_coin(self, user_id):
+    async def remove_leech_coin(self, user_id: int) -> None:
         """Remove a leech coin to a user's bank.
 
         Parameters
@@ -494,14 +508,14 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         await self.update_account_status(user_id, user.name)
         await self.save_bank()
 
-        logger.info(f"Removed coin from {user.name}. New balance:", self.bank[user_id])
+        logger.info("Removed coin from %s. New balance: %s", user.name, self.bank[user_id])
 
-    async def save_bank(self):
+    async def save_bank(self) -> None:
         """Save changes to the bank to file."""
         with open(self.bank_file, "w", encoding="utf-8") as fp:
             json.dump(self.bank, fp)
 
-    async def check_or_create_account(self, user_id):
+    async def check_or_create_account(self, user_id: int) -> None:
         """Check a bank account exists for a user.
 
         Parameters
@@ -515,7 +529,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
     # Tasks --------------------------------------------------------------------
 
     @tasks.loop(seconds=CHECK_FREQUENCY_SECONDS)
-    async def remove_stale_requests(self):
+    async def remove_stale_requests(self) -> None:
         """Check periodically for stale requests."""
         if len(self.requests) == 0:
             return
@@ -527,7 +541,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         for idx, request in enumerate(self.requests):
             when_stale = datetime.datetime.fromisoformat(request["stale_after"])
             if when_stale < now:
-                logger.info(f"removing {request['who']} from content requesters")
+                logger.info("removing %s from content requesters", request["who"])
                 self.requests.pop(idx)
 
         # Then do same for providers. Done separately because they can be
@@ -536,5 +550,5 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         for idx, provider in enumerate(self.providers):
             when_stale = datetime.datetime.fromisoformat(provider["stale_after"])
             if when_stale < now:
-                logger.info(f"removing {provider['who']} from content providers")
+                logger.info("removing %s from content providers", provider["who"])
                 self.providers.pop(idx)
