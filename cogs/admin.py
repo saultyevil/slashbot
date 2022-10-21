@@ -103,6 +103,7 @@ class Admin(commands.Cog):
     @commands.slash_command(name="reboot", description="restart the bot")
     @commands.default_member_permissions(administrator=True)
     async def reboot(self, inter: disnake.ApplicationCommandInteraction):
+
         """Restart the bot."""
         if inter.author.id != config.ID_USER_SAULTYEVIL:
             return await inter.response.send_message("You don't have permission to use this command.")
