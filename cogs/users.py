@@ -11,8 +11,6 @@ from typing import List
 
 import disnake
 from disnake.ext import commands
-from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
 
 import config
 
@@ -64,20 +62,7 @@ class Users(commands.Cog):
             The bot object.
         """
         self.bot = bot
-
-        with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
-            self.user_data = json.load(file_in)
-
-        def on_modify(_):
-            with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
-                self.user_data = json.load(file_in)
-            logger.info("Reloaded user data")
-
-        observer = Observer()
-        event_handler = PatternMatchingEventHandler(["*"], None, False, True)
-        event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.USERS_FILE, False)
-        observer.start()
+        self.user_data = config.USER_FILE_STREAM
 
     # Before command invoke ----------------------------------------------------
 

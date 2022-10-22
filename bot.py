@@ -16,7 +16,6 @@ import aiohttp
 import disnake
 import requests
 from disnake.ext import commands
-import rule34
 
 import cogs.admin
 import cogs.content
@@ -91,13 +90,6 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
 
     with open(config.GOD_WORDS_FILE, "r", encoding="utf-8") as file_in:
         god_words = file_in.read().splitlines()
-
-    # Check for files which don't exist, and create empty files if they dont
-
-    for file in config.ALL_FILES:
-        if not os.path.exists(file):
-            with open(file, "w", encoding="utf-8") as file_in:
-                file_in.write("{}")
 
     # Set up the bot and cogs --------------------------------------------------
 

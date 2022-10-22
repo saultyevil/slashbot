@@ -70,8 +70,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.role_name = role_name
         self.stale_minutes = stale_minutes
         self.bank_file = Path(config.BANK_FILE)
-        with open(self.bank_file, "r", encoding="utf-8") as fp:
-            self.bank = json.load(fp)
+        self.bank = config.BANK_FILE_STREAM
         self.requests = []
         self.providers = []
 

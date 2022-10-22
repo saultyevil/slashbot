@@ -15,8 +15,6 @@ import disnake
 from dateutil import parser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
-from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
 
 import config
 
@@ -37,19 +35,8 @@ class Reminder(commands.Cog):
     def __init__(self, bot, generate_sentence):
         self.bot = bot
         self.generate_sentence = generate_sentence
-        self.reminders = {}
-        self.load_reminders()
+        self.reminders = config.REMINDERS_FILE_STREAM
         self.check_reminders.start()  # pylint: disable=no-member
-
-        def on_modify(_):
-            self.load_reminders()
-            logger.info("Reloaded reminders")
-
-        observer = Observer()
-        event_handler = PatternMatchingEventHandler(["*"], None, False, True)
-        event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.REMINDERS_FILE, False)
-        observer.start()
 
     # Before command invoke ----------------------------------------------------
 
@@ -253,11 +240,6 @@ class Reminder(commands.Cog):
                 self.save_reminders()
 
     # Functions ----------------------------------------------------------------
-
-    def load_reminders(self):
-        """Load the reminders from a file."""
-        with open(config.REMINDERS_FILE, "r", encoding="utf-8") as file_in:
-            self.reminders = json.load(file_in)
 
     def replace_mentions(self, sentence: str) -> Union[List[str], str]:
         """Replace mentions from a post with the user name.
