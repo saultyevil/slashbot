@@ -7,7 +7,6 @@ coins."""
 import datetime
 import json
 import logging
-from pathlib import Path
 from types import coroutine
 from typing import Union
 
