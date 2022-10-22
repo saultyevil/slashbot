@@ -10,7 +10,6 @@ import logging
 import os
 import pickle
 import time
-from logging.handlers import RotatingFileHandler
 
 import aiohttp
 import disnake
@@ -25,22 +24,10 @@ import cogs.spam
 import cogs.users
 import cogs.videos
 import cogs.weather
-import config
+from config import App
 from markovify import markovify  # pylint: disable=import-error
 
-# Set up logger ----------------------------------------------------------------
-
-logger = logging.getLogger(config.LOGGER_NAME)
-formatter = logging.Formatter(
-    "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
-)
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-file_handler = RotatingFileHandler(filename=config.LOGFILE_NAME, encoding="utf-8", maxBytes=int(5e5), backupCount=5)
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
 class Bot(commands.InteractionBot):
@@ -85,10 +72,10 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
         with open("data/chain.pickle", "rb") as file_in:
             markov_gen.chain = pickle.load(file_in)
 
-    with open(config.BAD_WORDS_FILE, "r", encoding="utf-8") as file_in:
+    with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
         bad_words = file_in.readlines()[0].split()
 
-    with open(config.GOD_WORDS_FILE, "r", encoding="utf-8") as file_in:
+    with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
         god_words = file_in.read().splitlines()
 
     # Set up the bot and cogs --------------------------------------------------
@@ -106,7 +93,7 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
     weather = cogs.weather.Weather(bot, spam.generate_sentence)
     videos = cogs.videos.Videos(bot, bad_words, spam.generate_sentence)
     users = cogs.users.Users(bot)
-    admin = cogs.admin.Admin(bot, config.LOGFILE_NAME)
+    admin = cogs.admin.Admin(bot, App.config("LOGFILE_NAME"))
 
     # Add all the cogs to the bot
     bot.add_cog(spam)
@@ -150,7 +137,7 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
 
     # This finally runs the bot
 
-    bot.run(os.environ["BOT_TOKEN"])
+    bot.run(App.config("BOT_TOKEN"))
 
 
 # Run the bot ------------------------------------------------------------------

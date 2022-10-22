@@ -17,9 +17,9 @@ from disnake.ext import commands
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-import config
+from config import App
 
-logger = logging.getLogger(config.LOGGER_NAME)
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 
 
@@ -53,10 +53,10 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.attempts = attempts
         self.bad_words = bad_words
         self.god_words = god_words
-        self.user_data = config.USER_FILE_STREAM
+        self.user_data = App.config("USER_FILE_STREAM")
 
-        self.wolfram_api = wolframalpha.Client(config.WOLFRAM_API_KEY)
-        self.youtube_api = build("youtube", "v3", developerKey=config.GOOGLE_API_KEY)
+        self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
+        self.youtube_api = build("youtube", "v3", developerKey=App.config("GOOGLE_API_KEY"))
 
     # Before command invoke ----------------------------------------------------
 
@@ -70,15 +70,15 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOL_DOWN_USERS:
+        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="8ball", description="ask the magic 8 ball a question")
     async def ball(
         self,
@@ -98,7 +98,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return await inter.response.send_message(f"*{question}*\n{random.choice(magic8ball.list)}")
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="roll", description="roll a dice")
     async def roll(
         self,
@@ -114,7 +114,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         """
         return await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")
     async def wolfram(
         self,
@@ -171,7 +171,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return await inter.edit_original_message(embed=embed)
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="youtube", description="search for a youtube video")
     async def youtube(
         self,
@@ -196,9 +196,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
             return await inter.edit_original_message(content="Maximum number of daily YouTube calls has been reached.")
 
         video_id = response["items"][0]["id"]["videoId"]
-        request = (
-            f"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={video_id}&key={config.GOOGLE_API_KEY}"
-        )
+        request = f"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={video_id}&key={App.config('GOOGLE_API_KEY')}"
         response = json.loads(requests.get(request).text)
         views = int(response["items"][0]["statistics"]["viewCount"])
 

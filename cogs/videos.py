@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Commands for sending videos, and scheduled videos.
-"""
+"""Commands for sending videos, and scheduled videos."""
 
 import asyncio
 import calendar
@@ -14,7 +13,7 @@ from typing import List
 import disnake
 from disnake.ext import commands, tasks
 
-import config
+from config import App
 
 cd_user = commands.BucketType.user
 
@@ -57,15 +56,15 @@ class Videos(commands.Cog):
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOL_DOWN_USERS:
+        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="goodbye", description="goodbye")
     async def goodbye(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko saying goodbye.
@@ -78,7 +77,7 @@ class Videos(commands.Cog):
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
 
-    @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(1, App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="good_morning", description="good morning people")
     async def good_morning(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a video of Marko saying good morning people.
@@ -107,7 +106,7 @@ class Videos(commands.Cog):
 
         return await inter.edit_original_message(file=disnake.File(video))
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="haha", description="haha very funny")
     async def laugh(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko laughing.
@@ -158,62 +157,62 @@ class Videos(commands.Cog):
 
     # Scheduled videos ---------------------------------------------------------
 
-    @tasks.loop(hours=config.HOURS_IN_WEEK)
+    @tasks.loop(hours=App.config("HOURS_IN_WEEK"))
     async def monday_morning(self) -> None:
         """Send a message on Monday morning."""
-        server = self.bot.get_guild(config.ID_SERVER_ADULT_CHILDREN)
-        channel = server.get_channel(config.ID_CHANNEL_IDIOTS)
+        server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
+        channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
             self.generate_sentence("monday").replace("monday", "**monday**"),
             file=disnake.File("data/videos/monday.mp4"),
         )
 
-    @tasks.loop(hours=config.HOURS_IN_WEEK)
+    @tasks.loop(hours=App.config("HOURS_IN_WEEK"))
     async def wednesday_morning(self) -> None:
         """Send a message on Wednesday morning."""
-        server = self.bot.get_guild(config.ID_SERVER_ADULT_CHILDREN)
-        channel = server.get_channel(config.ID_CHANNEL_IDIOTS)
+        server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
+        channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
             self.generate_sentence("wednesday").replace("wednesday", "**wednesday**"),
             file=disnake.File("data/videos/wednesday.mp4"),
         )
 
-    @tasks.loop(hours=config.HOURS_IN_WEEK)
+    @tasks.loop(hours=App.config("HOURS_IN_WEEK"))
     async def friday_evening(self) -> None:
         """Send a message on Friday evening."""
-        server = self.bot.get_guild(config.ID_SERVER_ADULT_CHILDREN)
-        channel = server.get_channel(config.ID_CHANNEL_IDIOTS)
+        server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
+        channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
             self.generate_sentence("weekend").replace("weekend", "**weekend**"),
             file=disnake.File("data/videos/weekend.mp4"),
         )
 
-    @tasks.loop(hours=config.HOURS_IN_WEEK)
+    @tasks.loop(hours=App.config("HOURS_IN_WEEK"))
     async def friday_morning(self) -> None:
         """Send a message on Friday morning."""
-        server = self.bot.get_guild(config.ID_SERVER_ADULT_CHILDREN)
-        channel = server.get_channel(config.ID_CHANNEL_IDIOTS)
+        server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
+        channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
             self.generate_sentence("friday").replace("friday", "**friday**"),
             file=disnake.File("data/videos/friday.mov"),
         )
 
-    @tasks.loop(hours=config.HOURS_IN_WEEK)
+    @tasks.loop(hours=App.config("HOURS_IN_WEEK"))
     async def sunday_morning(self) -> None:
         """Send a message on Sunday morning."""
-        server = self.bot.get_guild(config.ID_SERVER_ADULT_CHILDREN)
-        channel = server.get_channel(config.ID_CHANNEL_IDIOTS)
+        server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
+        channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
             self.generate_sentence("sunday").replace("sunday", "**sunday**"),
             file=disnake.File("data/videos/sunday.mp4"),
         )
 
-    @tasks.loop(hours=config.HOURS_IN_WEEK)
+    @tasks.loop(hours=App.config("HOURS_IN_WEEK"))
     async def jack_bin_day(self) -> None:
         """Send a bin reminder for Jack."""
-        server = self.bot.get_guild(config.ID_SERVER_ADULT_CHILDREN)
-        channel = server.get_channel(config.ID_CHANNEL_IDIOTS)
-        user = self.bot.get_user(config.ID_USER_LIME)
+        server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
+        channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
+        user = self.bot.get_user(App.config("ID_USER_LIME"))
         await channel.send(
             f"{user.mention} it's time to take the bins out!!! " + self.generate_sentence("bin"),
             file=disnake.File("data/bin.png"),

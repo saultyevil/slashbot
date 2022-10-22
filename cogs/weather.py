@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Commands for getting the weather.
-"""
+"""Commands for getting the weather."""
 
 import datetime
 import logging
@@ -12,9 +11,9 @@ import disnake
 import pyowm
 from disnake.ext import commands
 
-import config
+from config import App
 
-logger = logging.getLogger(config.LOGGER_NAME)
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
 cd_user = commands.BucketType.user
@@ -80,11 +79,11 @@ class Weather(commands.Cog):
         self.bot = bot
         self.generate_sentence = generate_sentence
 
-        self.weather_api = pyowm.OWM(config.OWN_API_KEY)
+        self.weather_api = pyowm.OWM(App.config("OWM_API_KEY"))
         self.weather_api_city_register = self.weather_api.city_id_registry()
         self.weather_api_manager = self.weather_api.weather_manager()
 
-        self.user_data = config.USER_FILE_STREAM
+        self.user_data = App.config("USER_FILE_STREAM")
 
     # Before command invoke ----------------------------------------------------
 
@@ -98,15 +97,15 @@ class Weather(commands.Cog):
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOL_DOWN_USERS:
+        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="weather", description="get the current weather")
     async def weather(
         self,
@@ -177,7 +176,7 @@ class Weather(commands.Cog):
 
         return await inter.edit_original_message(embed=embed)
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="forecast", description="get the weather forecast")
     async def forecast(  # pylint: disable=too-many-locals
         self,

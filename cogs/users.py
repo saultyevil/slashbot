@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Commands for remembering user info.
-"""
+"""Commands for remembering user info."""
 
 import json
 import logging
@@ -12,9 +11,9 @@ from typing import List
 import disnake
 from disnake.ext import commands
 
-import config
+from config import App
 
-logger = logging.getLogger(config.LOGGER_NAME)
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 remember_options = ["location", "country", "badword", "fxtwitter"]
 
@@ -62,7 +61,7 @@ class Users(commands.Cog):
             The bot object.
         """
         self.bot = bot
-        self.user_data = config.USER_FILE_STREAM
+        self.user_data = App.config("USER_FILE_STREAM")
 
     # Before command invoke ----------------------------------------------------
 
@@ -76,15 +75,15 @@ class Users(commands.Cog):
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOL_DOWN_USERS:
+        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="set_info", description="set info to remember about you")
     async def set_info(
         self,
@@ -117,7 +116,7 @@ class Users(commands.Cog):
 
         logger.info("%s has set %s to %s", inter.author.name, thing, value)
 
-        with open(config.USERS_FILE, "w", encoding="utf-8") as fp:
-            json.dump(self.user_data, fp)
+        with open(App.config("USERS_FILE"), "w", encoding="utf-8") as file_in:
+            json.dump(self.user_data, file_in)
 
         return await inter.response.send_message(f"{thing.capitalize()} has been set to {value}.", ephemeral=True)
