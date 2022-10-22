@@ -109,7 +109,7 @@ class Videos(commands.Cog):
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="haha", description="haha very funny")
-    async def laugh(self, inter: disnake.ApplicationCommand) -> coroutine:
+    async def laugh(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko laughing.
 
         Parameters
