@@ -105,11 +105,11 @@ class Admin(commands.Cog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="reboot", description="restart the bot")
+    @commands.default_member_permissions(administrator=True)
     async def reboot(self, inter: disnake.ApplicationCommandInteraction):
-
         """Restart the bot."""
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
-            return await inter.response.send_message("You don't have permission to use this command.")
+            return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
         logger.info("restarting bot with new process")
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
