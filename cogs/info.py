@@ -55,6 +55,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.attempts = attempts
         self.bad_words = bad_words
         self.god_words = god_words
+
         with open(config.USERS_FILES, "r", encoding="utf-8") as file_in:
             self.user_data = json.load(file_in)
 
