@@ -33,7 +33,6 @@ class Admin(commands.Cog):
         self.log_path = Path(log_path)
 
         self.load_reminders()
-        self.check_reminders.start()  # pylint: disable=no-member
 
         def on_modify(_):
             self.load_reminders()

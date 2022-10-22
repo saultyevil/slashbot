@@ -81,10 +81,10 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
 
     # Load in the markov chain and various other data --------------------------
 
-    markov_chain = markovify.Text("Jack is a naughty boy.", state_size=2)
+    markov_gen = markovify.Text("Jack is a naughty boy.", state_size=2)
     if os.path.exists("data/chain.pickle"):
         with open("data/chain.pickle", "rb") as file_in:
-            markov_chain.chain = pickle.load(file_in)
+            markov_gen.chain = pickle.load(file_in)
 
     with open(config.BAD_WORDS_FILE, "r", encoding="utf-8") as file_in:
         bad_words = file_in.readlines()[0].split()
@@ -107,7 +107,7 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
 
     # Create bot and the various different cogs
     bot = Bot(intents=intents)
-    spam = cogs.spam.Spam(bot, markov_chain, bad_words, god_words)
+    spam = cogs.spam.Spam(bot, markov_gen, bad_words, god_words)
     info = cogs.info.Info(bot, spam.generate_sentence, bad_words, god_words)
     reminder = cogs.remind.Reminder(bot, spam.generate_sentence)
     content = cogs.content.Content(bot, spam.generate_sentence)
@@ -128,7 +128,7 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
 
     # This part is adding various clean up functions to run when the bot
     # closes, e.g. on keyboard interrupt
-    bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
+    bot.add_to_cleanup("updating markov chains on bot close", spam.update_markov_chain, [None])
     # bot.add_to_cleanup("Cleaning up rule34 session", rule34._exitHandler, [None])
 
     # Bot events ---------------------------------------------------------------
