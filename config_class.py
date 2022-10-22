@@ -7,6 +7,8 @@
 import json
 import os
 from pathlib import Path
+import logging
+from logging.handlers import RotatingFileHandler
 from typing import Any
 
 from watchdog.events import PatternMatchingEventHandler
@@ -104,6 +106,23 @@ class App:
             raise NameError(f"Name {name} not accepted in set() method")
 
 
+# Set up logger ----------------------------------------------------------------
+
+logger = logging.getLogger(App.config("LOGGER_NAME"))
+formatter = logging.Formatter(
+    "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
+)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+file_handler = RotatingFileHandler(
+    filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
+)
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+
 def __read_in_json_file(filepath: Path, conf_key: str) -> None:
     """Read in a JSON file and set it to a __conf key.
 
@@ -116,6 +135,7 @@ def __read_in_json_file(filepath: Path, conf_key: str) -> None:
     """
     with open(filepath, "r", encoding="utf-8") as file_in:
         App.set(conf_key, json.load(file_in))
+    logger.info("Loaded %s and set to App.config[%s]", filepath, conf_key)
 
 
 __read_in_json_file(App.config("USERS_FILE"), "USERS_FILE_STREAM")
@@ -130,7 +150,7 @@ def __on_directory_change(_):
 
 
 __observer = Observer()
-__event_handler = PatternMatchingEventHandler(["*.json"], None, False, True)
+__event_handler = PatternMatchingEventHandler(["*"], None, False, True)
 __event_handler.on_modified = __on_directory_change
 __observer.schedule(__event_handler, "./data", False)
 __observer.start()

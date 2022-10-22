@@ -10,7 +10,7 @@ import logging
 import os
 import pickle
 import time
-from logging.handlers import RotatingFileHandler
+
 
 import aiohttp
 import disnake
@@ -30,19 +30,7 @@ from markovify import markovify  # pylint: disable=import-error
 
 from config_class import App
 
-# Set up logger ----------------------------------------------------------------
-
-logger = logging.getLogger(config.LOGGER_NAME)
-formatter = logging.Formatter(
-    "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
-)
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-file_handler = RotatingFileHandler(filename=config.LOGFILE_NAME, encoding="utf-8", maxBytes=int(5e5), backupCount=5)
-logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
-logger.propagate = False
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
 class Bot(commands.InteractionBot):
