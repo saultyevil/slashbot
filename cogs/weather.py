@@ -7,14 +7,11 @@
 import datetime
 import json
 import logging
-from tkinter import W
 from types import coroutine
 
 import disnake
 import pyowm
 from disnake.ext import commands
-from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
 
 import config
 
@@ -88,19 +85,7 @@ class Weather(commands.Cog):
         self.weather_api_city_register = self.weather_api.city_id_registry()
         self.weather_api_manager = self.weather_api.weather_manager()
 
-        with open("data/users.json", "r", encoding="utf-8") as file_in:
-            self.user_data = json.load(file_in)
-
-        def on_modify(_):
-            with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
-                self.user_data = json.load(file_in)
-            logger.info("Reloaded user data")
-
-        observer = Observer()
-        event_handler = PatternMatchingEventHandler(["*"], None, False, True)
-        event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.USERS_FILE, False)
-        observer.start()
+        self.user_data = config.USER_FILE_STREAM
 
     # Before command invoke ----------------------------------------------------
 

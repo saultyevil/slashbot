@@ -5,7 +5,6 @@
 
 import atexit
 import datetime
-import json
 import logging
 import pickle
 import random
@@ -21,8 +20,6 @@ import requests
 import rule34 as r34
 import tweepy
 from disnake.ext import commands, tasks
-from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
 
 import config
 from markovify import markovify
@@ -67,20 +64,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.rule34_api = r34.Rule34()
         self.twitter_api = tweepy.Client(config.TWITTER_BEARER_KEY)
         self.update_markov_chains.start()  # pylint: disable=no-member
-
-        with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
-            self.user_data = json.load(file_in)
-
-        def on_modify(_):
-            with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
-                self.user_data = json.load(file_in)
-            logger.info("Reloaded user data")
-
-        observer = Observer()
-        event_handler = PatternMatchingEventHandler(["*"], None, False, True)
-        event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.USERS_FILE, False)
-        observer.start()
+        self.user_data = config.USER_FILE_STREAM
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)

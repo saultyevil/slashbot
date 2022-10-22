@@ -8,15 +8,12 @@ import os
 import sys
 from pathlib import Path
 import datetime
-import json
 from types import coroutine
 
 import disnake
 import requests
 from prettytable import PrettyTable
 from disnake.ext import commands
-from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
 
 import config
 
@@ -31,18 +28,7 @@ class Admin(commands.Cog):
         """Initialize the class."""
         self.bot = bot
         self.log_path = Path(log_path)
-
-        self.load_reminders()
-
-        def on_modify(_):
-            self.load_reminders()
-            logger.info("Reloaded reminders")
-
-        observer = Observer()
-        event_handler = PatternMatchingEventHandler(["*"], None, False, True)
-        event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.REMINDERS_FILE, False)
-        observer.start()
+        self.reminders = config.REMINDERS_FILE_STREAM
 
     # Before command invoke ----------------------------------------------------
 
@@ -157,10 +143,3 @@ class Admin(commands.Cog):
         message += table.get_string(sortby="ID") + "```"
 
         return await inter.response.send_message(message[:2000], ephemeral=True)
-
-    # Functions ----------------------------------------------------------------
-
-    def load_reminders(self):
-        """Load the reminders from a file."""
-        with open(config.REMINDERS_FILE, "r", encoding="utf-8") as file_in:
-            self.reminders = json.load(file_in)

@@ -4,7 +4,11 @@
 """Global variables used throughout the bot."""
 
 import os
+import json
 from pathlib import Path
+import logging
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
 
 # Constants defined for controlling cooldowns
 
@@ -20,6 +24,8 @@ SYMBOL = "%"
 MAX_CHARS = 1994
 LOGGER_NAME = "slashbot"
 LOGFILE_NAME = Path("./slashbot.log")
+
+__logger = logging.getLogger(LOGGER_NAME)
 
 # Constants to define users, roles and channels. Note that users are supposed
 # to be set as environment variables for privacy reasons.
@@ -53,6 +59,54 @@ USERS_FILE = Path("data/users.json").resolve()
 REMINDERS_FILE = Path("data/reminders.json").resolve()
 BANK_FILE = Path("data/bank.json").resolve()
 ALL_FILES = [USERS_FILE, REMINDERS_FILE, BANK_FILE]
+
+# Check for files which don't exist, and create empty files if they dont
+
+for file in ALL_FILES:
+    if not os.path.exists(file):
+        with open(file, "w", encoding="utf-8") as file_out:
+            file_out.write("{}")
+
+# Create global file streams, so they can be watched in here
+
+with open(USERS_FILE, "r", encoding="utf-8") as gl_file_in:
+    USER_FILE_STREAM = json.load(gl_file_in)
+
+with open(REMINDERS_FILE, "r", encoding="utf-8") as gl_file_in:
+    REMINDERS_FILE_STREAM = json.load(gl_file_in)
+
+with open(BANK_FILE, "r", encoding="utf-8") as gl_file_in:
+    BANK_FILE_STREAM = json.load(gl_file_in)
+
+
+def on_directory_change(_):
+    """On changes to the directory, reload all the data files."""
+    global USER_FILE_STREAM  # pylint: disable=global-statement
+    global REMINDERS_FILE_STREAM  # pylint: disable=global-statement
+    global BANK_FILE_STREAM  # pylint: disable=global-statement
+
+    with open(USERS_FILE, "r", encoding="utf-8") as file_in:
+        USER_FILE_STREAM = json.load(file_in)
+        __logger.info("reloaded user file")
+
+    with open(REMINDERS_FILE, "r", encoding="utf-8") as file_in:
+        REMINDERS_FILE_STREAM = json.load(file_in)
+        __logger.info("reloaded reminders")
+
+    with open(BANK_FILE, "r", encoding="utf-8") as file_in:
+        BANK_FILE_STREAM = json.load(file_in)
+        __logger.info("reloaded bank file")
+
+
+# Set up an observer so when something in the data directory changes, then
+# we read in the different files in again
+
+observer = Observer()
+event_handler = PatternMatchingEventHandler(["*"], None, False, True)
+event_handler.on_modified = on_directory_change
+observer.schedule(event_handler, "./data", False)
+observer.start()
+
 
 # Special files
 
