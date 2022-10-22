@@ -60,9 +60,9 @@ class App:
         "BAD_WORDS_FILE": Path("data/badwords.txt"),
         "GOD_WORDS_FILE": Path("data/godwords.txt"),
         # File streams
-        "USER_FILE_STREAM": None,
-        "REMINDERS_FILE_STREAM": None,
-        "BANK_FILE_STREAM": None,
+        "USER_FILE_STREAM": {},
+        "REMINDERS_FILE_STREAM": {},
+        "BANK_FILE_STREAM": {},
     }
 
     __conf["SLASH_SERVERS"] = [
@@ -74,7 +74,7 @@ class App:
     __conf["ALL_FILES"] = [__conf["USERS_FILE"], __conf["REMINDERS_FILE"], __conf["BANK_FILE"]]
 
     # __setters is a tuple of parameters which can be set
-    __setters = ("USERS_FILE_STREAM", "REMINDERS_FILE_STREAM", "BANK_FILE_STREAM")
+    __setters = ("USER_FILE_STREAM", "REMINDERS_FILE_STREAM", "BANK_FILE_STREAM")
 
     # Public methods -----------------------------------------------------------
 
@@ -138,13 +138,13 @@ def __read_in_json_file(filepath: Path, conf_key: str) -> None:
     logger.info("Loaded %s and set to App.config[%s]", filepath, conf_key)
 
 
-__read_in_json_file(App.config("USERS_FILE"), "USERS_FILE_STREAM")
+__read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
 __read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
 __read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
 
 
 def __on_directory_change(_):
-    __read_in_json_file(App.config("USERS_FILE"), "USERS_FILE_STREAM")
+    __read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
     __read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
     __read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
 
