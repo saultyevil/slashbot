@@ -56,18 +56,18 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.bad_words = bad_words
         self.god_words = god_words
 
-        with open(config.USERS_FILES, "r", encoding="utf-8") as file_in:
+        with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
             self.user_data = json.load(file_in)
 
         def on_modify(_):
-            with open(config.USERS_FILES, "r", encoding="utf-8") as file_in:
+            with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
                 self.user_data = json.load(file_in)
             logger.info("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
         event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.USERS_FILES, False)
+        observer.schedule(event_handler, config.USERS_FILE, False)
         observer.start()
 
         self.wolfram_api = wolframalpha.Client(config.WOLFRAM_API_KEY)

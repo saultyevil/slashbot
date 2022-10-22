@@ -49,10 +49,10 @@ TWITTER_BEARER_KEY = os.getenv("TWITTER_BEARER_KEY")
 
 # File locations for staring data
 
-USERS_FILES = Path("data/users.json").resolve()
+USERS_FILE = Path("data/users.json").resolve()
 REMINDERS_FILE = Path("data/reminders.json").resolve()
 BANK_FILE = Path("data/bank.json").resolve()
-ALL_FILES = [USERS_FILES, REMINDERS_FILE, BANK_FILE]
+ALL_FILES = [USERS_FILE, REMINDERS_FILE, BANK_FILE]
 
 # Special files
 

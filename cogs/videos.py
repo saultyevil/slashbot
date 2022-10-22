@@ -31,13 +31,22 @@ class Videos(commands.Cog):
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
         if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
+
 
     # Commands -----------------------------------------------------------------
 

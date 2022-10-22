@@ -16,6 +16,7 @@ import aiohttp
 import disnake
 import requests
 from disnake.ext import commands
+import rule34
 
 import cogs.admin
 import cogs.content
@@ -128,6 +129,7 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
     # This part is adding various clean up functions to run when the bot
     # closes, e.g. on keyboard interrupt
     bot.add_to_cleanup("Updating markov chains on close", spam.learn, [None])
+    # bot.add_to_cleanup("Cleaning up rule34 session", rule34._exitHandler, [None])
 
     # Bot events ---------------------------------------------------------------
 

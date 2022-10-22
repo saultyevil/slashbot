@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Commands for sending spam to the chat."""
 
+"""Commands for sending spam/important messages to the chat."""
 
 import atexit
 import datetime
@@ -26,7 +26,6 @@ import config
 from markovify import markovify
 
 logger = logging.getLogger(config.LOGGER_NAME)
-
 cd_user = commands.BucketType.user
 
 
@@ -44,28 +43,35 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.update_markov_chains.start()  # pylint: disable=no-member
         self.twitter = tweepy.Client(config.TWITTER_BEARER_KEY)
 
-        with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-            self.user_data = json.load(fp)
+        with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
+            self.user_data = json.load(file_in)
 
         def on_modify(_):
-            with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-                self.user_data = json.load(fp)
-            logger.info("Reloaded userdata")
+            with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
+                self.user_data = json.load(file_in)
+            logger.info("Reloaded user data")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
         event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.USERS_FILES, False)
+        observer.schedule(event_handler, config.USERS_FILE, False)
         observer.start()
 
         # if we don't unregister this, the bot is weird on close down
-        # TODO: add this to the bot's shutdown function in bot.py
         atexit.unregister(self.rule34_api._exitHandler)
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
@@ -75,9 +81,9 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
     # Slash commands -----------------------------------------------------------
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="badword", description="send a naughty word")
-    async def badword(self, inter):
-        """Send a badword to the chat."""
+    @commands.slash_command(name="bad_word", description="send a naughty word")
+    async def bad_word(self, inter):
+        """Send a bad word to the chat."""
         bad_word = random.choice(self.bad_words)
 
         no_user_bad_word = True
@@ -125,8 +131,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         if len(self.messages) == 0:
             if inter:
                 return await inter.edit_original_message(content="No messages to learn from.")
-            else:
-                return
+            return
 
         if inter:
             await inter.response.defer(ephemeral=True)
@@ -155,7 +160,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         if inter:
             await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
         else:
-            logger.info(f"Markov chain updated with {len(messages)} new messages.")
+            logger.info("Markov chain updated with %i new messages.", len(messages))
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="oracle", description="a message from god")
@@ -200,8 +205,8 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
             await inter.edit_original_message(content=f"{message}\n>>> *Too cursed for comments*")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="twatter", description="get a random tweet")
-    async def twatter(self, inter, username: str):
+    @commands.slash_command(name="twitter", description="get a random tweet from a user")
+    async def twitter_command(self, inter, username: str):
         """Get a random tweet from a user.
 
         Parameters
@@ -263,7 +268,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
                 try:
                     await message.edit(suppress=True)
                 except disnake.errors.Forbidden:  # If we fail, then don't send the message
-                    return logger.info(f"Unable to suppress embed for {message.author}")
+                    return logger.info("Unable to suppress embed for %s", message.author)
 
                 await message.channel.send(new_url)
 
@@ -426,8 +431,8 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
             return None, None, None
 
         comment, who, when = random.choice(comments)
-        dt = datetime.datetime.strptime(when, "%Y-%m-%d %H:%M")
-        when = dt.strftime("%d %B, %Y")
+        d_time = datetime.datetime.strptime(when, "%Y-%m-%d %H:%M")
+        when = d_time.strftime("%d %B, %Y")
 
         return comment, who, when
 

@@ -67,20 +67,28 @@ class Weather(commands.Cog):
             self.userdata = json.load(fp)
 
         def on_modify(_):
-            with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
+            with open(config.USERS_FILE, "r", encoding="utf-8") as fp:
                 self.userdata = json.load(fp)
             logger.info("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
         event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.USERS_FILES, False)
+        observer.schedule(event_handler, config.USERS_FILE, False)
         observer.start()
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
