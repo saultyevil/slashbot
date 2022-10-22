@@ -28,6 +28,8 @@ import cogs.weather
 import config
 from markovify import markovify  # pylint: disable=import-error
 
+from config_class import App
+
 # Set up logger ----------------------------------------------------------------
 
 logger = logging.getLogger(config.LOGGER_NAME)
@@ -150,7 +152,7 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
 
     # This finally runs the bot
 
-    bot.run(os.environ["BOT_TOKEN"])
+    bot.run(App.config("BOT_TOKEN"))
 
 
 # Run the bot ------------------------------------------------------------------
