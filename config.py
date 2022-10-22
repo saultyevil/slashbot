@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Global variables used throughout the bot."""
+
 import os
+from pathlib import Path
 
 # Constants defined for controlling cooldowns
 
 COOLDOWN_RATE = 3
 COOLDOWN_STANDARD = 60
 COOLDOWN_ONE_HOUR = 3600
-COOLDOWN_TEN_MINS = 600
+COOLDOWN_TEN_MINUTES = 600
 HOURS_IN_WEEK = 168
 
 # Constants for general discord things
 
 SYMBOL = "%"
 MAX_CHARS = 1994
+LOGGER_NAME = "slashbot"
+LOGFILE_NAME = Path("./slashbot.log")
 
 # Constants to define users, roles and channels. Note that users are supposed
 # to be set as environment variables for privacy reasons.
@@ -33,24 +38,23 @@ ID_CHANNEL_SPAM = 627234669791805450
 
 SLASH_SERVERS = [ID_SERVER_ADULT_CHILDREN, ID_SERVER_FREEDOM, ID_SERVER_BUMPAPER]
 
-NO_COOLDOWN_USERS = [ID_USER_SAULTYEVIL]
+NO_COOL_DOWN_USERS = [ID_USER_SAULTYEVIL]
 
 # API keys and specific settings
 
-GOOGLE_API_KEY = os.getenv("YT_VIDEO_KEY")
-WOLFRAM_API_KEY = os.getenv("WOLFRAM_ID")
-OWN_API_KEY = os.getenv("OWM_KEY")
-NEWS_API_KEY = os.getenv("NEWS_API")
-TWITTER_BEARER_KEY = os.getenv("TWITTER_BEARER")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+WOLFRAM_API_KEY = os.getenv("WOLFRAM_API_KEY")
+OWN_API_KEY = os.getenv("OWM_API_KEY")
+TWITTER_BEARER_KEY = os.getenv("TWITTER_BEARER_KEY")
 
 # File locations for staring data
 
-USERS_FILES = "data/users.json"
-REMINDERS_FILE = "data/reminders.json"
-BANK_FILE = "data/bank.json"
-ALL_FILES = [USERS_FILES, REMINDERS_FILE, BANK_FILE]
+USERS_FILE = Path("data/users.json").resolve()
+REMINDERS_FILE = Path("data/reminders.json").resolve()
+BANK_FILE = Path("data/bank.json").resolve()
+ALL_FILES = [USERS_FILE, REMINDERS_FILE, BANK_FILE]
 
 # Special files
 
-BADWORDS_FILE = "data/badwords.txt"
-GODWORDS_FILE = "data/godwords.txt"
+BAD_WORDS_FILE = "data/badwords.txt"
+GOD_WORDS_FILE = "data/godwords.txt"

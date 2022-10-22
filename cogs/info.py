@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Commands for searching for stuff on the internet, and etc."""
+
 import json
-import random
 import logging
+import random
+from types import coroutine
+from typing import List
 
 import disnake
 import magic8ball
@@ -12,90 +16,91 @@ import wolframalpha
 from disnake.ext import commands
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from newsapi import NewsApiClient
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
 import config
 
-logger = logging.getLogger("slashbot")
-
+logger = logging.getLogger(config.LOGGER_NAME)
 cd_user = commands.BucketType.user
 
 
-news_sources = [
-    "abc-news",
-    "al-jazeera-english",
-    "ars-technica",
-    "associated-press",
-    "bbc-news",
-    "blasting-news-br",
-    "breitbart-news",
-    "buzzfeed",
-    "crypto-coins-news",
-    "fortune",
-    "fox-news",
-    "google-news",
-    "hacker-news",
-    "ign",
-    "independent",
-    "new-scientist",
-    "reddit-r-all",
-    "reuters",
-    "techradar",
-    "the-huffington-post",
-    "the-jerusalem-post",
-    "the-lad-bible",
-    "the-verge",
-    "the-wall-street-journal",
-    "vice-news",
-]
-
-
-class Info(commands.Cog):
+class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
-    def __init__(self, bot, generate_sentence, badwords, godwords, attempts=10):
+    def __init__(  # pylint: disable=too-many-arguments
+        self,
+        bot: commands.InteractionBot,
+        generate_sentence: callable,
+        bad_words: List[str],
+        god_words: List[str],
+        attempts: int = 10,
+    ) -> None:
+        """Initialize the bot.
+        Parameters
+        ----------
+        bot: commands.InteractionBot
+            The bot object.
+        generate_sentence: callable
+            A function to generate sentences given a seed word.
+        bad_words: List[str]
+            A list of bad words.
+        god_words: List[str]
+            A list of god words
+        attempts: int
+            The number of attempts to try and generate a sentence for.
+        """
         self.bot = bot
         self.generate_sentence = generate_sentence
         self.attempts = attempts
-        self.badwords = badwords
-        self.godwords = godwords
-        with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-            self.userdata = json.load(fp)
+        self.bad_words = bad_words
+        self.god_words = god_words
+
+        with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
+            self.user_data = json.load(file_in)
 
         def on_modify(_):
-            with open(config.USERS_FILES, "r", encoding="utf-8") as fp:
-                self.userdata = json.load(fp)
+            with open(config.USERS_FILE, "r", encoding="utf-8") as file_in:
+                self.user_data = json.load(file_in)
             logger.info("Reloaded userdata")
 
         observer = Observer()
         event_handler = PatternMatchingEventHandler(["*"], None, False, True)
         event_handler.on_modified = on_modify
-        observer.schedule(event_handler, config.USERS_FILES, False)
+        observer.schedule(event_handler, config.USERS_FILE, False)
         observer.start()
 
         self.wolfram_api = wolframalpha.Client(config.WOLFRAM_API_KEY)
         self.youtube_api = build("youtube", "v3", developerKey=config.GOOGLE_API_KEY)
-        self.news_api = NewsApiClient(api_key=config.NEWS_API_KEY)
-        self.news_api_sources = [source["id"] for source in self.news_api.get_sources()["sources"]]
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOLDOWN_USERS:
+        if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="8ball", description="ask the magicall ball a question")
-    async def ball(self, inter, question):
-        """Ask the magicall ball a question.
+    @commands.slash_command(name="8ball", description="ask the magic 8 ball a question")
+    async def ball(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        question: str = commands.Param(description="The question to ask the 8ball."),
+    ) -> coroutine:
+        """Ask the magical ball a question.
 
         Parameters
         ----------
@@ -105,119 +110,40 @@ class Info(commands.Cog):
         question = question.capitalize()
         if question[-1] != "?":
             question += "?"
-        await inter.response.send_message(f"*{question}* {random.choice(magic8ball.list)}")
 
-    @commands.slash_command(name="help", description="get some help")
-    async def help(self, inter, one_command=None):
-        """Display help for the bot and commands.
-
-        Parameters
-        ----------
-        command: str
-            The name of a command to query.
-        """
-        global_commands = self.bot.global_application_commands
-        if not global_commands:
-            return await inter.response.send_message("There were no commands found.", ephemeral=True)
-
-        global_commands = sorted(global_commands, key=lambda x: x.name)
-        global_commands = {
-            command.name: {
-                "description": command.description,
-                "options": command.options,
-            }
-            for command in global_commands
-        }
-
-        if one_command:
-            if one_command not in global_commands:
-                return await inter.response.send_message(f"Command `{one_command}` not found.", ephemeral=True)
-            name = one_command
-            one_command = global_commands[one_command]
-            message = f"`{name}`-- {one_command['description']}\nParameters:\n"
-            for option in one_command["options"]:
-                message += f"  • {option.name} - {option.description}\n"
-        else:
-            message = f"There are {len(global_commands)} commands.\n\n"
-            for this_command in global_commands:
-                message += f"• `{this_command}` - {global_commands[this_command]['description']}\n"
-
-        await inter.response.send_message(message, ephemeral=True)
+        return await inter.response.send_message(f"*{question}*\n{random.choice(magic8ball.list)}")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="roll", description="roll a dice")
-    async def roll(self, inter, n):
-        """Roll a random number from 1 to n.
+    async def roll(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        num_sides: int = commands.Param(default=6, description="The number of sides to the dice.", min_value=1),
+    ) -> coroutine:
+        """Roll a random number from 1 to num_sides.
 
         Parameters
         ----------
         n: int
             The number of sides of the dice.
         """
-        await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(n))}.")
-
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="news", description="get the news")
-    async def news(self, inter, source=commands.Param(default="bbc-news", choices=news_sources)):
-        """Get the news headlines for the given source.
-
-        Parameters
-        ----------
-        source: str
-            The news source.
-        """
-        await inter.response.defer()
-
-        try:
-            api_return = self.news_api.get_top_headlines(sources=source)
-            articles = api_return["articles"]
-        except:  # pylint: disable=bare-except
-            return await inter.edit_original_message("Reached the maximum number of news requests for the day.")
-
-        if not articles:
-            return await inter.response.send_message(f"No articles were found for {source}.")
-
-        logger.info(api_return)
-        logger.info(articles[0], articles[1])
-
-        author = articles[0]["source"]["Name"]
-        image = articles[0].get("urlToImage", None)
-        embed = disnake.Embed(title=f"Top articles from {author}", color=disnake.Color.default())
-
-        for n, article in enumerate(articles[:3]):
-            # title, url, description = (
-            #     article["title"],
-            #     article["url"],
-            #     article["description"],
-            # )
-            title, url = (
-                article["title"],
-                article["url"],
-            )
-            embed.add_field(
-                name=f"{n + 1}. {title}",
-                # value=f"{description[:128]}...\n{url}",
-                value=f"{url}",
-                inline=False,
-            )
-
-        embed.set_footer(text=f"{self.generate_sentence('news')}")
-
-        if image:
-            embed.set_thumbnail(url=image)
-
-        await inter.edit_original_message(embed=embed)
+        return await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")
-    async def wolfram(self, inter, question: str, n_sols: int = 1):
+    async def wolfram(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        question: str = commands.Param(description="The question to ask Stephen Wolfram."),
+        num_solutions: int = commands.Param(default=1, description="The number of solutions to display.", min_value=1),
+    ) -> coroutine:
         """Submit a query to wolfram alpha.
 
         Parameters
         ----------
         question: str
             The question to ask.
-        n_sols: int
+        n_solutions: int
             The number of solutions to return.
         """
         await inter.response.defer()
@@ -232,20 +158,20 @@ class Info(commands.Cog):
         if not results["@success"]:
             embed.add_field(
                 name=f"{question}",
-                value=f"You {random.choice(self.badwords)}, you asked a question Stephen Wolfram couldn't answer.",
+                value=f"You {random.choice(self.bad_words)}, you asked a question Stephen Wolfram couldn't answer.",
                 inline=False,
             )
             return await inter.edit_original_message(embed=embed)
 
         # only go through the first N results to add to embed
 
-        results = [result for result in results.pods]
+        results = list(results.pods)
 
-        n_sols += 1
-        if n_sols > len(results):
-            n_sols = len(results)
+        num_solutions += 1
+        if num_solutions > len(results):
+            num_solutions = len(results)
 
-        for n_sol, result in enumerate(results[1:n_sols]):
+        for n_sol, result in enumerate(results[1:num_solutions]):
             # have to check if the result is a list of results, or just a single result
             # probably a better way to do this
             if isinstance(result["subpod"], list):
@@ -262,7 +188,11 @@ class Info(commands.Cog):
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(name="youtube", description="search for a youtube video")
-    async def youtube(self, inter, query=None):
+    async def youtube(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        query: str = commands.Param(default=None, description="The term to search on YouTube."),
+    ) -> coroutine:
         """Embeds the first result on youtube for the search term.
 
         Parameters
@@ -272,14 +202,13 @@ class Info(commands.Cog):
         """
         await inter.response.defer()
         if query is None:
-            query = random.sample(self.godwords, random.randint(1, 5))
+            query = random.sample(self.god_words, random.randint(1, 5))
 
         try:
             # pylint: disable=no-member
             response = self.youtube_api.search().list(q=query, part="snippet", maxResults=1).execute()
         except HttpError:
-            await inter.edit_original_message(content="Maximum number of daily YouTube calls has been reached.")
-            return
+            return await inter.edit_original_message(content="Maximum number of daily YouTube calls has been reached.")
 
         video_id = response["items"][0]["id"]["videoId"]
         request = (
@@ -288,6 +217,6 @@ class Info(commands.Cog):
         response = json.loads(requests.get(request).text)
         views = int(response["items"][0]["statistics"]["viewCount"])
 
-        await inter.edit_original_message(
+        return await inter.edit_original_message(
             content=f"https://www.youtube.com/watch?v={video_id}\n>>> View count: {views:,}"
         )

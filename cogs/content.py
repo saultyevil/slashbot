@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Commands for requesting and providing content, as well as tracking leech
+coins."""
+
 import datetime
 import json
-from pathlib import Path
 import logging
+from pathlib import Path
+from types import coroutine
+from typing import Union
 
 import disnake
 from disnake.ext import commands, tasks
@@ -16,26 +21,48 @@ import config
 cd_user = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 60
 
-logger = logging.getLogger("slashbot")
+logger = logging.getLogger(config.LOGGER_NAME)
 
 
-async def convert_yes_to_false(_, inp: str) -> bool:
-    """Swap Yes to False, so, e.g., if share == yes, then ephemeral=False."""
-    if inp == "Yes":
+async def convert_yes_to_false(_: disnake.ApplicationCommandInteraction, choice: str) -> bool:
+    """Swap Yes to False, so, e.g., if share == yes, then ephemeral=False.
+
+    Parameters
+    ----------
+    _: disnake.ApplicationCommandInteraction
+        The slash command interaction. Unused.
+    choice: str
+        The choice of yes or not.
+    """
+    if choice.lower() == "Yes":
         return False
     return True
 
 
 class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
-    """Demand and provide content, and track leech balance."""
+    """Demand and provide content, and track leech balance.
+
+    Parameters
+    ----------
+    bot: commands.InteractionBot
+        The bot object.
+    generate_sentence: callable
+        A function which generates sentences given a seed word.
+    starting_balance: int
+        The balance members start with upon account creation.
+    role_name: str
+        The name of the role to assign users to.
+    stale_minutes: int
+        The frequency to check for stale requests to remove.
+    """
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        bot,
-        generate_sentence,
-        starting_balance=5,
-        role_name="Content Leeches",
-        stale_minutes=30,
+        bot: commands.InteractionBot,
+        generate_sentence: callable,
+        starting_balance: int = 5,
+        role_name: str = "Content Leeches",
+        stale_minutes: int = 30,
     ):
         self.bot = bot
         self.generate_sentence = generate_sentence
@@ -52,35 +79,66 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOLDOWN_USERS:
+        if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
-        name="leaveleech",
+        name="leave_leech",
         description="Leave the leech notification squad",
     )
-    async def leaveleech(self, inter):
-        """Leave the leech notification squad."""
+    async def leave_leech(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Leave the leech notification squad.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
+        """
         await self.leave_leech_role(inter.guild, inter.author)
-        await inter.response.send_message(f"You have left the {self.role_name} notification squad.", ephemeral=True)
+        return await inter.response.send_message(
+            f"You have left the {self.role_name} notification squad.", ephemeral=True
+        )
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
-        name="balance",
+        name="leech_balance",
         description="Check how many leech coins you have",
     )
     async def balance(
-        self, inter, share=commands.Param(default="No", choices=["Yes", "No"], converter=convert_yes_to_false)
-    ):
-        """Check your leech coin balance."""
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        share: str = commands.Param(
+            description="Whether to share your balance with the chat or not.",
+            default="No",
+            choices=["Yes", "No"],
+            converter=convert_yes_to_false,
+        ),
+    ) -> coroutine:
+        """Check your leech coin balance.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
+        share: str
+            If yes, ephemeral=False and the message will be printed to chat.
+        """
         user_id, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
         balance = self.bank[user_id]["balance"]
 
@@ -99,15 +157,17 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         embed.add_field(name="Balance", value=f"{balance} Leech coins")
         embed.add_field(name="Status", value=f"{self.bank[user_id]['status']}")
 
-        await inter.response.send_message(embed=embed, ephemeral=share)
+        return await inter.response.send_message(embed=embed, ephemeral=share)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="needcontent", description="Demand content, filthy leech", dm_permission=False)
-    async def needcontent(self, inter):
+    @commands.slash_command(name="need_content", description="Demand content, filthy leech", dm_permission=False)
+    async def need_content(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Demand that there be content, filthy little leech.
 
         Parameters
         ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
         who: str
             The name of the user who should provide content.
         """
@@ -131,7 +191,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 "who": inter.author,
             }
             self.requests.append(request)
-            logger.info(f"{inter.user.name} has been added to the list of requests")
+            logger.info("%s has been added to the list of requests", inter.author.name)
 
         if len(self.requests) > 1:
             requesters = (
@@ -141,23 +201,34 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         else:
             requesters = f"{self.requests[0]['who'].name} *needs*"
 
-        await inter.response.send_message(f"{mention} {requesters} content.")
+        return await inter.response.send_message(f"{mention} {requesters} content.")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(
-        name="leechsquad",
-        description="Join the leech notification squad",
-    )
-    async def leechsquad(self, inter):
-        """Join the leech notification squad."""
+    @commands.slash_command(name="leech_squad", description="Join the leech notification squad", dm_permission=False)
+    async def leech_squad(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Join the leech notification squad.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
+        """
         await self.get_or_create_leech_role(inter.guild)
-        await inter.response.send_message(f"You've joined the {self.role_name} notification squad.", ephemeral=True)
+        return await inter.response.send_message(
+            f"You've joined the {self.role_name} notification squad.", ephemeral=True
+        )
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="contentcreator", description="Provide content like a good boy", dm_permission=False)
-    async def contentcreator(self, inter):
+    @commands.slash_command(name="content_creator", description="Provide content like a good boy", dm_permission=False)
+    async def content_creator(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Provide content from the goodness of your heart, or heed the call
-        for content."""
+        for content.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
+        """
         _, role = await self.prepare_for_leech_command(inter.guild, inter.author)
         mention = role.mention if role else self.role_name
         current_providers = [p["who"].id for p in self.providers]
@@ -171,7 +242,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 "who": inter.author,
             }
             self.providers.append(request)
-            logger.info(f"{inter.author.name} has been added to the list of providers")
+            logger.info("%s has been added to the list of providers", inter.author.name)
 
         if len(self.providers) > 1:
             providers = (
@@ -180,17 +251,30 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         else:
             providers = f"{self.providers[0]['who'].name}"
 
-        await inter.response.send_message(f"{mention} {providers} will be providing content.")
+        return await inter.response.send_message(f"{mention} {providers} will be providing content.")
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
     @commands.slash_command(
-        name="leechscore",
+        name="leech_score",
         description="Leech coin leaderboard",
     )
-    async def leechscore(
-        self, inter, share=commands.Param(default="No", choices=["Yes", "No"], converter=convert_yes_to_false)
-    ):
-        """Show the balance for all users."""
+    async def leech_score(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        share: str = commands.Param(
+            description="Whether to share your balance with the chat or not.",
+            default="No",
+            choices=["Yes", "No"],
+            converter=convert_yes_to_false,
+        ),
+    ) -> coroutine:
+        """Show the balance for all users.
+
+                Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
+        """
         _, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
         if not self.bank:
             await inter.response.send_message("There are no accounts.", ephemeral=True)
@@ -205,13 +289,25 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         table.field_names = ["Name", "Balance", "Status"]
         table.add_rows(rows)
 
-        await inter.response.send_message(f"```{table.get_string(sortby='Name')}```", ephemeral=share)
+        return await inter.response.send_message(f"```{table.get_string(sortby='Name')}```", ephemeral=share)
 
     # Events -------------------------------------------------------------------
 
     @commands.Cog.listener("on_voice_state_update")
-    async def check_if_user_started_streaming(self, member, before, after):
-        """Check if a user starts streaming after a request."""
+    async def check_if_user_started_streaming(  # pylint: disable=too-many-locals
+        self, member: disnake.Member, before: disnake.VoiceState, after: disnake.VoiceState
+    ) -> None:
+        """Check if a user starts streaming after a request.
+
+        Parameters
+        ----------
+        member: disnake.Member
+            The member which changed voice state.
+        before: disnake.VoiceState
+            The voice state before update.
+        after: disnake.VoiceState
+            The voice state afterwards.
+        """
         now = datetime.datetime.now()
         started_streaming = before.self_stream is False and after.self_stream is True
 
@@ -224,7 +320,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         # If there are requests, and this member just started streaming
         if self.requests and started_streaming:
-            logger.info(f"{member.name} started streaming when someone requested")
+            logger.info("%s started streaming when someone requested", member.name)
             # then remove all stale requests
             n_removed = 0
             for idx, request in enumerate(self.requests):
@@ -232,7 +328,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 when = datetime.datetime.fromisoformat(request["when"])
                 if when < now:
                     await self.remove_leech_coin(user_id)
-                    logger.info(f"removing {request['who']} from list")
+                    logger.info("removing %s from list", request["who"])
                     self.requests.pop(idx)
                     n_removed += 1
 
@@ -249,16 +345,16 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 if is_member_provider and is_member_streaming:
                     self.providers.remove(this_member.id)
                     await self.add_leech_coin(str(this_member.id))
-                    logger.info(f"{this_member.name} is streaming when they said they would provide")
+                    logger.info("%s is streaming when they said they would provide", this_member.name)
 
         if len(self.requests) > 0:
-            logger.info("reqests: %s", self.requests)
+            logger.debug("requests: %s", self.requests)
         if len(self.providers) > 0:
-            logger.info("providers: %s", self.providers)
+            logger.debug("providers: %s", self.providers)
 
     # Role generation ----------------------------------------------------------
 
-    async def get_or_create_leech_role(self, guild):
+    async def get_or_create_leech_role(self, guild: disnake.Guild) -> disnake.Role:
         """Create a leech role if it doesn't already exist, and add user to it.
 
         Parameters
@@ -267,6 +363,11 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
             The guild
         user: disnake.User
             The user
+
+        Returns
+        -------
+        leech_role: disnake.Role
+            The leech Role for the guild.
         """
         leech_role = get(guild.roles, name=self.role_name)
 
@@ -279,7 +380,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return leech_role
 
-    async def join_leech_role(self, guild, user):
+    async def join_leech_role(self, guild: disnake.Guild, user: disnake.User) -> coroutine:
         """Add user to leech squad.
 
         Parameters
@@ -294,9 +395,9 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         if not leech_role:
             return
 
-        await user.add_roles(leech_role)
+        return await user.add_roles(leech_role)
 
-    async def leave_leech_role(self, guild, user):
+    async def leave_leech_role(self, guild: disnake.Guild, user: disnake.User) -> coroutine:
         """Remove user from leech squad.
 
         Parameters
@@ -311,12 +412,12 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         if not leech_role:
             return
 
-        await user.remove_roles(leech_role)
+        return await user.remove_roles(leech_role)
 
     # Functions ----------------------------------------------------------------
 
-    async def prepare_for_leech_command(self, guild, user):
-        """Check a bank account exists and assigbn to role.
+    async def prepare_for_leech_command(self, guild: disnake.Guild, user: disnake.User) -> Union[str, disnake.Role]:
+        """Check a bank account exists and assign to role.
 
         Parameters
         ----------
@@ -329,19 +430,23 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         -------
         user.id: int
             The id of the user.
+        leech_role: disnake.Role
+            The Role object for the guild.
         """
         await self.check_or_create_account(str(user.id))
         leech_role = await self.get_or_create_leech_role(guild)
 
         return str(user.id), leech_role
 
-    async def add_leech_coin(self, user_id, to_add=1):
+    async def add_leech_coin(self, user_id: int, to_add: int = 1) -> None:
         """Add a leech coin to a user's bank.
 
         Parameters
         ----------
         user_id: int
             The ID of the user.
+        to_add: int
+            The number of coins to add.
         """
         user = await self.bot.fetch_user(user_id)
 
@@ -350,15 +455,20 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         await self.update_account_status(user_id, user.name)
         await self.save_bank()
 
-        logger.info(f"Added {to_add} coins to {user.name}. New balance:", self.bank[user_id])
+        logger.info("Added %i coins to %s. New balance: %i", to_add, user.name, self.bank[user_id])
 
-    async def create_bank_account(self, user_id):
+    async def create_bank_account(self, user_id: int) -> dict:
         """Add a user to the bank JSON.
 
         Parameters
         ----------
         user_id: int
             The ID of the user.
+
+        Returns
+        -------
+        account: dict
+            The account for the user.
         """
         user = await self.bot.fetch_user(user_id)
         account = {"user_id": user_id, "name": user.name, "balance": self.starting_balance, "status": "Newfag"}
@@ -369,7 +479,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return account
 
-    async def update_account_status(self, user_id, user_name):
+    async def update_account_status(self, user_id: int, user_name: str) -> None:
         """Update the account status depending on balance.
 
         Parameters
@@ -387,10 +497,10 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         else:
             new_status = "Despicable leech"
 
-        logger.info(f"{user_name} status changed from {self.bank[user_id]['status']} to {new_status}")
+        logger.info("%s status changed from %s to %s", user_name, self.bank[user_id], new_status)
         self.bank[user_id]["status"] = new_status
 
-    async def remove_leech_coin(self, user_id):
+    async def remove_leech_coin(self, user_id: int) -> None:
         """Remove a leech coin to a user's bank.
 
         Parameters
@@ -405,14 +515,14 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         await self.update_account_status(user_id, user.name)
         await self.save_bank()
 
-        logger.info(f"Removed coin from {user.name}. New balance:", self.bank[user_id])
+        logger.info("Removed coin from %s. New balance: %s", user.name, self.bank[user_id])
 
-    async def save_bank(self):
+    async def save_bank(self) -> None:
         """Save changes to the bank to file."""
         with open(self.bank_file, "w", encoding="utf-8") as fp:
             json.dump(self.bank, fp)
 
-    async def check_or_create_account(self, user_id):
+    async def check_or_create_account(self, user_id: int) -> None:
         """Check a bank account exists for a user.
 
         Parameters
@@ -426,7 +536,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
     # Tasks --------------------------------------------------------------------
 
     @tasks.loop(seconds=CHECK_FREQUENCY_SECONDS)
-    async def remove_stale_requests(self):
+    async def remove_stale_requests(self) -> None:
         """Check periodically for stale requests."""
         if len(self.requests) == 0:
             return
@@ -438,7 +548,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         for idx, request in enumerate(self.requests):
             when_stale = datetime.datetime.fromisoformat(request["stale_after"])
             if when_stale < now:
-                logger.info(f"removing {request['who']} from content requesters")
+                logger.info("removing %s from content requesters", request["who"])
                 self.requests.pop(idx)
 
         # Then do same for providers. Done separately because they can be
@@ -447,5 +557,5 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         for idx, provider in enumerate(self.providers):
             when_stale = datetime.datetime.fromisoformat(provider["stale_after"])
             if when_stale < now:
-                logger.info(f"removing {provider['who']} from content providers")
+                logger.info("removing %s from content providers", provider["who"])
                 self.providers.pop(idx)

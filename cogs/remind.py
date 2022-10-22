@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""Commands for setting, viewing and removing reminders.
+"""
+
 import datetime
 import json
-import re
 import logging
+import re
+from types import coroutine
+from typing import Union, List
 
 import disnake
 from dateutil import parser
@@ -15,8 +20,7 @@ from watchdog.observers import Observer
 
 import config
 
-logger = logging.getLogger("slashbot")
-
+logger = logging.getLogger(config.LOGGER_NAME)
 cd_user = commands.BucketType.user
 time_units = {
     "time": 1,
@@ -24,7 +28,7 @@ time_units = {
     "minutes": 60,
     "hours": 3600,
 }
-whofor = ["here", "dm", "both"]
+who_for = ("here", "dm", "both")
 
 
 class Reminder(commands.Cog):
@@ -49,34 +53,51 @@ class Reminder(commands.Cog):
 
     # Before command invoke ----------------------------------------------------
 
-    async def cog_before_slash_command_invoke(self, inter):
-        """Reset the cooldown for some users and servers."""
+    async def cog_before_slash_command_invoke(
+        self, inter: disnake.ApplicationCommandInteraction
+    ) -> disnake.ApplicationCommandInteraction:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
         if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOLDOWN_USERS:
+        if inter.author.id in config.NO_COOL_DOWN_USERS:
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="remind", description="set a reminder")
-    async def add(  # pylint: disable=too-many-arguments
+    @commands.slash_command(name="set_reminder", description="set a reminder for later")
+    async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
-        inter,
-        when: str = commands.Param(),
-        time_unit=commands.Param(choices=list(time_units.keys())),
-        reminder=commands.Param(),
-        where=commands.Param(default="here", choices=whofor),
-    ):
+        inter: disnake.ApplicationCommandInteraction,
+        time_unit: str = commands.Param(
+            description="The time-frame to set for your reminder.",
+            choices=list(time_units.keys()),
+        ),
+        when: str = commands.Param(description="When you want to be reminded."),
+        reminder: str = commands.Param(description="What you want to be reminded about."),
+        where: str = commands.Param(
+            description="Where to be reminded.",
+            default="here",
+            choices=who_for,
+        ),
+    ) -> coroutine:
         """Set a reminder.
 
         Parameters
         ----------
-        when: float
-            The amount of time to wait before the reminder.
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
         time_unit: str
             The unit of time to wait before the reminder.
+        when: float
+            The amount of time to wait before the reminder.
         reminder: str
             The reminder to set.
         where: str
@@ -134,36 +155,52 @@ class Reminder(commands.Cog):
         self.save_reminders()
 
         if time_unit == "time":
-            await inter.response.send_message(f"Reminder set for {when}.", ephemeral=True)
-        else:
-            await inter.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
+            return await inter.response.send_message(f"Reminder set for {when}.", ephemeral=True)
+
+        return await inter.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="forget", description="clear your reminders")
-    async def remove(self, inter, m_id):
+    @commands.slash_command(name="forget_reminder", description="forget a reminder")
+    async def forget_reminder(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        reminder_id: str = commands.Param(
+            description="The ID of the reminder you want to forget. Use /show_reminders to see your reminders."
+        ),
+    ) -> coroutine:
         """Clear a reminder or all of a user's reminders.
 
         Parameters
         ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
         m_id: str
             The id of the reminder to remove.
         """
-        if m_id not in self.reminders:
-            return await inter.response.send_message("That reminder doesn't exist.", ephemeral=True)
+        if reminder_id not in self.reminders:
+            return await inter.response.send_message(
+                "That reminder doesn't exist, use /show_reminders to see your reminders.", ephemeral=True
+            )
 
-        if self.reminders[m_id]["user"] != inter.author.id:
+        if self.reminders[reminder_id]["user"] != inter.author.id:
             return await inter.response.send_message("You can't remove someone else's reminder.", ephemeral=True)
 
-        removed = self.reminders.pop(m_id, None)
+        removed = self.reminders.pop(reminder_id, None)
         self.save_reminders()
 
-        await inter.response.send_message(f"Reminder for {removed['what']} removed.", ephemeral=True)
+        return await inter.response.send_message(f"Reminder for {removed['what']} removed.", ephemeral=True)
 
     @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="planned", description="view your reminders")
-    async def show(self, inter):
-        """Show the reminders set for a user."""
-        reminders = [
+    @commands.slash_command(name="show_reminders", description="view your reminders")
+    async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Show the reminders set for a user.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
+        """
+        reminders = [  # this is one hell of a list comprehension
             [m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]]
             for m_id, item in self.reminders.items()
             if item["user"] == inter.author.id
@@ -179,78 +216,64 @@ class Reminder(commands.Cog):
         table.add_rows(reminders)
         message += table.get_string(sortby="ID") + "```"
 
-        await inter.response.send_message(message, ephemeral=True)
-
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
-    @commands.slash_command(name="allplanned", description="view all the reminders, if you're allowed to")
-    async def show_all(self, inter):
-        """Show all the reminders."""
-        if inter.author.id not in config.NO_COOLDOWN_USERS:
-            return await inter.response.send_message(
-                "You do not have permission to view all the reminders.", ephemeral=True
-            )
-
-        reminders = [
-            [m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]] for m_id, item in self.reminders.items()
-        ]
-        if not reminders:
-            return await inter.response.send_message("There are no reminders.", ephemeral=True)
-
-        message = f"There are {len(reminders)} reminders set.\n```"
-        table = PrettyTable()
-        table.align = "r"
-        table.field_names = ["ID", "When", "What"]
-        table._max_width = {"ID": 10, "When": 10, "What": 50}  # pylint: disable=protected-access
-        table.add_rows(reminders)
-        message += table.get_string(sortby="ID") + "```"
-
-        await inter.response.send_message(message[:2000], ephemeral=True)
+        return await inter.response.send_message(message, ephemeral=True)
 
     # Tasks --------------------------------------------------------------------
 
     @tasks.loop(seconds=5.0)
     async def check_reminders(self):
-        """Check if any reminders need to be sent."""
-        for m_id, reminder in list(self.reminders.items()):
+        """Check if any reminders need to be sent wherever needed."""
+        for reminder_id, reminder in list(self.reminders.items()):
             when = datetime.datetime.fromisoformat(reminder["when"])
 
             if when <= datetime.datetime.now():
                 user = self.bot.get_user(reminder["user"])
                 if not user:
                     continue
-                if user.id == config.ID_USER_ADAM:
-                    continue
+
                 embed = disnake.Embed(title=reminder["what"], color=disnake.Color.default())
                 embed.set_footer(text=f"{self.generate_sentence('reminder')}")
                 embed.set_thumbnail(url=user.avatar.url)
 
-                if reminder["whofor"] == "dm" or reminder["whofor"] == "both":
+                if reminder["whofor"] in ["dm", "both"]:
                     await user.send(embed=embed)
 
-                if reminder["whofor"] == "here" or reminder["whofor"] == "both":
+                if reminder["whofor"] in ["here", "both"]:
                     channel = self.bot.get_channel(reminder["channel"])
                     message = f"{user.mention}"
 
-                    if user.id != config.ID_USER_ADAM:
-                        for user_id in reminder["tag"]:
-                            user = self.bot.get_user(int(user_id))
-                            if user:
-                                message += f" {user.mention}"
+                    for user_id in reminder["tag"]:
+                        user = self.bot.get_user(int(user_id))
+                        if user:
+                            message += f" {user.mention}"
 
                     await channel.send(message, embed=embed)
 
-                self.reminders.pop(m_id, None)
+                self.reminders.pop(reminder_id, None)
                 self.save_reminders()
 
     # Functions ----------------------------------------------------------------
 
     def load_reminders(self):
         """Load the reminders from a file."""
-        with open(config.REMINDERS_FILE, "r", encoding="utf-8") as fp:
-            self.reminders = json.load(fp)
+        with open(config.REMINDERS_FILE, "r", encoding="utf-8") as file_in:
+            self.reminders = json.load(file_in)
 
-    def replace_mentions(self, sentence):
-        """Replace mentions from a post with the user name."""
+    def replace_mentions(self, sentence: str) -> Union[List[str], str]:
+        """Replace mentions from a post with the user name.
+
+        Parameters
+        ----------
+        sentence: str
+            The sentence to remove mentions from.
+
+        Returns
+        -------
+        user_ids: List[str]
+            A list of user ids in the sentence.
+        sentence: str
+            The sentence with mentions removed.
+        """
         user_ids = re.findall(r"\<@!(.*?)\>", sentence)
 
         for u_id in user_ids:
@@ -261,5 +284,5 @@ class Reminder(commands.Cog):
 
     def save_reminders(self):
         """Dump the reminders to a file."""
-        with open(config.REMINDERS_FILE, "w", encoding="utf-8") as fp:
-            json.dump(self.reminders, fp)
+        with open(config.REMINDERS_FILE, "w", encoding="utf-8") as file_in:
+            json.dump(self.reminders, file_in)
