@@ -15,9 +15,9 @@ from dateutil import parser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 
-import config
+from config import App
 
-logger = logging.getLogger(config.LOGGER_NAME)
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 time_units = {
     "time": 1,
@@ -34,7 +34,7 @@ class Reminder(commands.Cog):
     def __init__(self, bot, generate_sentence):
         self.bot = bot
         self.generate_sentence = generate_sentence
-        self.reminders = config.REMINDERS_FILE_STREAM
+        self.reminders = App.config("REMINDERS_FILE_STREAM")
         self.check_reminders.start()  # pylint: disable=no-member
 
     # Before command invoke ----------------------------------------------------
@@ -49,15 +49,15 @@ class Reminder(commands.Cog):
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOL_DOWN_USERS:
+        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(1, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(1, App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="set_reminder", description="set a reminder for later")
     async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
@@ -145,7 +145,7 @@ class Reminder(commands.Cog):
 
         return await inter.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="forget_reminder", description="forget a reminder")
     async def forget_reminder(
         self,
@@ -176,7 +176,7 @@ class Reminder(commands.Cog):
 
         return await inter.response.send_message(f"Reminder for {removed['what']} removed.", ephemeral=True)
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="show_reminders", description="view your reminders")
     async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Show the reminders set for a user.
@@ -265,5 +265,5 @@ class Reminder(commands.Cog):
 
     def save_reminders(self):
         """Dump the reminders to a file."""
-        with open(config.REMINDERS_FILE, "w", encoding="utf-8") as file_in:
+        with open(App.config("REMINDERS_FILE"), "w", encoding="utf-8") as file_in:
             json.dump(self.reminders, file_in)

@@ -1,115 +1,156 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Global variables used throughout the bot."""
+"""Global configuration class."""
+
 
 import json
 import logging
 import os
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any
 
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
-# Constants defined for controlling cooldowns
 
-COOLDOWN_RATE = 3
-COOLDOWN_STANDARD = 60
-COOLDOWN_ONE_HOUR = 3600
-COOLDOWN_TEN_MINUTES = 600
-HOURS_IN_WEEK = 168
+class App:
+    """The global configuration class.
 
-# Constants for general discord things
+    Contains shared variables or variables which control the operation
+    of the bot.
 
-SYMBOL = "%"
-MAX_CHARS = 1994
-LOGGER_NAME = "slashbot"
-LOGFILE_NAME = Path("./slashbot.log")
+    TODO: __conf may be better coming from a YAML file.
+    """
 
-__logger = logging.getLogger(LOGGER_NAME)
+    # __conf is a dictionary of configuration parameters
+    __conf = {
+        "BOT_TOKEN": os.getenv("BOT_TOKEN"),
+        # cooldown parameters
+        "COOLDOWN_RATE": 3,
+        "COOLDOWN_STANDARD": 60,
+        "COOLDOWN_ONE_HOUR": 3600,
+        "HOURS_IN_WEEK": 168,
+        # general discord things
+        "MAX_CHARS": 1994,
+        "LOGGER_NAME": "slashbot",
+        "LOGFILE_NAME": Path("./slashbot.log"),
+        # Define users, roles and channels
+        "ID_BOT": 815234903251091456,
+        "ID_USER_ADAM": 261097001301704704,
+        "ID_USER_ZADETH": 737239706214858783,
+        "ID_USER_LIME": 121310675132743680,
+        "ID_USER_SAULTYEVIL": 151378138612367360,
+        "ID_USER_HYPNOTIZED": 176726054256377867,
+        "ID_SERVER_ADULT_CHILDREN": 237647756049514498,
+        "ID_SERVER_FREEDOM": 815237689775357992,
+        "ID_SERVER_BUMPAPER": 710120382144839691,
+        "ID_CHANNEL_IDIOTS": 237647756049514498,
+        "ID_CHANNEL_SPAM": 627234669791805450,
+        # API keys
+        "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
+        "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
+        "OWM_API_KEY": os.getenv("OWM_API_KEY"),
+        "TWITTER_BEARER_KEY": os.getenv("TWITTER_BEARER_KEY"),
+        # File locations
+        "USERS_FILE": Path("data/users.json"),
+        "REMINDERS_FILE": Path("data/reminders.json"),
+        "BANK_FILE": Path("data/bank.json"),
+        "BAD_WORDS_FILE": Path("data/badwords.txt"),
+        "GOD_WORDS_FILE": Path("data/godwords.txt"),
+        # File streams
+        "USER_FILE_STREAM": None,
+        "REMINDERS_FILE_STREAM": None,
+        "BANK_FILE_STREAM": None,
+    }
 
-# Constants to define users, roles and channels. Note that users are supposed
-# to be set as environment variables for privacy reasons.
+    __conf["SLASH_SERVERS"] = [
+        __conf["ID_SERVER_ADULT_CHILDREN"],
+        __conf["ID_SERVER_FREEDOM"],
+        __conf["ID_SERVER_BUMPAPER"],
+    ]
+    __conf["NO_COOL_DOWN_USERS"] = [__conf["ID_USER_SAULTYEVIL"]]
+    __conf["ALL_FILES"] = [__conf["USERS_FILE"], __conf["REMINDERS_FILE"], __conf["BANK_FILE"]]
 
-ID_BOT = 815234903251091456
-ID_USER_ADAM = 261097001301704704
-ID_USER_ZADETH = 737239706214858783
-ID_USER_LIME = 121310675132743680
-ID_USER_SAULTYEVIL = 151378138612367360
-ID_USER_HYPNOTIZED = 176726054256377867
-ID_SERVER_ADULT_CHILDREN = 237647756049514498
-ID_SERVER_FREEDOM = 815237689775357992
-ID_SERVER_BUMPAPER = 710120382144839691
-ID_CHANNEL_IDIOTS = 237647756049514498
-ID_CHANNEL_SPAM = 627234669791805450
+    # __setters is a tuple of parameters which can be set
+    __setters = ("USERS_FILE_STREAM", "REMINDERS_FILE_STREAM", "BANK_FILE_STREAM")
 
-SLASH_SERVERS = [ID_SERVER_ADULT_CHILDREN, ID_SERVER_FREEDOM, ID_SERVER_BUMPAPER]
+    # Public methods -----------------------------------------------------------
 
-NO_COOL_DOWN_USERS = [ID_USER_SAULTYEVIL]
+    @staticmethod
+    def config(name: str) -> Any:
+        """Get a configuration parameter.
 
-# API keys and specific settings
+        Parameters
+        ----------
+        name: str
+            The name of the parameter to get the value for.
+        """
+        return App.__conf[name]
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-WOLFRAM_API_KEY = os.getenv("WOLFRAM_API_KEY")
-OWN_API_KEY = os.getenv("OWM_API_KEY")
-TWITTER_BEARER_KEY = os.getenv("TWITTER_BEARER_KEY")
+    @staticmethod
+    def set(name: str, value: Any) -> None:
+        """Set the value of a configuration parameter.
 
-# File locations for staring data
-
-USERS_FILE = Path("data/users.json").resolve()
-REMINDERS_FILE = Path("data/reminders.json").resolve()
-BANK_FILE = Path("data/bank.json").resolve()
-ALL_FILES = [USERS_FILE, REMINDERS_FILE, BANK_FILE]
-
-# Check for files which don't exist, and create empty files if they dont
-
-for file in ALL_FILES:
-    if not os.path.exists(file):
-        with open(file, "w", encoding="utf-8") as file_out:
-            file_out.write("{}")
-
-# Create global file streams, so they can be watched in here
-
-with open(USERS_FILE, "r", encoding="utf-8") as gl_file_in:
-    USER_FILE_STREAM = json.load(gl_file_in)
-
-with open(REMINDERS_FILE, "r", encoding="utf-8") as gl_file_in:
-    REMINDERS_FILE_STREAM = json.load(gl_file_in)
-
-with open(BANK_FILE, "r", encoding="utf-8") as gl_file_in:
-    BANK_FILE_STREAM = json.load(gl_file_in)
-
-
-def on_directory_change(_):
-    """On changes to the directory, reload all the data files."""
-    global USER_FILE_STREAM  # pylint: disable=global-statement
-    global REMINDERS_FILE_STREAM  # pylint: disable=global-statement
-    global BANK_FILE_STREAM  # pylint: disable=global-statement
-
-    with open(USERS_FILE, "r", encoding="utf-8") as file_in:
-        USER_FILE_STREAM = json.load(file_in)
-        __logger.info("reloaded user file")
-
-    with open(REMINDERS_FILE, "r", encoding="utf-8") as file_in:
-        REMINDERS_FILE_STREAM = json.load(file_in)
-        __logger.info("reloaded reminders")
-
-    with open(BANK_FILE, "r", encoding="utf-8") as file_in:
-        BANK_FILE_STREAM = json.load(file_in)
-        __logger.info("reloaded bank file")
-
-
-# Set up an observer so when something in the data directory changes, then
-# we read in the different files in again
-
-observer = Observer()
-event_handler = PatternMatchingEventHandler(["*"], None, False, True)
-event_handler.on_modified = on_directory_change
-observer.schedule(event_handler, "./data", False)
-observer.start()
+        Parameters
+        ----------
+        name: str
+            The name of the parameter to set a value for.
+        value: Any
+            The new value of the parameter.
+        """
+        if name in App.__setters:
+            App.__conf[name] = value
+        else:
+            raise NameError(f"Name {name} not accepted in set() method")
 
 
-# Special files
+# Set up logger ----------------------------------------------------------------
 
-BAD_WORDS_FILE = "data/badwords.txt"
-GOD_WORDS_FILE = "data/godwords.txt"
+logger = logging.getLogger(App.config("LOGGER_NAME"))
+formatter = logging.Formatter(
+    "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
+)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+file_handler = RotatingFileHandler(
+    filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
+)
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+
+def __read_in_json_file(filepath: Path, conf_key: str) -> None:
+    """Read in a JSON file and set it to a __conf key.
+
+    Parameters
+    ----------
+    filepath: Path
+        The filepath to the file.
+    conf_key: str
+        The key for the file in the App.__conf dict.
+    """
+    with open(filepath, "r", encoding="utf-8") as file_in:
+        App.set(conf_key, json.load(file_in))
+    logger.info("Loaded %s and set to App.config[%s]", filepath, conf_key)
+
+
+__read_in_json_file(App.config("USERS_FILE"), "USERS_FILE_STREAM")
+__read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
+__read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
+
+
+def __on_directory_change(_):
+    __read_in_json_file(App.config("USERS_FILE"), "USERS_FILE_STREAM")
+    __read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
+    __read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
+
+
+__observer = Observer()
+__event_handler = PatternMatchingEventHandler(["*"], None, False, True)
+__event_handler.on_modified = __on_directory_change
+__observer.schedule(__event_handler, "./data", False)
+__observer.start()

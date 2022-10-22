@@ -16,12 +16,12 @@ from disnake.ext import commands, tasks
 from disnake.utils import get
 from prettytable import PrettyTable
 
-import config
+from config import App
 
 cd_user = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 60
 
-logger = logging.getLogger(config.LOGGER_NAME)
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
 async def convert_yes_to_false(_: disnake.ApplicationCommandInteraction, choice: str) -> bool:
@@ -69,8 +69,8 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.starting_balance = starting_balance
         self.role_name = role_name
         self.stale_minutes = stale_minutes
-        self.bank_file = Path(config.BANK_FILE)
-        self.bank = config.BANK_FILE_STREAM
+        self.bank_file = App.config("BANK_FILE")
+        self.bank = App.config("BANK_FILE_STREAM")
         self.requests = []
         self.providers = []
 
@@ -88,15 +88,15 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOL_DOWN_USERS:
+        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(
         name="leave_leech",
         description="Leave the leech notification squad",
@@ -114,7 +114,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
             f"You have left the {self.role_name} notification squad.", ephemeral=True
         )
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(
         name="leech_balance",
         description="Check how many leech coins you have",
@@ -158,7 +158,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return await inter.response.send_message(embed=embed, ephemeral=share)
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="need_content", description="Demand content, filthy leech", dm_permission=False)
     async def need_content(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Demand that there be content, filthy little leech.
@@ -202,7 +202,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return await inter.response.send_message(f"{mention} {requesters} content.")
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="leech_squad", description="Join the leech notification squad", dm_permission=False)
     async def leech_squad(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Join the leech notification squad.
@@ -217,7 +217,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
             f"You've joined the {self.role_name} notification squad.", ephemeral=True
         )
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="content_creator", description="Provide content like a good boy", dm_permission=False)
     async def content_creator(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Provide content from the goodness of your heart, or heed the call
@@ -252,7 +252,7 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return await inter.response.send_message(f"{mention} {providers} will be providing content.")
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(
         name="leech_score",
         description="Leech coin leaderboard",

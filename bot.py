@@ -11,7 +11,6 @@ import os
 import pickle
 import time
 
-
 import aiohttp
 import disnake
 import requests
@@ -25,10 +24,8 @@ import cogs.spam
 import cogs.users
 import cogs.videos
 import cogs.weather
-import config
+from config import App
 from markovify import markovify  # pylint: disable=import-error
-
-from config_class import App
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
@@ -75,10 +72,10 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
         with open("data/chain.pickle", "rb") as file_in:
             markov_gen.chain = pickle.load(file_in)
 
-    with open(config.BAD_WORDS_FILE, "r", encoding="utf-8") as file_in:
+    with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
         bad_words = file_in.readlines()[0].split()
 
-    with open(config.GOD_WORDS_FILE, "r", encoding="utf-8") as file_in:
+    with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
         god_words = file_in.read().splitlines()
 
     # Set up the bot and cogs --------------------------------------------------
@@ -96,7 +93,7 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
     weather = cogs.weather.Weather(bot, spam.generate_sentence)
     videos = cogs.videos.Videos(bot, bad_words, spam.generate_sentence)
     users = cogs.users.Users(bot)
-    admin = cogs.admin.Admin(bot, config.LOGFILE_NAME)
+    admin = cogs.admin.Admin(bot, App.config("LOGFILE_NAME"))
 
     # Add all the cogs to the bot
     bot.add_cog(spam)

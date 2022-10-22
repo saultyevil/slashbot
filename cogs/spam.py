@@ -21,10 +21,10 @@ import rule34 as r34
 import tweepy
 from disnake.ext import commands, tasks
 
-import config
+from config import App
 from markovify import markovify
 
-logger = logging.getLogger(config.LOGGER_NAME)
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 
 
@@ -62,9 +62,9 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.attempts = attempts
         self.messages = {}
         self.rule34_api = r34.Rule34()
-        self.twitter_api = tweepy.Client(config.TWITTER_BEARER_KEY)
+        self.twitter_api = tweepy.Client(App.config("TWITTER_BEARER_KEY"))
         self.update_markov_chains.start()  # pylint: disable=no-member
-        self.user_data = config.USER_FILE_STREAM
+        self.user_data = App.config("USER_FILE_STREAM")
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)
@@ -81,15 +81,15 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id != config.ID_SERVER_ADULT_CHILDREN:
+        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in config.NO_COOL_DOWN_USERS:
+        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
 
     # Slash commands -----------------------------------------------------------
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="bad_word", description="send a naughty word")
     async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a bad word to the chat.
@@ -114,7 +114,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         if no_user_bad_word:
             return await inter.response.send_message(f"{bad_word.capitalize()}.")
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(
         name="chat",
         description="artificial intelligence, powered by markov chain sentence generation",
@@ -139,7 +139,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         await inter.response.defer()
         return await inter.edit_original_message(content=self.generate_sentence(words, mentions=False))
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="clap", description="send a clapped out message")
     async def clap(
         self,
@@ -155,7 +155,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         """
         return await inter.response.send_message(":clap:" + ":clap:".join(text.split()) + ":clap:")
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="update_chat_responses", description="force update the markov chain for /chat")
     async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction) -> Union[coroutine, None]:
         """Update the Markov chain model.
@@ -204,7 +204,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
 
         logger.info("Markov chain updated with %i new messages.", len(messages))
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="oracle", description="a message from god")
     async def oracle(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a Terry Davis inspired "God message" to the chat.
@@ -217,7 +217,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         words = random.sample(self.god_words, random.randint(7, 15))
         return await inter.response.send_message(f"{' '.join(words)}")
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="rule34", description="search for a naughty image")
     async def rule34(
         self,
@@ -255,7 +255,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
 
         return await inter.edit_original_message(content=f'{message}\n>>> "{comment}"\n*{user_name_comment}*')
 
-    @commands.cooldown(config.COOLDOWN_RATE, config.COOLDOWN_STANDARD, cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="twitter", description="get a random tweet from a user")
     async def twitter(
         self,
