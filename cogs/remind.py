@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Commands for setting, viewing and removing reminders.
-"""
+"""Commands for setting, viewing and removing reminders."""
 
 import datetime
 import json
 import logging
 import re
 from types import coroutine
-from typing import Union, List
+from typing import List, Union
 
 import disnake
 from dateutil import parser

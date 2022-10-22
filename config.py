@@ -3,10 +3,11 @@
 
 """Global variables used throughout the bot."""
 
-import os
 import json
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
+
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 

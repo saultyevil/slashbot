@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Commands for getting the weather.
-"""
+"""Commands for getting the weather."""
 
 import datetime
 import logging

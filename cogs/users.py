@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Commands for remembering user info.
-"""
+"""Commands for remembering user info."""
 
 import json
 import logging

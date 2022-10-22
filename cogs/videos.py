@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Commands for sending videos, and scheduled videos.
-"""
+"""Commands for sending videos, and scheduled videos."""
 
 import asyncio
 import calendar

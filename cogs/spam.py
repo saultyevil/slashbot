@@ -11,9 +11,9 @@ import random
 import re
 import shutil
 import string
+import xml
 from types import coroutine
 from typing import List, Union
-import xml
 
 import disnake
 import requests
