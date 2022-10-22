@@ -5,7 +5,6 @@
 """
 
 import datetime
-import json
 import logging
 from types import coroutine
 
