@@ -76,6 +76,23 @@ class App:
     # __setters is a tuple of parameters which can be set
     __setters = ("USER_FILE_STREAM", "REMINDERS_FILE_STREAM", "BANK_FILE_STREAM")
 
+    # Special methods ----------------------------------------------------------
+
+    def __getitem__(self, name: str) -> Any:
+        """Get an item from __conf using square bracket indexing.
+
+        Parameters
+        ---------
+        name: str
+            The name of the item to get.
+
+        Returns
+        -------
+        value: Any
+            The value of item.
+        """
+        return App.__conf[name]
+
     # Public methods -----------------------------------------------------------
 
     @staticmethod
@@ -135,7 +152,7 @@ def __read_in_json_file(filepath: Path, conf_key: str) -> None:
     """
     with open(filepath, "r", encoding="utf-8") as file_in:
         App.set(conf_key, json.load(file_in))
-    logger.info("Loaded %s and set to App.config[%s]", filepath, conf_key)
+    logger.debug("Loaded %s and set to App.config[%s]", filepath, conf_key)
 
 
 __read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
