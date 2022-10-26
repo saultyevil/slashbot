@@ -9,4 +9,5 @@ services:
       - OWM_API_KEY
       - WOLFRAM_API_KEY
       - TWITTER_BEARER_KEY
+      - TZ=Europe/London
     env_file: docker-env.env
