@@ -111,8 +111,12 @@ class Admin(commands.Cog):
         tail = []
         num_chars = 0
 
-        for i in range(num_lines):
-            num_chars += len(log_lines[-i])
+        for i in range(1, num_lines + 1):
+            try:
+                num_chars += len(log_lines[-i])
+            except IndexError:
+                break
+
             if num_chars > App.config("MAX_CHARS"):
                 break
             tail.append(log_lines[-i])
