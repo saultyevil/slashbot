@@ -63,7 +63,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.messages = {}
         self.rule34_api = r34.Rule34()
         self.twitter_api = tweepy.Client(App.config("TWITTER_BEARER_KEY"))
-        self.update_markov_chains.start()  # pylint: disable=no-member
+        self.scheduled_update_markov_chain.start()  # pylint: disable=no-member
         self.user_data = App.config("USER_FILE_STREAM")
 
         # if we don't unregister this, the bot is weird on close down
@@ -502,6 +502,8 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
     # Scheduled tasks ----------------------------------------------------------
 
     @tasks.loop(hours=4)
-    async def update_markov_chains(self):
+    async def scheduled_update_markov_chain(self):
         """Get the bot to update the chain every 4 hours."""
+        logger.info("scheduled update of markov chain starting")
         await self.update_markov_chain(None)
+        logger.info("scheduled update of markov chain finished")
