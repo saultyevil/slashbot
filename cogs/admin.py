@@ -100,7 +100,7 @@ class Admin(commands.Cog):
         if file == "slashbot":
             file_name = self.log_path
         else:
-            file_name = self.log_path.with_name("disnake")
+            file_name = self.log_path.with_name("disnake.log")
 
         with open(file_name, "r", encoding="utf-8") as file_in:
             log_lines = file_in.readlines()
