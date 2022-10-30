@@ -132,6 +132,7 @@ formatter = logging.Formatter(
 
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
+console_handler.setLevel(logging.INFO)
 
 file_handler = RotatingFileHandler(
     filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
@@ -141,7 +142,7 @@ file_handler.setLevel(logging.DEBUG)
 
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 # Set up logger for disnake ----------------------------------------------------
