@@ -82,7 +82,7 @@ def create_and_run_bot() -> None:  # pylint: disable=too-many-locals too-many-st
 
     intents = disnake.Intents.default()
     intents.members = True  # pylint: disable=assigning-non-slot
-    intents.invites = True  # pylint: disable=assigning-non-slot
+    intents.messages = True  # pylint: disable=assigning-non-slot
 
     # Create bot and the various different cogs
     bot = Bot(intents=intents)
