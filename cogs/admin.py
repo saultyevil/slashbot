@@ -117,7 +117,7 @@ class Admin(commands.Cog):
                 break
             tail.append(log_lines[-i])
 
-        return await inter.edit_original_message(f"```{''.join(tail)}```")
+        return await inter.edit_original_message(f"```{''.join(tail[::-1])}```")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="ip", description="get the external ip address for the bot")
