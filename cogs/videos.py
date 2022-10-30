@@ -286,6 +286,6 @@ class Videos(commands.Cog):
 
     @jack_bin_day.before_loop
     async def sleep_jack_bin_day(self) -> None:
-        """Sleep until Friday 5:45 am."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 5, 45))
+        """Sleep until Thursday  11:54 pm."""
+        await asyncio.sleep(self.calc_sleep_time(calendar.THURSDAY, 23, 54))
         await self.bot.wait_until_ready()
