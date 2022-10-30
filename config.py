@@ -9,6 +9,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+import pathlib
 from typing import Any
 
 from watchdog.events import PatternMatchingEventHandler
@@ -156,7 +157,7 @@ logger_disnake.addHandler(disnake_handler)
 # Read in user files -----------------------------------------------------------
 
 
-def __read_in_json_file(filepath: Path, conf_key: str) -> None:
+def read_in_json_file(filepath: Path, conf_key: str) -> None:
     """Read in a JSON file and set it to a __conf key.
 
     Parameters
@@ -171,19 +172,40 @@ def __read_in_json_file(filepath: Path, conf_key: str) -> None:
     logger.debug("Loaded %s and set to App.config[%s]", filepath, conf_key)
 
 
-__read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
-__read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
-__read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
+def create_file_observer(filepath: pathlib.Path, directory: str, conf_key: str) -> Observer:
+    """Create a file observer, to do something on file change.
+
+    Parameters
+    ----------
+    filepath: pathlib.Path
+        The filepath to the file to observe.
+    directory: str
+        The directory containing the file.
+    conf_key: str
+        The key to update in the App config object.
+
+    Returns
+    -------
+    observer: Observer
+        The observer object.
+    """
+
+    observer = Observer()
+    event_handler = PatternMatchingEventHandler([str(filepath)], None, False, False)
+    event_handler.on_modified = lambda _: read_in_json_file(filepath, conf_key)
+    observer.schedule(event_handler, directory, False)
+
+    return observer
 
 
-def __on_directory_change(_):
-    __read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
-    __read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
-    __read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
+read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
+read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
+read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
 
+user_file_observer = create_file_observer(App.config("USERS_FILE"), "data/", "USER_FILE_STREAM")
+reminders_file_observer = create_file_observer(App.config("REMINDERS_FILE"), "data/", "REMINDERS_FILE_STREAM")
+bank_file_observer = create_file_observer(App.config("BANK_FILE"), "data/", "BANK_FILE_STREAM")
 
-__observer = Observer()
-__event_handler = PatternMatchingEventHandler(["*"], None, False, True)
-__event_handler.on_modified = __on_directory_change
-__observer.schedule(__event_handler, "./data", False)
-__observer.start()
+user_file_observer.start()
+reminders_file_observer.start()
+bank_file_observer.start()
