@@ -305,6 +305,8 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         message: disnake.Message
             The message to record.
         """
+        logger.info("on_message triggered")
+
         self.messages[str(message.id)] = message.content
         logger.debug("adding sentence %s", message.content)
 
