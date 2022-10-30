@@ -306,6 +306,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
             The message to record.
         """
         self.messages[str(message.id)] = message.content
+        logger.debug("adding sentence %s", message.content)
 
         # Replace twitter video links with fx/vx twitter links
         # Check if someone has opted out. If not set, default to False
