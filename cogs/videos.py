@@ -65,6 +65,22 @@ class Videos(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.slash_command(name="admin_abuse", description="admin abuse!!! you're the worst admin ever!!!")
+    async def admin_abuse(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Send a clip of someone shouting admin abuse.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
+        await inter.response.defer()
+        seed = random.choice(["admin", "abuse", "admin abuse"])
+        return await inter.edit_original_message(
+            message=f"{self.generate_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+        )
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="goodbye", description="goodbye")
     async def goodbye(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko saying goodbye.
