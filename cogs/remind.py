@@ -66,7 +66,9 @@ class Reminder(commands.Cog):
             description="The time-frame to set for your reminder.",
             choices=list(time_units.keys()),
         ),
-        when: str = commands.Param(description="When you want to be reminded."),
+        when: str = commands.Param(
+            description='When you want to be reminded, remember the timezone if you\'ve chosen "time".'
+        ),
         reminder: str = commands.Param(description="What you want to be reminded about."),
         where: str = commands.Param(
             description="Where to be reminded.",
