@@ -143,6 +143,16 @@ logger.addHandler(file_handler)
 logger.setLevel(logging.INFO)
 logger.propagate = False
 
+# Set up logger for disnake ----------------------------------------------------
+
+disnake_handler = logging.FileHandler(filename="disnake.log", encoding="utf-8", mode="w")
+disnake_handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+logger_disnake = logging.getLogger("disnake")
+logger_disnake.setLevel(logging.DEBUG)
+logger_disnake.addHandler(disnake_handler)
+
+# Read in user files -----------------------------------------------------------
+
 
 def __read_in_json_file(filepath: Path, conf_key: str) -> None:
     """Read in a JSON file and set it to a __conf key.

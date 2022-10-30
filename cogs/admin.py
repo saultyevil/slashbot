@@ -52,6 +52,7 @@ class Admin(commands.Cog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="current_time", description="get the current time for the bot")
+    @commands.default_member_permissions(administrator=True)
     async def current_time(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Get the current time for the bot.
 
@@ -72,6 +73,11 @@ class Admin(commands.Cog):
     async def log_tail(
         self,
         inter: disnake.ApplicationCommandInteraction,
+        file: str = commands.Param(
+            default="slashbot",
+            description="The log file to tail, slashbot or disnake.",
+            choices=["slashbot", "disnake"],
+        ),
         num_lines: int = commands.Param(
             default=10,
             description="The number of lines to include in the tail of the log file.",
@@ -91,7 +97,12 @@ class Admin(commands.Cog):
         """
         await inter.response.defer(ephemeral=True)
 
-        with open(self.log_path, "r", encoding="utf-8") as file_in:
+        if file == "slashbot":
+            file_name = self.log_path
+        else:
+            file_name = self.log_path.with_name("disnake")
+
+        with open(file_name, "r", encoding="utf-8") as file_in:
             log_lines = file_in.readlines()
 
         # iterate backwards over log_lines, until either n_lines is reached or
