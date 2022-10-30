@@ -53,7 +53,7 @@ class Bot(commands.InteractionBot):
     async def close(self):
         """Clean up things on close."""
         for function in self.cleanup_functions:
-            print(f"{function['name']}")
+            logger.info("%s", function["name"])
             if function["args"]:
                 await function["function"](*function["args"])
             else:
