@@ -137,6 +137,7 @@ file_handler = RotatingFileHandler(
     filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
 )
 file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.DEBUG)
 
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
