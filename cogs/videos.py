@@ -77,7 +77,7 @@ class Videos(commands.Cog):
         await inter.response.defer()
         seed = random.choice(["admin", "abuse", "admin abuse"])
         return await inter.edit_original_message(
-            message=f"{self.generate_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+            content=f"{self.generate_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
