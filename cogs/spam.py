@@ -186,7 +186,6 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
                 return await inter.edit_original_message(content="No messages to learn from.")
             return None
 
-        logger.debug("update_markov_chain: messages to make new chain %s", messages)
         shutil.copy2("data/chain.pickle", "data/chain.pickle.bak")  # incase something goes wrong when updating
         try:
             new_model = markovify.NewlineText(messages)
@@ -351,8 +350,6 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         """
         learnable_sentences = []
 
-        logger.debug("messages to learn: %s", self.messages.values())
-
         for sentence in self.messages.values():
             if len(sentence) == 0:  # empty strings
                 continue
@@ -362,8 +359,6 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
                 continue
 
             learnable_sentences.append(sentence)
-
-        logger.debug("messages which will be learnt: %s", learnable_sentences)
 
         return learnable_sentences
 
