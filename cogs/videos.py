@@ -65,6 +65,22 @@ class Videos(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.slash_command(name="admin_abuse", description="admin abuse!!! you're the worst admin ever!!!")
+    async def admin_abuse(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Send a clip of someone shouting admin abuse.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
+        await inter.response.defer()
+        seed = random.choice(["admin", "abuse", "admin abuse"])
+        return await inter.edit_original_message(
+            content=f"{self.generate_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+        )
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="goodbye", description="goodbye")
     async def goodbye(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko saying goodbye.
@@ -286,6 +302,6 @@ class Videos(commands.Cog):
 
     @jack_bin_day.before_loop
     async def sleep_jack_bin_day(self) -> None:
-        """Sleep until Friday 5:45 am."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 5, 45))
+        """Sleep until Thursday  11:54 pm."""
+        await asyncio.sleep(self.calc_sleep_time(calendar.THURSDAY, 23, 54))
         await self.bot.wait_until_ready()

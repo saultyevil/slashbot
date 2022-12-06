@@ -51,18 +51,40 @@ class Admin(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.slash_command(name="current_time", description="get the current time for the bot")
+    @commands.default_member_permissions(administrator=True)
+    async def current_time(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Get the current time for the bot.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to respond to.
+        """
+        local_timezone = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+        local_date = datetime.datetime.now(local_timezone)
+        local_date_string = local_date.strftime("%c (%Z)")
+
+        return await inter.response.send_message(f"The current date and time is: {local_date_string}", ephemeral=True)
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="logfile", description="get the tail of the logfile")
     @commands.default_member_permissions(administrator=True)
     async def log_tail(
         self,
         inter: disnake.ApplicationCommandInteraction,
+        file: str = commands.Param(
+            default="slashbot",
+            description="The log file to tail, slashbot or disnake.",
+            choices=["slashbot", "disnake"],
+        ),
         num_lines: int = commands.Param(
             default=10,
             description="The number of lines to include in the tail of the log file.",
             max_value=50,
             min_value=1,
         ),
-    ):
+    ) -> coroutine:
         """Print the tail of the log file.
 
         TODO: reading in the file may need optimizing in the future, e.g.:
@@ -75,7 +97,12 @@ class Admin(commands.Cog):
         """
         await inter.response.defer(ephemeral=True)
 
-        with open(self.log_path, "r", encoding="utf-8") as file_in:
+        if file == "slashbot":
+            file_name = self.log_path
+        else:
+            file_name = self.log_path.with_name("disnake.log")
+
+        with open(file_name, "r", encoding="utf-8") as file_in:
             log_lines = file_in.readlines()
 
         # iterate backwards over log_lines, until either n_lines is reached or
@@ -84,13 +111,17 @@ class Admin(commands.Cog):
         tail = []
         num_chars = 0
 
-        for i in range(num_lines):
-            num_chars += len(log_lines[-i])
+        for i in range(1, num_lines + 1):
+            try:
+                num_chars += len(log_lines[-i])
+            except IndexError:
+                break
+
             if num_chars > App.config("MAX_CHARS"):
                 break
             tail.append(log_lines[-i])
 
-        await inter.edit_original_message(f"```{' '.join(tail)}```")
+        return await inter.edit_original_message(f"```{''.join(tail[::-1])}```")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="ip", description="get the external ip address for the bot")

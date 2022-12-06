@@ -2,6 +2,7 @@ version: "3.8"
 services:
   bot:
     build: .
+    container_name: slashbot
     restart: unless-stopped
     environment:
       - BOT_TOKEN
@@ -9,4 +10,7 @@ services:
       - OWM_API_KEY
       - WOLFRAM_API_KEY
       - TWITTER_BEARER_KEY
+      - TZ=Europe/London
     env_file: docker-env.env
+    volumes:
+      - .:/bot

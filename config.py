@@ -9,6 +9,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+import pathlib
 from typing import Any
 
 from watchdog.events import PatternMatchingEventHandler
@@ -76,6 +77,23 @@ class App:
     # __setters is a tuple of parameters which can be set
     __setters = ("USER_FILE_STREAM", "REMINDERS_FILE_STREAM", "BANK_FILE_STREAM")
 
+    # Special methods ----------------------------------------------------------
+
+    def __getitem__(self, name: str) -> Any:
+        """Get an item from __conf using square bracket indexing.
+
+        Parameters
+        ---------
+        name: str
+            The name of the item to get.
+
+        Returns
+        -------
+        value: Any
+            The value of item.
+        """
+        return App.__conf[name]
+
     # Public methods -----------------------------------------------------------
 
     @staticmethod
@@ -112,18 +130,34 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 formatter = logging.Formatter(
     "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
 )
+
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
+console_handler.setLevel(logging.INFO)
+
 file_handler = RotatingFileHandler(
     filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
 )
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.DEBUG)
+
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
+# Set up logger for disnake ----------------------------------------------------
 
-def __read_in_json_file(filepath: Path, conf_key: str) -> None:
+disnake_handler = logging.FileHandler(filename="disnake.log", encoding="utf-8", mode="w")
+disnake_handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+logger_disnake = logging.getLogger("disnake")
+logger_disnake.setLevel(logging.DEBUG)
+logger_disnake.addHandler(disnake_handler)
+
+# Read in user files -----------------------------------------------------------
+
+
+def read_in_json_file(filepath: Path, conf_key: str) -> None:
     """Read in a JSON file and set it to a __conf key.
 
     Parameters
@@ -135,22 +169,43 @@ def __read_in_json_file(filepath: Path, conf_key: str) -> None:
     """
     with open(filepath, "r", encoding="utf-8") as file_in:
         App.set(conf_key, json.load(file_in))
-    logger.info("Loaded %s and set to App.config[%s]", filepath, conf_key)
+    logger.debug("Loaded %s and set to App.config[%s]", filepath, conf_key)
 
 
-__read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
-__read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
-__read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
+def create_file_observer(filepath: pathlib.Path, directory: str, conf_key: str) -> Observer:
+    """Create a file observer, to do something on file change.
+
+    Parameters
+    ----------
+    filepath: pathlib.Path
+        The filepath to the file to observe.
+    directory: str
+        The directory containing the file.
+    conf_key: str
+        The key to update in the App config object.
+
+    Returns
+    -------
+    observer: Observer
+        The observer object.
+    """
+
+    observer = Observer()
+    event_handler = PatternMatchingEventHandler([str(filepath)], None, False, False)
+    event_handler.on_modified = lambda _: read_in_json_file(filepath, conf_key)
+    observer.schedule(event_handler, directory, False)
+
+    return observer
 
 
-def __on_directory_change(_):
-    __read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
-    __read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
-    __read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
+read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
+read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
+read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
 
+user_file_observer = create_file_observer(App.config("USERS_FILE"), "data/", "USER_FILE_STREAM")
+reminders_file_observer = create_file_observer(App.config("REMINDERS_FILE"), "data/", "REMINDERS_FILE_STREAM")
+bank_file_observer = create_file_observer(App.config("BANK_FILE"), "data/", "BANK_FILE_STREAM")
 
-__observer = Observer()
-__event_handler = PatternMatchingEventHandler(["*"], None, False, True)
-__event_handler.on_modified = __on_directory_change
-__observer.schedule(__event_handler, "./data", False)
-__observer.start()
+user_file_observer.start()
+reminders_file_observer.start()
+bank_file_observer.start()
