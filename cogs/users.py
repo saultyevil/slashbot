@@ -106,17 +106,18 @@ class Users(commands.Cog):
         value: str
             The value of the thing to set.
         """
+        await inter.response.defer(ephemeral=True)
+
         value = value.lower() if isinstance(value, str) else value
 
         try:
             self.user_data[str(inter.author.id)][thing] = value
         except KeyError:
-            self.user_data[str(inter.author.id)] = {}
-            self.user_data[str(inter.author.id)][thing] = value
+            self.user_data[str(inter.author.id)] = {thing: value}
 
         logger.info("%s has set %s to %s", inter.author.name, thing, value)
 
         with open(App.config("USERS_FILE"), "w", encoding="utf-8") as file_in:
             json.dump(self.user_data, file_in)
 
-        return await inter.response.send_message(f"{thing.capitalize()} has been set to {value}.", ephemeral=True)
+        return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to {value}.")
