@@ -69,7 +69,7 @@ class Admin(commands.Cog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="logfile", description="get the tail of the logfile")
-    @commands.default_member_permissions(administrator=True)
+    # @commands.default_member_permissions(administrator=True)
     async def log_tail(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -135,9 +135,9 @@ class Admin(commands.Cog):
         await inter.response.send_message(f"```{ip_addr}```", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="reboot", description="restart the bot")
+    @commands.slash_command(name="restart_bot", description="restart the bot")
     @commands.default_member_permissions(administrator=True)
-    async def reboot(self, inter: disnake.ApplicationCommandInteraction):
+    async def restart_bot(self, inter: disnake.ApplicationCommandInteraction):
         """Restart the bot."""
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)

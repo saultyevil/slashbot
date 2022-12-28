@@ -135,6 +135,19 @@ class Videos(commands.Cog):
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
 
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.slash_command(name="naughty_marko", description="Marko Vanhanen says a naughty word")
+    async def marko_gamer_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Send a clip of Marko saying the gamer word.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
+        await inter.response.defer()
+        return await inter.edit_original_message(file=disnake.File("data/videos/what_is_a.mp4"))
+
     # Utility functions --------------------------------------------------------
 
     @staticmethod

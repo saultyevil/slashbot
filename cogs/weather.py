@@ -144,8 +144,9 @@ class Weather(commands.Cog):
 
         try:
             observation = self.weather_api_manager.weather_at_place(where)
-        except Exception:  # pylint: disable=broad-except
-            return await inter.edit_original_message(content=f"Could not find {where} in OpenWeatherMap.")
+        except Exception as e:  # pylint: disable=broad-except
+            logger.info("PyOWM failed with %s", e)
+            return await inter.edit_original_message(content=f"OpenWeatherMap failed, probably because it couldn't find the {where}. You can probably check the exact error using /logfile.")
 
         weather = observation.weather
         units = self.get_units_for_system(units)
@@ -210,19 +211,15 @@ class Weather(commands.Cog):
                 )
             where = self.user_data[str(inter.author.id)].get("location")
 
-        if country is None:
-            if str(inter.author.id) not in self.user_data or "country" not in self.user_data[str(inter.author.id)]:
-                return await inter.edit_original_message(
-                    content="You need to specify a country, or set your location and/or country using /remember."
-                )
-            country = self.user_data[str(inter.author.id)].get("country", "gb")
-        else:
-            if len(country) != 2:
-                await inter.edit_original_message(content="Country has to be a 2 character symbol, e.g. GB or US.")
+        if str(inter.author.id) in self.user_data:
+            if where == self.user_data[str(inter.author.id)].get("location", None):
+                country = self.user_data[str(inter.author.id)].get("country", None)
 
-        locations = self.weather_api_city_register.locations_for(where, country=country.upper())
+        logger.info("where %s country %s", where, country)
+
+        locations = self.weather_api_city_register.locations_for(where, country=country.upper() if isinstance(country, str) else country)
         if len(locations) == 0:
-            return await inter.edit_original_message(content="Location not found in forecast database.")
+            return await inter.edit_original_message(content=f"{where} {country if country else ''} wasn't found in OpenWeatherMap's city database.")
 
         location, country = locations[0].name, locations[0].country
         lat, lon = locations[0].lat, locations[0].lon
