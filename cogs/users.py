@@ -61,7 +61,7 @@ class Users(commands.Cog):
             The bot object.
         """
         self.bot = bot
-        self.user_data = App.config("USER_FILE_STREAM")
+        self.user_data = App.config("USER_INFO_FILE_STREAM")
 
     # Before command invoke ----------------------------------------------------
 

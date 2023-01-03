@@ -83,7 +83,7 @@ class Weather(commands.Cog):
         self.weather_api_city_register = self.weather_api.city_id_registry()
         self.weather_api_manager = self.weather_api.weather_manager()
 
-        self.user_data = App.config("USER_FILE_STREAM")
+        self.user_data = App.config("USER_INFO_FILE_STREAM")
 
     # Before command invoke ----------------------------------------------------
 

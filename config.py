@@ -61,7 +61,7 @@ class App:
         "BAD_WORDS_FILE": Path("data/badwords.txt"),
         "GOD_WORDS_FILE": Path("data/godwords.txt"),
         # File streams
-        "USER_FILE_STREAM": {},
+        "USER_INFO_FILE_STREAM": {},
         "REMINDERS_FILE_STREAM": {},
         "BANK_FILE_STREAM": {},
     }
@@ -75,7 +75,7 @@ class App:
     __conf["ALL_FILES"] = [__conf["USERS_FILE"], __conf["REMINDERS_FILE"], __conf["BANK_FILE"]]
 
     # __setters is a tuple of parameters which can be set
-    __setters = ("USER_FILE_STREAM", "REMINDERS_FILE_STREAM", "BANK_FILE_STREAM")
+    __setters = ("USER_INFO_FILE_STREAM", "REMINDERS_FILE_STREAM", "BANK_FILE_STREAM")
 
     # Special methods ----------------------------------------------------------
 
@@ -198,11 +198,11 @@ def create_file_observer(filepath: pathlib.Path, directory: str, conf_key: str) 
     return observer
 
 
-read_in_json_file(App.config("USERS_FILE"), "USER_FILE_STREAM")
+read_in_json_file(App.config("USERS_FILE"), "USER_INFO_FILE_STREAM")
 read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
 read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
 
-user_file_observer = create_file_observer(App.config("USERS_FILE"), "data/", "USER_FILE_STREAM")
+user_file_observer = create_file_observer(App.config("USERS_FILE"), "data/", "USER_INFO_FILE_STREAM")
 reminders_file_observer = create_file_observer(App.config("REMINDERS_FILE"), "data/", "REMINDERS_FILE_STREAM")
 bank_file_observer = create_file_observer(App.config("BANK_FILE"), "data/", "BANK_FILE_STREAM")
 

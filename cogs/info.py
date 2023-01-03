@@ -53,7 +53,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.attempts = attempts
         self.bad_words = bad_words
         self.god_words = god_words
-        self.user_data = App.config("USER_FILE_STREAM")
+        self.user_data = App.config("USER_INFO_FILE_STREAM")
 
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
         self.youtube_api = build("youtube", "v3", developerKey=App.config("GOOGLE_API_KEY"))
