@@ -6,6 +6,7 @@ data/chain.pickle
 data/chain.pickle.bak
 .vscode
 .DS_Store
+venv
 
 # Project specific files to ignore
 trained/*
