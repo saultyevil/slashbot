@@ -144,9 +144,12 @@ class Weather(commands.Cog):
 
         try:
             observation = self.weather_api_manager.weather_at_place(where)
-        except Exception as e:  # pylint: disable=broad-except
-            logger.info("PyOWM failed with %s", e)
-            return await inter.edit_original_message(content=f"OpenWeatherMap failed, probably because it couldn't find the {where}. You can probably check the exact error using /logfile.")
+        except Exception as exception:  # pylint: disable=broad-except
+            logger.info("PyOWM failed with %s", exception)
+            # pylint: disable=line-too-long
+            return await inter.edit_original_message(
+                content=f"OpenWeatherMap failed, probably because it couldn't find the {where}. You can probably check the exact error using /logfile."
+            )
 
         weather = observation.weather
         units = self.get_units_for_system(units)
@@ -207,6 +210,7 @@ class Weather(commands.Cog):
         if where is None:
             if str(inter.author.id) not in self.user_data or "location" not in self.user_data[str(inter.author.id)]:
                 return await inter.edit_original_message(
+                    # pylint: disable=line-too-long
                     content="You need to either specify a location, or set your location and/or country using /set_info."
                 )
             where = self.user_data[str(inter.author.id)].get("location")
@@ -217,9 +221,13 @@ class Weather(commands.Cog):
 
         logger.info("where %s country %s", where, country)
 
-        locations = self.weather_api_city_register.locations_for(where, country=country.upper() if isinstance(country, str) else country)
+        locations = self.weather_api_city_register.locations_for(
+            where, country=country.upper() if isinstance(country, str) else country
+        )
         if len(locations) == 0:
-            return await inter.edit_original_message(content=f"{where} {country if country else ''} wasn't found in OpenWeatherMap's city database.")
+            return await inter.edit_original_message(
+                content=f"{where} {country if country else ''} wasn't found in OpenWeatherMap's city database."
+            )
 
         location, country = locations[0].name, locations[0].country
         lat, lon = locations[0].lat, locations[0].lon
@@ -343,6 +351,8 @@ class Weather(commands.Cog):
         """
         rain = weather.rain
 
+        logger.debug("rain %s", rain)
+
         if not rain:
             if _units:
                 embed.add_field(
@@ -351,16 +361,18 @@ class Weather(commands.Cog):
                     inline=False,
                 )
         else:
-            embed.add_field(
-                name="Rain 1 hour",
-                value=f"{rain['1h']:.1f} mm",
-                inline=False,
-            )
-            embed.add_field(
-                name="Rain 3 hours",
-                value=f"{rain['3h']:.1f} mm",
-                inline=False,
-            )
+            if "1h" in rain:
+                embed.add_field(
+                    name="Precipitation in 1 hour",
+                    value=f"{rain['1h']:.1f} mm",
+                    inline=False,
+                )
+            if "3h" in rain:
+                embed.add_field(
+                    name="Precipitation in 3 hours",
+                    value=f"{rain['3h']:.1f} mm",
+                    inline=False,
+                )
 
         return embed
 
