@@ -20,7 +20,7 @@ from config import App
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 time_units = {
-    "time": 1,
+    "time stamp": 1,
     "seconds": 1,
     "minutes": 60,
     "hours": 3600,
@@ -67,7 +67,7 @@ class Reminder(commands.Cog):
             choices=list(time_units.keys()),
         ),
         when: str = commands.Param(
-            description='When you want to be reminded, remember the timezone if you\'ve chosen "time".'
+            description='When you want to be reminded, remember the timezone if you\'ve chosen "time stamp".'
         ),
         reminder: str = commands.Param(description="What you want to be reminded about."),
         where: str = commands.Param(
@@ -101,7 +101,7 @@ class Reminder(commands.Cog):
         user_id = inter.author.id
         channel_id = inter.channel.id
 
-        if time_unit != "time":
+        if time_unit != "time stamp":
             try:
                 when = float(when)
             except ValueError:
@@ -114,7 +114,7 @@ class Reminder(commands.Cog):
 
         now = datetime.datetime.now()
 
-        if time_unit == "time":
+        if time_unit == "time stamp":
             try:
                 future = parser.parse(when)
             except parser.ParserError:
@@ -142,7 +142,9 @@ class Reminder(commands.Cog):
         }
         self.save_reminders()
 
-        if time_unit == "time":
+        logger.info("tagged users %s", tagged_users)
+
+        if time_unit == "time stamp":
             return await inter.response.send_message(f"Reminder set for {when}.", ephemeral=True)
 
         return await inter.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
@@ -258,10 +260,16 @@ class Reminder(commands.Cog):
             The sentence with mentions removed.
         """
         user_ids = re.findall(r"\<@!(.*?)\>", sentence)
+        mention_pattern = "@!"
+        if not user_ids:
+            user_ids = re.findall(r"\<@(.*?)\>", sentence)
+            mention_pattern = "@"
+
+        logger.info("user_ids found in sentence %s", user_ids)
 
         for u_id in user_ids:
             user = self.bot.get_user(int(u_id))
-            sentence = sentence.replace(f"<@!{u_id}>", user.name)
+            sentence = sentence.replace(f"<{mention_pattern}{u_id}>", f"@{user.name}")
 
         return user_ids, sentence
 
