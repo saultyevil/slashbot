@@ -8,7 +8,7 @@ SHELL ["/bin/bash", "-c"]
 COPY requirements.txt requirements.txt
 RUN python3 -m venv /bot/venv
 RUN source /bot/venv/bin/activate
-RUN pip3 install -r requirements.txt
+RUN python -m pip install -r requirements.txt
 COPY . .
 
-CMD ["python3", "run.py"]
+CMD ["python", "run.py"]
