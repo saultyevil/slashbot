@@ -144,11 +144,14 @@ class Weather(commands.Cog):
 
         try:
             observation = self.weather_api_manager.weather_at_place(where)
+        except pyowm.commons.exceptions.NotFoundError:
+            logger.info("pyowm failed to figure out where %s is", where)
+            return await inter.edit_original_message(content=f"OpenWeatherMap coudln't find {where}. Try separating the city and country with a comma.")
         except Exception as exception:  # pylint: disable=broad-except
             logger.info("PyOWM failed with %s", exception)
             # pylint: disable=line-too-long
             return await inter.edit_original_message(
-                content=f"OpenWeatherMap failed, probably because it couldn't find the {where}. You can probably check the exact error using /logfile."
+                    content=f"OpenWeatherMap failed with {exception}. You can check the exact error using /logfile."
             )
 
         weather = observation.weather
@@ -234,10 +237,13 @@ class Weather(commands.Cog):
 
         try:
             one_call = self.weather_api_manager.one_call(lat, lon)
+        except pyowm.commons.exceptions.NotFoundError:
+            logger.info("pyowm failed to figure out where %s is", where)
+            return await inter.edit_original_message(content=f"OpenWeatherMap coudln't find {where}. Try separating the city and country with a comma.")
         except Exception as exception:  # pylint: disable=broad-except
             logger.info("weather one_call error: %s", exception)
             return await inter.edit_original_message(
-                content="Could not find that location in one call forecast database."
+                    content=f"OpenWeatherMap failed with {exception}. You can check the error using /logfile."
             )
 
         embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
