@@ -1,8 +1,8 @@
 # slashbot
 
 slashbot is a shitty discord bot written using disnake, based on my previous
-bot, [badbot](https://github.com/saultyevil/badbot). It is designed to work
-in only a few servers, hence there are some hardcoded IDs in here.
+bot, badbot. It is designed to work in only a few servers, hence there are some
+hardcoded IDs in here.
 
 ## Features
 
@@ -11,13 +11,11 @@ Here are some of the main features
 * Markov Chain sentence generation (learns from the server)
 * Embed a YouTube search
 * Set, view and remove reminders
-* Connect to voice to stream audio
 * Generate sentences from God's temple
 * Post images from rule34.xxx
 * Get the news headlines
 * Check the weather and forecast
 * Ask Stephen Wolfram a question
-* Get a random Danny Dyer tweet
 * Send a gif of a spitting girl
 
 ## Deployment
@@ -25,10 +23,10 @@ Here are some of the main features
 slashbot can be deployed using docker and docker-compose,
 
 ```bash
-$ docker-compose up
+$ docker-compose up -d --build
 ```
 
-You will need the evnvironment variables listed in the next section in a file
+You will need the environment variables listed in the next section in a file
 named `docker-env.env`.
 
 ## Requirements
@@ -54,5 +52,5 @@ export TWITTER_BEARER="XXXXXXXXXXXXXXXXXXXX"  # twitter bearer token
 ## Usage
 
 ```bash
-$ python bot.py
+$ python run.py
 ```
