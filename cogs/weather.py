@@ -7,59 +7,22 @@ import datetime
 import logging
 from types import coroutine
 
-import disnake
 import pyowm
+import disnake
 from disnake.ext import commands
 
 from config import App
+from lib.cog import CustomCog  # pylint: disable=import-error
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-cd_user = commands.BucketType.user
-weather_units = ["metric", "imperial"]
-weather_choices = ["forecast", "temperature", "rain", "wind"]
+COOLDOWN_USER = commands.BucketType.user
+WEATHER_UNITS = ["metric", "imperial"]
+WEATHER_COMMAND_CHOICES = ["forecast", "temperature", "rain", "wind"]
 
 
-def degrees_to_cardinal(degrees: float) -> str:
-    """Convert a degrees value to a cardinal direction.
-
-    Parameters
-    ----------
-    degrees: float
-        The degrees direction.
-
-    Returns
-    -------
-    The cardinal direction as a string.
-    """
-    dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-    arr_idx = round(degrees / (360.0 / len(dirs)))
-    return dirs[arr_idx % 16]
-
-
-def owm_convert_uk_to_gb(_: disnake.ApplicationCommandInteraction, choice: str) -> str:
-    """Convert UK to GB for use in OWM.
-
-    Parameters
-    ----------
-    _: disnake.ApplicationCommandInteraction
-        The interaction.
-    choice: str
-        The choice to convert.
-
-    Returns
-    -------
-    choice: str
-        The converted choice.
-    """
-    if choice.lower() == "uk":
-        return "gb"
-
-    return choice
-
-
-class Weather(commands.Cog):
+class Weather(CustomCog):
     """Query information about the weather."""
 
     def __init__(
@@ -80,197 +43,97 @@ class Weather(commands.Cog):
         self.generate_sentence = generate_sentence
 
         self.weather_api = pyowm.OWM(App.config("OWM_API_KEY"))
-        self.weather_api_city_register = self.weather_api.city_id_registry()
-        self.weather_api_manager = self.weather_api.weather_manager()
+        self.city_register = self.weather_api.city_id_registry()
+        self.weather_manager = self.weather_api.weather_manager()
 
         self.user_data = App.config("USER_INFO_FILE_STREAM")
 
-    # Before command invoke ----------------------------------------------------
+    # Private ------------------------------------------------------------------
 
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
+    def __get_set_user_location(self, inter: disnake.ApplicationCommandInteraction):
+        """Return the stored location set by a user.
 
         Parameters
         ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
+        inter : _type_
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
         """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
+        return self.user_data[str(inter.author.id)]["location"]
 
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
-
-    # Commands -----------------------------------------------------------------
-
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="weather", description="get the current weather")
-    async def weather(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        where: str = commands.Param(
-            description="The location to get weather, default is your saved location.", default=None
-        ),
-        what: str = commands.Param(
-            description="The part of the weather to get.", default="forecast", choices=weather_choices
-        ),
-        units: str = commands.Param(
-            description="The units to return weather readings in.", default="metric", choices=weather_units
-        ),
-    ) -> coroutine:
-        """Get the weather for a location.
+    def __get_set_user_country(self, inter: disnake.ApplicationCommandInteraction):
+        """Return the stored country set by a user.
 
         Parameters
         ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        where: str
-            The location to get the weather for.
-        what: str
-            What to get, either the whole forecast, temperature, rain or wind.
-        units: str
-            The units to use, either metric or imperial.
+        inter : _type_
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
         """
-        await inter.response.defer()
+        return self.user_data[str(inter.author.id)]["country"]
 
-        if where is None:
-            if str(inter.author.id) not in self.user_data or "location" not in self.user_data[str(inter.author.id)]:
-                return await inter.edit_original_message(
-                    content="You need to specify a location, or set your location and/or country using /set_info."
-                )
-            where = self.user_data[str(inter.author.id)].get("location")
-
-        try:
-            observation = self.weather_api_manager.weather_at_place(where)
-        except pyowm.commons.exceptions.NotFoundError:
-            logger.info("pyowm failed to figure out where %s is", where)
-            return await inter.edit_original_message(content=f"OpenWeatherMap coudln't find {where}. Try separating the city and country with a comma.")
-        except Exception as exception:  # pylint: disable=broad-except
-            logger.info("PyOWM failed with %s", exception)
-            # pylint: disable=line-too-long
-            return await inter.edit_original_message(
-                    content=f"OpenWeatherMap failed with {exception}. You can check the exact error using /logfile."
-            )
-
-        weather = observation.weather
-        units = self.get_units_for_system(units)
-
-        embed = disnake.Embed(
-            title=f"{what.capitalize()} in {observation.location.name}, {observation.location.country}",
-            color=disnake.Color.default(),
-        )
-
-        if what == "forecast":
-            embed.add_field(
-                name="Description",
-                value=f"{weather.detailed_status.capitalize()}",
-                inline=False,
-            )
-            embed = self.__add_everything_to_embed(weather, embed, units)
-        elif what == "temperature":
-            embed = self.__add_temperature_to_embed(weather, embed, units)
-        elif what == "rain":
-            embed = self.__add_rain_to_embed(weather, embed, "mm")
-        elif what == "wind":
-            embed = self.__add_wind_to_embed(weather, embed, units)
-        else:
-            return await inter.edit_original_message(content="Somehow got to an 'unreachable' branch.")
-
-        embed.set_footer(text=f"{self.generate_sentence('weather')}")
-        embed.set_thumbnail(url=weather.weather_icon_url())
-
-        return await inter.edit_original_message(embed=embed)
-
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="forecast", description="get the weather forecast")
-    async def forecast(  # pylint: disable=too-many-locals
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        where: str = commands.Param(
-            description="The location to get weather, default is your saved location.", default=None
-        ),
-        country: str = commands.Param(
-            description="The country your location in, as a 2 letter acronym e.g. GB or US.",
-            default=None,
-            converter=owm_convert_uk_to_gb,
-        ),
-    ) -> coroutine:
-        """Print the weather forecast for a location.
+    @staticmethod
+    def convert_degrees_to_cardinal_direction(degrees: float) -> str:
+        """Convert a degrees value to a cardinal direction.
 
         Parameters
         ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        where: str
-            The location to get the weather forecast for.
-        country: str [optional]
-            The country the location is in.
+        degrees: float
+            The degrees direction.
+
+        Returns
+        -------
+        The cardinal direction as a string.
         """
-        await inter.response.defer()
+        dirs = [
+            "N",
+            "NNE",
+            "NE",
+            "ENE",
+            "E",
+            "ESE",
+            "SE",
+            "SSE",
+            "S",
+            "SSW",
+            "SW",
+            "WSW",
+            "W",
+            "WNW",
+            "NW",
+            "NNW",
+        ]
+        idx = round(degrees / (360.0 / len(dirs)))
+        return dirs[idx % 16]
 
-        if where is None:
-            if str(inter.author.id) not in self.user_data or "location" not in self.user_data[str(inter.author.id)]:
-                return await inter.edit_original_message(
-                    # pylint: disable=line-too-long
-                    content="You need to either specify a location, or set your location and/or country using /set_info."
-                )
-            where = self.user_data[str(inter.author.id)].get("location")
+    @staticmethod
+    def convert_uk_to_gb(choice: str) -> str:
+        """Convert UK to GB for use in OWM.
 
-        if str(inter.author.id) in self.user_data:
-            if where == self.user_data[str(inter.author.id)].get("location", None):
-                country = self.user_data[str(inter.author.id)].get("country", None)
+        Parameters
+        ----------
+        choice: str
+            The choice to convert.
 
-        logger.info("where %s country %s", where, country)
+        Returns
+        -------
+        choice: str
+            The converted choice.
+        """
+        if choice.lower() == "uk":
+            return "gb"
 
-        locations = self.weather_api_city_register.locations_for(
-            where, country=country.upper() if isinstance(country, str) else country
-        )
-        if len(locations) == 0:
-            return await inter.edit_original_message(
-                content=f"{where} {country if country else ''} wasn't found in OpenWeatherMap's city database."
-            )
+        return choice
 
-        location, country = locations[0].name, locations[0].country
-        lat, lon = locations[0].lat, locations[0].lon
-
-        try:
-            one_call = self.weather_api_manager.one_call(lat, lon)
-        except pyowm.commons.exceptions.NotFoundError:
-            logger.info("pyowm failed to figure out where %s is", where)
-            return await inter.edit_original_message(content=f"OpenWeatherMap coudln't find {where}. Try separating the city and country with a comma.")
-        except Exception as exception:  # pylint: disable=broad-except
-            logger.info("weather one_call error: %s", exception)
-            return await inter.edit_original_message(
-                    content=f"OpenWeatherMap failed with {exception}. You can check the error using /logfile."
-            )
-
-        embed = disnake.Embed(title=f"Weather for {location}, {country}", color=disnake.Color.default())
-
-        for day in one_call.forecast_daily[:4]:
-            date = datetime.datetime.utcfromtimestamp(day.reference_time())
-            date = date.strftime(r"%A %d %B, %Y")
-
-            weather = day.detailed_status.capitalize()
-            temperature = day.temperature("celsius")
-            wind = day.wind("miles_hour")
-
-            embed.add_field(
-                name=f"{date}",
-                value=f"• {weather}\n• {temperature['max']:.1f}/{temperature['min']:.1f} °C\n"
-                f"• {wind['speed']:.1f} mph",
-                inline=False,
-            )
-
-        embed.set_thumbnail(url=one_call.forecast_daily[0].weather_icon_url())
-        embed.set_footer(text=f"{self.generate_sentence('forecast')}")
-
-        return await inter.edit_original_message(embed=embed)
-
-    # Functions ----------------------------------------------------------------
-
-    def get_units_for_system(self, system: str) -> dict:
+    def __get_units_for_system(self, system: str) -> dict:
         """Get the units for the system.
 
         Parameters
@@ -298,8 +161,6 @@ class Weather(commands.Cog):
             "w_units": "meters_sec",
             "w_units_fmt": "km/h",
         }
-
-    # Private functions --------------------------------------------------------
 
     def __add_temperature_to_embed(
         self, weather: pyowm.weatherapi25.observation.Observation, embed: disnake.Embed, units: dict
@@ -347,8 +208,8 @@ class Weather(commands.Cog):
             The weather object.
         embed: disnake.Embed
             The embed to put the temperature into.
-        units: dict
-            The units to use.
+        _units: dict
+            The units to use. Currently unused.
 
         Returns
         -------
@@ -357,28 +218,25 @@ class Weather(commands.Cog):
         """
         rain = weather.rain
 
-        logger.debug("rain %s", rain)
-
         if not rain:
-            if _units:
-                embed.add_field(
-                    name="Rain",
-                    value="There is no rain forecast",
-                    inline=False,
-                )
-        else:
-            if "1h" in rain:
-                embed.add_field(
-                    name="Precipitation in 1 hour",
-                    value=f"{rain['1h']:.1f} mm",
-                    inline=False,
-                )
-            if "3h" in rain:
-                embed.add_field(
-                    name="Precipitation in 3 hours",
-                    value=f"{rain['3h']:.1f} mm",
-                    inline=False,
-                )
+            return embed.add_field(
+                name="Rain",
+                value="There is no rain forecast",
+                inline=False,
+            )
+
+        if "1h" in rain:
+            embed.add_field(
+                name="Precipitation in 1 hour",
+                value=f"{rain['1h']:.1f} mm",
+                inline=False,
+            )
+        if "3h" in rain:
+            embed.add_field(
+                name="Precipitation in 3 hours",
+                value=f"{rain['3h']:.1f} mm",
+                inline=False,
+            )
 
         return embed
 
@@ -404,12 +262,14 @@ class Weather(commands.Cog):
 
         wind = weather.wind(units["w_units"])
 
-        if units["w_units"] == "meters_sec":  # conver m/s to km/h
+        if units["w_units"] == "meters_sec":  # convert m/s to km/h
             wind["speed"] *= 3.6
 
         embed.add_field(name="Wind speed", value=f"{wind['speed']:.1f} {units['w_units_fmt']}", inline=False)
         embed.add_field(
-            name="Wind bearing", value=f"{wind['deg']:.01f}° ({degrees_to_cardinal(wind['deg'])})", inline=False
+            name="Wind bearing",
+            value=f"{wind['deg']:.01f}° ({self.convert_degrees_to_cardinal_direction(wind['deg'])})",
+            inline=False,
         )
 
         return embed
@@ -439,3 +299,160 @@ class Weather(commands.Cog):
         embed = self.__add_wind_to_embed(weather, embed, units)
 
         return embed
+
+    # Commands -----------------------------------------------------------------
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="weather", description="get the current weather")
+    async def weather(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        location: str = commands.Param(
+            description="The location to get weather, default is your saved location.", default=None
+        ),
+        weather_type: str = commands.Param(
+            description="The type of weather report to get.", default="forecast", choices=WEATHER_COMMAND_CHOICES
+        ),
+        units: str = commands.Param(
+            description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
+        ),
+    ) -> coroutine:
+        """Get the weather for a location.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        where: str
+            The location to get the weather for.
+        what: str
+            What to get, either the whole forecast, temperature, rain or wind.
+        units: str
+            The units to use, either metric or imperial.
+        """
+        await inter.response.defer()
+
+        if not location:
+            try:
+                location = self.__get_set_user_location(inter)
+            except KeyError:
+                return await inter.edit_original_message(
+                    content="You need to specify a location, or set your location and/or country using /set_info."
+                )
+
+        try:
+            weather_at_place = self.weather_manager.weather_at_place(location)
+        except pyowm.commons.exceptions.NotFoundError:
+            return await inter.edit_original_message(
+                content=f"OpenWeatherMap couldn't find {location}. Try separating the city and country with a comma."
+            )
+        except Exception as exception:  # pylint: disable=broad-except
+            logger.error("PyOWM failed with %s", exception)
+            return await inter.edit_original_message(
+                content="OpenWeatherMap failed. You can check the exact error using /logfile."
+            )
+
+        weather = weather_at_place.weather
+        units = self.__get_units_for_system(units)
+
+        embed = disnake.Embed(
+            title=f"{weather_type.capitalize()} in {weather_at_place.location.name}, {weather_at_place.location.country}",
+            color=disnake.Color.default(),
+        )
+
+        match weather_type:
+            case "forecast":
+                embed.add_field(
+                    name="Description",
+                    value=f"{weather.detailed_status.capitalize()}",
+                    inline=False,
+                )
+                embed = self.__add_everything_to_embed(weather, embed, units)
+            case "temperature":
+                embed = self.__add_temperature_to_embed(weather, embed, units)
+            case "rain":
+                embed = self.__add_rain_to_embed(weather, embed, "mm")
+            case "wind":
+                embed = self.__add_wind_to_embed(weather, embed, units)
+
+        embed.set_footer(text=f"{self.generate_sentence('weather')}")
+        embed.set_thumbnail(url=weather.weather_icon_url())
+        return await inter.edit_original_message(embed=embed)
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="forecast", description="get the weather forecast")
+    async def forecast(  # pylint: disable=too-many-locals
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        location: str = commands.Param(
+            description="The location to get weather, default is your saved location.", default=None
+        ),
+    ) -> coroutine:
+        """Print the weather forecast for a location.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        where: str
+            The location to get the weather forecast for.
+        country: str [optional]
+            The country the location is in.
+        """
+        await inter.response.defer()
+
+        if not location:
+            try:
+                location = self.__get_set_user_location(inter)
+            except KeyError:
+                return await inter.edit_original_message(
+                    # pylint: disable=line-too-long
+                    content="You need to either specify a location, or set your location and/or country using /set_info."
+                )
+
+        country = location.split(",")  # will split london, uk etc
+        if len(country) == 2:
+            country = country[1].upper()
+        else:
+            try:
+                country = self.__get_set_user_country(inter).upper()
+            except KeyError:
+                country = None
+        country = self.convert_uk_to_gb(country)
+
+        locations_for = self.city_register.locations_for(location, country=country)
+
+        if not locations_for:
+            return await inter.edit_original_message(
+                content=f"{location} {f', {country}' if country else ''} wasn't found in OpenWeatherMap."
+            )
+
+        location, location_country = locations_for[0].name, locations_for[0].country
+        lat, lon = locations_for[0].lat, locations_for[0].lon
+
+        try:
+            forecast_one_call = self.weather_manager.one_call(lat, lon)
+        except Exception as exception:  # pylint: disable=broad-except
+            logger.error("PyOWM failed with %s", exception)
+            return await inter.edit_original_message(
+                content="OpenWeatherMap failed. You can check the exact error using /logfile."
+            )
+
+        embed = disnake.Embed(title=f"Weather for {location}, {location_country}", color=disnake.Color.default())
+
+        for day in forecast_one_call.forecast_daily[:4]:
+            date = datetime.datetime.utcfromtimestamp(day.reference_time())
+            date = date.strftime(r"%A %d %B, %Y")
+            weather = day.detailed_status.capitalize()
+            temperature = day.temperature("celsius")
+            wind = day.wind("miles_hour")
+            embed.add_field(
+                name=f"{date}",
+                value=f"• {weather}\n• {temperature['max']:.1f}/{temperature['min']:.1f} °C\n"
+                f"• {wind['speed']:.1f} mph",
+                inline=False,
+            )
+
+        embed.set_thumbnail(url=forecast_one_call.forecast_daily[0].weather_icon_url())
+        embed.set_footer(text=f"{self.generate_sentence('forecast')}")
+        return await inter.edit_original_message(embed=embed)

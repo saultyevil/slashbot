@@ -36,7 +36,7 @@ class App:
         # general discord things
         "MAX_CHARS": 1994,
         "LOGGER_NAME": "slashbot",
-        "LOGFILE_NAME": Path("./slashbot.log"),
+        "LOGFILE_NAME": Path("log/slashbot.log"),
         # Define users, roles and channels
         "ID_BOT": 815234903251091456,
         "ID_USER_ADAM": 261097001301704704,
@@ -148,7 +148,7 @@ logger.propagate = False
 
 # Set up logger for disnake ----------------------------------------------------
 
-disnake_handler = logging.FileHandler(filename="disnake.log", encoding="utf-8", mode="w")
+disnake_handler = logging.FileHandler(filename="log/disnake.log", encoding="utf-8", mode="w")
 disnake_handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
 logger_disnake = logging.getLogger("disnake")
 logger_disnake.setLevel(logging.DEBUG)
