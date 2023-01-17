@@ -426,7 +426,7 @@ class Weather(CustomCog):
             try:
                 location = self.__get_set_user_location(str(inter.author.id))
             except KeyError:
-                return deferred_error_message(
+                return await deferred_error_message(
                     inter, "You need to specify a location, or set your location and/or country using /set_info."
                 )
 
