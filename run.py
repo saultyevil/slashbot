@@ -24,7 +24,7 @@ import cogs.weather
 
 from config import App
 from markovify import markovify  # pylint: disable=import-error
-from bot import ModifiedInteractionBot  # import my modified bot instead of commands.InteractionBot
+from lib.bot import ModifiedInteractionBot
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()

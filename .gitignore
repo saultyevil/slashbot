@@ -7,6 +7,7 @@ data/chain.pickle.bak
 .vscode
 .DS_Store
 venv
+.mypy
 
 # Project specific files to ignore
 trained/*
@@ -29,7 +30,6 @@ build/
 develop-eggs/
 dist/
 eggs/
-lib/
 lib64/
 parts/
 sdist/

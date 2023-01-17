@@ -17,6 +17,4 @@ prettytable==2.5.0
 validators==0.18.2
 watchdog==2.1.9
 black==22.6.0
-docformatter==1.5.1
-isort==5.10.1
 pylint==2.14.5
