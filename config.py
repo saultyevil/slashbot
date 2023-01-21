@@ -54,6 +54,7 @@ class App:
         "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
         "OWM_API_KEY": os.getenv("OWM_API_KEY"),
         "TWITTER_BEARER_KEY": os.getenv("TWITTER_BEARER_KEY"),
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         # File locations
         "USERS_FILE": Path("data/users.json"),
         "REMINDERS_FILE": Path("data/reminders.json"),

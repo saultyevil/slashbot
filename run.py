@@ -21,6 +21,7 @@ import cogs.spam
 import cogs.users
 import cogs.videos
 import cogs.weather
+import cogs.ai
 
 from config import App
 from markovify import markovify  # pylint: disable=import-error
@@ -66,6 +67,7 @@ weather = cogs.weather.Weather(bot, spam.generate_sentence)
 videos = cogs.videos.Videos(bot, bad_words, spam.generate_sentence)
 users = cogs.users.Users(bot)
 admin = cogs.admin.Admin(bot, App.config("LOGFILE_NAME"))
+ai = cogs.ai.AI(bot)
 
 # Add all the cogs to the bot
 
@@ -77,6 +79,7 @@ bot.add_cog(weather)
 bot.add_cog(videos)
 bot.add_cog(users)
 bot.add_cog(admin)
+bot.add_cog(ai)
 
 # This part is adding various clean up functions to run when the bot
 # closes, e.g. on keyboard interrupt
