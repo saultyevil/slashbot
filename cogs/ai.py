@@ -1,61 +1,74 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""AI stuff"""
+"""Commands related to AI generation."""
 
 import logging
+
 import disnake
-from disnake.ext import commands
 import openai
-from openai.error import OpenAIError
 from config import App
-
-from lib.error import deferred_error_message
+from disnake.ext import commands
 from lib.cog import CustomCog
+from lib.error import deferred_error_message
+from openai.error import OpenAIError
 
-cd_user = commands.BucketType.user
-logger = logging.getLogger(App.config("LOGGER_NAME"))
 openai.api_key = App.config("OPENAI_API_KEY")
 
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 
-class AI(CustomCog):
-    """DocString for AI cog."""
+COOLDOWN_USER = commands.BucketType.user
+TEXT_MODELS = [
+    "text-davinci-003",
+    "text-curie-001",
+    "text-babbage-001",
+    "text-ada-001",
+]
 
-    def __init__(self, bot: commands.InteractionBot, ai_model: str = "text-davinci-003", max_token: int = 500):
+
+class AI(CustomCog):  # pylint: disable=too-few-public-methods
+    """A collection of commands to send AI generated messages and items."""
+
+    def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
-        self.ai_model = ai_model
-        self.max_tokens = max_token
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="generate_text", description="Generate a sentence using AI")
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="generate_text", description="Generate a some text from a prompt using OpenAI")
     async def sentence_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        prompt: str = commands.Param(description="The pormpt to give to the AI generator."),
+        prompt: str = commands.Param(description="The prompt to give to the AI generator."),
+        model: str = commands.Param(description="The AI model to use.", default=TEXT_MODELS[1], choices=TEXT_MODELS),
+        max_tokens: int = commands.Param(description="The maximum number of words/tokens to generate.", le=2018, gt=0),
     ):
-        """Generate a sentence from a pormpt
+        """Generate text from a prompt.
 
         Parameters
         ----------
-        inter
-
+        inter: disanke.ApplicationCommandInteraction
+            The slash command interaction.
         prompt: str
             The prompt to give to the AI for generated.
+        model: str
+            The name of the model to use to generate text.
+        max_tokens: str
+            The number of tokens to be used in the model. Generally translates
+            to the maximum number of words to generate.
         """
         await inter.response.defer()
 
         try:
             response = openai.Completion.create(
                 prompt=prompt,
-                max_tokens=self.max_tokens,
-                model=self.ai_model,
+                model=model,
+                max_tokens=max_tokens,
                 temperature=0.9,
                 frequency_penalty=0.8,
                 presence_penalty=0.8,
             )
         except OpenAIError as exc:
             logger.error("%s", exc)
-            return await deferred_error_message(inter, "API returned an error")
+            return await deferred_error_message(inter, f"The OpenAI API returned an error: {str(exc)}")
 
         generated = response["choices"][0]["text"]
 
