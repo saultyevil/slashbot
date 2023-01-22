@@ -39,7 +39,7 @@ class AI(CustomCog):  # pylint: disable=too-few-public-methods
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to give to the AI generator."),
         model: str = commands.Param(description="The AI model to use.", default=TEXT_MODELS[1], choices=TEXT_MODELS),
-        max_tokens: int = commands.Param(description="The maximum number of words/tokens to generate.", le=2018, gt=0),
+        max_tokens: int = commands.Param(description="The maximum number of words/tokens to generate.", le=2048, gt=0),
     ):
         """Generate text from a prompt.
 
