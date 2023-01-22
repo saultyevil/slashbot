@@ -13,11 +13,10 @@ import disnake
 import magic8ball
 import requests
 import wolframalpha
+from config import App
 from disnake.ext import commands
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-
-from config import App
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user

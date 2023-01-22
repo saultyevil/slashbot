@@ -4,9 +4,8 @@
 """Custom Cog class for slashbot."""
 
 import disnake
-from disnake.ext import commands
-
 from config import App
+from disnake.ext import commands
 
 
 class CustomCog(commands.Cog):

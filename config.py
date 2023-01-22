@@ -7,9 +7,9 @@
 import json
 import logging
 import os
+import pathlib
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-import pathlib
 from typing import Any
 
 from watchdog.events import PatternMatchingEventHandler

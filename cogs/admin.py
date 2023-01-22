@@ -12,10 +12,9 @@ from types import coroutine
 
 import disnake
 import requests
+from config import App
 from disnake.ext import commands
 from prettytable import PrettyTable
-
-from config import App
 
 cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))

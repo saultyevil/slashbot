@@ -11,11 +11,10 @@ from types import coroutine
 from typing import List, Union
 
 import disnake
+from config import App
 from dateutil import parser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
-
-from config import App
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user

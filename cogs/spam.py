@@ -19,9 +19,8 @@ import disnake
 import requests
 import rule34 as r34
 import tweepy
-from disnake.ext import commands, tasks
-
 from config import App
+from disnake.ext import commands, tasks
 from markovify import markovify
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))

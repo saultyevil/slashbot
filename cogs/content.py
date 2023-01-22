@@ -11,11 +11,10 @@ from types import coroutine
 from typing import Union
 
 import disnake
+from config import App
 from disnake.ext import commands, tasks
 from disnake.utils import get
 from prettytable import PrettyTable
-
-from config import App
 
 cd_user = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 60

@@ -14,6 +14,7 @@ import disnake
 from disnake.ext import commands
 
 import cogs.admin
+import cogs.ai
 import cogs.content
 import cogs.info
 import cogs.remind
@@ -21,11 +22,9 @@ import cogs.spam
 import cogs.users
 import cogs.videos
 import cogs.weather
-import cogs.ai
-
 from config import App
-from markovify import markovify  # pylint: disable=import-error
 from lib.bot import ModifiedInteractionBot
+from markovify import markovify  # pylint: disable=import-error
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
