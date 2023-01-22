@@ -6,7 +6,11 @@
 import disnake
 
 
-async def deferred_error_message(inter: disnake.ApplicationCommandInteraction, message: str, delay: int = 10) -> None:
+async def deferred_error_message(
+    inter: disnake.ApplicationCommandInteraction,
+    message: str,
+    delay: int = 30,
+) -> None:
     """Send and delete an error message for a delayed response.
 
     Parameters
