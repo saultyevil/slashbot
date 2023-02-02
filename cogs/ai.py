@@ -38,8 +38,8 @@ class AI(CustomCog):  # pylint: disable=too-few-public-methods
         self,
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to give to the AI generator."),
-        model: str = commands.Param(description="The AI model to use.", default=TEXT_MODELS[2], choices=TEXT_MODELS),
-        max_tokens: int = commands.Param(description="The maximum number of words/tokens to generate.", le=2048, gt=0, default=500),
+        model: str = commands.Param(description="The AI model to use.", default=TEXT_MODELS[1], choices=TEXT_MODELS),
+        max_tokens: int = commands.Param(description="The maximum number of words/tokens to generate.", le=2048, gt=0, default=150),
     ):
         """Generate text from a prompt.
 
@@ -70,6 +70,7 @@ class AI(CustomCog):  # pylint: disable=too-few-public-methods
             logger.error("%s", exc)
             return await deferred_error_message(inter, f"The OpenAI API returned an error: {str(exc)}")
 
-        generated = response["choices"][0]["text"]
+        generated = response["choices"][0]["text"].lstrip("\n")
+        message = f"> {prompt}\n{generated}"
 
-        await inter.edit_original_message(content=generated)
+        await inter.edit_original_message(content=message)
