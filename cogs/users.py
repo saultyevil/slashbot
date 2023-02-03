@@ -6,7 +6,6 @@
 import json
 import logging
 from types import coroutine
-from typing import List
 
 import disnake
 from slashbot.config import App

@@ -8,7 +8,6 @@ import datetime
 import logging
 import pickle
 import random
-import re
 import shutil
 import string
 import xml
