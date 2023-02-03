@@ -10,10 +10,10 @@ from typing import Tuple
 
 import disnake
 import pyowm
-from config import App
+from slashbot.config import App
 from disnake.ext import commands
-from lib.cog import CustomCog  # pylint: disable=import-error
-from lib.error import deferred_error_message  # pylint: disable=import-error
+from slashbot.cog import CustomCog  # pylint: disable=import-error
+from slashbot.error import deferred_error_message  # pylint: disable=import-error
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 

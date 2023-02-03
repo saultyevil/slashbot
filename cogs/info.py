@@ -3,20 +3,15 @@
 
 """Commands for searching for stuff on the internet, and etc."""
 
-import json
 import logging
 import random
 from types import coroutine
 from typing import List
 
 import disnake
-import magic8ball
-import requests
 import wolframalpha
-from config import App
+from slashbot.config import App
 from disnake.ext import commands
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
@@ -55,7 +50,6 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.user_data = App.config("USER_INFO_FILE_STREAM")
 
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
-        self.youtube_api = build("youtube", "v3", developerKey=App.config("GOOGLE_API_KEY"))
 
     # Before command invoke ----------------------------------------------------
 
@@ -76,26 +70,6 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
             return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
-
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="8ball", description="ask the magic 8 ball a question")
-    async def ball(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        question: str = commands.Param(description="The question to ask the 8ball."),
-    ) -> coroutine:
-        """Ask the magical ball a question.
-
-        Parameters
-        ----------
-        question : str
-            The question to ask.
-        """
-        question = question.capitalize()
-        if question[-1] != "?":
-            question += "?"
-
-        return await inter.response.send_message(f"*{question}*\n{random.choice(magic8ball.list)}")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="roll", description="roll a dice")
@@ -169,36 +143,3 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
                 embed.add_field(name=f"Result {n_sol}", value=result, inline=False)
 
         return await inter.edit_original_message(embed=embed)
-
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="youtube", description="search for a youtube video")
-    async def youtube(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        query: str = commands.Param(default=None, description="The term to search on YouTube."),
-    ) -> coroutine:
-        """Embeds the first result on youtube for the search term.
-
-        Parameters
-        ----------
-        query: str
-            The term to search on YouTube.
-        """
-        await inter.response.defer()
-        if query is None:
-            query = random.sample(self.god_words, random.randint(1, 5))
-
-        try:
-            # pylint: disable=no-member
-            response = self.youtube_api.search().list(q=query, part="snippet", maxResults=1).execute()
-        except HttpError:
-            return await inter.edit_original_message(content="Maximum number of daily YouTube calls has been reached.")
-
-        video_id = response["items"][0]["id"]["videoId"]
-        request = f"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={video_id}&key={App.config('GOOGLE_API_KEY')}"
-        response = json.loads(requests.get(request).text)
-        views = int(response["items"][0]["statistics"]["viewCount"])
-
-        return await inter.edit_original_message(
-            content=f"https://www.youtube.com/watch?v={video_id}\n>>> View count: {views:,}"
-        )

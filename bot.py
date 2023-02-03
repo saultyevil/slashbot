@@ -22,16 +22,15 @@ import cogs.spam
 import cogs.users
 import cogs.videos
 import cogs.weather
-from config import App
-from lib.bot import ModifiedInteractionBot
-from markovify import markovify  # pylint: disable=import-error
+from slashbot import markovify
+from slashbot.bot import ModifiedInteractionBot
+from slashbot.config import App
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
 
 # Load in the markov chain and various other bits of data that are passed to
 # the cogs
-# TODO: put bad_words and god_words into config.App
 
 markov_gen = markovify.Text("Jack is a naughty boy.", state_size=4)
 if os.path.exists("data/chain.pickle"):
@@ -92,8 +91,10 @@ bot.add_to_cleanup(None, spam.update_markov_chain, [None])  # need to send a Non
 async def on_ready():
     """Information to print on bot launch."""
     logger.info("Logged in as %s in the current servers:", bot.user)
+
     for n_server, server in enumerate(bot.guilds):
         logger.info("\t%d). %s (%d)", n_server, server.name, server.id)
+
     logger.info("Started in %.2f seconds", time.time() - start)
 
 
@@ -106,8 +107,8 @@ async def on_slash_command_error(inter, error):
     error: Exception
         The error that occurred.
     """
-    logger.info("%s for %s failed with error:", inter.application_command.name, inter.author.name)
-    logger.info(error)
+    logger.error("%s for %s failed with error:", inter.application_command.name, inter.author.name)
+    logger.error("%s", error)
 
     if isinstance(error, commands.errors.CommandOnCooldown):
         return await inter.response.send_message("This command is on cool down for you.", ephemeral=True)

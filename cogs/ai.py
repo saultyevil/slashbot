@@ -7,10 +7,10 @@ import logging
 
 import disnake
 import openai
-from config import App
+from slashbot.config import App
 from disnake.ext import commands
-from lib.cog import CustomCog
-from lib.error import deferred_error_message
+from slashbot.cog import CustomCog
+from slashbot.error import deferred_error_message
 from openai.error import OpenAIError
 
 openai.api_key = App.config("OPENAI_API_KEY")
@@ -39,7 +39,9 @@ class AI(CustomCog):  # pylint: disable=too-few-public-methods
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to give to the AI generator."),
         model: str = commands.Param(description="The AI model to use.", default=TEXT_MODELS[1], choices=TEXT_MODELS),
-        max_tokens: int = commands.Param(description="The maximum number of words/tokens to generate.", le=2048, gt=0, default=150),
+        max_tokens: int = commands.Param(
+            description="The maximum number of words/tokens to generate.", le=2048, gt=0, default=150
+        ),
     ):
         """Generate text from a prompt.
 

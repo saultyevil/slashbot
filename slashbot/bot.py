@@ -8,7 +8,7 @@ import logging
 from collections.abc import Iterable
 from typing import Any
 
-from config import App
+from slashbot.config import App
 from disnake.ext import commands
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))

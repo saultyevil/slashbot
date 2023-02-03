@@ -11,7 +11,7 @@ from types import coroutine
 from typing import List, Union
 
 import disnake
-from config import App
+from slashbot.config import App
 from dateutil import parser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
@@ -240,7 +240,6 @@ class Reminder(commands.Cog):
                             message += f" {user.mention}"
 
                     await channel.send(message, embed=embed)
-
 
     # Functions ----------------------------------------------------------------
 

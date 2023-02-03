@@ -11,7 +11,7 @@ from types import coroutine
 from typing import List
 
 import disnake
-from config import App
+from slashbot.config import App
 from disnake.ext import commands, tasks
 
 cd_user = commands.BucketType.user

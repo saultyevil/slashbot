@@ -18,10 +18,9 @@ from typing import List, Union
 import disnake
 import requests
 import rule34 as r34
-import tweepy
-from config import App
+from slashbot.config import App
 from disnake.ext import commands, tasks
-from markovify import markovify
+from slashbot import markovify
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
@@ -45,6 +44,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         bot: commands.InteractionBot
             The bot object.
         markov_gen: makovify.Text
+        self.youtube_api = build("youtube", "v3", developerKey=App.config("GOOGLE_API_KEY"))
             A markovify.Text object for generating sentences.
         bad_words: List[str]
             A list of bad words.
@@ -456,9 +456,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
 
     # Scheduled tasks ----------------------------------------------------------
 
-    @tasks.loop(hours=4)
+    @tasks.loop(hours=1)
     async def scheduled_update_markov_chain(self):
         """Get the bot to update the chain every 4 hours."""
-        logger.info("scheduled update of markov chain starting")
         await self.update_markov_chain(None)
-        logger.info("scheduled update of markov chain finished")

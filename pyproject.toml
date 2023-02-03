@@ -1,0 +1,14 @@
+[tool.black]
+line-length = 120
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+
+[tool.pylint.design]
+max-attributes = 15
+max-locals = 20
+
+[tool.pylint.format]
+max-line-length = 120
+good-names = ["ax", "im", "i", "j", "k"]
