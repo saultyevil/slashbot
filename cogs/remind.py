@@ -224,6 +224,9 @@ class Reminder(commands.Cog):
                 embed.set_footer(text=f"{self.generate_sentence('reminder')}")
                 embed.set_thumbnail(url=user.avatar.url)
 
+                self.reminders.pop(reminder_id, None)
+                self.save_reminders()
+
                 if reminder["whofor"] in ["dm", "both"]:
                     await user.send(embed=embed)
 
@@ -238,8 +241,6 @@ class Reminder(commands.Cog):
 
                     await channel.send(message, embed=embed)
 
-                self.reminders.pop(reminder_id, None)
-                self.save_reminders()
 
     # Functions ----------------------------------------------------------------
 
