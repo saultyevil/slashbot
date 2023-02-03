@@ -3,7 +3,6 @@
 
 """Admin commands for the bot."""
 
-import datetime
 import logging
 import os
 import sys
@@ -14,7 +13,6 @@ import disnake
 import requests
 from slashbot.config import App
 from disnake.ext import commands
-from prettytable import PrettyTable
 
 cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
