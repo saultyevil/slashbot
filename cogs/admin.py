@@ -50,23 +50,6 @@ class Admin(commands.Cog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="current_time", description="get the current time for the bot")
-    @commands.default_member_permissions(administrator=True)
-    async def current_time(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
-        """Get the current time for the bot.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to respond to.
-        """
-        local_timezone = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
-        local_date = datetime.datetime.now(local_timezone)
-        local_date_string = local_date.strftime("%c (%Z)")
-
-        return await inter.response.send_message(f"The current date and time is: {local_date_string}", ephemeral=True)
-
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="logfile", description="get the tail of the logfile")
     # @commands.default_member_permissions(administrator=True)
     async def log_tail(
@@ -145,31 +128,3 @@ class Admin(commands.Cog):
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
 
         os.execv(sys.executable, ["python"] + sys.argv)
-
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="show_all_reminders", description="view all the reminders")
-    @commands.default_member_permissions(administrator=True)
-    async def show_all_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
-        """Show all the reminders.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction object for the command.
-        """
-        reminders = [
-            [m_id, datetime.datetime.fromisoformat(item["when"]), item["what"]] for m_id, item in self.reminders.items()
-        ]
-
-        if not reminders:
-            return await inter.response.send_message("There are no reminders.", ephemeral=True)
-
-        message = f"There are {len(reminders)} reminders set.\n```"
-        table = PrettyTable()
-        table.align = "r"
-        table.field_names = ["ID", "When", "What"]
-        table._max_width = {"ID": 10, "When": 10, "What": 50}  # pylint: disable=protected-access
-        table.add_rows(reminders)
-        message += table.get_string(sortby="ID") + "```"
-
-        return await inter.response.send_message(message[:2000], ephemeral=True)

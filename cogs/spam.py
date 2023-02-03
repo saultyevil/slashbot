@@ -193,8 +193,8 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.messages_for_chain_update.clear()
         self.markov.chain = combined
 
-        with open("data/chain.pickle", "wb") as file_in:
-            pickle.dump(combined, file_in)
+        with open("data/chain.pickle", "wb") as file_out:
+            pickle.dump(combined, file_out)
 
         if inter:
             await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
