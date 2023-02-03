@@ -254,44 +254,6 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
 
         return await inter.edit_original_message(content=f'{message}\n>>> "{comment}"\n*{user_name_comment}*')
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="twitter", description="get a random tweet from a user")
-    async def twitter(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        username: str = commands.Param(description="The @ of the user to get a tweet for."),
-    ) -> coroutine:
-        """Get a random tweet from a user.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        username: str
-            The user to get a random tweet for.
-        """
-        username = username.lstrip("@")
-        user = self.twitter_api.get_user(username=username, user_fields="profile_image_url,url")[0]
-        if not user:
-            return await inter.response.send_message(f"There is no @{username}.", ephemeral=True)
-
-        tweets = self.twitter_api.get_users_tweets(user.id, max_results=100, exclude="retweets")[0]
-        if not tweets:
-            return await inter.response.send_message(
-                f"@{user.username} has no tweets or is a private nonce.", ephemeral=True
-            )
-
-        tweet = random.choice(tweets)
-        text = tweet.text
-        if len(text) > 256:
-            text = text[252:] + "..."
-
-        embed = disnake.Embed(title=text, color=disnake.Color.default())
-        embed.set_footer(text=f"@{user.username}")
-        embed.set_thumbnail(url=user.profile_image_url)
-
-        return await inter.response.send_message(embed=embed)
-
     # Listeners ---------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
