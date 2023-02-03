@@ -130,7 +130,7 @@ class Admin(commands.Cog):
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
-        ip_addr = requests.get("https://api.ipify.org").content.decode("utf-8")
+        ip_addr = requests.get("https://api.ipify.org", timeout=5).content.decode("utf-8")
         await inter.response.send_message(f"```{ip_addr}```", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
