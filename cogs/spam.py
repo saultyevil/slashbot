@@ -61,7 +61,6 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.attempts = attempts
         self.messages = {}
         self.rule34_api = r34.Rule34()
-        self.twitter_api = tweepy.Client(App.config("TWITTER_BEARER_KEY"))
         self.scheduled_update_markov_chain.start()  # pylint: disable=no-member
         self.user_data = App.config("USER_INFO_FILE_STREAM")
 
