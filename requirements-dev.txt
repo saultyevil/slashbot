@@ -12,3 +12,4 @@ wolframalpha~=5.0.0
 disnake~=2.7.0
 pyowm~=3.3.0
 requests==2.28.1
+sqlalchemy~=1.4.39
