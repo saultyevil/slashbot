@@ -8,19 +8,21 @@ import logging
 from types import coroutine
 
 import disnake
-from slashbot.config import App
 from disnake.ext import commands
+
+from slashbot.config import App
+from slashbot.cog import CustomCog
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 remember_options = [
-    "location",
-    "country",
+    "city",
+    "country_code",
     "badword",
 ]
 
 
-class Users(commands.Cog):
+class Users(CustomCog):
     """Cog for commands used to save user data."""
 
     def __init__(self, bot: commands.InteractionBot) -> None:
@@ -33,24 +35,6 @@ class Users(commands.Cog):
         """
         self.bot = bot
         self.user_data = App.config("USER_INFO_FILE_STREAM")
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
@@ -90,3 +74,23 @@ class Users(commands.Cog):
             json.dump(self.user_data, file_in)
 
         return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to {value}.")
+
+    async def query_info(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        thing: str = commands.Param(description="The thing to query the vlaue of.", chocies=remember_options),
+    ) -> coroutine:
+        """_summary_
+
+        Parameters
+        ----------
+        inter : _type_
+            _description_
+        thing : str, optional
+            _description_, by default commands.Param(description="The thing to query the vlaue of.", chocies=remember_options)
+
+        Returns
+        -------
+        coroutine
+            _description_
+        """
