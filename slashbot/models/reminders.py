@@ -4,12 +4,12 @@
 """Reminders ORM class.
 """
 
-import datetime
-
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Mapped
+from sqlalchemy import Date
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Column
 from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
 
 from slashbot.db import Base
 from slashbot.db import User
@@ -26,14 +26,12 @@ class Reminder(Base):
 
     __tablename__ = "reminders"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    channel = Column(String)
+    tagged_users = Column(String, nullable=True)
+    date = Column(Date)
+    reminder = Column(String)
 
-    whofor: Mapped[str]
-    channel: Mapped[int]
-    tag: Mapped[str]
-    when: Mapped[datetime.datetime]
-    what: Mapped[str]
-
-    user: Mapped[User] = relationship(back_populates="reminders")
+    user = relationship(User)

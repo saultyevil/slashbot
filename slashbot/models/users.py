@@ -4,9 +4,9 @@
 """User ORM class.
 """
 
+from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import Mapped
+from sqlalchemy import Column
 
 from slashbot.db import Base
 
@@ -22,10 +22,10 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(unique=True, index=True)
-    user_name: Mapped[str] = mapped_column(unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, unique=True, index=True)
+    user_name = Column(String(64), unique=True)
 
-    city: Mapped[str] = mapped_column(nullable=True)
-    country_code: Mapped[str] = mapped_column(String(2), nullable=True)
-    bad_word: Mapped[str] = mapped_column(nullable=True)
+    city = Column(Integer, nullable=True)
+    country_code = Column(String(2), nullable=True)
+    bad_word = Column(String(32), nullable=True)

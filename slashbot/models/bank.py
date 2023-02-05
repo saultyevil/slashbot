@@ -4,11 +4,11 @@
 """Bank ORM class.
 """
 
-
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import relationship
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Column
 from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
 
 from slashbot.db import Base
 from slashbot.db import User
@@ -19,10 +19,10 @@ class BankAccount(Base):
 
     __tablename__ = "bank_accounts"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), unique=True)
 
-    balance: Mapped[int]
-    status: Mapped[str]
+    balance = Column(Integer)
+    status = Column(String)
 
-    user: Mapped["User"] = relationship(back_populates="bank_accounts")
+    user = relationship(User)

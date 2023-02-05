@@ -4,8 +4,9 @@
 """Bad word ORM class.
 """
 
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import Mapped
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import Column
 
 from slashbot.db import Base
 
@@ -15,5 +16,5 @@ class BadWord(Base):
 
     __tablename__ = "bad_words"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    bad_word: Mapped[str] = mapped_column(unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    bad_word = Column(String(32), unique=True)
