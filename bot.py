@@ -55,7 +55,7 @@ for cog in [
     slashbot.cogs.videos.Videos(bot, bad_words),
     slashbot.cogs.users.Users(bot),
     slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME")),
-    slashbot.cogs.ai.AI(bot),
+    slashbot.cogs.ai.ArtificialStupidity(bot),
 ]:
     bot.add_cog(cog)
 

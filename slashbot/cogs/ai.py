@@ -19,7 +19,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class AI(CustomCog):  # pylint: disable=too-few-public-methods
+class ArtificialStupidity(CustomCog):  # pylint: disable=too-few-public-methods
     """A collection of commands to send AI generated messages and items."""
 
     def __init__(self, bot: commands.InteractionBot):
