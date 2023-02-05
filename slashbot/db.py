@@ -15,10 +15,10 @@ class Base(DeclarativeBase):
 
 
 from slashbot.models.users import User
-from slashbot.models.reminders import Reminder
-from slashbot.models.bad_words import BadWord
-from slashbot.models.oracle_words import OracleWord
-from slashbot.models.bank import BankAccount
+from slashbot.models.reminders import Reminder  # pylint: disable=unused-import
+from slashbot.models.bad_words import BadWord  # pylint: disable=unused-import
+from slashbot.models.oracle_words import OracleWord  # pylint: disable=unused-import
+from slashbot.models.bank import BankAccount  # pylint: disable=unused-import
 
 
 def connect_to_database_engine(location: str = None):
