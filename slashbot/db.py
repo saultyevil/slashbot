@@ -18,6 +18,7 @@ from slashbot.models.users import User
 from slashbot.models.reminders import Reminder
 from slashbot.models.bad_words import BadWord
 from slashbot.models.oracle_words import OracleWord
+from slashbot.models.bank import BankAccount
 
 
 def connect_to_database_engine(location: str = None):

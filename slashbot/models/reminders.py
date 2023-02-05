@@ -7,9 +7,12 @@
 import datetime
 
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Mapped
+from sqlalchemy import ForeignKey
 
 from slashbot.db import Base
+from slashbot.db import User
 
 
 class Reminder(Base):
@@ -25,9 +28,12 @@ class Reminder(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    user_id: Mapped[int]
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+
     whofor: Mapped[str]
     channel: Mapped[int]
     tag: Mapped[str]
     when: Mapped[datetime.datetime]
     what: Mapped[str]
+
+    user: Mapped[User] = relationship(back_populates="reminders")
