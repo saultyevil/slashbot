@@ -4,7 +4,7 @@
 """Reminders ORM class.
 """
 
-from sqlalchemy import Date
+from sqlalchemy import DateTime
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Column
@@ -31,7 +31,8 @@ class Reminder(Base):
 
     channel = Column(String)
     tagged_users = Column(String, nullable=True)
-    date = Column(Date)
-    reminder = Column(String)
+    date = Column(DateTime)
+    reminder = Column(String(1024))
+    tagged_users = Column(String(1024), nullable=True)
 
     user = relationship(User)
