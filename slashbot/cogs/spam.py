@@ -17,15 +17,17 @@ from typing import List, Union
 import disnake
 import requests
 import rule34 as r34
-from slashbot.config import App
 from disnake.ext import commands, tasks
+
+from slashbot.config import App
 from slashbot import markovify
+from slashbot.cog import CustomCog
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 
 
-class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """A collection of commands to spam the chat with."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -65,24 +67,6 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Slash commands -----------------------------------------------------------
 

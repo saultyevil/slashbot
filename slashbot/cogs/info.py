@@ -10,14 +10,16 @@ from typing import List
 
 import disnake
 import wolframalpha
-from slashbot.config import App
 from disnake.ext import commands
+
+from slashbot.config import App
+from slashbot.cog import CustomCog
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 
 
-class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
+class Info(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -50,24 +52,6 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.user_data = App.config("USER_INFO_FILE_STREAM")
 
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 

@@ -11,10 +11,12 @@ from types import coroutine
 from typing import Union
 
 import disnake
-from slashbot.config import App
 from disnake.ext import commands, tasks
 from disnake.utils import get
 from prettytable import PrettyTable
+
+from slashbot.config import App
+from slashbot.cog import CustomCog
 
 cd_user = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 60
@@ -37,7 +39,7 @@ async def convert_yes_to_false(_: disnake.ApplicationCommandInteraction, choice:
     return True
 
 
-class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
+class Content(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Demand and provide content, and track leech balance.
 
     Parameters
@@ -73,24 +75,6 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.providers = []
 
         self.remove_stale_requests.start()  # pylint: disable=no-member
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 

@@ -11,10 +11,12 @@ from types import coroutine
 from typing import List, Union
 
 import disnake
-from slashbot.config import App
 from dateutil import parser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
+
+from slashbot.config import App
+from slashbot.cog import CustomCog
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
@@ -27,7 +29,7 @@ time_units = {
 who_for = ("here", "dm", "both")
 
 
-class Reminder(commands.Cog):
+class Reminder(CustomCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot, generate_sentence):
@@ -35,24 +37,6 @@ class Reminder(commands.Cog):
         self.generate_sentence = generate_sentence
         self.reminders = App.config("REMINDERS_FILE_STREAM")
         self.check_reminders.start()  # pylint: disable=no-member
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 

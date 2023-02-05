@@ -11,13 +11,15 @@ from types import coroutine
 from typing import List
 
 import disnake
-from slashbot.config import App
 from disnake.ext import commands, tasks
+
+from slashbot.config import App
+from slashbot.cog import CustomCog
 
 cd_user = commands.BucketType.user
 
 
-class Videos(commands.Cog):
+class Videos(CustomCog):
     """Send short clips to the channel."""
 
     def __init__(self, bot: commands.InteractionBot, bad_words: List[str], generate_sentence: callable):
@@ -42,24 +44,6 @@ class Videos(commands.Cog):
         self.friday_evening.start()  # pylint: disable=no-member
         self.sunday_morning.start()  # pylint: disable=no-member
         self.jack_bin_day.start()  # pylint: disable=no-member
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
