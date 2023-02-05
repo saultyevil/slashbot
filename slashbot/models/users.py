@@ -24,7 +24,8 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(unique=True, index=True)
+    user_name: Mapped[str] = mapped_column(unique=True)
 
-    city: Mapped[str]
-    country_code: Mapped[str] = mapped_column(String(2))
-    badword: Mapped[str]
+    city: Mapped[str] = mapped_column(nullable=True)
+    country_code: Mapped[str] = mapped_column(String(2), nullable=True)
+    bad_word: Mapped[str] = mapped_column(nullable=True)
