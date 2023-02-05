@@ -27,6 +27,8 @@ import slashbot.cogs.weather
 from slashbot import markovify
 from slashbot.config import App
 from slashbot.bot import ModifiedInteractionBot
+from slashbot.db import populate_word_tables_with_new_words
+
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
@@ -104,6 +106,10 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     if isinstance(error, commands.errors.CommandOnCooldown):
         return await inter.response.send_message("This command is on cool down for you.", ephemeral=True)
 
+
+# This will populate the bad word and oracle tables with new words
+
+populate_word_tables_with_new_words()
 
 # This finally runs the bot
 

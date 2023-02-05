@@ -11,7 +11,7 @@ from slashbot.config import App
 
 
 class Base(DeclarativeBase):
-    pass
+    """Base class for ORM definition."""
 
 
 from slashbot.models.users import User
@@ -97,3 +97,25 @@ def get_user(session: Session, user_id: int, user_name: str) -> User:
         user = create_new_user(session, user_id, user_name)
 
     return user
+
+
+def populate_word_tables_with_new_words() -> None:
+    """Populate the bad word and oracle world tables in the database."""
+
+    with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+        words = file_in.read().splitlines()
+    with Session(connect_to_database_engine()) as session:
+        for word in words:
+            query = session.query(BadWord).filter(BadWord.word == word)
+            if query.count() == 0:
+                session.add(BadWord(word=word))
+        session.commit()
+
+    with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+        words = file_in.read().splitlines()
+    with Session(connect_to_database_engine()) as session:
+        for word in words:
+            query = session.query(OracleWord).filter(OracleWord.word == word)
+            if query.count() == 0:
+                session.add(OracleWord(word=word))
+        session.commit()

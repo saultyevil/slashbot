@@ -17,4 +17,4 @@ class BadWord(Base):
     __tablename__ = "bad_words"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    bad_word = Column(String(32), unique=True)
+    word = Column(String(32), unique=True)

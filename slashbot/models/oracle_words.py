@@ -17,4 +17,4 @@ class OracleWord(Base):
     __tablename__ = "oracle_words"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    oracle_word = Column(String, unique=True)
+    word = Column(String, unique=True)
