@@ -53,55 +53,6 @@ class Weather(CustomCog):
 
     # Private ------------------------------------------------------------------
 
-    def __get_user_city(self, user_id: str, user_name: str) -> str:
-        """Return the stored location set by a user.
-
-        Parameters
-        ----------
-        user_id : str
-            _description_
-        user_name : str
-            _description_
-
-        Returns
-        -------
-        _type_
-            _description_
-        """
-        with Session(connect_to_database_engine()) as session:
-            user = get_user(session, user_id, user_name)
-
-            return user.city
-
-    def __get_country_from_location(self, user_id: str, user_name: str, location: str) -> Tuple[str, str]:
-        """_summary_
-
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            _description_
-        location : str
-            _description_
-
-        Returns
-        -------
-        Tuple[str, str]
-            _description_
-        """
-        split_location = location.split(",")  # will split london, uk etc
-
-        if len(split_location) == 2:
-            location = split_location[0].strip()
-            country = split_location[1].strip().upper()
-        else:
-            with Session(connect_to_database_engine()) as session:
-                user = get_user(session, user_id, user_name)
-                country = user.country_code
-
-        country = self.__convert_uk_to_gb(country)
-
-        return location, country
-
     @staticmethod
     def __convert_degrees_to_cardinal_direction(degrees: float) -> str:
         """Convert a degrees value to a cardinal direction.
@@ -154,6 +105,55 @@ class Weather(CustomCog):
             return "GB"
 
         return choice
+
+    def __get_user_city(self, user_id: str, user_name: str) -> str:
+        """Return the stored location set by a user.
+
+        Parameters
+        ----------
+        user_id : str
+            _description_
+        user_name : str
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        with Session(connect_to_database_engine()) as session:
+            user = get_user(session, user_id, user_name)
+
+            return user.city
+
+    def __get_country_from_location(self, user_id: str, user_name: str, location: str) -> Tuple[str, str]:
+        """_summary_
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            _description_
+        location : str
+            _description_
+
+        Returns
+        -------
+        Tuple[str, str]
+            _description_
+        """
+        split_location = location.split(",")  # will split london, uk etc
+
+        if len(split_location) == 2:
+            location = split_location[0].strip()
+            country = split_location[1].strip().upper()
+        else:
+            with Session(connect_to_database_engine()) as session:
+                user = get_user(session, user_id, user_name)
+                country = user.country_code
+
+        country = self.__convert_uk_to_gb(country)
+
+        return location, country
 
     def __get_units_for_system(self, system: str) -> dict:
         """Get the units for the system.
