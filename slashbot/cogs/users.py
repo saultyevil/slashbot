@@ -21,7 +21,7 @@ from slashbot.error import deferred_error_message
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 USER_OPTIONS = [
-    "City name",
+    "City",
     "Country code",
     "Bad word",
 ]
@@ -73,7 +73,7 @@ class Users(CustomCog):
                 return deferred_error_message("An error has occured with Disnake :-(")
 
             match thing:
-                case "City name":
+                case "City":
                     user.city = value
                 case "Country code":
                     if len(value) != 2:
