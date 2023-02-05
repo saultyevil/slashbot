@@ -14,6 +14,7 @@ from disnake.ext import commands
 
 from slashbot.config import App
 from slashbot.cog import CustomCog
+from slashbot.markov import generate_sentence
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
@@ -25,7 +26,6 @@ class Info(CustomCog):  # pylint: disable=too-many-instance-attributes
     def __init__(  # pylint: disable=too-many-arguments
         self,
         bot: commands.InteractionBot,
-        generate_sentence: callable,
         bad_words: List[str],
         god_words: List[str],
         attempts: int = 10,
@@ -45,7 +45,6 @@ class Info(CustomCog):  # pylint: disable=too-many-instance-attributes
             The number of attempts to try and generate a sentence for.
         """
         self.bot = bot
-        self.generate_sentence = generate_sentence
         self.attempts = attempts
         self.bad_words = bad_words
         self.god_words = god_words
@@ -90,7 +89,7 @@ class Info(CustomCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.defer()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
-        embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
+        embed.set_footer(text=f"{generate_sentence(seed_word='wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
         )

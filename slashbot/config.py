@@ -21,8 +21,6 @@ class App:
 
     Contains shared variables or variables which control the operation
     of the bot.
-
-    TODO: __conf may be better coming from a YAML file.
     """
 
     # __conf is a dictionary of configuration parameters
@@ -34,7 +32,7 @@ class App:
         "COOLDOWN_ONE_HOUR": 3600,
         "HOURS_IN_WEEK": 168,
         # general discord things
-        "MAX_CHARS": 1994,
+        "MAX_CHARS": 1990,
         "LOGGER_NAME": "slashbot",
         "LOGFILE_NAME": Path("log/slashbot.log"),
         # Define users, roles and channels
@@ -55,6 +53,7 @@ class App:
         "OWM_API_KEY": os.getenv("OWM_API_KEY"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         # File locations
+        "MARKOV_CHAIN_FILE": Path("data/chain.pickle"),
         "USERS_FILE": Path("data/users.json"),
         "REMINDERS_FILE": Path("data/reminders.json"),
         "BANK_FILE": Path("data/bank.json"),

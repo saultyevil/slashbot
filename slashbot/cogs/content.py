@@ -17,6 +17,7 @@ from prettytable import PrettyTable
 
 from slashbot.config import App
 from slashbot.cog import CustomCog
+from slashbot.markov import generate_sentence
 
 cd_user = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 60
@@ -59,13 +60,11 @@ class Content(CustomCog):  # pylint: disable=too-many-instance-attributes
     def __init__(  # pylint: disable=too-many-arguments
         self,
         bot: commands.InteractionBot,
-        generate_sentence: callable,
         starting_balance: int = 5,
         role_name: str = "Content Leeches",
         stale_minutes: int = 30,
     ):
         self.bot = bot
-        self.generate_sentence = generate_sentence
         self.starting_balance = starting_balance
         self.role_name = role_name
         self.stale_minutes = stale_minutes
@@ -133,7 +132,7 @@ class Content(CustomCog):  # pylint: disable=too-many-instance-attributes
         embed = disnake.Embed(
             title=f"{inter.author.name}'s Leech Balance", color=disnake.Color.default(), description=message
         )
-        embed.set_footer(text=f"{self.generate_sentence('leech')}")
+        embed.set_footer(text=f"{generate_sentence(seed_word='leech')}")
         embed.set_thumbnail(url="https://www.nicepng.com/png/full/258-2581153_cartoon-leech.png")
         embed.add_field(name="Balance", value=f"{balance} Leech coins")
         embed.add_field(name="Status", value=f"{self.bank[user_id]['status']}")

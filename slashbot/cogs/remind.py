@@ -17,6 +17,7 @@ from prettytable import PrettyTable
 
 from slashbot.config import App
 from slashbot.cog import CustomCog
+from slashbot.markov import generate_sentence
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
@@ -32,9 +33,8 @@ who_for = ("here", "dm", "both")
 class Reminder(CustomCog):
     """Commands to set up reminders."""
 
-    def __init__(self, bot, generate_sentence):
+    def __init__(self, bot):
         self.bot = bot
-        self.generate_sentence = generate_sentence
         self.reminders = App.config("REMINDERS_FILE_STREAM")
         self.check_reminders.start()  # pylint: disable=no-member
 
@@ -205,7 +205,7 @@ class Reminder(CustomCog):
                     continue
 
                 embed = disnake.Embed(title=reminder["what"], color=disnake.Color.default())
-                embed.set_footer(text=f"{self.generate_sentence('reminder')}")
+                embed.set_footer(text=f"{generate_sentence(seed_word='reminder')}")
                 embed.set_thumbnail(url=user.avatar.url)
 
                 self.reminders.pop(reminder_id, None)

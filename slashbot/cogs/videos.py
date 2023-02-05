@@ -15,6 +15,7 @@ from disnake.ext import commands, tasks
 
 from slashbot.config import App
 from slashbot.cog import CustomCog
+from slashbot.markov import generate_sentence
 
 cd_user = commands.BucketType.user
 
@@ -22,7 +23,7 @@ cd_user = commands.BucketType.user
 class Videos(CustomCog):
     """Send short clips to the channel."""
 
-    def __init__(self, bot: commands.InteractionBot, bad_words: List[str], generate_sentence: callable):
+    def __init__(self, bot: commands.InteractionBot, bad_words: List[str]):
         """Initialize the cog.
 
         Parameters
@@ -36,7 +37,6 @@ class Videos(CustomCog):
         """
         self.bot = bot
         self.bad_words = bad_words
-        self.generate_sentence = generate_sentence
 
         self.monday_morning.start()  # pylint: disable=no-member
         self.wednesday_morning.start()  # pylint: disable=no-member
@@ -60,7 +60,7 @@ class Videos(CustomCog):
         await inter.response.defer()
         seed = random.choice(["admin", "abuse", "admin abuse"])
         return await inter.edit_original_message(
-            content=f"{self.generate_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+            content=f"{generate_sentence(seed_word=seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
@@ -175,7 +175,7 @@ class Videos(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("monday").replace("monday", "**monday**"),
+            generate_sentence(seed_word="monday").replace("monday", "**monday**"),
             file=disnake.File("data/videos/monday.mp4"),
         )
 
@@ -185,7 +185,7 @@ class Videos(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("wednesday").replace("wednesday", "**wednesday**"),
+            generate_sentence(seed_word="wednesday").replace("wednesday", "**wednesday**"),
             file=disnake.File("data/videos/wednesday.mp4"),
         )
 
@@ -195,7 +195,7 @@ class Videos(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("weekend").replace("weekend", "**weekend**"),
+            generate_sentence(seed_word="weekend").replace("weekend", "**weekend**"),
             file=disnake.File("data/videos/weekend.mp4"),
         )
 
@@ -205,7 +205,7 @@ class Videos(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("friday").replace("friday", "**friday**"),
+            generate_sentence(seed_word="friday").replace("friday", "**friday**"),
             file=disnake.File("data/videos/friday.mov"),
         )
 
@@ -215,7 +215,7 @@ class Videos(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("sunday").replace("sunday", "**sunday**"),
+            generate_sentence(seed_word="sunday").replace("sunday", "**sunday**"),
             file=disnake.File("data/videos/sunday.mp4"),
         )
 
@@ -226,7 +226,7 @@ class Videos(CustomCog):
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         user = self.bot.get_user(App.config("ID_USER_LIME"))
         await channel.send(
-            f"{user.mention} it's time to take the bins out!!! " + self.generate_sentence("bin"),
+            f"{user.mention} it's time to take the bins out!!! " + generate_sentence(seed_word="bin"),
             file=disnake.File("data/bin.png"),
         )
 

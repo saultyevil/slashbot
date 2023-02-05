@@ -14,9 +14,9 @@ import string
 
 import disnake
 
-import markovify
-from config import App
-from error import deferred_error_message
+from slashbot import markovify
+from slashbot.config import App
+from slashbot.error import deferred_error_message
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
@@ -86,13 +86,16 @@ def load_markov_model(chain_location: str | Path) -> markovify.Text:
     return model
 
 
-def generate_sentence(model: markovify.Text, seed_word: str = None, attempts: int = 5) -> str:
+MARKOV_MODEL = load_markov_model(App.config("MARKOV_CHAIN_FILE"))
+
+
+def generate_sentence(model: markovify.Text = None, seed_word: str = None, attempts: int = 5) -> str:
     """Generate a sentence using a markov chain.
 
     Parameters
     ----------
     model : markovify.Text
-        The model to generate the sentence from.
+        The model to generate the sentence from, by default None
     seed_word : str, optional
         A seed word to include in the sentence, by default None
     attempts : int, optional
@@ -104,6 +107,9 @@ def generate_sentence(model: markovify.Text, seed_word: str = None, attempts: in
     str
         The generated sentence
     """
+    if not model:
+        model = MARKOV_MODEL
+
     sentence = "My Markov chain isn't working properly!"
 
     for _ in range(attempts):
@@ -190,6 +196,3 @@ async def update_markov_chain_for_model(
         await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
 
     return model
-
-
-MARKOV_MODEL = load_markov_model(App.config("MARKOV_CHAIN_FILE"))
