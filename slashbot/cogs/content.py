@@ -11,7 +11,7 @@ from types import coroutine
 from typing import Union
 
 import disnake
-from config import App
+from slashbot.config import App
 from disnake.ext import commands, tasks
 from disnake.utils import get
 from prettytable import PrettyTable

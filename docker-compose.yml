@@ -6,10 +6,9 @@ services:
     restart: unless-stopped
     environment:
       - BOT_TOKEN
-      - GOOGLE_API_KEY
       - OWM_API_KEY
       - WOLFRAM_API_KEY
-      - TWITTER_BEARER_KEY
+      - OPENAI_API_KEY
       - TZ=Europe/London
     env_file: docker-env.env
     volumes:

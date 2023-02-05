@@ -8,8 +8,9 @@ import logging
 from collections.abc import Iterable
 from typing import Any
 
-from config import App
 from disnake.ext import commands
+
+from slashbot.config import App
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
@@ -25,7 +26,7 @@ class ModifiedInteractionBot(commands.InteractionBot):
         super().__init__(**kwargs)
         self.cleanup_functions = []
 
-    def add_to_cleanup(self, message: str, function: callable, args: Iterable[Any]) -> None:
+    def add_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:
         """Add a function to the cleanup list.
 
         Parameters

@@ -6,46 +6,18 @@
 import json
 import logging
 from types import coroutine
-from typing import List
 
 import disnake
-from config import App
+from slashbot.config import App
 from disnake.ext import commands
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
-remember_options = ["location", "country", "badword", "fxtwitter"]
-
-
-async def autocomplete_remember_choices(inter: disnake.ApplicationCommandInteraction, _: str) -> List[str]:
-    """Autocompletion for choices for the remember command.
-
-    Returns
-    -------
-    choice: Union[str, List[str]]
-        The converted choice.
-    """
-    thing_chosen = inter.filled_options["thing"]
-    return ["enable", "disable"] if thing_chosen == "fxtwitter" else ""
-
-
-async def convert_fxtwitter_input(inter, choice: str) -> str:
-    """Convert the fxtwitter option (enable/disable) to a bool.
-
-    Parameters
-    ----------
-    choice: str
-        The choice to convert.
-
-    Returns
-    -------
-    choice: Union[str, bool]
-        The converted choice.
-    """
-    if inter.filled_options["thing"] == "fxtwitter":
-        return choice == "enable"
-
-    return choice
+remember_options = [
+    "location",
+    "country",
+    "badword",
+]
 
 
 class Users(commands.Cog):
@@ -90,8 +62,6 @@ class Users(commands.Cog):
         thing: str = commands.Param(description="The type of thing to be remembered.", choices=remember_options),
         value: str = commands.Param(
             description="What to remember.",
-            autocomplete=autocomplete_remember_choices,
-            converter=convert_fxtwitter_input,
         ),
     ) -> coroutine:
         """Set some user variables for a user.

@@ -8,7 +8,6 @@ import datetime
 import logging
 import pickle
 import random
-import re
 import shutil
 import string
 import xml
@@ -18,10 +17,9 @@ from typing import List, Union
 import disnake
 import requests
 import rule34 as r34
-import tweepy
-from config import App
+from slashbot.config import App
 from disnake.ext import commands, tasks
-from markovify import markovify
+from slashbot import markovify
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
@@ -45,6 +43,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         bot: commands.InteractionBot
             The bot object.
         markov_gen: makovify.Text
+        self.youtube_api = build("youtube", "v3", developerKey=App.config("GOOGLE_API_KEY"))
             A markovify.Text object for generating sentences.
         bad_words: List[str]
             A list of bad words.
@@ -59,7 +58,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         self.bad_words = bad_words
         self.god_words = god_words
         self.attempts = attempts
-        self.messages = {}
+        self.messages_for_chain_update = {}
         self.rule34_api = r34.Rule34()
         self.scheduled_update_markov_chain.start()  # pylint: disable=no-member
         self.user_data = App.config("USER_INFO_FILE_STREAM")
@@ -170,7 +169,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if len(self.messages) == 0:
+        if len(self.messages_for_chain_update) == 0:
             if inter:
                 return await inter.edit_original_message(content="No messages to learn from.")
             return None
@@ -191,11 +190,11 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
             return await inter.response.send_message("Something bad happened when trying to update the Markov chain.")
 
         combined = markovify.combine([self.markov.chain, new_model.chain])
-        self.messages.clear()
+        self.messages_for_chain_update.clear()
         self.markov.chain = combined
 
-        with open("data/chain.pickle", "wb") as file_in:
-            pickle.dump(combined, file_in)
+        with open("data/chain.pickle", "wb") as file_out:
+            pickle.dump(combined, file_out)
 
         if inter:
             await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
@@ -264,24 +263,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         message: disnake.Message
             The message to record.
         """
-        self.messages[str(message.id)] = message.content
-
-        # Replace twitter video links with fx/vx twitter links
-        # Check if someone has opted out. If not set, default to False
-        fx_enabled = self.user_data.get(str(message.author.id), {}).get("fxtwitter", False)
-
-        if fx_enabled and "https://twitter.com/" in message.content:
-            new_url, old_url = self.convert_twitter_video_links(message.content)
-            # i.e. if twitter.com was changed to vxtwitter -- removed embed to
-            # avoid upsetting Gareth
-            if new_url != old_url:
-                try:
-                    await message.edit(suppress=True)
-                except disnake.errors.Forbidden:  # If we fail, then don't send the message
-                    logger.error("Unable to suppress embed for %s", message.author)
-                    return
-
-                await message.channel.send(new_url)
+        self.messages_for_chain_update[str(message.id)] = message.content
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_delete_messages(self, payload: disnake.RawMessageDeleteEvent) -> None:
@@ -295,7 +277,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         message = payload.cached_message
         if message is None:
             return
-        self.messages.pop(str(message.id), None)
+        self.messages_for_chain_update.pop(str(message.id), None)
         await self.bot.wait_until_ready()
 
     # Utility functions --------------------------------------------------------
@@ -310,7 +292,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         """
         learnable_sentences = []
 
-        for sentence in self.messages.values():
+        for sentence in self.messages_for_chain_update.values():
             if len(sentence) == 0:  # empty strings
                 continue
             if sentence.startswith(string.punctuation):  # ignore commands, which usually start with punctuation
@@ -321,40 +303,6 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
             learnable_sentences.append(sentence)
 
         return learnable_sentences
-
-    def convert_twitter_video_links(self, tweet_url_from_message: str) -> Union[str, str]:
-        """Checks if a tweet has a video, and prepends the URL with vx -- to
-        embed a video -- and removes the previous message if it was just a
-        message containing a tweet URL.
-
-        Parameters
-        ----------
-        message: str
-            The message containing the URL
-
-        Returns
-        -------
-        new_url: str
-            The new URL, with vxtwitter instead.
-        tweet_url_from_message: str
-            The original URL.
-        """
-
-        new_url = tweet_url_from_message = re.search(r"(?P<url>https?://[^\s]+)", tweet_url_from_message).group("url")
-        tweet_id = int(
-            re.sub(r"\?.*$", "", tweet_url_from_message.rsplit("/", 1)[-1])
-        )  # gets the tweet ID as a int from the passed url
-        tweet = self.twitter_api.get_tweet(id=tweet_id, media_fields="type", expansions="attachments.media_keys")
-
-        try:
-            media_type = tweet[1]["media"][0].type
-        except (IndexError, KeyError):
-            return tweet_url_from_message, tweet_url_from_message
-
-        if media_type in ["video", "gif"]:
-            new_url = new_url.replace("twitter", "vxtwitter")
-
-        return new_url, tweet_url_from_message
 
     def generate_sentence(self, seed_word: str = None, mentions=False) -> str:  # pylint: disable=too-many-branches
         """Generate a "safe" message from the markov chain model.
@@ -431,11 +379,11 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
             response = requests.get(
                 "https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
                 params={"post_id": f"{post_id}"},
+                timeout=5,
             )
         else:
-            response = requests.get(
-                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
-            )
+            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index", timeout=5)
+
         if response.status_code != 200:
             return None, None, None
 
@@ -456,9 +404,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
 
     # Scheduled tasks ----------------------------------------------------------
 
-    @tasks.loop(hours=4)
+    @tasks.loop(hours=1)
     async def scheduled_update_markov_chain(self):
         """Get the bot to update the chain every 4 hours."""
-        logger.info("scheduled update of markov chain starting")
         await self.update_markov_chain(None)
-        logger.info("scheduled update of markov chain finished")
