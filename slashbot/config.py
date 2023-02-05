@@ -58,6 +58,8 @@ class App:
         __conf["ID_SERVER_BUMPAPER"],
     ]
 
+    __conf["NO_COOL_DOWN_USERS"] = [__conf["ID_USER_SAULTYEVIL"]]
+
     # __setters is a tuple of parameters which can be set
     __setters = ()
 
