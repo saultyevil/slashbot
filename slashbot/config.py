@@ -60,6 +60,7 @@ class App:
         "BANK_FILE": Path("data/bank.json"),
         "BAD_WORDS_FILE": Path("data/badwords.txt"),
         "GOD_WORDS_FILE": Path("data/godwords.txt"),
+        "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
         # File streams
         "USER_INFO_FILE_STREAM": {},
         "REMINDERS_FILE_STREAM": {},
