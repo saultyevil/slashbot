@@ -11,10 +11,11 @@ from types import coroutine
 from typing import Union
 
 import disnake
-from slashbot.config import App
 from disnake.ext import commands, tasks
 from disnake.utils import get
 from prettytable import PrettyTable
+
+from slashbot.config import App
 
 cd_user = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 60
@@ -67,8 +68,6 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.starting_balance = starting_balance
         self.role_name = role_name
         self.stale_minutes = stale_minutes
-        self.bank_file = App.config("BANK_FILE")
-        self.bank = App.config("BANK_FILE_STREAM")
         self.requests = []
         self.providers = []
 
@@ -112,93 +111,93 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
             f"You have left the {self.role_name} notification squad.", ephemeral=True
         )
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(
-        name="leech_balance",
-        description="Check how many leech coins you have",
-    )
-    async def balance(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        share: str = commands.Param(
-            description="Whether to share your balance with the chat or not.",
-            default="No",
-            choices=["Yes", "No"],
-            converter=convert_yes_to_false,
-        ),
-    ) -> coroutine:
-        """Check your leech coin balance.
+    # @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    # @commands.slash_command(
+    #     name="leech_balance",
+    #     description="Check how many leech coins you have",
+    # )
+    # async def balance(
+    #     self,
+    #     inter: disnake.ApplicationCommandInteraction,
+    #     share: str = commands.Param(
+    #         description="Whether to share your balance with the chat or not.",
+    #         default="No",
+    #         choices=["Yes", "No"],
+    #         converter=convert_yes_to_false,
+    #     ),
+    # ) -> coroutine:
+    #     """Check your leech coin balance.
 
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction object for the command.
-        share: str
-            If yes, ephemeral=False and the message will be printed to chat.
-        """
-        user_id, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
-        balance = self.bank[user_id]["balance"]
+    #     Parameters
+    #     ----------
+    #     inter: disnake.ApplicationCommandInteraction
+    #         The interaction object for the command.
+    #     share: str
+    #         If yes, ephemeral=False and the message will be printed to chat.
+    #     """
+    #     user_id, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
+    #     balance = self.bank[user_id]["balance"]
 
-        if balance > 0:
-            message = "You have Leech coins in your bank account."
-        elif balance == 0:
-            message = "You're broke, povvo!"
-        else:
-            message = "You filthy little Leech, you owe the bank!"
+    #     if balance > 0:
+    #         message = "You have Leech coins in your bank account."
+    #     elif balance == 0:
+    #         message = "You're broke, povvo!"
+    #     else:
+    #         message = "You filthy little Leech, you owe the bank!"
 
-        embed = disnake.Embed(
-            title=f"{inter.author.name}'s Leech Balance", color=disnake.Color.default(), description=message
-        )
-        embed.set_footer(text=f"{self.generate_sentence('leech')}")
-        embed.set_thumbnail(url="https://www.nicepng.com/png/full/258-2581153_cartoon-leech.png")
-        embed.add_field(name="Balance", value=f"{balance} Leech coins")
-        embed.add_field(name="Status", value=f"{self.bank[user_id]['status']}")
+    #     embed = disnake.Embed(
+    #         title=f"{inter.author.name}'s Leech Balance", color=disnake.Color.default(), description=message
+    #     )
+    #     embed.set_footer(text=f"{self.generate_sentence('leech')}")
+    #     embed.set_thumbnail(url="https://www.nicepng.com/png/full/258-2581153_cartoon-leech.png")
+    #     embed.add_field(name="Balance", value=f"{balance} Leech coins")
+    #     embed.add_field(name="Status", value=f"{self.bank[user_id]['status']}")
 
-        return await inter.response.send_message(embed=embed, ephemeral=share)
+    #     return await inter.response.send_message(embed=embed, ephemeral=share)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(name="need_content", description="Demand content, filthy leech", dm_permission=False)
-    async def need_content(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
-        """Demand that there be content, filthy little leech.
+    # @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    # @commands.slash_command(name="need_content", description="Demand content, filthy leech", dm_permission=False)
+    # async def need_content(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    #     """Demand that there be content, filthy little leech.
 
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction object for the command.
-        who: str
-            The name of the user who should provide content.
-        """
-        user_id, role = await self.prepare_for_leech_command(inter.guild, inter.author)
-        mention = role.mention if role else self.role_name
-        current_requesters = [r["who"].id for r in self.requests]
+    #     Parameters
+    #     ----------
+    #     inter: disnake.ApplicationCommandInteraction
+    #         The interaction object for the command.
+    #     who: str
+    #         The name of the user who should provide content.
+    #     """
+    #     user_id, role = await self.prepare_for_leech_command(inter.guild, inter.author)
+    #     mention = role.mention if role else self.role_name
+    #     current_requesters = [r["who"].id for r in self.requests]
 
-        balance = self.bank[user_id]["balance"]
+    #     balance = self.bank[user_id]["balance"]
 
-        if balance <= 0:
-            return await inter.response.send_message(
-                "You don't have enough Leech coins to ask for content.", ephemeral=True
-            )
+    #     if balance <= 0:
+    #         return await inter.response.send_message(
+    #             "You don't have enough Leech coins to ask for content.", ephemeral=True
+    #         )
 
-        # Add request to queue of requests to be answered
-        if inter.author.id not in current_requesters:
-            now = datetime.datetime.now()
-            request = {
-                "when": now.isoformat(),
-                "stale_after": (now + datetime.timedelta(minutes=self.stale_minutes)).isoformat(),
-                "who": inter.author,
-            }
-            self.requests.append(request)
-            logger.info("%s has been added to the list of requests", inter.author.name)
+    #     # Add request to queue of requests to be answered
+    #     if inter.author.id not in current_requesters:
+    #         now = datetime.datetime.now()
+    #         request = {
+    #             "when": now.isoformat(),
+    #             "stale_after": (now + datetime.timedelta(minutes=self.stale_minutes)).isoformat(),
+    #             "who": inter.author,
+    #         }
+    #         self.requests.append(request)
+    #         logger.info("%s has been added to the list of requests", inter.author.name)
 
-        if len(self.requests) > 1:
-            requesters = (
-                ", ".join(map(lambda r: r["who"].name, self.requests[:-1]))
-                + f" and {self.requests[-1]['who'].name} *need*"
-            )
-        else:
-            requesters = f"{self.requests[0]['who'].name} *needs*"
+    #     if len(self.requests) > 1:
+    #         requesters = (
+    #             ", ".join(map(lambda r: r["who"].name, self.requests[:-1]))
+    #             + f" and {self.requests[-1]['who'].name} *need*"
+    #         )
+    #     else:
+    #         requesters = f"{self.requests[0]['who'].name} *needs*"
 
-        return await inter.response.send_message(f"{mention} {requesters} content.")
+    #     return await inter.response.send_message(f"{mention} {requesters} content.")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="leech_squad", description="Join the leech notification squad", dm_permission=False)
@@ -250,43 +249,43 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return await inter.response.send_message(f"{mention} {providers} will be providing content.")
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
-    @commands.slash_command(
-        name="leech_score",
-        description="Leech coin leaderboard",
-    )
-    async def leech_score(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        share: str = commands.Param(
-            description="Whether to share your balance with the chat or not.",
-            default="No",
-            choices=["Yes", "No"],
-            converter=convert_yes_to_false,
-        ),
-    ) -> coroutine:
-        """Show the balance for all users.
+    # @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    # @commands.slash_command(
+    #     name="leech_score",
+    #     description="Leech coin leaderboard",
+    # )
+    # async def leech_score(
+    #     self,
+    #     inter: disnake.ApplicationCommandInteraction,
+    #     share: str = commands.Param(
+    #         description="Whether to share your balance with the chat or not.",
+    #         default="No",
+    #         choices=["Yes", "No"],
+    #         converter=convert_yes_to_false,
+    #     ),
+    # ) -> coroutine:
+    #     """Show the balance for all users.
 
-                Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction object for the command.
-        """
-        _, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
-        if not self.bank:
-            await inter.response.send_message("There are no accounts.", ephemeral=True)
+    #             Parameters
+    #     ----------
+    #     inter: disnake.ApplicationCommandInteraction
+    #         The interaction object for the command.
+    #     """
+    #     _, _ = await self.prepare_for_leech_command(inter.guild, inter.author)
+    #     if not self.bank:
+    #         await inter.response.send_message("There are no accounts.", ephemeral=True)
 
-        # Use list comprehension to get a list of name, balance and status for
-        # each account
-        rows = [[account["name"], account["balance"], account["status"]] for account in self.bank.values()]
+    #     # Use list comprehension to get a list of name, balance and status for
+    #     # each account
+    #     rows = [[account["name"], account["balance"], account["status"]] for account in self.bank.values()]
 
-        # PrettyTable to create a nicely formatted table
-        table = PrettyTable()
-        table.align = "r"
-        table.field_names = ["Name", "Balance", "Status"]
-        table.add_rows(rows)
+    #     # PrettyTable to create a nicely formatted table
+    #     table = PrettyTable()
+    #     table.align = "r"
+    #     table.field_names = ["Name", "Balance", "Status"]
+    #     table.add_rows(rows)
 
-        return await inter.response.send_message(f"```{table.get_string(sortby='Name')}```", ephemeral=share)
+    #     return await inter.response.send_message(f"```{table.get_string(sortby='Name')}```", ephemeral=share)
 
     # Events -------------------------------------------------------------------
 
@@ -435,100 +434,100 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
 
         return str(user.id), leech_role
 
-    async def add_leech_coin(self, user_id: int, to_add: int = 1) -> None:
-        """Add a leech coin to a user's bank.
+    # async def add_leech_coin(self, user_id: int, to_add: int = 1) -> None:
+    #     """Add a leech coin to a user's bank.
 
-        Parameters
-        ----------
-        user_id: int
-            The ID of the user.
-        to_add: int
-            The number of coins to add.
-        """
-        user = await self.bot.fetch_user(user_id)
+    #     Parameters
+    #     ----------
+    #     user_id: int
+    #         The ID of the user.
+    #     to_add: int
+    #         The number of coins to add.
+    #     """
+    #     user = await self.bot.fetch_user(user_id)
 
-        await self.check_or_create_account(user_id)
-        self.bank[user_id] = self.bank[user_id] + to_add
-        await self.update_account_status(user_id, user.name)
-        await self.save_bank()
+    #     await self.check_or_create_account(user_id)
+    #     self.bank[user_id] = self.bank[user_id] + to_add
+    #     await self.update_account_status(user_id, user.name)
+    #     await self.save_bank()
 
-        logger.info("Added %i coins to %s. New balance: %i", to_add, user.name, self.bank[user_id])
+    #     logger.info("Added %i coins to %s. New balance: %i", to_add, user.name, self.bank[user_id])
 
-    async def create_bank_account(self, user_id: int) -> dict:
-        """Add a user to the bank JSON.
+    # async def create_bank_account(self, user_id: int) -> dict:
+    #     """Add a user to the bank JSON.
 
-        Parameters
-        ----------
-        user_id: int
-            The ID of the user.
+    #     Parameters
+    #     ----------
+    #     user_id: int
+    #         The ID of the user.
 
-        Returns
-        -------
-        account: dict
-            The account for the user.
-        """
-        user = await self.bot.fetch_user(user_id)
-        account = {"user_id": user_id, "name": user.name, "balance": self.starting_balance, "status": "Newfag"}
+    #     Returns
+    #     -------
+    #     account: dict
+    #         The account for the user.
+    #     """
+    #     user = await self.bot.fetch_user(user_id)
+    #     account = {"user_id": user_id, "name": user.name, "balance": self.starting_balance, "status": "Newfag"}
 
-        logger.info("Created bank account for %s user_id %d %s", user.name, user_id, type(user_id))
-        self.bank[user_id] = account
-        await self.save_bank()
+    #     logger.info("Created bank account for %s user_id %d %s", user.name, user_id, type(user_id))
+    #     self.bank[user_id] = account
+    #     await self.save_bank()
 
-        return account
+    #     return account
 
-    async def update_account_status(self, user_id: int, user_name: str) -> None:
-        """Update the account status depending on balance.
+    # async def update_account_status(self, user_id: int, user_name: str) -> None:
+    #     """Update the account status depending on balance.
 
-        Parameters
-        ----------
-        user_id: int
-            The ID of the user.
-        user_name: str
-            The name of the user.
-        """
-        balance = self.bank[user_id]["balance"]
-        new_status = self.bank[user_id]["status"]
+    #     Parameters
+    #     ----------
+    #     user_id: int
+    #         The ID of the user.
+    #     user_name: str
+    #         The name of the user.
+    #     """
+    #     balance = self.bank[user_id]["balance"]
+    #     new_status = self.bank[user_id]["status"]
 
-        if balance > 0:
-            new_status = "Valued content provider"
-        else:
-            new_status = "Despicable leech"
+    #     if balance > 0:
+    #         new_status = "Valued content provider"
+    #     else:
+    #         new_status = "Despicable leech"
 
-        logger.info("%s status changed from %s to %s", user_name, self.bank[user_id], new_status)
-        self.bank[user_id]["status"] = new_status
+    #     logger.info("%s status changed from %s to %s", user_name, self.bank[user_id], new_status)
+    #     self.bank[user_id]["status"] = new_status
 
-    async def remove_leech_coin(self, user_id: int) -> None:
-        """Remove a leech coin to a user's bank.
+    # async def remove_leech_coin(self, user_id: int) -> None:
+    #     """Remove a leech coin to a user's bank.
 
-        Parameters
-        ----------
-        user_id: int
-            The ID of the user.
-        """
-        user = await self.bot.fetch_user(user_id)
+    #     Parameters
+    #     ----------
+    #     user_id: int
+    #         The ID of the user.
+    #     """
+    #     user = await self.bot.fetch_user(user_id)
 
-        await self.check_or_create_account(user_id)
-        self.bank[user_id] = self.bank[user_id] - 1
-        await self.update_account_status(user_id, user.name)
-        await self.save_bank()
+    #     await self.check_or_create_account(user_id)
+    #     self.bank[user_id] = self.bank[user_id] - 1
+    #     await self.update_account_status(user_id, user.name)
+    #     await self.save_bank()
 
-        logger.info("Removed coin from %s. New balance: %s", user.name, self.bank[user_id])
+    #     logger.info("Removed coin from %s. New balance: %s", user.name, self.bank[user_id])
 
-    async def save_bank(self) -> None:
-        """Save changes to the bank to file."""
-        with open(self.bank_file, "w", encoding="utf-8") as fp:
-            json.dump(self.bank, fp)
+    # async def save_bank(self) -> None:
+    #     """Save changes to the bank to file."""
+    #     with open(self.bank_file, "w", encoding="utf-8") as fp:
+    #         json.dump(self.bank, fp)
 
-    async def check_or_create_account(self, user_id: int) -> None:
-        """Check a bank account exists for a user.
+    # async def check_or_create_account(self, user_id: int) -> None:
+    #     """Check a bank account exists for a user.
 
-        Parameters
-        ----------
-        user_id: int
-            The ID of the user.
-        """
-        if user_id not in self.bank:
-            await self.create_bank_account(user_id)
+    #     Parameters
+    #     ----------
+    #     user_id: int
+    #         The ID of the user.
+    #     """
+    #     if user_id not in self.bank:
+    #         await self.create_bank_account(user_id)
 
     # Tasks --------------------------------------------------------------------
 

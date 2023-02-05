@@ -10,10 +10,11 @@ from typing import Tuple
 
 import disnake
 import pyowm
-from slashbot.config import App
 from disnake.ext import commands
-from slashbot.cog import CustomCog  # pylint: disable=import-error
-from slashbot.error import deferred_error_message  # pylint: disable=import-error
+
+from slashbot.config import App
+from slashbot.cog import CustomCog
+from slashbot.error import deferred_error_message
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
@@ -47,8 +48,6 @@ class Weather(CustomCog):
         self.city_register = self.weather_api.city_id_registry()
         self.weather_manager = self.weather_api.weather_manager()
 
-        self.user_data = App.config("USER_INFO_FILE_STREAM")
-
     # Private ------------------------------------------------------------------
 
     def __get_set_user_location(self, user_id: str):
@@ -64,7 +63,7 @@ class Weather(CustomCog):
         _type_
             _description_
         """
-        return self.user_data[str(user_id)]["location"]
+        # return self.user_data[str(user_id)]["location"]
 
     def __get_country_from_location(self, user_id: str, location: str) -> Tuple[str, str]:
         """_summary_
@@ -81,20 +80,20 @@ class Weather(CustomCog):
         Tuple[str, str]
             _description_
         """
-        split_location = location.split(",")  # will split london, uk etc
+        # split_location = location.split(",")  # will split london, uk etc
 
-        if len(split_location) == 2:
-            location = split_location[0].strip()
-            country = split_location[1].strip().upper()
-        else:
-            try:
-                country = self.user_data[str(user_id)]["country"].upper()
-            except KeyError:
-                country = None
+        # if len(split_location) == 2:
+        #     location = split_location[0].strip()
+        #     country = split_location[1].strip().upper()
+        # else:
+        #     try:
+        #         country = self.user_data[str(user_id)]["country"].upper()
+        #     except KeyError:
+        #         country = None
 
-        country = self.__convert_uk_to_gb(country)
+        # country = self.__convert_uk_to_gb(country)
 
-        return location, country
+        # return location, country
 
     @staticmethod
     def __convert_degrees_to_cardinal_direction(degrees: float) -> str:

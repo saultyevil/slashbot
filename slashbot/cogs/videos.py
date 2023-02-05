@@ -11,29 +11,27 @@ from types import coroutine
 from typing import List
 
 import disnake
-from slashbot.config import App
 from disnake.ext import commands, tasks
 
-cd_user = commands.BucketType.user
+from slashbot.config import App
+
+COOLDOWN_USER = commands.BucketType.user
 
 
 class Videos(commands.Cog):
     """Send short clips to the channel."""
 
-    def __init__(self, bot: commands.InteractionBot, bad_words: List[str], generate_sentence: callable):
+    def __init__(self, bot: commands.InteractionBot, generate_sentence: callable):
         """Initialize the cog.
 
         Parameters
         ----------
         bot: commands.InteractionBot
             The bot object.
-        bad_words: List[str]
-            A list of bad words.
         generate_sentence: callable
             A function to generate a sentence given a seed word.
         """
         self.bot = bot
-        self.bad_words = bad_words
         self.generate_sentence = generate_sentence
 
         self.monday_morning.start()  # pylint: disable=no-member
@@ -63,7 +61,7 @@ class Videos(commands.Cog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="admin_abuse", description="admin abuse!!! you're the worst admin ever!!!")
     async def admin_abuse(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of someone shouting admin abuse.
@@ -79,7 +77,7 @@ class Videos(commands.Cog):
             content=f"{self.generate_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="goodbye", description="goodbye")
     async def goodbye(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko saying goodbye.
@@ -92,7 +90,7 @@ class Videos(commands.Cog):
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
 
-    @commands.cooldown(1, App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(1, App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="good_morning", description="good morning people")
     async def good_morning(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a video of Marko saying good morning people.
@@ -121,7 +119,7 @@ class Videos(commands.Cog):
 
         return await inter.edit_original_message(file=disnake.File(video))
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="haha", description="haha very funny")
     async def laugh(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko laughing.
@@ -134,7 +132,7 @@ class Videos(commands.Cog):
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="naughty_marko", description="Marko Vanhanen says a naughty word")
     async def marko_gamer_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko saying the gamer word.

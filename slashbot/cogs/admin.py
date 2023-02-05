@@ -11,8 +11,9 @@ from types import coroutine
 
 import disnake
 import requests
-from slashbot.config import App
 from disnake.ext import commands
+
+from slashbot.config import App
 
 cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -25,7 +26,6 @@ class Admin(commands.Cog):
         """Initialize the class."""
         self.bot = bot
         self.log_path = Path(log_path)
-        self.reminders = App.config("REMINDERS_FILE_STREAM")
 
     # Before command invoke ----------------------------------------------------
 

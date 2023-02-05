@@ -9,6 +9,7 @@ import logging
 import os
 import pickle
 import time
+from typing import Coroutine
 
 import disnake
 from disnake.ext import commands
@@ -24,8 +25,8 @@ import slashbot.cogs.videos
 import slashbot.cogs.weather
 
 from slashbot import markovify
-from slashbot.bot import ModifiedInteractionBot
 from slashbot.config import App
+from slashbot.bot import ModifiedInteractionBot
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
@@ -38,12 +39,6 @@ if os.path.exists("data/chain.pickle"):
     with open("data/chain.pickle", "rb") as file_in:
         markov_gen.chain = pickle.load(file_in)
 
-with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
-    bad_words = file_in.readlines()[0].split()
-
-with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
-    god_words = file_in.read().splitlines()
-
 # Set up the bot and cogs --------------------------------------------------
 
 # Create bot and the various different cogs -- cogs are declared like this
@@ -51,14 +46,14 @@ with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
 # Ideally I should just write generate_sentence into some global module and
 # import it in the cogs instead
 
-bot = ModifiedInteractionBot(intents= disnake.Intents.default())
+bot = ModifiedInteractionBot(intents=disnake.Intents.default())
 
-spam = slashbot.cogs.spam.Spam(bot, markov_gen, bad_words, god_words)
-info = slashbot.cogs.info.Info(bot, spam.generate_sentence, bad_words, god_words)
+spam = slashbot.cogs.spam.Spam(bot, markov_gen)
+info = slashbot.cogs.info.Info(bot, spam.generate_sentence)
 reminder = slashbot.cogs.remind.Reminder(bot, spam.generate_sentence)
 content = slashbot.cogs.content.Content(bot, spam.generate_sentence)
 weather = slashbot.cogs.weather.Weather(bot, spam.generate_sentence)
-videos = slashbot.cogs.videos.Videos(bot, bad_words, spam.generate_sentence)
+videos = slashbot.cogs.videos.Videos(bot, spam.generate_sentence)
 users = slashbot.cogs.users.Users(bot)
 admin = slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME"))
 ai = slashbot.cogs.ai.AI(bot)
@@ -84,7 +79,7 @@ bot.add_to_cleanup(None, spam.update_markov_chain, [None])  # need to send a Non
 
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     """Information to print on bot launch."""
     logger.info("Logged in as %s in the current servers:", bot.user)
 
@@ -95,7 +90,7 @@ async def on_ready():
 
 
 @bot.event
-async def on_slash_command_error(inter, error):
+async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> Coroutine:
     """Handle different types of errors.
 
     Parameters
