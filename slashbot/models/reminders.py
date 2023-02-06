@@ -35,4 +35,4 @@ class Reminder(Base):
     reminder = Column(String(1024))
     tagged_users = Column(String(1024), nullable=True)
 
-    user = relationship(User)
+    user = relationship(User, back_populates="reminders")

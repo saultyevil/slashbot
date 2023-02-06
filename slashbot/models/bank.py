@@ -25,4 +25,4 @@ class BankAccount(Base):
     balance = Column(Integer)
     status = Column(String)
 
-    user = relationship(User)
+    user = relationship("User", back_populates="bank_account")

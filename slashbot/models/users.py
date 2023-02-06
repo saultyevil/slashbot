@@ -7,6 +7,7 @@
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Column
+from sqlalchemy.orm import relationship
 
 from slashbot.db import Base
 
@@ -29,3 +30,6 @@ class User(Base):
     city = Column(Integer, nullable=True)
     country_code = Column(String(2), nullable=True)
     bad_word = Column(String(32), nullable=True)
+
+    bank_account = relationship("BankAccount")
+    reminders = relationship("Reminder")
