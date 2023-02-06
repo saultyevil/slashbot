@@ -20,20 +20,16 @@ from slashbot.config import App
 from slashbot.cog import CustomCog
 from slashbot.db import Reminder as ReminderDB
 from slashbot.db import connect_to_database_engine
-
-from slashbot.config import App
-from slashbot.cog import CustomCog
 from slashbot.markov import generate_sentence
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
-cd_user = commands.BucketType.user
-time_units = {
+COOLDOWN_USER = commands.BucketType.user
+TIME_UNITS = {
     "Time stamp": 1,
     "Seconds": 1,
     "Minutes": 60,
     "Hours": 3600,
 }
-who_for = ("here", "dm", "both")
 
 
 class Reminder(CustomCog):
@@ -82,7 +78,7 @@ class Reminder(CustomCog):
         inter: disnake.ApplicationCommandInteraction,
         time_unit: str = commands.Param(
             description="The time-frame to set for your reminder.",
-            choices=list(time_units.keys()),
+            choices=list(TIME_UNITS.keys()),
         ),
         when: str = commands.Param(
             description='When you want to be reminded, remember the timezone if you\'ve chosen "time stamp".'
@@ -129,7 +125,7 @@ class Reminder(CustomCog):
             except parser.ParserError:
                 return await inter.response.send_message("That is not a valid timestamp.", ephemeral=True)
         else:
-            seconds = when * time_units[time_unit]
+            seconds = when * TIME_UNITS[time_unit]
             future = now + datetime.timedelta(seconds=seconds)
 
         if future < now:
@@ -153,7 +149,7 @@ class Reminder(CustomCog):
             return await inter.response.send_message(f"Reminder set for {when}.", ephemeral=True)
         return await inter.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forget_reminder", description="forget a reminder")
     async def forget_reminder(
         self,
@@ -182,7 +178,7 @@ class Reminder(CustomCog):
 
         return await inter.response.send_message("Reminder removed.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_reminders", description="view your reminders")
     async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Show the reminders set for a user.

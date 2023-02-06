@@ -8,8 +8,6 @@ import calendar
 import datetime
 import random
 from types import coroutine
-from typing import List
-
 import disnake
 from disnake.ext import commands, tasks
 

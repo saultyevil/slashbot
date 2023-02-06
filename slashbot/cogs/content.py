@@ -18,7 +18,6 @@ from slashbot.db import connect_to_database_engine
 from slashbot.db import get_bank_account
 from slashbot.db import BankAccount
 from slashbot.cog import CustomCog
-from slashbot.markov import generate_sentence
 
 COOLDOWN_USER = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 30
@@ -46,11 +45,9 @@ class Content(CustomCog):  # pylint: disable=too-many-instance-attributes
     def __init__(  # pylint: disable=too-many-arguments
         self,
         bot: commands.InteractionBot,
-        generate_sentence: callable,
         stale_minutes: int = 30,
     ):
         self.bot = bot
-        self.generate_sentence = generate_sentence
         self.stale_minutes = stale_minutes
 
         self.current_content_requests = []

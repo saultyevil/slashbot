@@ -9,7 +9,7 @@ import logging
 import random
 import xml
 from types import coroutine
-from typing import List, Union
+from typing import Union
 
 import disnake
 import requests
@@ -17,13 +17,11 @@ import rule34 as r34
 from disnake.ext import commands, tasks
 from sqlalchemy.orm import Session
 
-from slashbot import markovify
 from slashbot.config import App
 from slashbot.db import connect_to_database_engine
 from slashbot.db import BadWord
 from slashbot.db import User
 from slashbot.db import OracleWord
-from slashbot.config import App
 from slashbot.cog import CustomCog
 from slashbot.markov import generate_sentence
 from slashbot.markov import update_markov_chain_for_model
