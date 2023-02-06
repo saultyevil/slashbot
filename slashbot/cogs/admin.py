@@ -27,7 +27,6 @@ class Admin(CustomCog):
         """Initialize the class."""
         self.bot = bot
         self.log_path = Path(log_path)
-        self.reminders = App.config("REMINDERS_FILE_STREAM")
 
     # Commands -----------------------------------------------------------------
 

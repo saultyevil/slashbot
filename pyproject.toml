@@ -10,5 +10,15 @@ max-attributes = 15
 max-locals = 20
 
 [tool.pylint.format]
-max-line-length = 120
-good-names = ["ax", "im", "i", "j", "k"]
+good-names = [
+    "i",
+    "j",
+    "k"
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "import-error",
+    "wrong-import-position",
+    "line-too-long",
+]

@@ -11,11 +11,15 @@ from typing import Tuple
 import disnake
 import pyowm
 from disnake.ext import commands
+from sqlalchemy.orm import Session
 
 from slashbot.config import App
 from slashbot.cog import CustomCog
 from slashbot.error import deferred_error_message
+from slashbot.db import get_user
+from slashbot.db import connect_to_database_engine
 from slashbot.markov import generate_sentence
+
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
@@ -47,54 +51,7 @@ class Weather(CustomCog):
         self.city_register = self.weather_api.city_id_registry()
         self.weather_manager = self.weather_api.weather_manager()
 
-        self.user_data = App.config("USER_INFO_FILE_STREAM")
-
     # Private ------------------------------------------------------------------
-
-    def __get_set_user_location(self, user_id: str):
-        """Return the stored location set by a user.
-
-        Parameters
-        ----------
-        user_id : str
-            _description_
-
-        Returns
-        -------
-        _type_
-            _description_
-        """
-        return self.user_data[str(user_id)]["location"]
-
-    def __get_country_from_location(self, user_id: str, location: str) -> Tuple[str, str]:
-        """_summary_
-
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            _description_
-        location : str
-            _description_
-
-        Returns
-        -------
-        Tuple[str, str]
-            _description_
-        """
-        split_location = location.split(",")  # will split london, uk etc
-
-        if len(split_location) == 2:
-            location = split_location[0].strip()
-            country = split_location[1].strip().upper()
-        else:
-            try:
-                country = self.user_data[str(user_id)]["country"].upper()
-            except KeyError:
-                country = None
-
-        country = self.__convert_uk_to_gb(country)
-
-        return location, country
 
     @staticmethod
     def __convert_degrees_to_cardinal_direction(degrees: float) -> str:
@@ -148,6 +105,55 @@ class Weather(CustomCog):
             return "GB"
 
         return choice
+
+    def __get_user_city(self, user_id: str, user_name: str) -> str:
+        """Return the stored location set by a user.
+
+        Parameters
+        ----------
+        user_id : str
+            _description_
+        user_name : str
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        with Session(connect_to_database_engine()) as session:
+            user = get_user(session, user_id, user_name)
+
+            return user.city
+
+    def __get_country_from_location(self, user_id: str, user_name: str, location: str) -> Tuple[str, str]:
+        """_summary_
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            _description_
+        location : str
+            _description_
+
+        Returns
+        -------
+        Tuple[str, str]
+            _description_
+        """
+        split_location = location.split(",")  # will split london, uk etc
+
+        if len(split_location) == 2:
+            location = split_location[0].strip()
+            country = split_location[1].strip().upper()
+        else:
+            with Session(connect_to_database_engine()) as session:
+                user = get_user(session, user_id, user_name)
+                country = user.country_code
+
+        country = self.__convert_uk_to_gb(country)
+
+        return location, country
 
     def __get_units_for_system(self, system: str) -> dict:
         """Get the units for the system.
@@ -323,8 +329,8 @@ class Weather(CustomCog):
     async def forecast(  # pylint: disable=too-many-locals
         self,
         inter: disnake.ApplicationCommandInteraction,
-        location: str = commands.Param(
-            description="The location to get weather, default is your saved location.", default=None
+        city: str = commands.Param(
+            description="The city to get weather at, default is your saved location.", default=None
         ),
         days: int = commands.Param(description="The number of days to get the weather for.", default=4, gt=0, lt=8),
     ) -> coroutine:
@@ -341,27 +347,26 @@ class Weather(CustomCog):
         """
         await inter.response.defer()
 
-        if not location:
-            try:
-                location = self.__get_set_user_location(str(inter.author.id))
-            except KeyError:
+        if not city:
+            city = self.__get_user_city(inter.author.id, inter.author.name)
+            if not city:
                 return await deferred_error_message(
-                    inter, "You need to either specify a location, or set your location and/or country using /set_info."
+                    inter, "You need to either specify a city, or set your city and/or country using /set_info."
                 )
 
-        location, country = self.__get_country_from_location(str(inter.author.id), location)
+        city, country = self.__get_country_from_location(inter.author.id, inter.author.name, city)
         if len(country) != 2:
             return await deferred_error_message(inter, f"{country} is not a valid 2 character country code.")
 
-        locations_for = self.city_register.locations_for(location, country=country)
+        locations_for = self.city_register.locations_for(city, country=country)
 
         if not locations_for:
             return await deferred_error_message(
-                inter, f"The location {location}{f', {country}' if country else ''} wasn't found in OpenWeatherMap."
+                inter, f"The location {city}{f', {country}' if country else ''} wasn't found in OpenWeatherMap."
             )
 
         # locations_for returns a list of places ordered by distance
-        location, location_country = locations_for[0].name, locations_for[0].country
+        city, location_country = locations_for[0].name, locations_for[0].country
         lat, lon = locations_for[0].lat, locations_for[0].lon
 
         try:
@@ -371,7 +376,7 @@ class Weather(CustomCog):
                 inter, "OpenWeatherMap failed. You can check the exact error using /logfile."
             )
 
-        embed = disnake.Embed(title=f"Weather for {location}, {location_country}", color=disnake.Color.default())
+        embed = disnake.Embed(title=f"Weather for {city}, {location_country}", color=disnake.Color.default())
 
         for day in forecast_one_call.forecast_daily[:days]:
             date = datetime.datetime.utcfromtimestamp(day.reference_time())
@@ -396,8 +401,8 @@ class Weather(CustomCog):
     async def weather(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        location: str = commands.Param(
-            description="The location to get weather, default is your saved location.", default=None
+        city: str = commands.Param(
+            description="The city to get weather for, default is your saved location.", default=None
         ),
         weather_type: str = commands.Param(
             description="The type of weather report to get.", default="forecast", choices=WEATHER_COMMAND_CHOICES
@@ -421,19 +426,18 @@ class Weather(CustomCog):
         """
         await inter.response.defer()
 
-        if not location:
-            try:
-                location = self.__get_set_user_location(str(inter.author.id))
-            except KeyError:
+        if not city:
+            city = self.__get_user_city(inter.author.id, inter.author.name)
+            if not city:
                 return await deferred_error_message(
-                    inter, "You need to specify a location, or set your location and/or country using /set_info."
+                    inter, "You need to specify a city, or set your city and/or country using /set_info."
                 )
 
         try:
-            weather_at_place = self.weather_manager.weather_at_place(location)
+            weather_at_place = self.weather_manager.weather_at_place(city)
         except pyowm.commons.exceptions.NotFoundError:
             return await deferred_error_message(
-                inter, f"OpenWeatherMap couldn't find {location}. Try separating the city and country with a comma."
+                inter, f"OpenWeatherMap couldn't find {city}. Try separating the city and country with a comma."
             )
         except Exception:  # pylint: disable=broad-except
             return await deferred_error_message(

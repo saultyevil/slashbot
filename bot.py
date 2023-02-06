@@ -7,6 +7,7 @@ this bot is to sometimes annoy Gareth with its useful information.
 
 import logging
 import time
+from typing import Coroutine
 
 import disnake
 from disnake.ext import commands
@@ -23,6 +24,7 @@ import slashbot.cogs.weather
 
 from slashbot.config import App
 from slashbot.bot import ModifiedInteractionBot
+from slashbot.db import populate_word_tables_with_new_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
@@ -30,19 +32,12 @@ start = time.time()
 # Load in the markov chain and various other bits of data that are passed to
 # the cogs
 
-with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
-    bad_words = file_in.readlines()[0].split()
-
-with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
-    god_words = file_in.read().splitlines()
-
 # Set up the bot and cogs --------------------------------------------------
 
 # Create bot and the various different cogs -- cogs are declared like this
 # because I cheat a little and pass spam.generate_sentence to other cogs.
 # Ideally I should just write generate_sentence into some global module and
 # import it in the cogs instead
-
 
 bot = ModifiedInteractionBot(intents=disnake.Intents.default())
 
@@ -76,7 +71,7 @@ async def on_ready() -> None:
 
 
 @bot.event
-async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> None:
+async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> Coroutine:
     """Handle different types of errors.
 
     Parameters
@@ -90,6 +85,10 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     if isinstance(error, commands.errors.CommandOnCooldown):
         return await inter.response.send_message("This command is on cool down for you.", ephemeral=True)
 
+
+# This will populate the bad word and oracle tables with new words
+
+populate_word_tables_with_new_words()
 
 # This finally runs the bot
 

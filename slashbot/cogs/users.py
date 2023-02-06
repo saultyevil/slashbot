@@ -3,22 +3,30 @@
 
 """Commands for remembering user info."""
 
-import json
 import logging
 from types import coroutine
 
 import disnake
 from disnake.ext import commands
+from sqlalchemy.orm import Session
+
+from slashbot.config import App
+from slashbot.cog import CustomCog
+from slashbot.db import connect_to_database_engine
+from slashbot.db import get_user
+from slashbot.db import BadWord
+from slashbot.util import convert_string_to_lower
+from slashbot.error import deferred_error_message
 
 from slashbot.config import App
 from slashbot.cog import CustomCog
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
-cd_user = commands.BucketType.user
-remember_options = [
-    "location",
-    "country",
-    "badword",
+COOLDOWN_USER = commands.BucketType.user
+USER_OPTIONS = [
+    "City",
+    "Country code",
+    "Bad word",
 ]
 
 
@@ -34,19 +42,16 @@ class Users(CustomCog):
             The bot object.
         """
         self.bot = bot
-        self.user_data = App.config("USER_INFO_FILE_STREAM")
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_info", description="set info to remember about you")
     async def set_info(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        thing: str = commands.Param(description="The type of thing to be remembered.", choices=remember_options),
-        value: str = commands.Param(
-            description="What to remember.",
-        ),
+        thing: str = commands.Param(description="The thing to be remembered.", choices=USER_OPTIONS),
+        value: str = commands.Param(description="What to be remembered.", converter=convert_string_to_lower),
     ) -> coroutine:
         """Set some user variables for a user.
 
@@ -61,16 +66,71 @@ class Users(CustomCog):
         """
         await inter.response.defer(ephemeral=True)
 
-        value = value.lower() if isinstance(value, str) else value
+        with Session(connect_to_database_engine()) as session:
+            user = get_user(session, inter.author.id, inter.author.name)
 
-        try:
-            self.user_data[str(inter.author.id)][thing] = value
-        except KeyError:
-            self.user_data[str(inter.author.id)] = {thing: value}
+            if not isinstance(value, str):
+                logger.error(
+                    "Disnake somehow passed something which isn't a str for value: %s (%s)", value, type(value)
+                )
+                return deferred_error_message("An error has occured with Disnake :-(")
 
-        logger.info("%s has set %s to %s", inter.author.name, thing, value)
+            match thing:
+                case "City":
+                    user.city = value
+                case "Country code":
+                    if len(value) != 2:
+                        return deferred_error_message(
+                            inter, f"{value} is not a valid country code, which should be 2 characters e.g. GB, US."
+                        )
+                    value = "gb" if value == "uk" else value  # convert uk to gb, else value
+                    user.country_code = value.upper()
+                case "Bad word":
+                    word = session.query(BadWord).filter(BadWord.word == value).first()
+                    if not word:
+                        return deferred_error_message(f"There is no bad word {value} in the bad word database.")
+                    user.bad_word = value  # TODO, this should be an ID to a bad word instead
+                case _:
+                    logger.error("Disnake somehow allowed an unknown choice %s", thing)
+                    return deferred_error_message("An error has occured with Disnake :-(")
 
-        with open(App.config("USERS_FILE"), "w", encoding="utf-8") as file_in:
-            json.dump(self.user_data, file_in)
+            session.commit()
 
-        return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to {value}.")
+        return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to '{value}'.")
+
+    async def query_info(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        thing: str = commands.Param(description="The thing to query the vlaue of.", choices=USER_OPTIONS),
+    ) -> coroutine:
+        """_summary_
+
+        Parameters
+        ----------
+        inter : _type_
+            _description_
+        thing : str, optional
+            _description_
+
+        Returns
+        -------
+        coroutine
+            _description_
+        """
+        await inter.response.defer(ephemeral=True)
+
+        with Session(connect_to_database_engine()) as session:
+            user = get_user(session, inter.author.id, inter.author.name)
+
+            match thing:
+                case "City name":
+                    value = user.city
+                case "Country code":
+                    value = user.country_code
+                case "Bad word":
+                    value = user.bad_word
+                case _:
+                    logger.error("Disnake somehow allowed an unknown choice %s", thing)
+                    return deferred_error_message("An error has occured with Disnake :-(")
+
+        return await inter.edit_original_message(content=f"{thing.capitalize()} is set to '{value}'.")

@@ -3,17 +3,11 @@
 
 """Global configuration class."""
 
-
-import json
 import logging
 import os
-import pathlib
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
-
-from watchdog.events import PatternMatchingEventHandler
-from watchdog.observers import Observer
 
 
 class App:
@@ -54,15 +48,9 @@ class App:
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         # File locations
         "MARKOV_CHAIN_FILE": Path("data/chain.pickle"),
-        "USERS_FILE": Path("data/users.json"),
-        "REMINDERS_FILE": Path("data/reminders.json"),
-        "BANK_FILE": Path("data/bank.json"),
-        "BAD_WORDS_FILE": Path("data/badwords.txt"),
-        "GOD_WORDS_FILE": Path("data/godwords.txt"),
-        # File streams
-        "USER_INFO_FILE_STREAM": {},
-        "REMINDERS_FILE_STREAM": {},
-        "BANK_FILE_STREAM": {},
+         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
+        # Configuration conents
+        "CONTENT_BANK_STARTING_BALANCE": 3,
     }
 
     __conf["SLASH_SERVERS"] = [
@@ -70,11 +58,11 @@ class App:
         __conf["ID_SERVER_FREEDOM"],
         __conf["ID_SERVER_BUMPAPER"],
     ]
+
     __conf["NO_COOL_DOWN_USERS"] = [__conf["ID_USER_SAULTYEVIL"]]
-    __conf["ALL_FILES"] = [__conf["USERS_FILE"], __conf["REMINDERS_FILE"], __conf["BANK_FILE"]]
 
     # __setters is a tuple of parameters which can be set
-    __setters = ("USER_INFO_FILE_STREAM", "REMINDERS_FILE_STREAM", "BANK_FILE_STREAM")
+    __setters = ()
 
     # Special methods ----------------------------------------------------------
 
@@ -152,59 +140,3 @@ disnake_handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name
 logger_disnake = logging.getLogger("disnake")
 logger_disnake.setLevel(logging.DEBUG)
 logger_disnake.addHandler(disnake_handler)
-
-# Read in user files -----------------------------------------------------------
-
-
-def read_in_json_file(filepath: Path, conf_key: str) -> None:
-    """Read in a JSON file and set it to a __conf key.
-
-    Parameters
-    ----------
-    filepath: Path
-        The filepath to the file.
-    conf_key: str
-        The key for the file in the App.__conf dict.
-    """
-    with open(filepath, "r", encoding="utf-8") as file_in:
-        App.set(conf_key, json.load(file_in))
-    logger.debug("Loaded %s and set to App.config[%s]", filepath, conf_key)
-
-
-def create_file_observer(filepath: pathlib.Path, directory: str, conf_key: str) -> Observer:
-    """Create a file observer, to do something on file change.
-
-    Parameters
-    ----------
-    filepath: pathlib.Path
-        The filepath to the file to observe.
-    directory: str
-        The directory containing the file.
-    conf_key: str
-        The key to update in the App config object.
-
-    Returns
-    -------
-    observer: Observer
-        The observer object.
-    """
-
-    observer = Observer()
-    event_handler = PatternMatchingEventHandler([str(filepath)], None, False, False)
-    event_handler.on_modified = lambda _: read_in_json_file(filepath, conf_key)
-    observer.schedule(event_handler, directory, False)
-
-    return observer
-
-
-read_in_json_file(App.config("USERS_FILE"), "USER_INFO_FILE_STREAM")
-read_in_json_file(App.config("REMINDERS_FILE"), "REMINDERS_FILE_STREAM")
-read_in_json_file(App.config("BANK_FILE"), "BANK_FILE_STREAM")
-
-user_file_observer = create_file_observer(App.config("USERS_FILE"), "data/", "USER_INFO_FILE_STREAM")
-reminders_file_observer = create_file_observer(App.config("REMINDERS_FILE"), "data/", "REMINDERS_FILE_STREAM")
-bank_file_observer = create_file_observer(App.config("BANK_FILE"), "data/", "BANK_FILE_STREAM")
-
-user_file_observer.start()
-reminders_file_observer.start()
-bank_file_observer.start()
