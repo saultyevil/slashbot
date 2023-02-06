@@ -50,6 +50,8 @@ class App:
         "BAD_WORDS_FILE": Path("data/badwords.txt"),
         "GOD_WORDS_FILE": Path("data/godwords.txt"),
         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
+        # Configuration conents
+        "CONTENT_BANK_STARTING_BALANCE": 3,
     }
 
     __conf["SLASH_SERVERS"] = [

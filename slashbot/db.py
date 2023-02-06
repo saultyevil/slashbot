@@ -119,3 +119,56 @@ def populate_word_tables_with_new_words() -> None:
             if query.count() == 0:
                 session.add(OracleWord(word=word))
         session.commit()
+
+
+def create_new_bank_account(session: Session, user_id: int) -> BankAccount:
+    """Create a new back account row.
+
+    Parameters
+    ----------
+    session : Session
+        A session for the slashbot database.
+    user_id : int
+        The Discord ID of the user.
+
+    Returns
+    -------
+    BankAccount
+        The newly created BankAccount entry.
+    """
+
+    session.add(
+        new_account := BankAccount(
+            user_id=user_id,
+            balance=App.config("CONTENT_BANK_STARTING_BALANCE"),
+            status="Newfag",
+        )
+    )
+    session.commit()
+
+    # refresh to return the user instead of having to query again
+    session.refresh(new_account)
+
+    return new_account
+
+
+def get_bank_account(session: Session, user_id: int) -> BankAccount:
+    """Get a bank account from the database.
+
+    Parameters
+    ----------
+    session : Session
+        A session for the slashbot database.
+    user_id : int
+        The Discord ID of the user.
+
+    Returns
+    -------
+    BankAccount
+        The BankAccount database entry.
+    """
+    account = session.query(BankAccount).filter(BankAccount.user_id == user_id).first()
+    if not account:
+        account = create_new_bank_account(session, user_id)
+
+    return account
