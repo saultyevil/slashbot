@@ -10,6 +10,8 @@ from sqlalchemy import Column
 from sqlalchemy.orm import relationship
 
 from slashbot.db import Base
+from slashbot.db import BankAccount
+from slashbot.db import Reminder
 
 
 class User(Base):
