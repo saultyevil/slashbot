@@ -18,6 +18,8 @@ from slashbot.cog import CustomCog
 from slashbot.error import deferred_error_message
 from slashbot.db import get_user
 from slashbot.db import connect_to_database_engine
+from slashbot.markov import generate_sentence
+
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
@@ -33,7 +35,6 @@ class Weather(CustomCog):
     def __init__(
         self,
         bot: commands.InteractionBot,
-        generate_sentence: callable,
     ) -> None:
         """Initialize the cog.
 
@@ -45,7 +46,6 @@ class Weather(CustomCog):
             A function to generate a sentence given a seed word.
         """
         self.bot = bot
-        self.generate_sentence = generate_sentence
 
         self.weather_api = pyowm.OWM(App.config("OWM_API_KEY"))
         self.city_register = self.weather_api.city_id_registry()
@@ -392,7 +392,7 @@ class Weather(CustomCog):
             )
 
         embed.set_thumbnail(url=forecast_one_call.forecast_daily[0].weather_icon_url())
-        embed.set_footer(text=f"{self.generate_sentence('forecast')}")
+        embed.set_footer(text=f"{generate_sentence(seed_word='forecast')}")
 
         return await inter.edit_original_message(embed=embed)
 
@@ -467,7 +467,7 @@ class Weather(CustomCog):
             case "wind":
                 embed = self.__add_wind_to_embed(weather, embed, units)
 
-        embed.set_footer(text=f"{self.generate_sentence('weather')}")
+        embed.set_footer(text=f"{generate_sentence(seed_word='weather')}")
         embed.set_thumbnail(url=weather.weather_icon_url())
 
         return await inter.edit_original_message(embed=embed)

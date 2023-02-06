@@ -6,8 +6,6 @@ this bot is to sometimes annoy Gareth with its useful information.
 """
 
 import logging
-import os
-import pickle
 import time
 from typing import Coroutine
 
@@ -24,22 +22,15 @@ import slashbot.cogs.users
 import slashbot.cogs.videos
 import slashbot.cogs.weather
 
-from slashbot import markovify
 from slashbot.config import App
 from slashbot.bot import ModifiedInteractionBot
 from slashbot.db import populate_word_tables_with_new_words
-
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
 
 # Load in the markov chain and various other bits of data that are passed to
 # the cogs
-
-markov_gen = markovify.Text("Jack is a naughty boy.", state_size=4)
-if os.path.exists("data/chain.pickle"):
-    with open("data/chain.pickle", "rb") as file_in:
-        markov_gen.chain = pickle.load(file_in)
 
 # Set up the bot and cogs --------------------------------------------------
 
@@ -50,32 +41,20 @@ if os.path.exists("data/chain.pickle"):
 
 bot = ModifiedInteractionBot(intents=disnake.Intents.default())
 
-spam = slashbot.cogs.spam.Spam(bot, markov_gen)
-info = slashbot.cogs.info.Info(bot, spam.generate_sentence)
-reminder = slashbot.cogs.remind.Reminder(bot, spam.generate_sentence)
-content = slashbot.cogs.content.Content(bot, spam.generate_sentence)
-weather = slashbot.cogs.weather.Weather(bot, spam.generate_sentence)
-videos = slashbot.cogs.videos.Videos(bot, spam.generate_sentence)
-users = slashbot.cogs.users.Users(bot)
-admin = slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME"))
-ai = slashbot.cogs.ai.AI(bot)
+for cog in [
+    slashbot.cogs.spam.Spam(bot, bad_words, god_words),
+    slashbot.cogs.info.Info(bot, bad_words, god_words),
+    slashbot.cogs.remind.Reminder(bot),
+    slashbot.cogs.content.Content(bot),
+    slashbot.cogs.weather.Weather(bot),
+    slashbot.cogs.videos.Videos(bot, bad_words),
+    slashbot.cogs.users.Users(bot),
+    slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME")),
+    slashbot.cogs.ai.ArtificialStupidity(bot),
+]:
+    bot.add_cog(cog)
 
-# Add all the cogs to the bot
-
-bot.add_cog(spam)
-bot.add_cog(info)
-bot.add_cog(reminder)
-bot.add_cog(content)
-bot.add_cog(weather)
-bot.add_cog(videos)
-bot.add_cog(users)
-bot.add_cog(admin)
-bot.add_cog(ai)
-
-# This part is adding various clean up functions to run when the bot
-# closes, e.g. on keyboard interrupt
-
-bot.add_to_cleanup(None, spam.update_markov_chain, [None])  # need to send a None to act as the interaction
+# bot.add_to_cleanup(None, update_markov_chain_for_model, [None])
 
 # Bot events ---------------------------------------------------------------
 

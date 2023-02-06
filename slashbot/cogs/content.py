@@ -17,6 +17,8 @@ from slashbot.config import App
 from slashbot.db import connect_to_database_engine
 from slashbot.db import get_bank_account
 from slashbot.db import BankAccount
+from slashbot.cog import CustomCog
+from slashbot.markov import generate_sentence
 
 COOLDOWN_USER = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 30
@@ -24,7 +26,7 @@ CHECK_FREQUENCY_SECONDS = 30
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
+class Content(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Demand and provide content, and track leech balance.
 
     Parameters
@@ -54,24 +56,6 @@ class Content(commands.Cog):  # pylint: disable=too-many-instance-attributes
         self.current_content_requests = []
         self.current_content_providers = []
         self.remove_stale_requests.start()  # pylint: disable=no-member
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Events -------------------------------------------------------------------
 

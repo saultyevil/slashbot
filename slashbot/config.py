@@ -26,7 +26,7 @@ class App:
         "COOLDOWN_ONE_HOUR": 3600,
         "HOURS_IN_WEEK": 168,
         # general discord things
-        "MAX_CHARS": 1994,
+        "MAX_CHARS": 1990,
         "LOGGER_NAME": "slashbot",
         "LOGFILE_NAME": Path("log/slashbot.log"),
         # Define users, roles and channels
@@ -47,9 +47,8 @@ class App:
         "OWM_API_KEY": os.getenv("OWM_API_KEY"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         # File locations
-        "BAD_WORDS_FILE": Path("data/badwords.txt"),
-        "GOD_WORDS_FILE": Path("data/godwords.txt"),
-        "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
+        "MARKOV_CHAIN_FILE": Path("data/chain.pickle"),
+         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
         # Configuration conents
         "CONTENT_BANK_STARTING_BALANCE": 3,
     }

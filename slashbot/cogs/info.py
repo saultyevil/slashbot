@@ -15,18 +15,19 @@ from disnake.ext import commands
 from slashbot.config import App
 from slashbot.db import connect_to_database_engine
 from slashbot.db import BadWord
+from slashbot.cog import CustomCog
+from slashbot.markov import generate_sentence
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
+class Info(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
         bot: commands.InteractionBot,
-        generate_sentence: callable,
         attempts: int = 10,
     ) -> None:
         """Initialize the bot.
@@ -34,38 +35,13 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         ----------
         bot: commands.InteractionBot
             The bot object.
-        generate_sentence: callable
-            A function to generate sentences given a seed word.
-        bad_words: List[str]
-            A list of bad words.
-        god_words: List[str]
-            A list of god words
         attempts: int
             The number of attempts to try and generate a sentence for.
         """
         self.bot = bot
-        self.generate_sentence = generate_sentence
         self.attempts = attempts
 
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Commands -----------------------------------------------------------------
 
@@ -104,7 +80,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.defer()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
-        embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
+        embed.set_footer(text=f"{generate_sentence(seed_word='wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
         )

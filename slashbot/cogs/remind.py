@@ -21,6 +21,10 @@ from slashbot.cog import CustomCog
 from slashbot.db import Reminder as ReminderDB
 from slashbot.db import connect_to_database_engine
 
+from slashbot.config import App
+from slashbot.cog import CustomCog
+from slashbot.markov import generate_sentence
+
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 cd_user = commands.BucketType.user
 time_units = {
@@ -35,7 +39,7 @@ who_for = ("here", "dm", "both")
 class Reminder(CustomCog):
     """Commands to set up reminders."""
 
-    def __init__(self, bot, generate_sentence):
+    def __init__(self, bot):
         self.bot = bot
         self.generate_sentence = generate_sentence
         self.check_reminders.start()  # pylint: disable=no-member
@@ -209,7 +213,6 @@ class Reminder(CustomCog):
     @tasks.loop(seconds=10)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
-
         now = datetime.datetime.now()
         with Session(connect_to_database_engine()) as session:
             reminders = session.query(ReminderDB)

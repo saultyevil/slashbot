@@ -6,10 +6,7 @@
 import atexit
 import datetime
 import logging
-import pickle
 import random
-import shutil
-import string
 import xml
 from types import coroutine
 from typing import List, Union
@@ -26,18 +23,22 @@ from slashbot.db import connect_to_database_engine
 from slashbot.db import BadWord
 from slashbot.db import User
 from slashbot.db import OracleWord
+from slashbot.config import App
+from slashbot.cog import CustomCog
+from slashbot.markov import generate_sentence
+from slashbot.markov import update_markov_chain_for_model
+from slashbot.markov import MARKOV_MODEL
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """A collection of commands to spam the chat with."""
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
         bot: commands.InteractionBot,
-        markov_gen: markovify.Text,
         attempts: int = 10,
     ) -> None:
         """Initialize the cog.
@@ -46,44 +47,18 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         ----------
         bot: commands.InteractionBot
             The bot object.
-        markov_gen: makovify.Text
-        self.youtube_api = build("youtube", "v3", developerKey=App.config("GOOGLE_API_KEY"))
-            A markovify.Text object for generating sentences.
-        bad_words: List[str]
-            A list of bad words.
-        god_words: List[str]
-            A list of god words.
         attempts: int
             The number of attempts to generate a markov sentence.
         """
 
         self.bot = bot
-        self.markov = markov_gen
         self.attempts = attempts
-        self.messages_for_chain_update = {}
+        self.markov_update_sentences = {}
         self.rule34_api = r34.Rule34()
         self.scheduled_update_markov_chain.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
 
     # Slash commands -----------------------------------------------------------
 
@@ -135,7 +110,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
             A seed word (or words) to generate a message from.
         """
         await inter.response.defer()
-        return await inter.edit_original_message(content=self.generate_sentence(words, mentions=False))
+        return await inter.edit_original_message(content=generate_sentence(seed_word=words))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="clap", description="send a clapped out message")
@@ -170,37 +145,15 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if len(self.messages_for_chain_update) == 0:
-            if inter:
-                return await inter.edit_original_message(content="No messages to learn from.")
-            return None
+        await update_markov_chain_for_model(
+            inter,
+            MARKOV_MODEL,
+            self.markov_update_sentences.values(),
+            App.config("MARKOV_CHAIN_FILE"),
+        )
 
-        if inter:
-            await inter.response.defer(ephemeral=True)
-
-        messages = self.clean_up_messages()
-        if len(messages) == 0:
-            if inter:
-                return await inter.edit_original_message(content="No messages to learn from.")
-            return None
-
-        shutil.copy2("data/chain.pickle", "data/chain.pickle.bak")  # incase something goes wrong when updating
-        try:
-            new_model = markovify.NewlineText(messages)
-        except KeyError:  # I can't remember what causes this... but it can happen when indexing new words
-            return await inter.response.send_message("Something bad happened when trying to update the Markov chain.")
-
-        combined = markovify.combine([self.markov.chain, new_model.chain])
-        self.messages_for_chain_update.clear()
-        self.markov.chain = combined
-
-        with open("data/chain.pickle", "wb") as file_out:
-            pickle.dump(combined, file_out)
-
-        if inter:
-            await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
-
-        logger.info("Markov chain updated with %i new messages.", len(messages))
+        logger.info("Markov chain updated with %d sentences", len(self.markov_update_sentences))
+        self.markov_update_sentences.clear()
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="oracle", description="a message from god")
@@ -266,7 +219,7 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         message: disnake.Message
             The message to record.
         """
-        self.messages_for_chain_update[str(message.id)] = message.content
+        self.markov_update_sentences[message.id] = message.content
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_delete_messages(self, payload: disnake.RawMessageDeleteEvent) -> None:
@@ -280,85 +233,11 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
         message = payload.cached_message
         if message is None:
             return
-        self.messages_for_chain_update.pop(str(message.id), None)
+        self.markov_update_sentences.pop(message.id, None)
+
         await self.bot.wait_until_ready()
 
     # Utility functions --------------------------------------------------------
-
-    def clean_up_messages(self) -> List[str]:
-        """Clean up the recorded messages for the Markov chain to learn.
-
-        Returns
-        -------
-        learnable: list
-            A list of phrases to learn.
-        """
-        learnable_sentences = []
-
-        for sentence in self.messages_for_chain_update.values():
-            if len(sentence) == 0:  # empty strings
-                continue
-            if sentence.startswith(string.punctuation):  # ignore commands, which usually start with punctuation
-                continue
-            if "@" in sentence:  # don't want to learn how to mention :)
-                continue
-
-            learnable_sentences.append(sentence)
-
-        return learnable_sentences
-
-    def generate_sentence(self, seed_word: str = None, mentions=False) -> str:  # pylint: disable=too-many-branches
-        """Generate a "safe" message from the markov chain model.
-
-        Parameters
-        ----------
-        seed_word: str
-            The seed to use to generate a sentence.
-        mentions: bool
-            Enable the markov chain to generate a message with mentions.
-
-        Returns
-        -------
-        sentence: str
-            The generated sentence.
-        """
-        for _ in range(self.attempts):
-            if seed_word:
-                try:
-                    if len(seed_word.split()) > 1:
-                        sentence = self.markov.make_sentence_with_start(seed_word)
-                    else:
-                        sentence = self.markov.make_sentence_that_contains(seed_word)
-                except (IndexError, KeyError, markovify.text.ParamError):
-                    sentence = self.markov.make_sentence()
-
-                # need a fallback here, in case the chain is too sparse
-                if not sentence:
-                    sentence = seed_word
-            else:
-                sentence = self.markov.make_sentence()
-
-            # another fallback case, in case the chain is too sparse
-            if not sentence:
-                sentence = "I have no idea what I'm doing."
-
-            # No matter what, don't allow @here and @everyone mentions, but
-            # allow user mentions, if mentions == True
-
-            if "@here" not in sentence and "@everyone" not in sentence:
-                if mentions:
-                    break
-                if "@" not in sentence:
-                    break
-
-        if not sentence:
-            sentence = self.markov.make_sentence()
-
-        sentence = sentence.strip()
-        if len(sentence) > 1024:
-            sentence = sentence[:1020] + "..."
-
-        return sentence
 
     @staticmethod
     def rule34_comments(post_id: Union[int, str] = None) -> Union[str, str, str]:
@@ -410,4 +289,9 @@ class Spam(commands.Cog):  # pylint: disable=too-many-instance-attributes,too-ma
     @tasks.loop(hours=1)
     async def scheduled_update_markov_chain(self):
         """Get the bot to update the chain every 4 hours."""
-        await self.update_markov_chain(None)
+        await update_markov_chain_for_model(
+            None,
+            MARKOV_MODEL,
+            self.markov_update_sentences.values(),
+            App.config("MARKOV_CHAIN_FILE"),
+        )

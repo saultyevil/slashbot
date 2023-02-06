@@ -18,6 +18,9 @@ from slashbot.db import BadWord
 from slashbot.util import convert_string_to_lower
 from slashbot.error import deferred_error_message
 
+from slashbot.config import App
+from slashbot.cog import CustomCog
+
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 USER_OPTIONS = [
