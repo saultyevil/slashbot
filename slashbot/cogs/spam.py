@@ -22,7 +22,7 @@ from slashbot.db import connect_to_database_engine
 from slashbot.db import BadWord
 from slashbot.db import User
 from slashbot.db import OracleWord
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 from slashbot.markov import generate_sentence
 from slashbot.markov import update_markov_chain_for_model
 from slashbot.markov import MARKOV_MODEL
@@ -31,7 +31,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """A collection of commands to spam the chat with."""
 
     def __init__(  # pylint: disable=too-many-arguments

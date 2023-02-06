@@ -12,17 +12,16 @@ import disnake
 from disnake.ext import commands, tasks
 
 from slashbot.config import App
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 from slashbot.markov import generate_sentence
 
 COOLDOWN_USER = commands.BucketType.user
 
 
-class Videos(CustomCog):
+class VideoCommands(CustomCog):
     """Send short clips to the channel."""
 
     def __init__(self, bot: commands.InteractionBot):
-
         """Initialize the cog.
 
         Parameters

@@ -15,14 +15,14 @@ from disnake.ext import commands
 from slashbot.config import App
 from slashbot.db import connect_to_database_engine
 from slashbot.db import BadWord
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 from slashbot.markov import generate_sentence
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class Info(CustomCog):  # pylint: disable=too-many-instance-attributes
+class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments

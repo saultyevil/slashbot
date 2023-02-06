@@ -11,7 +11,7 @@ from disnake.ext import commands
 from openai.error import OpenAIError
 
 from slashbot.config import App
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 from slashbot.error import deferred_error_message
 
 openai.api_key = App.config("OPENAI_API_KEY")
@@ -19,7 +19,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class ArtificialStupidity(CustomCog):  # pylint: disable=too-few-public-methods
+class AICommands(CustomCog):  # pylint: disable=too-few-public-methods
     """A collection of commands to send AI generated messages and items."""
 
     def __init__(self, bot: commands.InteractionBot):

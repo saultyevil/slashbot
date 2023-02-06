@@ -17,7 +17,7 @@ from prettytable import PrettyTable
 from sqlalchemy.orm import Session
 
 from slashbot.config import App
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 from slashbot.db import Reminder as ReminderDB
 from slashbot.db import connect_to_database_engine
 from slashbot.markov import generate_sentence
@@ -32,7 +32,7 @@ TIME_UNITS = {
 }
 
 
-class Reminder(CustomCog):
+class ReminderCommands(CustomCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot):

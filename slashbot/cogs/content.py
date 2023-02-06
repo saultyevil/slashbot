@@ -17,7 +17,7 @@ from slashbot.config import App
 from slashbot.db import connect_to_database_engine
 from slashbot.db import get_bank_account
 from slashbot.db import BankAccount
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 
 COOLDOWN_USER = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 30
@@ -25,7 +25,7 @@ CHECK_FREQUENCY_SECONDS = 30
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-class Content(CustomCog):  # pylint: disable=too-many-instance-attributes
+class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Demand and provide content, and track leech balance.
 
     Parameters

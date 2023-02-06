@@ -23,34 +23,26 @@ import slashbot.cogs.videos
 import slashbot.cogs.weather
 
 from slashbot.config import App
-from slashbot.bot import ModifiedInteractionBot
+from slashbot.custom_bot import ModifiedInteractionBot
 from slashbot.db import populate_word_tables_with_new_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
 
-# Load in the markov chain and various other bits of data that are passed to
-# the cogs
-
 # Set up the bot and cogs --------------------------------------------------
-
-# Create bot and the various different cogs -- cogs are declared like this
-# because I cheat a little and pass spam.generate_sentence to other cogs.
-# Ideally I should just write generate_sentence into some global module and
-# import it in the cogs instead
 
 bot = ModifiedInteractionBot(intents=disnake.Intents.default())
 
 for cog in [
-    slashbot.cogs.spam.Spam(bot, bad_words, god_words),
-    slashbot.cogs.info.Info(bot, bad_words, god_words),
-    slashbot.cogs.remind.Reminder(bot),
-    slashbot.cogs.content.Content(bot),
-    slashbot.cogs.weather.Weather(bot),
-    slashbot.cogs.videos.Videos(bot, bad_words),
-    slashbot.cogs.users.Users(bot),
-    slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME")),
-    slashbot.cogs.ai.ArtificialStupidity(bot),
+    slashbot.cogs.admin.AdminCommands(bot, App.config("LOGFILE_NAME")),
+    slashbot.cogs.ai.AICommands(bot),
+    slashbot.cogs.content.ContentCommands(bot),
+    slashbot.cogs.info.InfoCommands(bot),
+    slashbot.cogs.remind.ReminderCommands(bot),
+    slashbot.cogs.spam.SpamCommands(bot),
+    slashbot.cogs.users.UserCommands(bot),
+    slashbot.cogs.videos.VideoCommands(bot),
+    slashbot.cogs.weather.WeatherCommands(bot),
 ]:
     bot.add_cog(cog)
 

@@ -14,13 +14,13 @@ import requests
 from disnake.ext import commands
 
 from slashbot.config import App
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 
 cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-class Admin(CustomCog):
+class AdminCommands(CustomCog):
     """Admin tools for the bot."""
 
     def __init__(self, bot: commands.InteractionBot, log_path: Path):

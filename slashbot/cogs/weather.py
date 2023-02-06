@@ -14,7 +14,7 @@ from disnake.ext import commands
 from sqlalchemy.orm import Session
 
 from slashbot.config import App
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 from slashbot.error import deferred_error_message
 from slashbot.db import get_user
 from slashbot.db import connect_to_database_engine
@@ -29,7 +29,7 @@ WEATHER_UNITS = ["metric", "imperial"]
 WEATHER_COMMAND_CHOICES = ["forecast", "temperature", "rain", "wind"]
 
 
-class Weather(CustomCog):
+class WeatherCommands(CustomCog):
     """Query information about the weather."""
 
     def __init__(
