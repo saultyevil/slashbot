@@ -26,7 +26,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
 WEATHER_UNITS = ["metric", "imperial"]
-WEATHER_COMMAND_CHOICES = ["forecast", "temperature", "rain", "wind"]
+WEATHER_COMMAND_CHOICES = ["weather", "temperature", "rain", "wind"]
 
 
 class WeatherCommands(CustomCog):
@@ -374,7 +374,7 @@ class WeatherCommands(CustomCog):
                 inter, "OpenWeatherMap failed. You can check the exact error using /logfile."
             )
 
-        embed = disnake.Embed(title=f"Weather for {city}, {location_country}", color=disnake.Color.default())
+        embed = disnake.Embed(title=f"Forecast for {city}, {location_country}", color=disnake.Color.default())
 
         for day in forecast_one_call.forecast_daily[:days]:
             date = datetime.datetime.utcfromtimestamp(day.reference_time())
@@ -403,7 +403,7 @@ class WeatherCommands(CustomCog):
             description="The city to get weather for, default is your saved location.", default=None
         ),
         weather_type: str = commands.Param(
-            description="The type of weather report to get.", default="forecast", choices=WEATHER_COMMAND_CHOICES
+            description="The type of weather report to get.", default="weather", choices=WEATHER_COMMAND_CHOICES
         ),
         units: str = commands.Param(
             description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
@@ -451,7 +451,7 @@ class WeatherCommands(CustomCog):
         )
 
         match weather_type:
-            case "forecast":
+            case "weather":
                 embed.add_field(
                     name="Description",
                     value=f"{weather.detailed_status.capitalize()}",
