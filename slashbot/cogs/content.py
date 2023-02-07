@@ -18,6 +18,7 @@ from slashbot.db import connect_to_database_engine
 from slashbot.db import get_bank_account
 from slashbot.db import BankAccount
 from slashbot.custom_cog import CustomCog
+from slashbot.markov import generate_sentence
 
 COOLDOWN_USER = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 30
@@ -215,7 +216,7 @@ class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attribute
         embed = disnake.Embed(
             title=f"{inter.author.name}'s Content Balance", color=disnake.Color.default(), description=message
         )
-        embed.set_footer(text=f"{self.generate_sentence('leech')}")
+        embed.set_footer(text=f"{generate_sentence(seed_word='content')}")
         embed.set_thumbnail(url="https://www.nicepng.com/png/full/258-2581153_cartoon-leech.png")
         embed.add_field(name="Balance", value=f"{account.balance} Content Coins")
         embed.add_field(name="Status", value=f"{account.status}")
