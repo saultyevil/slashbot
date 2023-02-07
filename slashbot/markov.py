@@ -86,8 +86,7 @@ def load_markov_model(chain_location: str | Path) -> markovify.Text:
     return model
 
 
-# MARKOV_MODEL = load_markov_model(App.config("MARKOV_CHAIN_FILE"))
-MARKOV_MODEL = None
+MARKOV_MODEL = load_markov_model(App.config("MARKOV_CHAIN_FILE"))
 
 
 def generate_sentence(model: markovify.Text = None, seed_word: str = None, attempts: int = 5) -> str:
