@@ -122,7 +122,7 @@ class UserCommands(CustomCog):
             user = get_user(session, inter.author.id, inter.author.name)
 
             match thing:
-                case "City name":
+                case "City":
                     value = user.city
                 case "Country code":
                     value = user.country_code
