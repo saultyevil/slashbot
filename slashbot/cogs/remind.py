@@ -227,10 +227,11 @@ class ReminderCommands(CustomCog):
                     channel = await self.bot.fetch_channel(reminder.channel)
                     message = f"{user.mention}"
 
-                    for user_id in reminder.tagged_users.split(","):
-                        user = await self.bot.fetch_user(int(user_id))
-                        if user:
-                            message += f" {user.mention}"
+                    if reminder.tagged_users:
+                        for user_id in reminder.tagged_users.split(","):
+                            user = await self.bot.fetch_user(int(user_id))
+                            if user:
+                                message += f" {user.mention}"
 
                     session.delete(reminder)
                     session.commit()
