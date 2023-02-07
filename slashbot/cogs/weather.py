@@ -147,7 +147,7 @@ class WeatherCommands(CustomCog):
         else:
             with Session(connect_to_database_engine()) as session:
                 user = get_user(session, user_id, user_name)
-                country = user.country_code
+                country = user.country_code.upper() if user.country_code else None
 
         country = self.__convert_uk_to_gb(country)
 
