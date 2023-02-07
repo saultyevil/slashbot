@@ -95,6 +95,8 @@ class UserCommands(CustomCog):
 
         return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to '{value}'.")
 
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="view_info", description="view info you set to remember")
     async def query_info(
         self,
         inter: disnake.ApplicationCommandInteraction,
