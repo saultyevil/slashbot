@@ -196,3 +196,29 @@ async def update_markov_chain_for_model(
         await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
 
     return model
+
+
+def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: str, amount: int = 50) -> List[str]:
+    """_summary_
+
+    Parameters
+    ----------
+    model : markovify.Text
+        _description_
+    seed_word : str
+        _description_
+    amount : int, optional
+        _description_, by default 50
+
+    Returns
+    -------
+    List[str]
+        _description_
+    """
+    sentences = []
+    for _ in range(amount):
+        sentences.append(
+            generate_sentence(model, seed_word),
+        )
+
+    return sentences

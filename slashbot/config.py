@@ -51,8 +51,10 @@ class App:
         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
         "BAD_WORDS_FILE": Path("data/badwords.txt"),
         "GOD_WORDS_FILE": Path("data/godwords.txt"),
-        # Configuration conents
+        # Configuration
         "CONTENT_BANK_STARTING_BALANCE": 3,
+        "PREGEN_MARKOV_SENTENCES_AMOUNT": 25,
+        "PREGEN_REGENERATE_LIMIT": 5,
     }
 
     __conf["SLASH_SERVERS"] = [
@@ -116,13 +118,11 @@ class App:
 # Set up logger ----------------------------------------------------------------
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
-formatter = logging.Formatter(
-    "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
-)
+formatter = logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S")
 
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
-console_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.DEBUG)
 
 file_handler = RotatingFileHandler(
     filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
