@@ -70,7 +70,7 @@ class UserCommands(CustomCog):
                 logger.error(
                     "Disnake somehow passed something which isn't a str for value: %s (%s)", value, type(value)
                 )
-                return deferred_error_message("An error has occured with Disnake :-(")
+                return deferred_error_message(inter, "An error has occured with Disnake :-(")
 
             match thing:
                 case "City":
@@ -85,11 +85,11 @@ class UserCommands(CustomCog):
                 case "Bad word":
                     word = session.query(BadWord).filter(BadWord.word == value).first()
                     if not word:
-                        return deferred_error_message(f"There is no bad word {value} in the bad word database.")
+                        return deferred_error_message(inter, f"There is no bad word {value} in the bad word database.")
                     user.bad_word = value  # TODO, this should be an ID to a bad word instead
                 case _:
                     logger.error("Disnake somehow allowed an unknown choice %s", thing)
-                    return deferred_error_message("An error has occured with Disnake :-(")
+                    return deferred_error_message(inter, "An error has occured with Disnake :-(")
 
             session.commit()
 
@@ -130,6 +130,6 @@ class UserCommands(CustomCog):
                     value = user.bad_word
                 case _:
                     logger.error("Disnake somehow allowed an unknown choice %s", thing)
-                    return deferred_error_message("An error has occured with Disnake :-(")
+                    return deferred_error_message(inter, "An error has occurred with Disnake :-(")
 
         return await inter.edit_original_message(content=f"{thing.capitalize()} is set to '{value}'.")
