@@ -42,8 +42,6 @@ class WeatherCommands(CustomCog):
         ----------
         bot: commands.InteractionBot
             The bot object.
-        generate_sentence: callable
-            A function to generate a sentence given a seed word.
         """
         self.bot = bot
 

@@ -37,7 +37,6 @@ class ReminderCommands(CustomCog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.generate_sentence = generate_sentence
         self.check_reminders.start()  # pylint: disable=no-member
 
     # Private methods ----------------------------------------------------------
@@ -119,7 +118,7 @@ class ReminderCommands(CustomCog):
 
         now = datetime.datetime.now()
 
-        if time_unit == "time stamp":
+        if time_unit == "Time stamp":
             try:
                 future = parser.parse(when)
             except parser.ParserError:
@@ -222,7 +221,7 @@ class ReminderCommands(CustomCog):
                         continue
 
                     embed = disnake.Embed(title=reminder.reminder, color=disnake.Color.default())
-                    embed.set_footer(text=f"{self.generate_sentence('reminder')}")
+                    embed.set_footer(text=f"{generate_sentence(seed_word='reminder')}")
                     embed.set_thumbnail(url=user.avatar.url)
 
                     channel = await self.bot.fetch_channel(reminder.channel)

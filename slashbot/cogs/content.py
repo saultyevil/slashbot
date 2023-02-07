@@ -33,12 +33,6 @@ class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attribute
     ----------
     bot: commands.InteractionBot
         The bot object.
-    generate_sentence: callable
-        A function which generates sentences given a seed word.
-    starting_balance: int
-        The balance members start with upon account creation.
-    role_name: str
-        The name of the role to assign users to.
     stale_minutes: int
         The frequency to check for stale requests to remove.
     """
@@ -299,7 +293,7 @@ class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attribute
         name="content_leaderboard",
         description="Content coin leaderboard",
     )
-    async def leech_score(
+    async def content_leaderboard(
         self,
         inter: disnake.ApplicationCommandInteraction,
         sort_by: str = commands.Param(
