@@ -302,7 +302,7 @@ class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attribute
         self,
         inter: disnake.ApplicationCommandInteraction,
         sort_by: str = commands.Param(
-            name="Sort by", default="User", choices=["User", "Balance"], description="The column to sort the table by."
+            default="User", choices=["User", "Balance"], description="The column to sort the table by."
         ),
     ) -> coroutine:
         """Show the balance for all users.

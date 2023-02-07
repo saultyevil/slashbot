@@ -4,21 +4,103 @@
 """This module contains functions for modifying the slashbot database."""
 
 from sqlalchemy import create_engine
+from sqlalchemy import Column
+from sqlalchemy import String
+from sqlalchemy import Integer
+from sqlalchemy import DateTime
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Session
 
 from slashbot.config import App
+
+# Models -----------------------------------------------------------------------
 
 
 class Base(DeclarativeBase):
     """Base class for ORM definition."""
 
 
-from slashbot.models.users import User
-from slashbot.models.reminders import Reminder  # pylint: disable=unused-import
-from slashbot.models.bad_words import BadWord  # pylint: disable=unused-import
-from slashbot.models.oracle_words import OracleWord  # pylint: disable=unused-import
-from slashbot.models.bank import BankAccount  # pylint: disable=unused-import
+class User(Base):
+    """User ORM class.
+
+    Parameters
+    ----------
+    Base : _type_
+        _description_
+    """
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, unique=True, index=True)
+    user_name = Column(String(64), unique=True)
+
+    city = Column(Integer, nullable=True)
+    country_code = Column(String(2), nullable=True)
+    bad_word = Column(String(32), nullable=True)
+
+    bank_account = relationship("BankAccount")
+    reminders = relationship("Reminder")
+
+
+class BadWord(Base):
+    """Bad word storage."""
+
+    __tablename__ = "bad_words"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    word = Column(String(32), unique=True)
+
+
+class BankAccount(Base):
+    """Bank ORM class."""
+
+    __tablename__ = "bank_accounts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), unique=True)
+
+    balance = Column(Integer)
+    status = Column(String)
+
+    user = relationship("User", back_populates="bank_account")
+
+
+class OracleWord(Base):
+    """Oracle word storage."""
+
+    __tablename__ = "oracle_words"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    word = Column(String, unique=True)
+
+
+class Reminder(Base):
+    """User ORM class.
+
+    Parameters
+    ----------
+    Base : _type_
+        _description_
+    """
+
+    __tablename__ = "reminders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+
+    channel = Column(String)
+    tagged_users = Column(String, nullable=True)
+    date = Column(DateTime)
+    reminder = Column(String(1024))
+    tagged_users = Column(String(1024), nullable=True)
+
+    user = relationship("User", back_populates="reminders")
+
+
+# Functions --------------------------------------------------------------------
 
 
 def connect_to_database_engine(location: str = None):
@@ -29,7 +111,7 @@ def connect_to_database_engine(location: str = None):
     Parameters
     ----------
     location : str
-        The location of the SQLite database to load, deafault is None where the
+        The location of the SQLite database to load, default is None where the
         value is then taken from App.config.
     """
     if not location:

@@ -48,7 +48,9 @@ class App:
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         # File locations
         "MARKOV_CHAIN_FILE": Path("data/chain.pickle"),
-         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
+        "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
+        "BAD_WORDS_FILE": Path("data/badwords.txt"),
+        "GOD_WORDS_FILE": Path("data/godwords.txt"),
         # Configuration conents
         "CONTENT_BANK_STARTING_BALANCE": 3,
     }
