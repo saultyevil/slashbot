@@ -32,7 +32,7 @@ class AICommands(CustomCog):  # pylint: disable=too-few-public-methods
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to give to the AI generator."),
         max_tokens: int = commands.Param(
-            description="The maximum number of words/tokens to generate.", le=2048, gt=0, default=200
+            description="The maximum number of words/tokens to generate.", le=1024, gt=0, default=200
         ),
     ):
         """Generate text from a prompt.
@@ -66,5 +66,8 @@ class AICommands(CustomCog):  # pylint: disable=too-few-public-methods
 
         generated = response["choices"][0]["text"].lstrip("\n")
         message = f"> {prompt}\n{generated}"
+
+        if len(message) > 2000:
+            message = message[:1900] + "...\n*...and the rest is cut off by discord..."
 
         await inter.edit_original_message(content=message)
