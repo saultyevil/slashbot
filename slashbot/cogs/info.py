@@ -16,7 +16,9 @@ from slashbot.config import App
 from slashbot.db import connect_to_database_engine
 from slashbot.db import BadWord
 from slashbot.custom_cog import CustomCog
-from slashbot.markov import generate_sentence
+from slashbot.markov import MARKOV_MODEL
+from slashbot.markov import generate_sentences_for_seed_words
+
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -38,10 +40,17 @@ class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
         attempts: int
             The number of attempts to try and generate a sentence for.
         """
+        super().__init__()
         self.bot = bot
         self.attempts = attempts
 
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
+
+        self.__markov_sentences = generate_sentences_for_seed_words(
+            MARKOV_MODEL,
+            ["wolfram"],
+            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        )
 
     # Commands -----------------------------------------------------------------
 
@@ -80,7 +89,7 @@ class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.defer()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
-        embed.set_footer(text=f"{generate_sentence(seed_word='wolfram')}")
+        embed.set_footer(text=f"{self.get_generated_sentence('wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
         )

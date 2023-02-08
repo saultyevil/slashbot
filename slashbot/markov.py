@@ -10,6 +10,7 @@ import shutil
 from pathlib import Path
 from typing import Coroutine
 from typing import List
+from typing import Dict
 import string
 
 import disnake
@@ -198,7 +199,7 @@ async def update_markov_chain_for_model(
     return model
 
 
-def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: str, amount: int = 50) -> List[str]:
+def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: str, amount: int) -> List[str]:
     """_summary_
 
     Parameters
@@ -208,7 +209,7 @@ def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: 
     seed_word : str
         _description_
     amount : int, optional
-        _description_, by default 50
+        _description_
 
     Returns
     -------
@@ -222,3 +223,23 @@ def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: 
         )
 
     return sentences
+
+
+def generate_sentences_for_seed_words(model: markovify.Text, seed_words: List[str], amount: int) -> Dict[List[str]]:
+    """_summary_
+
+    Parameters
+    ----------
+    model : markovify.Text
+        _description_
+    seed_words : List[str]
+        _description_
+    amount : int
+        _description_
+
+    Returns
+    -------
+    Dict[List[str]]
+        _description_
+    """
+    return {seed_word: generate_list_of_sentences_with_seed_word(model, seed_word, amount) for seed_word in seed_words}

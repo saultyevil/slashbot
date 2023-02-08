@@ -23,9 +23,10 @@ from slashbot.db import BadWord
 from slashbot.db import User
 from slashbot.db import OracleWord
 from slashbot.custom_cog import CustomCog
-from slashbot.markov import generate_sentence
-from slashbot.markov import update_markov_chain_for_model
 from slashbot.markov import MARKOV_MODEL
+from slashbot.markov import update_markov_chain_for_model
+from slashbot.markov import generate_sentences_for_seed_words
+from slashbot.markov import generate_sentence
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -48,7 +49,7 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
         attempts: int
             The number of attempts to generate a markov sentence.
         """
-
+        super().__init__()
         self.bot = bot
         self.attempts = attempts
         self.markov_update_sentences = {}
@@ -57,6 +58,12 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)
+
+        self.__markov_sentences = generate_sentences_for_seed_words(
+            MARKOV_MODEL,
+            ["reminder"],
+            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        )
 
     # Slash commands -----------------------------------------------------------
 
@@ -108,7 +115,7 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
             A seed word (or words) to generate a message from.
         """
         await inter.response.defer()
-        return await inter.edit_original_message(content=generate_sentence(seed_word=words))
+        return await inter.edit_original_message(content=generate_sentence(MARKOV_MODEL, words))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="clap", description="send a clapped out message")

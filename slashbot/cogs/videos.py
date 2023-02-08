@@ -13,7 +13,8 @@ from disnake.ext import commands, tasks
 
 from slashbot.config import App
 from slashbot.custom_cog import CustomCog
-from slashbot.markov import generate_sentence
+from slashbot.markov import MARKOV_MODEL
+from slashbot.markov import generate_sentences_for_seed_words
 
 COOLDOWN_USER = commands.BucketType.user
 
@@ -31,6 +32,7 @@ class VideoCommands(CustomCog):
         generate_sentence: callable
             A function to generate a sentence given a seed word.
         """
+        super().__init__()
         self.bot = bot
 
         self.monday_morning.start()  # pylint: disable=no-member
@@ -39,6 +41,21 @@ class VideoCommands(CustomCog):
         self.friday_evening.start()  # pylint: disable=no-member
         self.sunday_morning.start()  # pylint: disable=no-member
         self.jack_bin_day.start()  # pylint: disable=no-member
+
+        self.__markov_sentences = generate_sentences_for_seed_words(
+            MARKOV_MODEL,
+            [
+                "admin",
+                "admin abuse",
+                "monday",
+                "wednesday",
+                "friday",
+                "weekend",
+                "sunday",
+                "bin",
+            ],
+            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        )
 
     # Commands -----------------------------------------------------------------
 
@@ -53,9 +70,9 @@ class VideoCommands(CustomCog):
             The interaction to possibly remove the cooldown from.
         """
         await inter.response.defer()
-        seed = random.choice(["admin", "abuse", "admin abuse"])
+        seed = random.choice(["admin", "admin abuse"])
         return await inter.edit_original_message(
-            content=f"{generate_sentence(seed_word=seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+            content=f"{self.get_generated_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -170,7 +187,7 @@ class VideoCommands(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            generate_sentence(seed_word="monday").replace("monday", "**monday**"),
+            self.get_generated_sentence("monday").replace("monday", "**monday**"),
             file=disnake.File("data/videos/monday.mp4"),
         )
 
@@ -180,7 +197,7 @@ class VideoCommands(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            generate_sentence(seed_word="wednesday").replace("wednesday", "**wednesday**"),
+            self.get_generated_sentence("wednesday").replace("wednesday", "**wednesday**"),
             file=disnake.File("data/videos/wednesday.mp4"),
         )
 
@@ -190,7 +207,7 @@ class VideoCommands(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            generate_sentence(seed_word="weekend").replace("weekend", "**weekend**"),
+            self.get_generated_sentence("weekend").replace("weekend", "**weekend**"),
             file=disnake.File("data/videos/weekend.mp4"),
         )
 
@@ -200,7 +217,7 @@ class VideoCommands(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            generate_sentence(seed_word="friday").replace("friday", "**friday**"),
+            self.get_generated_sentence("friday").replace("friday", "**friday**"),
             file=disnake.File("data/videos/friday.mov"),
         )
 
@@ -210,7 +227,7 @@ class VideoCommands(CustomCog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            generate_sentence(seed_word="sunday").replace("sunday", "**sunday**"),
+            self.get_generated_sentence("sunday").replace("sunday", "**sunday**"),
             file=disnake.File("data/videos/sunday.mp4"),
         )
 
@@ -221,7 +238,7 @@ class VideoCommands(CustomCog):
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         user = self.bot.get_user(App.config("ID_USER_LIME"))
         await channel.send(
-            f"{user.mention} it's time to take the bins out!!! " + generate_sentence(seed_word="bin"),
+            f"{user.mention} it's time to take the bins out!!! " + self.get_generated_sentence("bin"),
             file=disnake.File("data/bin.png"),
         )
 

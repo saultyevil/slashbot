@@ -19,7 +19,7 @@ from slashbot.error import deferred_error_message
 from slashbot.db import get_user
 from slashbot.db import connect_to_database_engine
 from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_list_of_sentences_with_seed_word
+from slashbot.markov import generate_sentences_for_seed_words
 
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -51,14 +51,14 @@ class WeatherCommands(CustomCog):
         self.city_register = self.weather_api.city_id_registry()
         self.weather_manager = self.weather_api.weather_manager()
 
-        self.pregen_markov_sentences = {
-            "weather": generate_list_of_sentences_with_seed_word(
-                MARKOV_MODEL, "weather", App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
-            ),
-            "forecast": generate_list_of_sentences_with_seed_word(
-                MARKOV_MODEL, "forecast", App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
-            ),
-        }
+        self.__markov_sentences = generate_sentences_for_seed_words(
+            MARKOV_MODEL,
+            [
+                "weather",
+                "forecast"
+            ],
+            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        )
 
     # Private ------------------------------------------------------------------
 

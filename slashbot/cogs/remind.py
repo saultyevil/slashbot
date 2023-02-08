@@ -20,7 +20,8 @@ from slashbot.config import App
 from slashbot.custom_cog import CustomCog
 from slashbot.db import Reminder as ReminderDB
 from slashbot.db import connect_to_database_engine
-from slashbot.markov import generate_sentence
+from slashbot.markov import MARKOV_MODEL
+from slashbot.markov import generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -36,8 +37,15 @@ class ReminderCommands(CustomCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot):
+        super().__init__()
         self.bot = bot
         self.check_reminders.start()  # pylint: disable=no-member
+
+        self.__markov_sentences = generate_sentences_for_seed_words(
+            MARKOV_MODEL,
+            ["reminder"],
+            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        )
 
     # Private methods ----------------------------------------------------------
 
@@ -221,7 +229,7 @@ class ReminderCommands(CustomCog):
                         continue
 
                     embed = disnake.Embed(title=reminder.reminder, color=disnake.Color.default())
-                    embed.set_footer(text=f"{generate_sentence(seed_word='reminder')}")
+                    embed.set_footer(text=f"{self.get_generated_sentence('reminder')}")
                     embed.set_thumbnail(url=user.avatar.url)
 
                     channel = await self.bot.fetch_channel(reminder.channel)

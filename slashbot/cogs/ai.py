@@ -23,6 +23,7 @@ class AICommands(CustomCog):  # pylint: disable=too-few-public-methods
     """A collection of commands to send AI generated messages and items."""
 
     def __init__(self, bot: commands.InteractionBot):
+        super().__init__()
         self.bot = bot
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
