@@ -25,6 +25,7 @@ class AdminCommands(CustomCog):
 
     def __init__(self, bot: commands.InteractionBot, log_path: Path):
         """Initialize the class."""
+        super().__init__()
         self.bot = bot
         self.log_path = Path(log_path)
 
