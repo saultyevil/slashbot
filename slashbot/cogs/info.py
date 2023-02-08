@@ -46,7 +46,7 @@ class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
 
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
 
-        self.__markov_sentences = generate_sentences_for_seed_words(
+        self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             ["wolfram"],
             App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),

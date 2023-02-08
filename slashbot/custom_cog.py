@@ -22,7 +22,7 @@ class CustomCog(commands.Cog):
     def __init__(self):
         super().__init__()
 
-        self.__markov_sentences = {}
+        self.markov_sentences = {}
         self.regenerate_markov_sentences.start()  # pylint: disable=no-member
 
     async def cog_before_slash_command_invoke(
@@ -54,12 +54,12 @@ class CustomCog(commands.Cog):
         str
             _description_
         """
-        if seed_word not in self.__markov_sentences:
+        if seed_word not in self.markov_sentences:
             logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
             return generate_sentence(MARKOV_MODEL, seed_word)
 
         try:
-            return self.__markov_sentences[seed_word].pop()
+            return self.markov_sentences[seed_word].pop()
         except IndexError:
             logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
             return generate_sentence(MARKOV_MODEL, seed_word)
@@ -67,12 +67,12 @@ class CustomCog(commands.Cog):
     @tasks.loop(seconds=5)
     async def regenerate_markov_sentences(self) -> None:
         """Re-generate the markov sentences with a given seed word."""
-        if len(self.__markov_sentences) == 0:
+        if len(self.markov_sentences) == 0:
             return
 
-        for seed_word, sentences in self.__markov_sentences.items():
+        for seed_word, sentences in self.markov_sentences.items():
             if len(sentences) <= App.config("PREGEN_REGENERATE_LIMIT"):
                 logger.debug("Regenerating sentences for seed word %s", seed_word)
-                self.__markov_sentences[seed_word] = generate_list_of_sentences_with_seed_word(
+                self.markov_sentences[seed_word] = generate_list_of_sentences_with_seed_word(
                     MARKOV_MODEL, seed_word, App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
                 )

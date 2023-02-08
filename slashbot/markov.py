@@ -225,7 +225,9 @@ def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: 
     return sentences
 
 
-def generate_sentences_for_seed_words(model: markovify.Text, seed_words: List[str], amount: int) -> Dict[List[str]]:
+def generate_sentences_for_seed_words(
+    model: markovify.Text, seed_words: List[str], amount: int
+) -> Dict[str, List[str]]:
     """_summary_
 
     Parameters

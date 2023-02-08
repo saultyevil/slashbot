@@ -41,7 +41,7 @@ class ReminderCommands(CustomCog):
         self.bot = bot
         self.check_reminders.start()  # pylint: disable=no-member
 
-        self.__markov_sentences = generate_sentences_for_seed_words(
+        self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             ["reminder"],
             App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),

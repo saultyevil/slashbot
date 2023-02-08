@@ -51,12 +51,9 @@ class WeatherCommands(CustomCog):
         self.city_register = self.weather_api.city_id_registry()
         self.weather_manager = self.weather_api.weather_manager()
 
-        self.__markov_sentences = generate_sentences_for_seed_words(
+        self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
-            [
-                "weather",
-                "forecast"
-            ],
+            ["weather", "forecast"],
             App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
         )
 

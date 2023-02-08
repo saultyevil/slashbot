@@ -42,7 +42,7 @@ class VideoCommands(CustomCog):
         self.sunday_morning.start()  # pylint: disable=no-member
         self.jack_bin_day.start()  # pylint: disable=no-member
 
-        self.__markov_sentences = generate_sentences_for_seed_words(
+        self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             [
                 "admin",

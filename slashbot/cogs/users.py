@@ -38,6 +38,7 @@ class UserCommands(CustomCog):
         bot: commands.InteractionBot
             The bot object.
         """
+        super().__init__()
         self.bot = bot
 
     # Commands -----------------------------------------------------------------

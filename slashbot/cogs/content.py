@@ -52,7 +52,7 @@ class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attribute
         self.current_content_providers = []
         self.remove_stale_requests.start()  # pylint: disable=no-member
 
-        self.__markov_sentences = generate_sentences_for_seed_words(
+        self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             ["content"],
             App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
