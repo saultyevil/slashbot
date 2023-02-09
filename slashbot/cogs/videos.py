@@ -281,35 +281,35 @@ class VideoCommands(CustomCog):
     @monday_morning.before_loop
     async def sleep_monday_morning(self) -> None:
         """Sleep until Monday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.MONDAY, 8, 30))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.MONDAY, 8, 30))
 
     @wednesday_morning.before_loop
     async def sleep_wednesday_morning(self) -> None:
         """Sleep until Wednesday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.WEDNESDAY, 8, 30))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.WEDNESDAY, 8, 30))
 
     @friday_morning.before_loop
     async def sleep_friday_morning(self) -> None:
         """Sleep until Friday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 8, 30))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 8, 30))
 
     @friday_evening.before_loop
     async def sleep_friday_evening(self) -> None:
         """Sleep until Friday evening."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 18, 0))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 18, 0))
 
     @sunday_morning.before_loop
     async def sleep_sunday_morning(self) -> None:
         """Sleep until Sunday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.SUNDAY, 10, 0))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.SUNDAY, 10, 0))
 
     @jack_bin_day.before_loop
     async def sleep_jack_bin_day(self) -> None:
         """Sleep until Thursday  11:54 pm."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.THURSDAY, 23, 54))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.THURSDAY, 23, 54))
