@@ -14,7 +14,7 @@ import disnake
 from dateutil import parser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from slashbot.config import App
 from slashbot.custom_cog import CustomCog
@@ -41,13 +41,21 @@ class ReminderCommands(CustomCog):
         self.bot = bot
         self.check_reminders.start()  # pylint: disable=no-member
 
+        self.session = sessionmaker(connect_to_database_engine())()
+
         self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             ["reminder"],
             App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
         )
 
+        self.bot.add_to_cleanup(None, self.__close_session, (None))
+
     # Private methods ----------------------------------------------------------
+
+    async def __close_session(self) -> None:
+        """Close the session."""
+        self.session.close()
 
     async def __replace_mentions_in_sentence(self, sentence: str) -> Union[List[str], str]:
         """Replace mentions from a post with the user name.
@@ -75,6 +83,39 @@ class ReminderCommands(CustomCog):
             sentence = sentence.replace(f"<{mention_pattern}{user_id}>", f"@{user.name}")
 
         return ",".join(user_ids), sentence
+
+    # Tasks --------------------------------------------------------------------
+
+    @tasks.loop(seconds=1)
+    async def check_reminders(self) -> None:
+        """Check if any reminders need to be sent wherever needed."""
+        now = datetime.datetime.now()
+        reminders = self.session.query(ReminderDB)
+        if reminders.count() == 0:
+            return
+
+        for reminder in reminders:
+            if reminder.date <= now:
+                user = await self.bot.fetch_user(reminder.user_id)
+                if not user:
+                    continue
+
+                embed = disnake.Embed(title=reminder.reminder, color=disnake.Color.default())
+                embed.set_footer(text=f"{self.get_generated_sentence('reminder')}")
+                embed.set_thumbnail(url=user.avatar.url)
+
+                channel = await self.bot.fetch_channel(reminder.channel)
+                message = f"{user.mention}"
+
+                if reminder.tagged_users:
+                    for user_id in reminder.tagged_users.split(","):
+                        user = await self.bot.fetch_user(int(user_id))
+                        if user:
+                            message += f" {user.mention}"
+
+                self.session.delete(reminder)
+                self.session.commit()
+                await channel.send(message, embed=embed)
 
     # Commands -----------------------------------------------------------------
 
@@ -140,17 +181,16 @@ class ReminderCommands(CustomCog):
 
         tagged_users, reminder = await self.__replace_mentions_in_sentence(reminder)
 
-        with Session(connect_to_database_engine()) as session:
-            session.add(
-                ReminderDB(
-                    user_id=inter.author.id,
-                    channel=inter.channel.id,
-                    date=future,
-                    reminder=reminder,
-                    tagged_users=tagged_users if tagged_users else None,
-                )
+        self.session.add(
+            ReminderDB(
+                user_id=inter.author.id,
+                channel=inter.channel.id,
+                date=future,
+                reminder=reminder,
+                tagged_users=tagged_users if tagged_users else None,
             )
-            session.commit()
+        )
+        self.session.commit()
 
         if time_unit == "Time stamp":
             return await inter.response.send_message(f"Reminder set for {when}.", ephemeral=True)
@@ -174,14 +214,13 @@ class ReminderCommands(CustomCog):
         m_id: str
             The id of the reminder to remove.
         """
-        with Session(connect_to_database_engine()) as session:
-            reminder = session.query(ReminderDB).filter(ReminderDB.id == reminder_id).first()
-            if not reminder:
-                return await inter.response.send_message("There is no reminder with that ID.", ephemeral=True)
-            if reminder.user_id != inter.author.id:
-                return await inter.response.send_message("This isn't your reminder to remove.", ephemeral=True)
-            session.delete(reminder)
-            session.commit()
+        reminder = self.session.query(ReminderDB).filter(ReminderDB.id == reminder_id).first()
+        if not reminder:
+            return await inter.response.send_message("There is no reminder with that ID.", ephemeral=True)
+        if reminder.user_id != inter.author.id:
+            return await inter.response.send_message("This isn't your reminder to remove.", ephemeral=True)
+        self.session.delete(reminder)
+        self.session.commit()
 
         return await inter.response.send_message("Reminder removed.", ephemeral=True)
 
@@ -195,11 +234,10 @@ class ReminderCommands(CustomCog):
         inter: disnake.ApplicationCommandInteraction
             The interaction object for the command.
         """
-        with Session(connect_to_database_engine()) as session:
-            reminders = session.query(ReminderDB).filter(ReminderDB.user_id == inter.author.id)
-            if reminders.count() == 0:
-                return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
-            reminders = [(reminder.id, reminder.date, reminder.reminder) for reminder in reminders]
+        reminders = self.session.query(ReminderDB).filter(ReminderDB.user_id == inter.author.id)
+        if reminders.count() == 0:
+            return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
+        reminders = [(reminder.id, reminder.date, reminder.reminder) for reminder in reminders]
 
         table = PrettyTable()
         table.align = "r"
@@ -210,37 +248,3 @@ class ReminderCommands(CustomCog):
         message += table.get_string(sortby="ID") + "```"
 
         return await inter.response.send_message(message, ephemeral=True)
-
-    # Tasks --------------------------------------------------------------------
-
-    @tasks.loop(seconds=10)
-    async def check_reminders(self) -> None:
-        """Check if any reminders need to be sent wherever needed."""
-        now = datetime.datetime.now()
-        with Session(connect_to_database_engine()) as session:
-            reminders = session.query(ReminderDB)
-            if reminders.count() == 0:
-                return
-
-            for reminder in reminders:
-                if reminder.date <= now:
-                    user = await self.bot.fetch_user(reminder.user_id)
-                    if not user:
-                        continue
-
-                    embed = disnake.Embed(title=reminder.reminder, color=disnake.Color.default())
-                    embed.set_footer(text=f"{self.get_generated_sentence('reminder')}")
-                    embed.set_thumbnail(url=user.avatar.url)
-
-                    channel = await self.bot.fetch_channel(reminder.channel)
-                    message = f"{user.mention}"
-
-                    if reminder.tagged_users:
-                        for user_id in reminder.tagged_users.split(","):
-                            user = await self.bot.fetch_user(int(user_id))
-                            if user:
-                                message += f" {user.mention}"
-
-                    session.delete(reminder)
-                    session.commit()
-                    await channel.send(message, embed=embed)
