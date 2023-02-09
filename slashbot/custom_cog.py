@@ -25,6 +25,8 @@ class CustomCog(commands.Cog):
         self.markov_sentences = {}
         self.regenerate_markov_sentences.start()  # pylint: disable=no-member
 
+    # Before command invokes ---------------------------------------------------
+
     async def cog_before_slash_command_invoke(
         self, inter: disnake.ApplicationCommandInteraction
     ) -> disnake.ApplicationCommandInteraction:
@@ -40,6 +42,23 @@ class CustomCog(commands.Cog):
 
         if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
+
+    # Tasks --------------------------------------------------------------------
+
+    @tasks.loop(seconds=5)
+    async def regenerate_markov_sentences(self) -> None:
+        """Re-generate the markov sentences with a given seed word."""
+        if len(self.markov_sentences) == 0:
+            return
+
+        for seed_word, sentences in self.markov_sentences.items():
+            if len(sentences) < App.config("PREGEN_REGENERATE_LIMIT"):
+                logger.debug("Regenerating sentences for seed word %s", seed_word)
+                self.markov_sentences[seed_word] = generate_list_of_sentences_with_seed_word(
+                    MARKOV_MODEL, seed_word, App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
+                )
+
+    # Functions ----------------------------------------------------------------
 
     def get_generated_sentence(self, seed_word: str) -> str:
         """_summary_
@@ -63,16 +82,3 @@ class CustomCog(commands.Cog):
         except IndexError:
             logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
             return generate_sentence(MARKOV_MODEL, seed_word)
-
-    @tasks.loop(seconds=5)
-    async def regenerate_markov_sentences(self) -> None:
-        """Re-generate the markov sentences with a given seed word."""
-        if len(self.markov_sentences) == 0:
-            return
-
-        for seed_word, sentences in self.markov_sentences.items():
-            if len(sentences) <= App.config("PREGEN_REGENERATE_LIMIT"):
-                logger.debug("Regenerating sentences for seed word %s", seed_word)
-                self.markov_sentences[seed_word] = generate_list_of_sentences_with_seed_word(
-                    MARKOV_MODEL, seed_word, App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
-                )

@@ -53,8 +53,9 @@ class App:
         "GOD_WORDS_FILE": Path("data/godwords.txt"),
         # Configuration
         "CONTENT_BANK_STARTING_BALANCE": 3,
-        "PREGEN_MARKOV_SENTENCES_AMOUNT": 25,
-        "PREGEN_REGENERATE_LIMIT": 5,
+        "PREGEN_MARKOV_SENTENCES_AMOUNT": 10,
+        "PREGEN_REGENERATE_LIMIT": 1,
+        "ENABLE_PREGEN_SENTENCES": True,
     }
 
     __conf["SLASH_SERVERS"] = [

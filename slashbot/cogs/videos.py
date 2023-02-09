@@ -54,7 +54,7 @@ class VideoCommands(CustomCog):
                 "sunday",
                 "bin",
             ],
-            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+            1,  # these only happen once in a while, so dont need a big bank of them
         )
 
     # Commands -----------------------------------------------------------------
