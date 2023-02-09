@@ -58,6 +58,18 @@ class CustomCog(commands.Cog):
                     MARKOV_MODEL, seed_word, App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
                 )
 
+    @regenerate_markov_sentences.before_loop
+    async def wait_before_start(self) -> None:
+        """_summary_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        await self.bot.wait_until_ready()
+        logger.debug("Regenerating markov sentences for %s", self.__cog_name__)
+
     # Functions ----------------------------------------------------------------
 
     def get_generated_sentence(self, seed_word: str) -> str:

@@ -43,9 +43,7 @@ class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
         super().__init__()
         self.bot = bot
         self.attempts = attempts
-
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
-
         self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             ["wolfram"],

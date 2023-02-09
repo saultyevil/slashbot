@@ -45,7 +45,6 @@ class WeatherCommands(CustomCog):
             The bot object.
         """
         super().__init__()
-
         self.bot = bot
         self.weather_api = pyowm.OWM(App.config("OWM_API_KEY"))
         self.city_register = self.weather_api.city_id_registry()

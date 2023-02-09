@@ -59,12 +59,6 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)
 
-        self.markov_sentences = generate_sentences_for_seed_words(
-            MARKOV_MODEL,
-            ["reminder"],
-            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
-        )
-
     # Slash commands -----------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
