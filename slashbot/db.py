@@ -3,6 +3,10 @@
 
 """This module contains functions for modifying the slashbot database."""
 
+import json
+import pathlib
+import logging
+
 from sqlalchemy import create_engine
 from sqlalchemy import Column
 from sqlalchemy import String
@@ -102,6 +106,8 @@ class Reminder(Base):
 
 # Functions --------------------------------------------------------------------
 
+logger = logging.getLogger(App.config("LOGGER_NAME"))
+
 
 def connect_to_database_engine(location: str = None):
     """Create a database engine.
@@ -121,6 +127,41 @@ def connect_to_database_engine(location: str = None):
     Base.metadata.create_all(bind=engine)
 
     return engine
+
+
+async def migrate_old_json_to_db(client) -> None:
+    """Migrate data stuck in a JSON backup to the database.
+
+    This is typically run each time the bot is started up, as the JSON files
+    should be unchanging. If a user is already in the database, then whatever
+    is in the JSON is ignored.
+    """
+    with Session(connect_to_database_engine()) as session:
+        if path := pathlib.Path("data/users.json").exists():
+            with open(path, "r", encoding="utf-8") as file_in:
+                user_json = json.load(file_in)
+            for user_id, items in user_json.items():
+                query = session.query(User).filter(User.user_id == int(user_id))
+                if query.count() != 0:
+                    continue
+                user = await client.fetch_user(int(user_id))
+                if user is None:
+                    logger.error("Unable to find a user with id %d", int(user_id))
+                    continue
+                session.add(
+                    User(
+                        user_id=int(user_id),
+                        user_name=user.name,
+                        city=items.get("location", None),
+                        country=items.get("country", None),
+                        bad_word=items.get("badword", None),
+                    )
+                )
+
+        # reminders.json and bank.json would go here, but I think there's
+        # usually nothing worthwhile migrating over to an empty database.
+
+        session.commit()
 
 
 def create_new_user(session: Session, user_id: int, user_name: str) -> User:
