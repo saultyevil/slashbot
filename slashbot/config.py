@@ -122,7 +122,6 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
-console_handler.setLevel(logging.DEBUG)
 logger.addHandler(console_handler)
 
 if App.config("LOGFILE_NAME").parent.exists():
@@ -132,9 +131,9 @@ if App.config("LOGFILE_NAME").parent.exists():
     file_handler.setFormatter(
         logging.Formatter("[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S")
     )
-    file_handler.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
 
+logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 # Set up logger for disnake ----------------------------------------------------
