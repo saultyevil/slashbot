@@ -8,33 +8,32 @@ import calendar
 import datetime
 import random
 from types import coroutine
-from typing import List
-
 import disnake
-from slashbot.config import App
 from disnake.ext import commands, tasks
 
-cd_user = commands.BucketType.user
+from slashbot.config import App
+from slashbot.custom_cog import CustomCog
+from slashbot.markov import MARKOV_MODEL
+from slashbot.markov import generate_sentences_for_seed_words
+
+COOLDOWN_USER = commands.BucketType.user
 
 
-class Videos(commands.Cog):
+class VideoCommands(CustomCog):
     """Send short clips to the channel."""
 
-    def __init__(self, bot: commands.InteractionBot, bad_words: List[str], generate_sentence: callable):
+    def __init__(self, bot: commands.InteractionBot):
         """Initialize the cog.
 
         Parameters
         ----------
         bot: commands.InteractionBot
             The bot object.
-        bad_words: List[str]
-            A list of bad words.
         generate_sentence: callable
             A function to generate a sentence given a seed word.
         """
+        super().__init__()
         self.bot = bot
-        self.bad_words = bad_words
-        self.generate_sentence = generate_sentence
 
         self.monday_morning.start()  # pylint: disable=no-member
         self.wednesday_morning.start()  # pylint: disable=no-member
@@ -43,27 +42,24 @@ class Videos(commands.Cog):
         self.sunday_morning.start()  # pylint: disable=no-member
         self.jack_bin_day.start()  # pylint: disable=no-member
 
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
+        self.markov_sentences = generate_sentences_for_seed_words(
+            MARKOV_MODEL,
+            [
+                "admin",
+                "admin abuse",
+                "monday",
+                "wednesday",
+                "friday",
+                "weekend",
+                "sunday",
+                "bin",
+            ],
+            1,  # these only happen once in a while, so dont need a big bank of them
+        )
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="admin_abuse", description="admin abuse!!! you're the worst admin ever!!!")
     async def admin_abuse(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of someone shouting admin abuse.
@@ -74,12 +70,12 @@ class Videos(commands.Cog):
             The interaction to possibly remove the cooldown from.
         """
         await inter.response.defer()
-        seed = random.choice(["admin", "abuse", "admin abuse"])
+        seed = random.choice(["admin", "admin abuse"])
         return await inter.edit_original_message(
-            content=f"{self.generate_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+            content=f"{self.get_generated_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="goodbye", description="goodbye")
     async def goodbye(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko saying goodbye.
@@ -92,7 +88,7 @@ class Videos(commands.Cog):
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
 
-    @commands.cooldown(1, App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(1, App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="good_morning", description="good morning people")
     async def good_morning(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a video of Marko saying good morning people.
@@ -121,7 +117,7 @@ class Videos(commands.Cog):
 
         return await inter.edit_original_message(file=disnake.File(video))
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="haha", description="haha very funny")
     async def laugh(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko laughing.
@@ -134,7 +130,7 @@ class Videos(commands.Cog):
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="naughty_marko", description="Marko Vanhanen says a naughty word")
     async def marko_gamer_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko saying the gamer word.
@@ -191,7 +187,7 @@ class Videos(commands.Cog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("monday").replace("monday", "**monday**"),
+            self.get_generated_sentence("monday").replace("monday", "**monday**"),
             file=disnake.File("data/videos/monday.mp4"),
         )
 
@@ -201,7 +197,7 @@ class Videos(commands.Cog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("wednesday").replace("wednesday", "**wednesday**"),
+            self.get_generated_sentence("wednesday").replace("wednesday", "**wednesday**"),
             file=disnake.File("data/videos/wednesday.mp4"),
         )
 
@@ -211,7 +207,7 @@ class Videos(commands.Cog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("weekend").replace("weekend", "**weekend**"),
+            self.get_generated_sentence("weekend").replace("weekend", "**weekend**"),
             file=disnake.File("data/videos/weekend.mp4"),
         )
 
@@ -221,7 +217,7 @@ class Videos(commands.Cog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("friday").replace("friday", "**friday**"),
+            self.get_generated_sentence("friday").replace("friday", "**friday**"),
             file=disnake.File("data/videos/friday.mov"),
         )
 
@@ -231,7 +227,7 @@ class Videos(commands.Cog):
         server = self.bot.get_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(
-            self.generate_sentence("sunday").replace("sunday", "**sunday**"),
+            self.get_generated_sentence("sunday").replace("sunday", "**sunday**"),
             file=disnake.File("data/videos/sunday.mp4"),
         )
 
@@ -242,7 +238,7 @@ class Videos(commands.Cog):
         channel = server.get_channel(App.config("ID_CHANNEL_IDIOTS"))
         user = self.bot.get_user(App.config("ID_USER_LIME"))
         await channel.send(
-            f"{user.mention} it's time to take the bins out!!! " + self.generate_sentence("bin"),
+            f"{user.mention} it's time to take the bins out!!! " + self.get_generated_sentence("bin"),
             file=disnake.File("data/bin.png"),
         )
 
@@ -285,35 +281,35 @@ class Videos(commands.Cog):
     @monday_morning.before_loop
     async def sleep_monday_morning(self) -> None:
         """Sleep until Monday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.MONDAY, 8, 30))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.MONDAY, 8, 30))
 
     @wednesday_morning.before_loop
     async def sleep_wednesday_morning(self) -> None:
         """Sleep until Wednesday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.WEDNESDAY, 8, 30))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.WEDNESDAY, 8, 30))
 
     @friday_morning.before_loop
     async def sleep_friday_morning(self) -> None:
         """Sleep until Friday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 8, 30))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 8, 30))
 
     @friday_evening.before_loop
     async def sleep_friday_evening(self) -> None:
         """Sleep until Friday evening."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 18, 0))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.FRIDAY, 18, 0))
 
     @sunday_morning.before_loop
     async def sleep_sunday_morning(self) -> None:
         """Sleep until Sunday morning."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.SUNDAY, 10, 0))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.SUNDAY, 10, 0))
 
     @jack_bin_day.before_loop
     async def sleep_jack_bin_day(self) -> None:
         """Sleep until Thursday  11:54 pm."""
-        await asyncio.sleep(self.calc_sleep_time(calendar.THURSDAY, 23, 54))
         await self.bot.wait_until_ready()
+        await asyncio.sleep(self.calc_sleep_time(calendar.THURSDAY, 23, 54))

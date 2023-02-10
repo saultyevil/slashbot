@@ -11,7 +11,7 @@ from disnake.ext import commands
 from openai.error import OpenAIError
 
 from slashbot.config import App
-from slashbot.cog import CustomCog
+from slashbot.custom_cog import CustomCog
 from slashbot.error import deferred_error_message
 
 openai.api_key = App.config("OPENAI_API_KEY")
@@ -19,10 +19,11 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class AI(CustomCog):  # pylint: disable=too-few-public-methods
+class AICommands(CustomCog):  # pylint: disable=too-few-public-methods
     """A collection of commands to send AI generated messages and items."""
 
     def __init__(self, bot: commands.InteractionBot):
+        super().__init__()
         self.bot = bot
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -32,7 +33,7 @@ class AI(CustomCog):  # pylint: disable=too-few-public-methods
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to give to the AI generator."),
         max_tokens: int = commands.Param(
-            description="The maximum number of words/tokens to generate.", le=2048, gt=0, default=200
+            description="The maximum number of words/tokens to generate.", le=1024, gt=0, default=200
         ),
     ):
         """Generate text from a prompt.
@@ -66,5 +67,8 @@ class AI(CustomCog):  # pylint: disable=too-few-public-methods
 
         generated = response["choices"][0]["text"].lstrip("\n")
         message = f"> {prompt}\n{generated}"
+
+        if len(message) > 2000:
+            message = message[:1900] + "...\n*...and the rest is cut off by discord..."
 
         await inter.edit_original_message(content=message)

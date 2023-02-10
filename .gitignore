@@ -4,17 +4,13 @@ data/users.json
 data/bank.json
 data/chain.pickle
 data/chain.pickle.bak
-.vscode
-.DS_Store
-venv
-.mypy
-
-# Project specific files to ignore
-trained/*
-log/*
+*.db
+log/
 
 # IDE specific directories
 
+.DS_Store
+.vscode
 .idea
 
 # Byte-compiled / optimized / DLL files

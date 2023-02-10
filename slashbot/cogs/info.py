@@ -6,26 +6,30 @@
 import logging
 import random
 from types import coroutine
-from typing import List
+from sqlalchemy.orm import Session
 
 import disnake
 import wolframalpha
-from slashbot.config import App
 from disnake.ext import commands
 
+from slashbot.config import App
+from slashbot.db import connect_to_database_engine
+from slashbot.db import BadWord
+from slashbot.custom_cog import CustomCog
+from slashbot.markov import MARKOV_MODEL
+from slashbot.markov import generate_sentences_for_seed_words
+
+
 logger = logging.getLogger(App.config("LOGGER_NAME"))
-cd_user = commands.BucketType.user
+COOLDOWN_USER = commands.BucketType.user
 
 
-class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
+class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
         bot: commands.InteractionBot,
-        generate_sentence: callable,
-        bad_words: List[str],
-        god_words: List[str],
         attempts: int = 10,
     ) -> None:
         """Initialize the bot.
@@ -33,45 +37,22 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         ----------
         bot: commands.InteractionBot
             The bot object.
-        generate_sentence: callable
-            A function to generate sentences given a seed word.
-        bad_words: List[str]
-            A list of bad words.
-        god_words: List[str]
-            A list of god words
         attempts: int
             The number of attempts to try and generate a sentence for.
         """
+        super().__init__()
         self.bot = bot
-        self.generate_sentence = generate_sentence
         self.attempts = attempts
-        self.bad_words = bad_words
-        self.god_words = god_words
-        self.user_data = App.config("USER_INFO_FILE_STREAM")
-
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
-
-    # Before command invoke ----------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        """
-        if inter.guild and inter.guild.id != App.config("ID_SERVER_ADULT_CHILDREN"):
-            return inter.application_command.reset_cooldown(inter)
-
-        if inter.author.id in App.config("NO_COOL_DOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
+        self.markov_sentences = generate_sentences_for_seed_words(
+            MARKOV_MODEL,
+            ["wolfram"],
+            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        )
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="roll", description="roll a dice")
     async def roll(
         self,
@@ -87,7 +68,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         """
         return await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")
     async def wolfram(
         self,
@@ -106,7 +87,7 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.defer()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
-        embed.set_footer(text=f"{self.generate_sentence('wolfram')}")
+        embed.set_footer(text=f"{self.get_generated_sentence('wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
         )
@@ -114,9 +95,11 @@ class Info(commands.Cog):  # pylint: disable=too-many-instance-attributes
         results = self.wolfram_api.query(question)
 
         if not results["@success"]:
+            with Session(connect_to_database_engine()) as session:
+                bad_word = random.choice(session.query(BadWord).all()).word
             embed.add_field(
                 name=f"{question}",
-                value=f"You {random.choice(self.bad_words)}, you asked a question Stephen Wolfram couldn't answer.",
+                value=f"You {bad_word}, you asked a question Stephen Wolfram couldn't answer.",
                 inline=False,
             )
             return await inter.edit_original_message(embed=embed)
