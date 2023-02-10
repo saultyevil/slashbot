@@ -58,11 +58,11 @@ class App:
         "ENABLE_PREGEN_SENTENCES": True,
     }
 
-    __conf["SLASH_SERVERS"] = [
+    __conf["SLASH_SERVERS"] = (
         __conf["ID_SERVER_ADULT_CHILDREN"],
         __conf["ID_SERVER_FREEDOM"],
         __conf["ID_SERVER_BUMPAPER"],
-    ]
+    )
 
     __conf["NO_COOL_DOWN_USERS"] = [__conf["ID_USER_SAULTYEVIL"]]
 
@@ -119,27 +119,29 @@ class App:
 # Set up logger ----------------------------------------------------------------
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
-formatter = logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S")
 
 console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
+console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
 console_handler.setLevel(logging.DEBUG)
-
-file_handler = RotatingFileHandler(
-    filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
-)
-file_handler.setFormatter(formatter)
-file_handler.setLevel(logging.DEBUG)
-
 logger.addHandler(console_handler)
-logger.addHandler(file_handler)
-logger.setLevel(logging.DEBUG)
+
+if App.config("LOGFILE_NAME").parent.exists():
+    file_handler = RotatingFileHandler(
+        filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
+    )
+    file_handler.setFormatter(
+        logging.Formatter("[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S")
+    )
+    file_handler.setLevel(logging.DEBUG)
+    logger.addHandler(file_handler)
+
 logger.propagate = False
 
 # Set up logger for disnake ----------------------------------------------------
 
-disnake_handler = logging.FileHandler(filename="log/disnake.log", encoding="utf-8", mode="w")
-disnake_handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
-logger_disnake = logging.getLogger("disnake")
-logger_disnake.setLevel(logging.DEBUG)
-logger_disnake.addHandler(disnake_handler)
+if Path("log/").exists():
+    disnake_handler = logging.FileHandler(filename="log/disnake.log", encoding="utf-8", mode="w")
+    disnake_handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+    logger_disnake = logging.getLogger("disnake")
+    logger_disnake.setLevel(logging.DEBUG)
+    logger_disnake.addHandler(disnake_handler)
