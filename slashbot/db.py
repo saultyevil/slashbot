@@ -153,7 +153,7 @@ async def migrate_old_json_to_db(client) -> None:
                         user_id=int(user_id),
                         user_name=user.name,
                         city=items.get("location", None),
-                        country=items.get("country", None),
+                        country_code=items.get("country", None),
                         bad_word=items.get("badword", None),
                     )
                 )
