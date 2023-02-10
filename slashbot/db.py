@@ -137,7 +137,7 @@ async def migrate_old_json_to_db(client) -> None:
     is in the JSON is ignored.
     """
     with Session(connect_to_database_engine()) as session:
-        if path := pathlib.Path("data/users.json").exists():
+        if (path := pathlib.Path("data/users.json")).exists():
             with open(path, "r", encoding="utf-8") as file_in:
                 user_json = json.load(file_in)
             for user_id, items in user_json.items():
