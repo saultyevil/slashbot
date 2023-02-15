@@ -13,6 +13,7 @@ import disnake
 import requests
 from disnake.ext import commands
 
+from slashbot import __version__
 from slashbot.config import App
 from slashbot.custom_cog import CustomCog
 
@@ -30,6 +31,13 @@ class AdminCommands(CustomCog):
         self.log_path = Path(log_path)
 
     # Commands -----------------------------------------------------------------
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.slash_command(name="version", description="get the version number of the bot")
+    async def check_version(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Check the version of the bot in use
+        """
+        await inter.response.send_message(f"Version {__version__}", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="logfile", description="get the tail of the logfile")
