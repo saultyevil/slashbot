@@ -6,6 +6,8 @@ data/chain.pickle
 data/chain.pickle.bak
 *.db
 log/
+data/images
+data/tweets.csv
 
 # IDE specific directories
 

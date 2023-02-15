@@ -104,6 +104,39 @@ class Reminder(Base):
     user = relationship("User", back_populates="reminders")
 
 
+class Image(Base):
+    """_summary_
+
+    Parameters
+    ----------
+    Base : _type_
+        _description_
+    """
+
+    __tablename__ = "images"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    file_path = Column(String(256), index=True)
+
+
+class Tweet(Base):
+    """_summary_
+
+    Parameters
+    ----------
+    Base : _type_
+        _description_
+    """
+
+    __tablename__ = "tweets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    user = Column(String(64), index=True)
+    date = Column(DateTime(), index=True)
+    tweet = Column(String(280), nullable=True)
+    image_url = Column(String(256))
+
+
 # Functions --------------------------------------------------------------------
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))

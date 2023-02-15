@@ -56,6 +56,8 @@ class App:
         "PREGEN_MARKOV_SENTENCES_AMOUNT": 5,
         "PREGEN_REGENERATE_LIMIT": 1,
         "ENABLE_PREGEN_SENTENCES": True,
+        "IMAGE_DIRECTORY": Path("data/images"),
+        "TWEET_FILE": Path("data/tweets.csv"),
     }
 
     __conf["SLASH_SERVERS"] = (
