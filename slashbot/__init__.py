@@ -11,4 +11,4 @@ based upon.
 - config.py includes code to configure the bot
 """
 
-__version__ = "3.1.0"
+__version__ = "3.2.0"
