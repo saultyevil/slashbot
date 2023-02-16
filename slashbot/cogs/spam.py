@@ -22,10 +22,10 @@ from slashbot.db import connect_to_database_engine
 from slashbot.db import BadWord
 from slashbot.db import User
 from slashbot.db import OracleWord
+from slashbot.db import populate_word_tables_with_new_words
 from slashbot.custom_cog import CustomCog
 from slashbot.markov import MARKOV_MODEL
 from slashbot.markov import update_markov_chain_for_model
-from slashbot.markov import generate_sentences_for_seed_words
 from slashbot.markov import generate_sentence
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -58,6 +58,21 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)
+
+        # This will populate the bad word and oracle tables with new words
+        populate_word_tables_with_new_words()
+
+        # this forces a markov chain update when the bot exits, e.g. ctrl+c
+        self.bot.add_to_cleanup(
+            None,
+            update_markov_chain_for_model,
+            (
+                None,
+                MARKOV_MODEL,
+                self.markov_update_sentences.values(),
+                App.config("MARKOV_CHAIN_FILE"),
+            ),
+        )
 
     # Slash commands -----------------------------------------------------------
 

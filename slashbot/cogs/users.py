@@ -15,6 +15,7 @@ from slashbot.custom_cog import CustomCog
 from slashbot.db import connect_to_database_engine
 from slashbot.db import get_user
 from slashbot.db import BadWord
+from slashbot.db import migrate_old_json_to_db
 from slashbot.util import convert_string_to_lower
 from slashbot.error import deferred_error_message
 
@@ -40,6 +41,12 @@ class UserCommands(CustomCog):
         """
         super().__init__()
         self.bot = bot
+
+    # Cog functions ------------------------------------------------------------
+
+    async def cog_load(self) -> None:
+        """Stuff which needs to happen at cog load."""
+        await migrate_old_json_to_db(self.bot)
 
     # Commands -----------------------------------------------------------------
 

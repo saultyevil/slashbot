@@ -25,8 +25,6 @@ import slashbot.cogs.weather
 
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
-from slashbot.db import populate_word_tables_with_new_words
-from slashbot.db import migrate_old_json_to_db
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
@@ -49,26 +47,19 @@ for cog in [
 ]:
     bot.add_cog(cog)
 
-# bot.add_to_cleanup(None, update_markov_chain_for_model, [None])
-
 # Bot events ---------------------------------------------------------------
 
 
 @bot.event
 async def on_ready() -> None:
     """Information to print on bot launch."""
+
     logger.info("Logged in as %s in the current servers:", bot.user)
 
     for n_server, server in enumerate(bot.guilds):
         logger.info("\t%d). %s (%d)", n_server, server.name, server.id)
 
     logger.info("Started in %.2f seconds", time.time() - start)
-
-    # This will populate the bad word and oracle tables with new words
-    populate_word_tables_with_new_words()
-
-    # Migrate stuff from JSON to the DB
-    await migrate_old_json_to_db(bot)
 
 
 @bot.event
