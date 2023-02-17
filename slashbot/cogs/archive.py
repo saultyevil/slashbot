@@ -63,7 +63,7 @@ class ArchiveCommands(CustomCog):
 
         with Session(connect_to_database_engine()) as session:
             with open(path, "r", encoding="utf-8") as file_in:
-                for tweet_line in csv.DictReader(file_in):
+                for tweet_line in csv.DictReader(file_in, quotechar='"', delimiter=","):
                     user = tweet_line.get("UserName", None)
                     if not user:
                         continue
