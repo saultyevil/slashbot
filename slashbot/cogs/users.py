@@ -42,12 +42,6 @@ class UserCommands(CustomCog):
         super().__init__()
         self.bot = bot
 
-    # Cog functions ------------------------------------------------------------
-
-    async def cog_load(self) -> None:
-        """Stuff which needs to happen at cog load."""
-        await migrate_old_json_to_db(self.bot)
-
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)

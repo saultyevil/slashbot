@@ -25,6 +25,7 @@ import slashbot.cogs.weather
 
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
+from slashbot.db import migrate_old_json_to_db
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 start = time.time()
@@ -47,7 +48,20 @@ for cog in [
 ]:
     bot.add_cog(cog)
 
+
 # Bot events ---------------------------------------------------------------
+
+
+@bot.event
+async def on_connect() -> None:
+    """_summary_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    await migrate_old_json_to_db(bot)
 
 
 @bot.event
