@@ -78,6 +78,8 @@ class ArchiveCommands(CustomCog):
 
                     image_query = session.query(Image).filter(Image.image_url == image_url)
                     if image_url and image_query.count() == 0:
+                        if "twitpic.com" in image_url:
+                            continue
                         session.add(
                             Image(
                                 image_url=image_url.replace("&name=small", "&name=orig")
