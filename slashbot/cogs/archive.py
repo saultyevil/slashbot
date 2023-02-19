@@ -121,7 +121,9 @@ class ArchiveCommands(CustomCog):
 
         embed = disnake.Embed(title=tweet.tweet, description="", color=disnake.Colour.yellow())
         embed.set_image(url=tweet.image_url)
-        embed.set_footer(text=f"{tweet.user} - {datetime.datetime.strftime(tweet.date, r'%-d %B %Y')}")
+        embed.set_footer(
+            text=f"{tweet.user} - {datetime.datetime.strftime(tweet.date, r'%-d %B %Y')}\n{tweet.tweet_url}"
+        )
 
         await inter.edit_original_message(embed=embed)
 
