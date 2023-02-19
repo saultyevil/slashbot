@@ -20,6 +20,7 @@ from slashbot.custom_cog import CustomCog
 from slashbot.db import connect_to_database_engine
 from slashbot.db import Tweet
 from slashbot.db import Image
+from slashbot.error import deferred_error_message
 
 cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -67,12 +68,15 @@ class ArchiveCommands(CustomCog):
                     else:
                         image_url = random.choice(image_url)
 
+                    tweet_url = tweet_line.get("Tweet URL", None)
+
                     session.add(
                         Tweet(
                             user=user,
                             tweet=tweet,
                             date=date,
                             image_url=image_url,
+                            tweet_url=tweet_url,
                         )
                     )
 
@@ -94,12 +98,23 @@ class ArchiveCommands(CustomCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="tweet", description="send a tweet to the chat")
-    async def tweet(self, inter: disnake.ApplicationCommandInteraction):
+    async def tweet(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        search_term: str = commands.Param(description="A term for search for in tweets", default=None),
+    ):
         """Send a tweet to chat."""
         await inter.response.defer()
         with Session(connect_to_database_engine()) as session:
             while True:
-                tweet = random.choice(session.query(Tweet).all())
+                if search_term:
+                    tweets_with_term = session.query(Tweet).filter(Tweet.tweet.contains(search_term))
+                    if tweets_with_term.count() == 0:
+                        return await deferred_error_message(inter, f"No tweets found containing term {search_term}")
+                    tweet = random.choice(tweets_with_term.all())
+                else:
+                    tweet = random.choice(session.query(Tweet).all())
+
                 if len(tweet.tweet) < 256:
                     break
 
