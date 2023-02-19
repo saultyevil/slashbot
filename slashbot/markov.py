@@ -196,6 +196,8 @@ async def update_markov_chain_for_model(
     if inter:
         await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
 
+    logger.debug("Markov chain updated with %s new messages", len(messages))
+
     return model
 
 
