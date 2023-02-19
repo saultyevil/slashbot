@@ -119,11 +119,9 @@ class ArchiveCommands(CustomCog):
                 if len(tweet.tweet) < 256:
                     break
 
-        embed = disnake.Embed(title=tweet.tweet, description="", color=disnake.Colour.yellow())
+        embed = disnake.Embed(title=tweet.tweet, description=f"{tweet.tweet_url}", color=disnake.Colour.yellow())
         embed.set_image(url=tweet.image_url)
-        embed.set_footer(
-            text=f"{tweet.user} - {datetime.datetime.strftime(tweet.date, r'%-d %B %Y')} - {tweet.tweet_url}"
-        )
+        embed.set_footer(text=f"{tweet.user} - {datetime.datetime.strftime(tweet.date, r'%-d %B %Y')}")
 
         await inter.edit_original_message(embed=embed)
 
@@ -131,10 +129,7 @@ class ArchiveCommands(CustomCog):
     @commands.slash_command(name="picture", description="send a picture to the chat")
     async def picture(self, inter: disnake.ApplicationCommandInteraction):
         """Send a picture to chat."""
-        # await inter.response.defer()
-
         with Session(connect_to_database_engine()) as session:
             image_file_path = random.choice(session.query(Image).all()).image_url
 
-        # await inter.edit_original_message(file=disnake.File(image_file_path))
         await inter.response.send_message(f"{image_file_path}")
