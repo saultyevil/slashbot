@@ -135,6 +135,7 @@ class Tweet(Base):
     date = Column(DateTime(), index=True)
     tweet = Column(String(280), nullable=True)
     image_url = Column(String(256))
+    tweet_url = Column(String(256))
 
 
 # Functions --------------------------------------------------------------------
