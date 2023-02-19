@@ -10,6 +10,7 @@ import random
 import logging
 import datetime
 from pathlib import Path
+import string
 
 import disnake
 from disnake.ext import commands
@@ -52,7 +53,7 @@ class ArchiveCommands(CustomCog):
                     if not user:
                         continue
 
-                    tweet = tweet_line["Embedded_text"]
+                    tweet = tweet_line["Embedded_text"].rstrip(string.digits)
                     date = datetime.datetime.fromisoformat(tweet_line.get("Timestamp"))
 
                     query = session.query(Tweet).filter(Tweet.date == date and Tweet.user == user)
