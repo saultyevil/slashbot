@@ -39,27 +39,10 @@ class ArchiveCommands(CustomCog):
 
     def __initialise_database(self) -> None:
         """Fill in any missing images or tweets."""
-        if not (path := Path(App.config("IMAGE_DIRECTORY"))).exists():
-            return logger.info("No tweet image directory found at %s", App.config("IMAGE_DIRECTORY"))
-
-        with Session(connect_to_database_engine()) as session:
-            for image_path in path.glob("*.jpg"):
-                path = str(image_path.resolve())
-
-                query = session.query(Image).filter(Image.file_path == path)
-                if query.count() > 0:
-                    continue
-
-                session.add(
-                    Image(
-                        file_path=path,
-                    )
-                )
-
-            session.commit()
 
         if not (path := Path(App.config("TWEET_FILE"))).exists():
-            return logger.info("No tweets CSV file at %s", App.config("TWEET_FILE"))
+            logger.error("No tweets CSV file at %s", App.config("TWEET_FILE"))
+            return
 
         with Session(connect_to_database_engine()) as session:
             with open(path, "r", encoding="utf-8") as file_in:
@@ -93,6 +76,16 @@ class ArchiveCommands(CustomCog):
                         )
                     )
 
+                    image_query = session.query(Image).filter(Image.image_url == image_url)
+                    if image_url and image_query.count() == 0:
+                        session.add(
+                            Image(
+                                image_url=image_url.replace("&name=small", "&name=orig")
+                                .replace("&name=900x900", "&name=orig")
+                                .replace("&name=360x360", "&name=orig"),
+                            )
+                        )
+
             session.commit()
 
     # Commands -----------------------------------------------------------------
@@ -108,8 +101,6 @@ class ArchiveCommands(CustomCog):
                 if len(tweet.tweet) < 256:
                     break
 
-        print(tweet.id, tweet.tweet)
-
         embed = disnake.Embed(title=tweet.tweet, description="", color=disnake.Colour.yellow())
         embed.set_image(url=tweet.image_url)
         embed.set_footer(text=f"{tweet.user} - {datetime.datetime.strftime(tweet.date, r'%-d %B %Y')}")
@@ -120,9 +111,10 @@ class ArchiveCommands(CustomCog):
     @commands.slash_command(name="picture", description="send a picture to the chat")
     async def picture(self, inter: disnake.ApplicationCommandInteraction):
         """Send a picture to chat."""
-        await inter.response.defer()
+        # await inter.response.defer()
 
         with Session(connect_to_database_engine()) as session:
-            image_file_path = random.choice(session.query(Image).all()).file_path
+            image_file_path = random.choice(session.query(Image).all()).image_url
 
-        await inter.edit_original_message(file=disnake.File(image_file_path))
+        # await inter.edit_original_message(file=disnake.File(image_file_path))
+        await inter.response.send_message(f"{image_file_path}")
