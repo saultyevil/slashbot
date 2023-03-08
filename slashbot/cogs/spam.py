@@ -170,6 +170,9 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
 
         self.markov_update_sentences.clear()
 
+        if len(self.markov_update_sentences) != 0:
+            logger.error("markov sentences to learn has not been cleared correctly")
+
         await inter.edit_original_message("Markov chain updated.")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -312,3 +315,8 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
             self.markov_update_sentences.values(),
             App.config("MARKOV_CHAIN_FILE"),
         )
+
+        self.markov_update_sentences.clear()
+
+        if len(self.markov_update_sentences) != 0:
+            logger.error("markov sentences to learn has not been cleared correctly")

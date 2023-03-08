@@ -80,9 +80,14 @@ def load_markov_model(chain_location: str | Path) -> markovify.Text:
         chain_location = Path(chain_location)
 
     model = markovify.Text("Jack is a naughty boy. Edward is a good boy.")
+
     if chain_location.exists():
         with open(chain_location, "rb") as file_in:
-            model.chain = pickle.load(file_in)
+            try:
+                model.chain = pickle.load(file_in)
+            except EOFError:
+                shutil.copy2(str(chain_location) + ".bak", chain_location)
+                model = load_markov_model(chain_location)  # the recursion might be a bit spicy here
 
     return model
 
