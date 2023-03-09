@@ -73,7 +73,7 @@ async def on_ready() -> None:
     """Information to print on bot launch."""
     bot.times_connected += 1
 
-    if bot.times_connected > 1:
+    if bot.times_connected == 1:
         logger.info("Logged in as %s in the current servers:", bot.user)
 
         for n_server, server in enumerate(bot.guilds):
