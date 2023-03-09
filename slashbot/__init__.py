@@ -6,4 +6,4 @@ Slashbot is a package which contains the base code the command cogs are
 based upon.
 """
 
-__version__ = "3.2.0"
+__version__ = "3.2.1"
