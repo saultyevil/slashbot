@@ -32,7 +32,11 @@ start = time.time()
 
 # Set up the bot and cogs --------------------------------------------------
 
-bot = ModifiedInteractionBot(intents=disnake.Intents.default())
+intents = disnake.Intents.default()
+intents.message_content = True
+intents.members = True
+
+bot = ModifiedInteractionBot(intents=intents)
 
 for cog in [
     slashbot.cogs.admin.AdminCommands(bot, App.config("LOGFILE_NAME")),
