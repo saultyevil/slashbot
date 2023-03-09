@@ -159,6 +159,8 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
+        await inter.response.defer(ephemeral=True)
+
         await update_markov_chain_for_model(
             inter,
             MARKOV_MODEL,
@@ -166,8 +168,12 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
             App.config("MARKOV_CHAIN_FILE"),
         )
 
-        logger.info("Markov chain updated with %d sentences", len(self.markov_update_sentences))
         self.markov_update_sentences.clear()
+
+        if len(self.markov_update_sentences) != 0:
+            logger.error("markov sentences to learn has not been cleared correctly")
+
+        await inter.edit_original_message("Markov chain updated.")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="oracle", description="a message from god")
@@ -309,3 +315,8 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
             self.markov_update_sentences.values(),
             App.config("MARKOV_CHAIN_FILE"),
         )
+
+        self.markov_update_sentences.clear()
+
+        if len(self.markov_update_sentences) != 0:
+            logger.error("markov sentences to learn has not been cleared correctly")

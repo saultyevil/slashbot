@@ -10,6 +10,7 @@ import random
 import logging
 import datetime
 from pathlib import Path
+import string
 
 import disnake
 from disnake.ext import commands
@@ -20,6 +21,7 @@ from slashbot.custom_cog import CustomCog
 from slashbot.db import connect_to_database_engine
 from slashbot.db import Tweet
 from slashbot.db import Image
+from slashbot.error import deferred_error_message
 
 cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -39,27 +41,10 @@ class ArchiveCommands(CustomCog):
 
     def __initialise_database(self) -> None:
         """Fill in any missing images or tweets."""
-        if not (path := Path(App.config("IMAGE_DIRECTORY"))).exists():
-            return logger.info("No tweet image directory found at %s", App.config("IMAGE_DIRECTORY"))
-
-        with Session(connect_to_database_engine()) as session:
-            for image_path in path.glob("*.jpg"):
-                path = str(image_path.resolve())
-
-                query = session.query(Image).filter(Image.file_path == path)
-                if query.count() > 0:
-                    continue
-
-                session.add(
-                    Image(
-                        file_path=path,
-                    )
-                )
-
-            session.commit()
 
         if not (path := Path(App.config("TWEET_FILE"))).exists():
-            return logger.info("No tweets CSV file at %s", App.config("TWEET_FILE"))
+            logger.error("No tweets CSV file at %s", App.config("TWEET_FILE"))
+            return
 
         with Session(connect_to_database_engine()) as session:
             with open(path, "r", encoding="utf-8") as file_in:
@@ -68,7 +53,7 @@ class ArchiveCommands(CustomCog):
                     if not user:
                         continue
 
-                    tweet = tweet_line["Embedded_text"]
+                    tweet = tweet_line["Embedded_text"].rstrip(string.digits)
                     date = datetime.datetime.fromisoformat(tweet_line.get("Timestamp"))
 
                     query = session.query(Tweet).filter(Tweet.date == date and Tweet.user == user)
@@ -84,14 +69,29 @@ class ArchiveCommands(CustomCog):
                     else:
                         image_url = random.choice(image_url)
 
+                    tweet_url = tweet_line.get("Tweet URL", None)
+
                     session.add(
                         Tweet(
                             user=user,
                             tweet=tweet,
                             date=date,
                             image_url=image_url,
+                            tweet_url=tweet_url,
                         )
                     )
+
+                    image_query = session.query(Image).filter(Image.image_url == image_url)
+                    if image_url and image_query.count() == 0:
+                        if "twitpic.com" in image_url:
+                            continue
+                        session.add(
+                            Image(
+                                image_url=image_url.replace("&name=small", "&name=orig")
+                                .replace("&name=900x900", "&name=orig")
+                                .replace("&name=360x360", "&name=orig"),
+                            )
+                        )
 
             session.commit()
 
@@ -99,18 +99,27 @@ class ArchiveCommands(CustomCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="tweet", description="send a tweet to the chat")
-    async def tweet(self, inter: disnake.ApplicationCommandInteraction):
+    async def tweet(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        search_term: str = commands.Param(description="A term for search for in tweets", default=None),
+    ):
         """Send a tweet to chat."""
         await inter.response.defer()
         with Session(connect_to_database_engine()) as session:
             while True:
-                tweet = random.choice(session.query(Tweet).all())
+                if search_term:
+                    tweets_with_term = session.query(Tweet).filter(Tweet.tweet.contains(search_term))
+                    if tweets_with_term.count() == 0:
+                        return await deferred_error_message(inter, f"No tweets found containing term {search_term}")
+                    tweet = random.choice(tweets_with_term.all())
+                else:
+                    tweet = random.choice(session.query(Tweet).all())
+
                 if len(tweet.tweet) < 256:
                     break
 
-        print(tweet.id, tweet.tweet)
-
-        embed = disnake.Embed(title=tweet.tweet, description="", color=disnake.Colour.yellow())
+        embed = disnake.Embed(title=tweet.tweet, description=f"{tweet.tweet_url}", color=disnake.Colour.yellow())
         embed.set_image(url=tweet.image_url)
         embed.set_footer(text=f"{tweet.user} - {datetime.datetime.strftime(tweet.date, r'%-d %B %Y')}")
 
@@ -120,9 +129,7 @@ class ArchiveCommands(CustomCog):
     @commands.slash_command(name="picture", description="send a picture to the chat")
     async def picture(self, inter: disnake.ApplicationCommandInteraction):
         """Send a picture to chat."""
-        await inter.response.defer()
-
         with Session(connect_to_database_engine()) as session:
-            image_file_path = random.choice(session.query(Image).all()).file_path
+            image_file_path = random.choice(session.query(Image).all()).image_url
 
-        await inter.edit_original_message(file=disnake.File(image_file_path))
+        await inter.response.send_message(f"{image_file_path}")

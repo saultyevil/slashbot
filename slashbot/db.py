@@ -115,7 +115,7 @@ class Image(Base):
 
     __tablename__ = "images"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    file_path = Column(String(256), index=True)
+    image_url = Column(String(256), index=True)
 
 
 class Tweet(Base):
@@ -135,6 +135,7 @@ class Tweet(Base):
     date = Column(DateTime(), index=True)
     tweet = Column(String(280), nullable=True)
     image_url = Column(String(256))
+    tweet_url = Column(String(256))
 
 
 # Functions --------------------------------------------------------------------
