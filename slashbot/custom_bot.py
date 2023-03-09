@@ -25,6 +25,7 @@ class ModifiedInteractionBot(commands.InteractionBot):
         """Initialize the class."""
         super().__init__(**kwargs)
         self.cleanup_functions = []
+        self.times_connected = 0
 
     def add_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:
         """Add a function to the cleanup list.

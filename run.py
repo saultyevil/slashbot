@@ -71,13 +71,17 @@ async def on_connect() -> None:
 @bot.event
 async def on_ready() -> None:
     """Information to print on bot launch."""
+    bot.times_connected += 1
 
-    logger.info("Logged in as %s in the current servers:", bot.user)
+    if bot.times_connected > 1:
+        logger.info("Logged in as %s in the current servers:", bot.user)
 
-    for n_server, server in enumerate(bot.guilds):
-        logger.info("\t%d). %s (%d)", n_server, server.name, server.id)
+        for n_server, server in enumerate(bot.guilds):
+            logger.info("\t%d). %s (%d)", n_server, server.name, server.id)
 
-    logger.info("Started in %.2f seconds", time.time() - start)
+        logger.info("Started in %.2f seconds", time.time() - start)
+    else:
+        logger.info("Bot reconnected")
 
 
 @bot.event
