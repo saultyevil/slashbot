@@ -109,8 +109,10 @@ class ReminderCommands(CustomCog):
 
                 if reminder.tagged_users:
                     for user_id in reminder.tagged_users.split(","):
+                        if user_id == str(reminder.user_id):
+                            continue
                         user = await self.bot.fetch_user(int(user_id))
-                        if user:
+                        if user and user.mention not in message:
                             message += f" {user.mention}"
 
                 self.session.delete(reminder)
