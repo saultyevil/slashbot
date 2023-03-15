@@ -18,6 +18,7 @@ import slashbot.cogs.archive
 import slashbot.cogs.content
 import slashbot.cogs.info
 import slashbot.cogs.remind
+import slashbot.cogs.scheduled_posts
 import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
@@ -45,6 +46,7 @@ for cog in [
     slashbot.cogs.content.ContentCommands(bot),
     slashbot.cogs.info.InfoCommands(bot),
     slashbot.cogs.remind.ReminderCommands(bot),
+    slashbot.cogs.scheduled_posts.ScheduledPosts(bot),
     slashbot.cogs.spam.SpamCommands(bot),
     slashbot.cogs.users.UserCommands(bot),
     slashbot.cogs.videos.VideoCommands(bot),
