@@ -13,7 +13,6 @@ import disnake
 from disnake.ext import commands
 
 import slashbot.cogs.admin
-import slashbot.cogs.ai
 import slashbot.cogs.archive
 import slashbot.cogs.content
 import slashbot.cogs.info
@@ -40,7 +39,6 @@ bot = ModifiedInteractionBot(intents=intents)
 
 for cog in [
     slashbot.cogs.admin.AdminCommands(bot, App.config("LOGFILE_NAME")),
-    slashbot.cogs.ai.AICommands(bot),
     slashbot.cogs.archive.ArchiveCommands(bot),
     slashbot.cogs.content.ContentCommands(bot),
     slashbot.cogs.info.InfoCommands(bot),

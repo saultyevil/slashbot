@@ -8,7 +8,6 @@ services:
       - BOT_TOKEN
       - OWM_API_KEY
       - WOLFRAM_API_KEY
-      - OPENAI_API_KEY
       - TZ=Europe/London
     env_file: docker-env.env
     volumes:
