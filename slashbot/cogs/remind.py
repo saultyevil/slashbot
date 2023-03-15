@@ -15,6 +15,7 @@ from dateutil import parser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
 from slashbot.config import App
 from slashbot.custom_cog import CustomCog
@@ -31,6 +32,31 @@ TIME_UNITS = {
     "Minutes": 60,
     "Hours": 3600,
 }
+
+
+def get_reminders_for_user(inter: disnake.ApplicationCommandInteraction, _: str) -> List[str]:
+    """Get the reminders for a user.
+
+    TODO, bit of a performance issue here as whenever the user inputs another
+          character, this function will re-run and query the database again
+          which involves creating a session and running a list comprehension
+
+    Parameters
+    ----------
+    inter : disnake.ApplicationCommandInteraction
+        _description_
+    _ : str
+        _description_
+
+    Returns
+    -------
+    str
+        _description_
+    """
+    with Session(connect_to_database_engine()) as session:
+        reminders = session.query(ReminderDB).filter(ReminderDB.user_id == inter.author.id)
+
+    return [reminder.reminder for reminder in reminders]
 
 
 class ReminderCommands(CustomCog):
@@ -201,8 +227,8 @@ class ReminderCommands(CustomCog):
     async def forget_reminder(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        reminder_id: str = commands.Param(
-            description="The ID of the reminder you want to forget. Use /show_reminders to see your reminders."
+        reminder: str = commands.Param(
+            autocomplete=get_reminders_for_user, description="The reminder you want to forget."
         ),
     ) -> coroutine:
         """Clear a reminder or all of a user's reminders.
@@ -214,7 +240,7 @@ class ReminderCommands(CustomCog):
         m_id: str
             The id of the reminder to remove.
         """
-        reminder = self.session.query(ReminderDB).filter(ReminderDB.id == reminder_id).first()
+        reminder = self.session.query(ReminderDB).filter(ReminderDB.reminder == reminder).first()
         if not reminder:
             return await inter.response.send_message("There is no reminder with that ID.", ephemeral=True)
         if reminder.user_id != inter.author.id:
