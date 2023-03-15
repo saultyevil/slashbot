@@ -27,7 +27,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
 WEATHER_UNITS = ["metric", "imperial"]
-WEATHER_COMMAND_CHOICES = ["weather", "temperature", "rain", "wind"]
+WEATHER_COMMAND_CHOICES = ["everything", "temperature", "humidity", "rain", "wind"]
 
 
 class WeatherCommands(CustomCog):
@@ -220,6 +220,28 @@ class WeatherCommands(CustomCog):
             value=f"{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{units['t_units_fmt']}",
             inline=False,
         )
+
+        return embed
+
+    def __add_humidity_to_embed(
+        self, weather: pyowm.weatherapi25.observation.Observation, embed: disnake.Embed, units: dict
+    ) -> disnake.Embed:
+        """Put the humidity into the embed.
+
+        Parameters
+        ----------
+        weather: pyowm.weatherapi25.observation.Observation
+            The weather object.
+        embed: disnake.Embed
+            The embed to put the temperature into.
+        units: dict
+            The units to use.
+
+        Returns
+        -------
+        embed: disnake.Embed
+            The updated Embed.
+        """
         embed.add_field(name="Humidity", value=f"{weather.humidity:.0f}%", inline=False)
 
         return embed
@@ -322,6 +344,7 @@ class WeatherCommands(CustomCog):
         """
 
         embed = self.__add_temperature_to_embed(weather, embed, units)
+        embed = self.__add_humidity_to_embed(weather, embed, None)
         embed = self.__add_rain_to_embed(weather, embed, None)
         embed = self.__add_wind_to_embed(weather, embed, units)
 
@@ -458,7 +481,7 @@ class WeatherCommands(CustomCog):
         )
 
         match weather_type:
-            case "weather":
+            case "everything":
                 embed.add_field(
                     name="Description",
                     value=f"{weather.detailed_status.capitalize()}",
@@ -467,6 +490,8 @@ class WeatherCommands(CustomCog):
                 embed = self.__add_everything_to_embed(weather, embed, units)
             case "temperature":
                 embed = self.__add_temperature_to_embed(weather, embed, units)
+            case "humidity":
+                embed = self.__add_humidity_to_embed(weather, embed, None)
             case "rain":
                 embed = self.__add_rain_to_embed(weather, embed, "mm")
             case "wind":
