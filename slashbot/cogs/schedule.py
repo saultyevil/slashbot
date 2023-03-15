@@ -206,7 +206,12 @@ class ScheduledPosts(CustomCog):
 
         for post in self.scheduled_posts:
             sleep_for = calculate_sleep_time(post.day, post.hour, post.minute)
-            logger.info("Waiting %.1f hours until posting message with file %s", sleep_for / 3600.0, post.file)
+            logger.info(
+                "Waiting %d minutes (%.1f hours) until posting message with file %s",
+                int(sleep_for / 60),
+                sleep_for / 3600.0,
+                post.file,
+            )
             await asyncio.sleep(sleep_for)
 
             channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
