@@ -432,8 +432,8 @@ class WeatherCommands(CustomCog):
         city: str = commands.Param(
             description="The city to get weather for, default is your saved location.", default=None
         ),
-        weather_type: str = commands.Param(
-            description="The type of weather report to get.", default="weather", choices=WEATHER_COMMAND_CHOICES
+        what: str = commands.Param(
+            description="The type of weather report to get.", default="everything", choices=WEATHER_COMMAND_CHOICES
         ),
         units: str = commands.Param(
             description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
@@ -474,13 +474,14 @@ class WeatherCommands(CustomCog):
 
         weather = weather_at_place.weather
         units = self.__get_units_for_system(units)
+        title = what.capitalize() if what != "everything" else "Weather"
 
         embed = disnake.Embed(
-            title=f"{weather_type.capitalize()} in {weather_at_place.location.name}, {weather_at_place.location.country}",
+            title=f"{title} in {weather_at_place.location.name}, {weather_at_place.location.country}",
             color=disnake.Color.default(),
         )
 
-        match weather_type:
+        match what:
             case "everything":
                 embed.add_field(
                     name="Description",
