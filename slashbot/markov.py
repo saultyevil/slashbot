@@ -226,7 +226,10 @@ def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: 
         _description_
     """
     logger.debug("Generating %d sentences for seed word %s", amount, seed_word)
-    return [generate_sentence(model, seed_word) for _ in range(amount)]
+    generated = [generate_sentence(model, seed_word) for _ in range(amount)]
+    logger.debug("Generated%d sentences for seed word %s", amount, seed_word)
+
+    return generated
 
 
 def generate_sentences_for_seed_words(

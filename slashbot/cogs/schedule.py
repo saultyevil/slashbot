@@ -3,10 +3,12 @@
 
 """Scheduled posts cog."""
 
+from pathlib import Path
 import asyncio
 import logging
 import calendar
 import datetime
+
 import disnake
 from disnake.ext import commands, tasks
 
@@ -152,15 +154,15 @@ class ScheduledPosts(CustomCog):
             Post("data/videos/monday.mp4", calendar.MONDAY, 8, 30, "monday"),
             Post("data/videos/wednesday.mp4", calendar.WEDNESDAY, 8, 30, "wednesday"),
             Post(
-                "data/bin.jpg",
+                "data/bin.png",
                 calendar.THURSDAY,
                 23,
                 54,
                 "bin",
                 "it's time to take the bins out!!!",
-                (App.config("ID_USER_LIME")),
+                (App.config("ID_USER_LIME"),),
             ),
-            Post("data/videos/friday.mp4", calendar.FRIDAY, 8, 30, "friday"),
+            Post("data/videos/friday.mov", calendar.FRIDAY, 8, 30, "friday"),
             Post("data/videos/weekend.mp4", calendar.FRIDAY, 18, 0, "weekend"),
             Post("data/videos/sunday.mp4", calendar.SUNDAY, 8, 30, "sunday"),
         ]
@@ -171,7 +173,7 @@ class ScheduledPosts(CustomCog):
 
         self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
-            [message.seed_word for message in self.scheduled_posts],
+            [post.seed_word for post in self.scheduled_posts],
             1,  # these only happen once in a while, so dont need a big bank of them
         )
 
@@ -203,11 +205,17 @@ class ScheduledPosts(CustomCog):
         again in 10 seconds.
         """
         await self.bot.wait_until_ready()
+        self.__order_videos_by_soonest()
 
         for post in self.scheduled_posts:
+            if not Path(post.file).exists():
+                logger.error("file %s does not exist for %s", post.file, post.message)
+                continue
+
             sleep_for = calculate_sleep_time(post.day, post.hour, post.minute)
             logger.info(
-                "Waiting %d minutes (%.1f hours) until posting message with file %s",
+                "Waiting %d seconds (or %d minutes or %.1f hours) until posting message with file %s",
+                sleep_for,
                 int(sleep_for / 60),
                 sleep_for / 3600.0,
                 post.file,
@@ -216,15 +224,19 @@ class ScheduledPosts(CustomCog):
 
             channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
 
+            markov_sentence = self.get_generated_sentence(post.seed_word).replace(
+                post.seed_word, f"**{post.seed_word}**"
+            )
+
             message = ""
             if post.tagged_users:
-                message += " ".join([await self.bot.fetch_user(user).mention for user in post.tagged_users])
+                if not hasattr(post.tagged_users, "__iter__"):
+                    logger.error("%s has invalid tagged users %s", post.message, post.tagged_users)
+                else:
+                    message += " ".join([(await self.bot.fetch_user(user)).mention for user in post.tagged_users])
             if post.message:
-                message += post
+                message += f" {post.message}"
 
-            await channel.send(
-                f"{message} {self.get_generated_sentence(post.seed_word).replace(post.seed_word, f'**{post.seed_word}**')}",
-                file=disnake.File(post.file),
-            )
+            await channel.send(f"{message} {markov_sentence}", file=disnake.File(post.file))
 
         self.__order_videos_by_soonest()
