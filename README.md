@@ -17,7 +17,7 @@ named `docker-env.env`.
 
 ## Requirements
 
-Python 3.7 or above is required. I use Python 3.11 because it has nicer
+Python 3.10 or above is required. I use Python 3.11 because it has nicer
 error messages and is faster. Requirements for development are in
 `requirements-dev.txt` with requirements for running it in `requirements.txt`.
 

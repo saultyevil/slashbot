@@ -21,7 +21,6 @@ class CustomCog(commands.Cog):
 
     def __init__(self):
         super().__init__()
-
         self.markov_sentences = {}
         self.regenerate_markov_sentences.start()  # pylint: disable=no-member
 

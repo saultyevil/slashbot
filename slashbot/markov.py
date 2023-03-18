@@ -80,9 +80,14 @@ def load_markov_model(chain_location: str | Path) -> markovify.Text:
         chain_location = Path(chain_location)
 
     model = markovify.Text("Jack is a naughty boy. Edward is a good boy.")
+
     if chain_location.exists():
         with open(chain_location, "rb") as file_in:
-            model.chain = pickle.load(file_in)
+            try:
+                model.chain = pickle.load(file_in)
+            except EOFError:
+                shutil.copy2(str(chain_location) + ".bak", chain_location)
+                model = load_markov_model(chain_location)  # the recursion might be a bit spicy here
 
     return model
 
@@ -174,12 +179,14 @@ async def update_markov_chain_for_model(
     if len(new_messages) == 0:
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
+        logger.info("No sentences to update model with")
         return
 
     messages = __clean_sentences_for_learning(new_messages)
     if len(messages) == 0:
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
+        logger.info("No 'clean' sentences to update model with")
         return
 
     shutil.copy2(save_location, str(save_location) + ".bak")
@@ -196,7 +203,7 @@ async def update_markov_chain_for_model(
     if inter:
         await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
 
-    logger.debug("Markov chain updated with %s new messages", len(messages))
+    logger.info("Markov chain updated with %s new messages", len(messages))
 
     return model
 
