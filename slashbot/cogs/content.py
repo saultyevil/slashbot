@@ -75,15 +75,15 @@ class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attribute
         after: disnake.VoiceState
             The voice state afterwards.
         """
-        now = datetime.datetime.now()
-        started_streaming = before.self_stream is False and after.self_stream is True
-
         channel = after.channel
         if not channel:
             return
+
         users_in_channel = len(channel.members) - 1
         if users_in_channel == 0:
             return
+
+        started_streaming = before.self_stream is False and after.self_stream is True
 
         # If there are requests, and this member just started streaming
         if self.current_content_requests and started_streaming:
@@ -93,6 +93,7 @@ class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attribute
             for idx, request in enumerate(self.current_content_requests):
                 user_id = str(request["who"].id)
                 when = datetime.datetime.fromisoformat(request["when"])
+                now = datetime.datetime.now()
                 if when < now:
                     await self.modify_leech_coin_balance(user_id, -1)
                     logger.debug("removing %s from list", request["who"])
