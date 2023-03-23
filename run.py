@@ -13,11 +13,11 @@ import disnake
 from disnake.ext import commands
 
 import slashbot.cogs.admin
-import slashbot.cogs.ai
 import slashbot.cogs.archive
 import slashbot.cogs.content
 import slashbot.cogs.info
 import slashbot.cogs.remind
+import slashbot.cogs.schedule
 import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
@@ -40,11 +40,11 @@ bot = ModifiedInteractionBot(intents=intents)
 
 for cog in [
     slashbot.cogs.admin.AdminCommands(bot, App.config("LOGFILE_NAME")),
-    slashbot.cogs.ai.AICommands(bot),
     slashbot.cogs.archive.ArchiveCommands(bot),
     slashbot.cogs.content.ContentCommands(bot),
     slashbot.cogs.info.InfoCommands(bot),
     slashbot.cogs.remind.ReminderCommands(bot),
+    slashbot.cogs.schedule.ScheduledPosts(bot),
     slashbot.cogs.spam.SpamCommands(bot),
     slashbot.cogs.users.UserCommands(bot),
     slashbot.cogs.videos.VideoCommands(bot),

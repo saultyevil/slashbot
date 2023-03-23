@@ -27,7 +27,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
 WEATHER_UNITS = ["metric", "imperial"]
-WEATHER_COMMAND_CHOICES = ["weather", "temperature", "rain", "wind"]
+WEATHER_COMMAND_CHOICES = ["everything", "temperature", "humidity", "rain", "wind"]
 
 
 class WeatherCommands(CustomCog):
@@ -220,6 +220,28 @@ class WeatherCommands(CustomCog):
             value=f"{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{units['t_units_fmt']}",
             inline=False,
         )
+
+        return embed
+
+    def __add_humidity_to_embed(
+        self, weather: pyowm.weatherapi25.observation.Observation, embed: disnake.Embed, units: dict
+    ) -> disnake.Embed:
+        """Put the humidity into the embed.
+
+        Parameters
+        ----------
+        weather: pyowm.weatherapi25.observation.Observation
+            The weather object.
+        embed: disnake.Embed
+            The embed to put the temperature into.
+        units: dict
+            The units to use.
+
+        Returns
+        -------
+        embed: disnake.Embed
+            The updated Embed.
+        """
         embed.add_field(name="Humidity", value=f"{weather.humidity:.0f}%", inline=False)
 
         return embed
@@ -322,6 +344,7 @@ class WeatherCommands(CustomCog):
         """
 
         embed = self.__add_temperature_to_embed(weather, embed, units)
+        embed = self.__add_humidity_to_embed(weather, embed, None)
         embed = self.__add_rain_to_embed(weather, embed, None)
         embed = self.__add_wind_to_embed(weather, embed, units)
 
@@ -409,8 +432,8 @@ class WeatherCommands(CustomCog):
         city: str = commands.Param(
             description="The city to get weather for, default is your saved location.", default=None
         ),
-        weather_type: str = commands.Param(
-            description="The type of weather report to get.", default="weather", choices=WEATHER_COMMAND_CHOICES
+        what: str = commands.Param(
+            description="The type of weather report to get.", default="everything", choices=WEATHER_COMMAND_CHOICES
         ),
         units: str = commands.Param(
             description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
@@ -451,14 +474,15 @@ class WeatherCommands(CustomCog):
 
         weather = weather_at_place.weather
         units = self.__get_units_for_system(units)
+        title = what.capitalize() if what != "everything" else "Weather"
 
         embed = disnake.Embed(
-            title=f"{weather_type.capitalize()} in {weather_at_place.location.name}, {weather_at_place.location.country}",
+            title=f"{title} in {weather_at_place.location.name}, {weather_at_place.location.country}",
             color=disnake.Color.default(),
         )
 
-        match weather_type:
-            case "weather":
+        match what:
+            case "everything":
                 embed.add_field(
                     name="Description",
                     value=f"{weather.detailed_status.capitalize()}",
@@ -467,6 +491,8 @@ class WeatherCommands(CustomCog):
                 embed = self.__add_everything_to_embed(weather, embed, units)
             case "temperature":
                 embed = self.__add_temperature_to_embed(weather, embed, units)
+            case "humidity":
+                embed = self.__add_humidity_to_embed(weather, embed, None)
             case "rain":
                 embed = self.__add_rain_to_embed(weather, embed, "mm")
             case "wind":
