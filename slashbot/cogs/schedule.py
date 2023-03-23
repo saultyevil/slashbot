@@ -169,8 +169,6 @@ class ScheduledPosts(CustomCog):
 
         self.__order_videos_by_soonest()
 
-        logger.info("posting messages in this order: %s", [message.file for message in self.scheduled_posts])
-
         self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             [post.seed_word for post in self.scheduled_posts],
@@ -214,7 +212,7 @@ class ScheduledPosts(CustomCog):
 
             sleep_for = calculate_sleep_time(post.day, post.hour, post.minute)
             logger.info(
-                "Waiting %d seconds (or %d minutes or %.1f hours) until posting message with file %s",
+                "Waiting %d seconds/%d minutes/%.1f hours until posting file %s",
                 sleep_for,
                 int(sleep_for / 60),
                 sleep_for / 3600.0,
