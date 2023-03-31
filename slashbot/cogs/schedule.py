@@ -171,7 +171,13 @@ class ScheduledPosts(CustomCog):
                 (App.config("ID_USER_LIME"),),
             ),
             Post("data/videos/friday.mov", calendar.FRIDAY, 8, 30, "friday"),
-            Post(("data/its_friday.gif", "data/videos/weekend.mp4"), calendar.FRIDAY, 18, 0, "weekend"),
+            Post(
+                ("data/its_friday.gif", "data/friday_night.png", "data/videos/weekend.mp4"),
+                calendar.FRIDAY,
+                18,
+                0,
+                "weekend",
+            ),
             Post("data/videos/sunday.mp4", calendar.SUNDAY, 8, 30, "sunday"),
         ]
 
