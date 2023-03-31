@@ -101,7 +101,7 @@ class Post:
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, file, day, hour, minute, seed_word, message="", tagged_users=None):
+    def __init__(self, files, day, hour, minute, seed_word, message="", tagged_users=None):
         """_summary_
 
         Parameters
@@ -121,13 +121,21 @@ class Post:
         tagged_users : _type_, optional
             _description_, by default None
         """
-        self.file = file
+        if not isinstance(files, (set, list, dict, tuple)):
+            files = (files,)
+
+        if tagged_users is not None and not isinstance(tagged_users, (set, list, dict, tuple)):
+            tagged_users = (tagged_users,)
+
+        self.files = files
+        self.tagged_users = tagged_users
+
         self.day = day
         self.hour = hour
         self.minute = minute
         self.seed_word = seed_word
         self.message = message
-        self.tagged_users = tagged_users
+
         # this tracks how many seconds until the message should be posted
         self.time_until_post = calculate_sleep_time(self.day, self.hour, self.minute)
 
@@ -137,9 +145,9 @@ class Post:
 
 
 class ScheduledPosts(CustomCog):
-    """Schedulded post cog.
+    """Scheduled post cog.
 
-    Schedulded posts shouldd be added to self.scheduled_posts using a Post
+    Scheduled posts should be added to self.scheduled_posts using a Post
     class.
     """
 
@@ -163,7 +171,7 @@ class ScheduledPosts(CustomCog):
                 (App.config("ID_USER_LIME"),),
             ),
             Post("data/videos/friday.mov", calendar.FRIDAY, 8, 30, "friday"),
-            Post("data/videos/weekend.mp4", calendar.FRIDAY, 18, 0, "weekend"),
+            Post(("data/its_friday.gif", "data/videos/weekend.mp4"), calendar.FRIDAY, 18, 0, "weekend"),
             Post("data/videos/sunday.mp4", calendar.SUNDAY, 8, 30, "sunday"),
         ]
 
@@ -175,7 +183,7 @@ class ScheduledPosts(CustomCog):
             1,  # these only happen once in a while, so dont need a big bank of them
         )
 
-        self.send_schedulded_posts.start()  # pylint: disable=no-member
+        self.send_scheduled_posts.start()  # pylint: disable=no-member
 
     # Private methods ----------------------------------------------------------
 
@@ -192,10 +200,10 @@ class ScheduledPosts(CustomCog):
     # Task ---------------------------------------------------------------------
 
     @tasks.loop(seconds=10)
-    async def send_schedulded_posts(self) -> None:
+    async def send_scheduled_posts(self) -> None:
         """Task to loop over the scheduled posts.
 
-        Iterates over all of the schedulded posts. For each post, the bot will
+        Iterates over all of the scheduled posts. For each post, the bot will
         sleep for some time and then post the message, moving onto the next
         message in the list after that.
 
@@ -206,17 +214,18 @@ class ScheduledPosts(CustomCog):
         self.__order_videos_by_soonest()
 
         for post in self.scheduled_posts:
-            if not Path(post.file).exists():
-                logger.error("file %s does not exist for %s", post.file, post.message)
-                continue
+            for file in post.files:
+                if not Path(file).exists():
+                    logger.error("file %s does not exist for %s", post.files, post.message)
+                    continue
 
             sleep_for = calculate_sleep_time(post.day, post.hour, post.minute)
             logger.info(
-                "Waiting %d seconds/%d minutes/%.1f hours until posting file %s",
+                "Waiting %d seconds/%d minutes/%.1f hours until posting %s",
                 sleep_for,
                 int(sleep_for / 60),
                 sleep_for / 3600.0,
-                post.file,
+                post.seed_word.upper(),
             )
             await asyncio.sleep(sleep_for)
 
@@ -235,6 +244,9 @@ class ScheduledPosts(CustomCog):
             if post.message:
                 message += f" {post.message}"
 
-            await channel.send(f"{message} {markov_sentence}", file=disnake.File(post.file))
+            if len(post.files) > 1:
+                await channel.send(f"{message} {markov_sentence}", files=[disnake.File(file) for file in post.files])
+            else:
+                await channel.send(f"{message} {markov_sentence}", file=disnake.File(post.files[0]))
 
         self.__order_videos_by_soonest()

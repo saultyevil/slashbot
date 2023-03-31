@@ -67,7 +67,6 @@ class CustomCog(commands.Cog):
             _description_
         """
         await self.bot.wait_until_ready()
-        logger.debug("Regenerating markov sentences for %s", self.__cog_name__)
 
     # Functions ----------------------------------------------------------------
 
