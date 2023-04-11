@@ -188,6 +188,8 @@ class ScheduledPosts(CustomCog):
             file for file in Path(App.config("RANDOM_MEDIA_DIRECTORY")).rglob("*") if not file.is_dir()
         ]
 
+        logger.info("%d random media files found", len(self.random_media_files))
+
         self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             [post.seed_word for post in self.scheduled_posts],
