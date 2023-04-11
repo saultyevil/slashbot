@@ -58,6 +58,7 @@ class App:
         "ENABLE_PREGEN_SENTENCES": True,
         "IMAGE_DIRECTORY": Path("data/images"),
         "TWEET_FILE": Path("data/tweets.csv"),
+        "RANDOM_MEDIA_DIRECTORY": Path("data/random"),
     }
 
     __conf["SLASH_SERVERS"] = (

@@ -8,6 +8,7 @@ import asyncio
 import logging
 import calendar
 import datetime
+import random
 
 import disnake
 from disnake.ext import commands, tasks
@@ -94,7 +95,7 @@ def calculate_sleep_time(day: int, hour: int, minute: int) -> int:
 
 # pylint: disable=too-few-public-methods
 class Post:
-    """Base class for a scheulded post.
+    """Base class for a scheduled post.
 
     All arguments are required, other than message and tagged_users which are
     optional.
@@ -183,6 +184,10 @@ class ScheduledPosts(CustomCog):
 
         self.__order_videos_by_soonest()
 
+        self.random_media_files = [
+            file for file in Path(App.config("RANDOM_MEDIA_DIRECTORY")).rglob("*") if not file.is_dir()
+        ]
+
         self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
             [post.seed_word for post in self.scheduled_posts],
@@ -190,6 +195,7 @@ class ScheduledPosts(CustomCog):
         )
 
         self.send_scheduled_posts.start()  # pylint: disable=no-member
+        self.random_media_random_time.start()  # pylint: disable=no-member
 
     # Private methods ----------------------------------------------------------
 
@@ -256,3 +262,19 @@ class ScheduledPosts(CustomCog):
                 await channel.send(f"{message} {markov_sentence}", file=disnake.File(post.files[0]))
 
         self.__order_videos_by_soonest()
+
+    @tasks.loop(seconds=1)
+    async def random_media_random_time(self):
+        """Posts a random piece of medium from a directory at a random
+        interval.
+        """
+        await self.bot.wait_until_ready()
+        await asyncio.sleep(random.randint(43200, 129600))  # 12 - 36 hours
+
+        if len(self.random_media_files) == 0:
+            return  # return after sleep to avoid calling every 1 sec
+
+        random_file = random.choice(self.random_media_files)
+        channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
+
+        await channel.send(file=disnake.File(random_file))
