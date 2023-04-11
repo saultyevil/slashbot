@@ -161,6 +161,15 @@ class ScheduledPosts(CustomCog):
 
         self.scheduled_posts = [
             Post("data/videos/monday.mp4", calendar.MONDAY, 8, 30, "monday"),
+            Post(
+                "data/bin.png",
+                calendar.TUESDAY,
+                21,
+                0,
+                "bin",
+                "it's time to take the bins out!!!",
+                (App.config("ID_USER_SAULTYEVIL"),),
+            ),
             Post("data/videos/wednesday.mp4", calendar.WEDNESDAY, 8, 30, "wednesday"),
             Post(
                 "data/bin.png",
