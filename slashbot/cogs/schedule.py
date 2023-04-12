@@ -280,7 +280,7 @@ class ScheduledPosts(CustomCog):
         interval.
         """
         await self.bot.wait_until_ready()
-        sleep_for = random.randint(3600, 86400) # 1 - 24 hours
+        sleep_for = random.randint(3600, 86400)  # 1 - 24 hours
         logger.info("Next random image in %.1f hours", sleep_for / 3600)
         await asyncio.sleep(sleep_for)
 
@@ -288,6 +288,7 @@ class ScheduledPosts(CustomCog):
             return  # return after sleep to avoid return and calling every 1 sec
 
         random_file = random.choice(self.random_media_files)
-        channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
 
-        await channel.send(file=disnake.File(random_file))
+        for channel_id in (App.config("ID_CHANNEL_IDIOTS"), App.config("ID_CHANNEL_ENGORGED")):
+            channel = await self.bot.fetch_channel(channel_id)
+            await channel.send(file=disnake.File(random_file))
