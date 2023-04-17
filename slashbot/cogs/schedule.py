@@ -15,8 +15,9 @@ from disnake.ext import commands, tasks
 
 from slashbot.config import App
 from slashbot.custom_cog import CustomCog
-from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_sentences_for_seed_words
+
+# from slashbot.markov import MARKOV_MODEL
+# from slashbot.markov import generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -102,7 +103,7 @@ class Post:
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, files, day, hour, minute, seed_word, message="", tagged_users=None):
+    def __init__(self, files, day, hour, minute, seed_word, message, tagged_users, channels):
         """_summary_
 
         Parameters
@@ -121,6 +122,8 @@ class Post:
             _description_, by default ""
         tagged_users : _type_, optional
             _description_, by default None
+        channels: _type, optional
+            _description, by default None
         """
         if not isinstance(files, (set, list, dict, tuple)):
             files = (files,)
@@ -128,14 +131,18 @@ class Post:
         if tagged_users is not None and not isinstance(tagged_users, (set, list, dict, tuple)):
             tagged_users = (tagged_users,)
 
+        if not hasattr(channels, "__iter__"):
+            raise ValueError("channels is not an iterable")
+
         self.files = files
-        self.tagged_users = tagged_users
+        self.channels = channels
+        self.tagged_users = () if tagged_users else tagged_users
 
         self.day = day
         self.hour = hour
         self.minute = minute
         self.seed_word = seed_word
-        self.message = message
+        self.message = "" if message is None else message
 
         # this tracks how many seconds until the message should be posted
         self.time_until_post = calculate_sleep_time(self.day, self.hour, self.minute)
@@ -160,7 +167,16 @@ class ScheduledPosts(CustomCog):
         self.bot = bot
 
         self.scheduled_posts = [
-            Post("data/videos/monday.mp4", calendar.MONDAY, 8, 30, "monday"),
+            Post(
+                "data/videos/monday.mp4",
+                calendar.MONDAY,
+                8,
+                30,
+                "monday",
+                None,
+                None,
+                (App.config("ID_CHANNEL_IDIOTS"),),
+            ),
             Post(
                 "data/bin.png",
                 calendar.TUESDAY,
@@ -169,8 +185,18 @@ class ScheduledPosts(CustomCog):
                 "bin",
                 "it's time to take the bins out!!!",
                 (App.config("ID_USER_SAULTYEVIL"),),
+                (App.config("ID_CHANNEL_IDIOTS"),),
             ),
-            Post("data/videos/wednesday.mp4", calendar.WEDNESDAY, 8, 30, "wednesday"),
+            Post(
+                "data/videos/wednesday.mp4",
+                calendar.WEDNESDAY,
+                8,
+                30,
+                "wednesday",
+                None,
+                None,
+                (App.config("ID_CHANNEL_IDIOTS"),),
+            ),
             Post(
                 "data/bin.png",
                 calendar.THURSDAY,
@@ -179,16 +205,38 @@ class ScheduledPosts(CustomCog):
                 "bin",
                 "it's time to take the bins out!!!",
                 (App.config("ID_USER_LIME"),),
+                (App.config("ID_CHANNEL_IDIOTS"),),
             ),
-            Post("data/videos/friday.mov", calendar.FRIDAY, 8, 30, "friday"),
+            Post(
+                "data/videos/friday.mov",
+                calendar.FRIDAY,
+                8,
+                30,
+                "friday",
+                None,
+                None,
+                (App.config("ID_CHANNEL_IDIOTS"),),
+            ),
             Post(
                 ("data/its_friday.gif", "data/friday_night.png", "data/videos/weekend.mp4"),
                 calendar.FRIDAY,
                 18,
                 0,
                 "weekend",
+                None,
+                None,
+                (App.config("ID_CHANNEL_IDIOTS"),),
             ),
-            Post("data/videos/sunday.mp4", calendar.SUNDAY, 8, 30, "sunday"),
+            Post(
+                "data/videos/sunday.mp4",
+                calendar.SUNDAY,
+                8,
+                30,
+                "sunday",
+                None,
+                None,
+                (App.config("ID_CHANNEL_IDIOTS"),),
+            ),
         ]
 
         self.__order_videos_by_soonest()
@@ -199,11 +247,11 @@ class ScheduledPosts(CustomCog):
 
         logger.info("%d random media files found", len(self.random_media_files))
 
-        self.markov_sentences = generate_sentences_for_seed_words(
-            MARKOV_MODEL,
-            [post.seed_word for post in self.scheduled_posts],
-            1,  # these only happen once in a while, so dont need a big bank of them
-        )
+        # self.markov_sentences = generate_sentences_for_seed_words(
+        #     MARKOV_MODEL,
+        #     [post.seed_word for post in self.scheduled_posts],
+        #     1,  # these only happen once in a while, so dont need a big bank of them
+        # )
 
         self.send_scheduled_posts.start()  # pylint: disable=no-member
         self.random_media_random_time.start()  # pylint: disable=no-member
@@ -252,8 +300,6 @@ class ScheduledPosts(CustomCog):
             )
             await asyncio.sleep(sleep_for)
 
-            channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
-
             markov_sentence = self.get_generated_sentence(post.seed_word).replace(
                 post.seed_word, f"**{post.seed_word}**"
             )
@@ -267,10 +313,14 @@ class ScheduledPosts(CustomCog):
             if post.message:
                 message += f" {post.message}"
 
-            if len(post.files) > 1:
-                await channel.send(f"{message} {markov_sentence}", files=[disnake.File(file) for file in post.files])
-            else:
-                await channel.send(f"{message} {markov_sentence}", file=disnake.File(post.files[0]))
+            for channel in post.channels:
+                channel = await self.bot.fetch_channel(channel)
+                if len(post.files) > 1:
+                    await channel.send(
+                        f"{message} {markov_sentence}", files=[disnake.File(file) for file in post.files]
+                    )
+                else:
+                    await channel.send(f"{message} {markov_sentence}", file=disnake.File(post.files[0]))
 
         self.__order_videos_by_soonest()
 
