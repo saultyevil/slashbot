@@ -9,7 +9,6 @@ import re
 from types import coroutine
 from typing import List
 from typing import Union
-import pytz
 
 import disnake
 from dateutil import parser
