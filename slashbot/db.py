@@ -97,7 +97,7 @@ class Reminder(Base):
 
     channel = Column(String)
     tagged_users = Column(String, nullable=True)
-    date = Column(DateTime)
+    date = Column(DateTime(timezone=True))
     reminder = Column(String(1024))
     tagged_users = Column(String(1024), nullable=True)
 
