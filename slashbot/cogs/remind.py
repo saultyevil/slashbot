@@ -12,6 +12,7 @@ from typing import Union
 
 import disnake
 from dateutil import parser
+from dateutil import tz
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 from sqlalchemy.orm import sessionmaker
@@ -123,7 +124,10 @@ class ReminderCommands(CustomCog):
             return
 
         for reminder in reminders:
-            if reminder.date <= now:
+            timezone_from_reminder = tz.gettz(reminder.timezone)
+            date = reminder.date.replace(tzinfo=timezone_from_reminder if timezone_from_reminder else self.timezone)
+
+            if date <= now:
                 user = await self.bot.fetch_user(reminder.user_id)
                 if not user:
                     continue
@@ -206,6 +210,9 @@ class ReminderCommands(CustomCog):
             seconds = when * TIME_UNITS[time_unit]
             future = now + datetime.timedelta(seconds=seconds)
 
+        if not future.tzinfo:
+            future = future.replace(tzinfo=self.timezone)
+
         if future < now:
             return await inter.response.send_message("You can't set a reminder in the past.", ephemeral=True)
 
@@ -216,6 +223,7 @@ class ReminderCommands(CustomCog):
                 user_id=inter.author.id,
                 channel=inter.channel.id,
                 date=future,
+                timezone=str(future.tzinfo),
                 reminder=reminder,
                 tagged_users=tagged_users if tagged_users else None,
             )
