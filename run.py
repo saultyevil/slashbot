@@ -95,6 +95,7 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     """
     logger.error("%s for %s failed with error:", inter.application_command.name, inter.author.name)
     logger.error("%s", error)
+    print(error)
 
     if isinstance(error, commands.errors.CommandOnCooldown):
         return await inter.response.send_message("This command is on cool down for you.", ephemeral=True)

@@ -9,6 +9,7 @@ import re
 from types import coroutine
 from typing import List
 from typing import Union
+import pytz
 
 import disnake
 from dateutil import parser
@@ -65,6 +66,8 @@ class ReminderCommands(CustomCog):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
+        self.timezone = datetime.datetime.utcnow().astimezone().tzinfo
+
         self.check_reminders.start()  # pylint: disable=no-member
 
         self.session = sessionmaker(connect_to_database_engine())()
@@ -115,7 +118,7 @@ class ReminderCommands(CustomCog):
     @tasks.loop(seconds=1)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(tz=self.timezone)
         reminders = self.session.query(ReminderDB)
         if reminders.count() == 0:
             return
@@ -193,7 +196,7 @@ class ReminderCommands(CustomCog):
                     ephemeral=True,
                 )
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(tz=self.timezone)
 
         if time_unit == "Time stamp":
             try:
