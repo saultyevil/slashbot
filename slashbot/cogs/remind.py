@@ -230,9 +230,9 @@ class ReminderCommands(CustomCog):
         )
         self.session.commit()
 
-        if time_unit == "Time stamp":
-            return await inter.response.send_message(f"Reminder set for {when}.", ephemeral=True)
-        return await inter.response.send_message(f"Reminder set for {when} {time_unit}.", ephemeral=True)
+        return await inter.response.send_message(
+            f"Reminder set for {future.strftime(r'%H:%M %Z, %d %B %Y')}.", ephemeral=True
+        )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forget_reminder", description="forget a reminder")
