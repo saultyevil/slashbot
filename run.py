@@ -28,6 +28,7 @@ from slashbot.custom_bot import ModifiedInteractionBot
 from slashbot.db import migrate_old_json_to_db
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger.info("Initializing Slashbot...")
 start = time.time()
 
 # Set up the bot and cogs --------------------------------------------------
