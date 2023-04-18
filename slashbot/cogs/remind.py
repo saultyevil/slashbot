@@ -12,7 +12,6 @@ from typing import Union
 
 import disnake
 from dateutil import parser
-from dateutil import tz
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 from sqlalchemy.orm import sessionmaker
@@ -24,6 +23,7 @@ from slashbot.db import Reminder as ReminderDB
 from slashbot.db import connect_to_database_engine
 from slashbot.markov import MARKOV_MODEL
 from slashbot.markov import generate_sentences_for_seed_words
+from slashbot.timezones import TIMEZONES
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -118,14 +118,14 @@ class ReminderCommands(CustomCog):
     @tasks.loop(seconds=1)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
-        now = datetime.datetime.now(tz=self.timezone)
+        # now = datetime.datetime.now(tz=self.timezone)
+        now = datetime.datetime.now(tz=datetime.UTC)
         reminders = self.session.query(ReminderDB)
         if reminders.count() == 0:
             return
 
         for reminder in reminders:
-            timezone_from_reminder = tz.gettz(reminder.timezone)
-            date = reminder.date.replace(tzinfo=timezone_from_reminder if timezone_from_reminder else self.timezone)
+            date = reminder.date.replace(tzinfo=datetime.UTC)
 
             if date <= now:
                 user = await self.bot.fetch_user(reminder.user_id)
@@ -203,14 +203,17 @@ class ReminderCommands(CustomCog):
 
         if time_unit == "Time stamp":
             try:
-                future = parser.parse(when)
+                future = parser.parse(when, tzinfos=TIMEZONES)
             except parser.ParserError:
                 return await inter.response.send_message("That is not a valid timestamp.", ephemeral=True)
+            if not future.tzinfo:
+                logger.debug("No timezone provided, defaulting to bot timezone")
+                logger.debhg("input: %s", when)
+                logger.debug("parsed: %s", future)
+                future = future.replace(tzinfo=self.timezone)
         else:
             seconds = when * TIME_UNITS[time_unit]
             future = now + datetime.timedelta(seconds=seconds)
-
-        if not future.tzinfo:
             future = future.replace(tzinfo=self.timezone)
 
         if future < now:
@@ -222,8 +225,7 @@ class ReminderCommands(CustomCog):
             ReminderDB(
                 user_id=inter.author.id,
                 channel=inter.channel.id,
-                date=future,
-                timezone=str(future.tzinfo),
+                date=future.astimezone(datetime.UTC),
                 reminder=reminder,
                 tagged_users=tagged_users if tagged_users else None,
             )
@@ -275,14 +277,17 @@ class ReminderCommands(CustomCog):
         reminders = self.session.query(ReminderDB).filter(ReminderDB.user_id == inter.author.id)
         if reminders.count() == 0:
             return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
-        reminders = [(reminder.id, reminder.date, reminder.reminder) for reminder in reminders]
+        reminders = [
+            (reminder.id, reminder.date.strftime(r"%H:%M %d %B %Y (UTC)"), reminder.reminder) for reminder in reminders
+        ]
 
         table = PrettyTable()
         table.align = "r"
         table.field_names = ["ID", "When", "What"]
-        table._max_width = {"ID": 10, "When": 10, "What": 50}  # pylint: disable=protected-access
+        table._max_width = {"ID": 3, "When": 25, "What": 75}  # pylint: disable=protected-access
         table.add_rows(reminders)
         message = f"You have {len(reminders)} reminders set.\n```"
         message += table.get_string(sortby="ID") + "```"
+        message += f"Current UTC time: {datetime.datetime.utcnow().strftime(r'%H:%M %d %B %Y')}"
 
         return await inter.response.send_message(message, ephemeral=True)
