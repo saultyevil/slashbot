@@ -382,20 +382,34 @@ class WeatherCommands(CustomCog):
                     inter, "You need to either specify a city, or set your city and/or country using /set_info."
                 )
 
-        city, country = self.__get_country_from_location(inter.author.id, inter.author.name, city)
-        if len(country) != 2:
-            return await deferred_error_message(inter, f"{country} is not a valid 2 character country code.")
+        # city, country = self.__get_country_from_location(inter.author.id, inter.author.name, city)
+        # if len(country) != 2:
+        #     return await deferred_error_message(inter, f"{country} is not a valid 2 character country code.")
 
-        locations_for = self.city_register.locations_for(city, country=country)
-
-        if not locations_for:
+        try:
+            weather_at_place = self.weather_manager.weather_at_place(city)
+        except pyowm.commons.exceptions.NotFoundError:
             return await deferred_error_message(
-                inter, f"The location {city}{f', {country}' if country else ''} wasn't found in OpenWeatherMap."
+                inter, f"OpenWeatherMap couldn't find {city}. Try separating the city and country with a comma."
+            )
+        except Exception:  # pylint: disable=broad-except
+            return await deferred_error_message(
+                inter, "OpenWeatherMap failed. You can check the exact error using /logfile."
             )
 
+        location = weather_at_place.location
+        lat, lon, location_country = location.lat, location.lon, location.country
+
+        # locations_for = self.city_register.locations_for(city, country=country)
+
+        # if not locations_for:
+        #     return await deferred_error_message(
+        #         inter, f"The location {city}{f', {country}' if country else ''} wasn't found in OpenWeatherMap."
+        #      )
+
         # locations_for returns a list of places ordered by distance
-        city, location_country = locations_for[0].name, locations_for[0].country
-        lat, lon = locations_for[0].lat, locations_for[0].lon
+        # city, location_country = locations_for[0].name, locations_for[0].country
+        # lat, lon = locations_for[0].lat, locations_for[0].lon
 
         try:
             forecast_one_call = self.weather_manager.one_call(lat, lon)
