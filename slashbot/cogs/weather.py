@@ -131,35 +131,6 @@ class WeatherCommands(CustomCog):
 
             return user.city
 
-    def __get_country_from_location(self, user_id: str, user_name: str, location: str) -> Tuple[str, str]:
-        """_summary_
-
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            _description_
-        location : str
-            _description_
-
-        Returns
-        -------
-        Tuple[str, str]
-            _description_
-        """
-        split_location = location.split(",")  # will split london, uk etc
-
-        if len(split_location) == 2:
-            location = split_location[0].strip()
-            country = split_location[1].strip().upper()
-        else:
-            with Session(connect_to_database_engine()) as session:
-                user = get_user(session, user_id, user_name)
-                country = user.country_code.upper() if user.country_code else None
-
-        country = self.__convert_uk_to_gb(country)
-
-        return location, country
-
     def __get_units_for_system(self, system: str) -> dict:
         """Get the units for the system.
 
@@ -382,10 +353,6 @@ class WeatherCommands(CustomCog):
                     inter, "You need to either specify a city, or set your city and/or country using /set_info."
                 )
 
-        # city, country = self.__get_country_from_location(inter.author.id, inter.author.name, city)
-        # if len(country) != 2:
-        #     return await deferred_error_message(inter, f"{country} is not a valid 2 character country code.")
-
         try:
             weather_at_place = self.weather_manager.weather_at_place(city)
         except pyowm.commons.exceptions.NotFoundError:
@@ -398,27 +365,15 @@ class WeatherCommands(CustomCog):
             )
 
         location = weather_at_place.location
-        lat, lon, location_country = location.lat, location.lon, location.country
-
-        # locations_for = self.city_register.locations_for(city, country=country)
-
-        # if not locations_for:
-        #     return await deferred_error_message(
-        #         inter, f"The location {city}{f', {country}' if country else ''} wasn't found in OpenWeatherMap."
-        #      )
-
-        # locations_for returns a list of places ordered by distance
-        # city, location_country = locations_for[0].name, locations_for[0].country
-        # lat, lon = locations_for[0].lat, locations_for[0].lon
 
         try:
-            forecast_one_call = self.weather_manager.one_call(lat, lon)
+            forecast_one_call = self.weather_manager.one_call(location.lat, location.lon)
         except Exception:  # pylint: disable=broad-except
             return await deferred_error_message(
                 inter, "OpenWeatherMap failed. You can check the exact error using /logfile."
             )
 
-        embed = disnake.Embed(title=f"Forecast for {city}, {location_country}", color=disnake.Color.default())
+        embed = disnake.Embed(title=f"Forecast for {location.name}, {location.country}", color=disnake.Color.default())
 
         for day in forecast_one_call.forecast_daily[:days]:
             date = datetime.datetime.utcfromtimestamp(day.reference_time())
