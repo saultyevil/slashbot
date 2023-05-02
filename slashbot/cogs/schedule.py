@@ -136,7 +136,7 @@ class Post:
 
         self.files = files
         self.channels = channels
-        self.tagged_users = () if tagged_users else tagged_users
+        self.tagged_users = () if not tagged_users else tagged_users
 
         self.day = day
         self.hour = hour
@@ -305,6 +305,7 @@ class ScheduledPosts(CustomCog):
             )
 
             message = ""
+
             if post.tagged_users:
                 if not hasattr(post.tagged_users, "__iter__"):
                     logger.error("%s has invalid tagged users %s", post.message, post.tagged_users)
@@ -315,6 +316,7 @@ class ScheduledPosts(CustomCog):
 
             for channel in post.channels:
                 channel = await self.bot.fetch_channel(channel)
+
                 if len(post.files) > 1:
                     await channel.send(
                         f"{message} {markov_sentence}", files=[disnake.File(file) for file in post.files]
