@@ -99,7 +99,10 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     print(error)
 
     if isinstance(error, commands.errors.CommandOnCooldown):
-        return await inter.response.send_message("This command is on cool down for you.", ephemeral=True)
+        return await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
+
+    if isinstance(error, disnake.NotFound):
+        return await inter.response.send_message("The Discord API failed for some reason.", ephemeral=True)
 
 
 # This finally runs the bot
