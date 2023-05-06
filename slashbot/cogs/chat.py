@@ -51,19 +51,18 @@ class Chat(CustomCog):
 
         message = message.replace("@Margaret", "", 1)
         self.chat_history[history_id].append(f"You: {message}".strip())
-        prompt = "\n".join(self.chat_history[history_id])
-        logging.info("Prompt: %s", prompt)
+        messages = "\n".join(self.chat_history[history_id])
 
         # Call the OpenAI API to generate a response to the prompt, using the chat log to maintain context
         response = openai.Completion.create(
             # engine="babbage",
-            engine="davinci",
-            prompt=prompt,
-            temperature=0.5,
-            max_tokens=500,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
+            engine="text-babbage-001",
+            prompt=messages,
+            temperature=0.9,
+            max_tokens=512,
+            top_p=0.9,
+            frequency_penalty=0.6,
+            presence_penalty=0.2,
         )
 
         response = response.choices[0].text.replace("AI:", "", 1).strip()
