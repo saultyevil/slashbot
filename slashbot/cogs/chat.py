@@ -122,6 +122,8 @@ class Chat(CustomCog):
         new_system_message = f"{DEFAULT_SYSTEM_MESSAGE} {message}"
         self.chat_history[inter.guild.id] = [{"role": "system", "content": new_system_message}]
 
+        return await inter.response.send_message("System prompt updated and chat history cleared.", ephemeral=True)
+
     @commands.Cog.listener("on_message")
     async def response_to_mention(self, message: disnake.Message) -> None:
         """Respond to mentions with the AI.
