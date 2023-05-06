@@ -50,7 +50,6 @@ class Chat(CustomCog):
     def __init__(self, bot):
         super().__init__()
         self.bot: ModifiedInteractionBot = bot
-        self.bot_user = None
         self.chat_history = {}
 
     async def get_openai_response(self, history_id: int, message: str) -> coroutine:
@@ -135,7 +134,7 @@ class Chat(CustomCog):
         if message.author == App.config("BOT_USER_OBJECT"):
             return
 
-        bot_mentioned = self.bot_user in message.mentions
+        bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
