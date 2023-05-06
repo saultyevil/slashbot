@@ -85,10 +85,9 @@ class Chat(CustomCog):
         response["content"] = re.sub(r"\n+", "\n", response["content"])
         self.chat_history[history_id].append(response)
 
-        # logger.debug("Chat history for %d: %s", history_id, self.chat_history[history_id])
-
         return response["content"]
 
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="reset_chat_history", description="reset your AI chat history")
     async def clear_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Forget the chat history.
@@ -109,6 +108,8 @@ class Chat(CustomCog):
 
         return await inter.response.send_message("Chat history has been reset.", ephemeral=True)
 
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="set_system_prompt", description="add to the default system prompt")
     async def set_system_message(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
         """_summary_
 
@@ -120,7 +121,6 @@ class Chat(CustomCog):
             _description_
         """
         new_system_message = f"{DEFAULT_SYSTEM_MESSAGE} {message}"
-        logger.debug("New system message %s", new_system_message)
         self.chat_history[inter.guild.id] = [{"role": "system", "content": new_system_message}]
 
     @commands.Cog.listener("on_message")
@@ -132,14 +132,12 @@ class Chat(CustomCog):
         message : str
             _description_
         """
-        if not self.bot_user:
-            self.bot_user = await self.bot.fetch_user(App.config("ID_BOT"))
-
-        if message.author == self.bot_user:
+        if message.author == App.config("BOT_USER_OBJECT"):
             return
 
-        if self.bot_user not in message.mentions:
-            return
+        bot_mentioned = self.bot_user in message.mentions
+        message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
-        response = await self.get_openai_response(message.author.id, message.clean_content)
-        await message.channel.send(f"{message.author.mention} {response}")
+        if bot_mentioned or message_in_dm:
+            response = await self.get_openai_response(message.author.id, message.clean_content)
+            await message.channel.send(f"{message.author.mention} {response}")

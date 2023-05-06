@@ -86,6 +86,9 @@ async def on_ready() -> None:
     else:
         logger.info("Bot reconnected")
 
+    user = await bot.fetch_user(App.config("ID_BOT"))
+    App.set("BOT_USER_OBJECT", user)
+
 
 @bot.event
 async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> Coroutine:
