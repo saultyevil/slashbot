@@ -21,7 +21,7 @@ class App:
     __conf = {
         "BOT_TOKEN": os.getenv("BOT_TOKEN"),
         # cooldown parameters
-        "COOLDOWN_RATE": 3,
+        "COOLDOWN_RATE": 5,
         "COOLDOWN_STANDARD": 60,
         "COOLDOWN_ONE_HOUR": 3600,
         "HOURS_IN_WEEK": 168,
@@ -60,6 +60,8 @@ class App:
         "IMAGE_DIRECTORY": Path("data/images"),
         "TWEET_FILE": Path("data/tweets.csv"),
         "RANDOM_MEDIA_DIRECTORY": Path("data/random"),
+        # Setters
+        "BOT_USER_OBJECT": None,
     }
 
     __conf["SLASH_SERVERS"] = (
@@ -71,7 +73,7 @@ class App:
     __conf["NO_COOL_DOWN_USERS"] = [__conf["ID_USER_SAULTYEVIL"]]
 
     # __setters is a tuple of parameters which can be set
-    __setters = ()
+    __setters = ("BOT_USER_OBJECT",)
 
     # Special methods ----------------------------------------------------------
 

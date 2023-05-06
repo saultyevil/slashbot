@@ -14,6 +14,7 @@ from disnake.ext import commands
 
 import slashbot.cogs.admin
 import slashbot.cogs.archive
+import slashbot.cogs.chat
 import slashbot.cogs.content
 import slashbot.cogs.info
 import slashbot.cogs.remind
@@ -42,6 +43,7 @@ bot = ModifiedInteractionBot(intents=intents)
 for cog in [
     slashbot.cogs.admin.AdminCommands(bot, App.config("LOGFILE_NAME")),
     slashbot.cogs.archive.ArchiveCommands(bot),
+    slashbot.cogs.chat.Chat(bot),
     slashbot.cogs.content.ContentCommands(bot),
     slashbot.cogs.info.InfoCommands(bot),
     slashbot.cogs.remind.ReminderCommands(bot),
@@ -83,6 +85,9 @@ async def on_ready() -> None:
         logger.info("Started in %.2f seconds", time.time() - start)
     else:
         logger.info("Bot reconnected")
+
+    user = await bot.fetch_user(App.config("ID_BOT"))
+    App.set("BOT_USER_OBJECT", user)
 
 
 @bot.event

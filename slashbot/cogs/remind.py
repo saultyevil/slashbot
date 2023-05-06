@@ -153,7 +153,7 @@ class ReminderCommands(CustomCog):
 
     # Commands -----------------------------------------------------------------
 
-    # @commands.cooldown(1, App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_reminder", description="set a reminder for later")
     async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
