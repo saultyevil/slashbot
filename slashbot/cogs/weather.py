@@ -4,12 +4,13 @@
 """Commands for getting the weather."""
 
 import datetime
+import json
 import logging
 from types import coroutine
 from typing import Tuple
 
 import disnake
-import pyowm
+import requests
 from disnake.ext import commands
 from sqlalchemy.orm import Session
 
@@ -28,6 +29,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 WEATHER_UNITS = ["metric", "imperial"]
 WEATHER_COMMAND_CHOICES = ["everything", "temperature", "humidity", "rain", "wind"]
+API_KEY = App.config("OWM_API_KEY")
 
 
 class WeatherCommands(CustomCog):
@@ -46,9 +48,6 @@ class WeatherCommands(CustomCog):
         """
         super().__init__()
         self.bot = bot
-        self.weather_api = pyowm.OWM(App.config("OWM_API_KEY"))
-        self.city_register = self.weather_api.city_id_registry()
-        self.weather_manager = self.weather_api.weather_manager()
 
         self.markov_sentences = generate_sentences_for_seed_words(
             MARKOV_MODEL,
@@ -92,25 +91,6 @@ class WeatherCommands(CustomCog):
         idx = round(degrees / (360.0 / len(dirs)))
         return dirs[idx % 16]
 
-    @staticmethod
-    def __convert_uk_to_gb(choice: str) -> str:
-        """Convert UK to GB for use in OWM.
-
-        Parameters
-        ----------
-        choice: str
-            The choice to convert.
-
-        Returns
-        -------
-        choice: str
-            The converted choice.
-        """
-        if choice.lower() == "uk":
-            return "GB"
-
-        return choice
-
     def __get_user_city(self, user_id: str, user_name: str) -> str:
         """Return the stored location set by a user.
 
@@ -131,195 +111,65 @@ class WeatherCommands(CustomCog):
 
             return user.city
 
-    def __get_units_for_system(self, system: str) -> dict:
-        """Get the units for the system.
+    def __get_weather_response(self, location: str, units: str) -> Tuple[str, dict]:
+        """_summary_
 
         Parameters
         ----------
-        system: str
-            The system of units to use, either metric or imperial.
+        location : str
+            _description_
+        units : str
+            _description_
 
         Returns
         -------
-        units: dict
-            The units in use, with keys t_units, t_units_fmt, w_units,
-            w_units_fmt.
+        dict
+            _description_
+
+        Raises
+        ------
+        requests.RequestException
+            _description_
+        requests.exceptions.Timeout
+            _description_
         """
-        if system == "imperial":
-            return {
-                "t_units": "fahrenheit",
-                "t_units_fmt": "F",
-                "w_units": "miles_hour",
-                "w_units_fmt": "mph",
-            }
-
-        return {
-            "t_units": "celsius",
-            "t_units_fmt": "C",
-            "w_units": "meters_sec",
-            "w_units_fmt": "km/h",
-        }
-
-    def __add_temperature_to_embed(
-        self, weather: pyowm.weatherapi25.observation.Observation, embed: disnake.Embed, units: dict
-    ) -> disnake.Embed:
-        """Put the temperature into the embed.
-
-        Parameters
-        ----------
-        weather: pyowm.weatherapi25.observation.Observation
-            The weather object.
-        embed: disnake.Embed
-            The embed to put the temperature into.
-        units: dict
-            The units to use.
-
-        Returns
-        -------
-        embed: disnake.Embed
-            The updated Embed.
-        """
-
-        temperature = weather.temperature(units["t_units"])
-        embed.add_field(
-            name="Temperature",
-            value=f"{temperature['temp']:.1f} °{units['t_units_fmt']}",
-            inline=False,
-        )
-        embed.add_field(
-            name="Min/Max",
-            value=f"{temperature['temp_min']:.1f}/{temperature['temp_max']:.1f} °{units['t_units_fmt']}",
-            inline=False,
+        geocode_request = requests.get(
+            f"http://api.openweathermap.org/geo/1.0/direct?q={location}&appid={API_KEY}",
+            timeout=5,
         )
 
-        return embed
+        if geocode_request.status_code != 200:
+            raise requests.RequestException(f"Geocoding API failed for {location}")
 
-    def __add_humidity_to_embed(
-        self, weather: pyowm.weatherapi25.observation.Observation, embed: disnake.Embed, units: dict
-    ) -> disnake.Embed:
-        """Put the humidity into the embed.
+        geocode = json.loads(geocode_request.content)[0]
+        lat, lon = geocode["lat"], geocode["lon"]
+        name, country = geocode["name"], geocode["country"]
 
-        Parameters
-        ----------
-        weather: pyowm.weatherapi25.observation.Observation
-            The weather object.
-        embed: disnake.Embed
-            The embed to put the temperature into.
-        units: dict
-            The units to use.
-
-        Returns
-        -------
-        embed: disnake.Embed
-            The updated Embed.
-        """
-        embed.add_field(name="Humidity", value=f"{weather.humidity:.0f}%", inline=False)
-
-        return embed
-
-    def __add_rain_to_embed(
-        self, weather: pyowm.weatherapi25.observation.Observation, embed: disnake.Embed, _units: dict
-    ) -> disnake.Embed:
-        """Put the rain into the embed.
-
-        Parameters
-        ----------
-        weather: pyowm.weatherapi25.observation.Observation
-            The weather object.
-        embed: disnake.Embed
-            The embed to put the temperature into.
-        _units: dict
-            The units to use. Currently unused.
-
-        Returns
-        -------
-        embed: disnake.Embed
-            The updated Embed.
-        """
-        rain = weather.rain
-
-        if not rain:
-            return embed.add_field(
-                name="Rain",
-                value="There is no rain forecast",
-                inline=False,
-            )
-
-        if "1h" in rain:
-            embed.add_field(
-                name="Precipitation in 1 hour",
-                value=f"{rain['1h']:.1f} mm",
-                inline=False,
-            )
-        if "3h" in rain:
-            embed.add_field(
-                name="Precipitation in 3 hours",
-                value=f"{rain['3h']:.1f} mm",
-                inline=False,
-            )
-
-        return embed
-
-    def __add_wind_to_embed(
-        self, weather: pyowm.weatherapi25.observation.Observation, embed: disnake.Embed, units: dict
-    ) -> disnake.Embed:
-        """Put temperature into the embed.
-
-        Parameters
-        ----------
-        weather: pyowm.weatherapi25.observation.Observation
-            The weather object.
-        embed: disnake.Embed
-            The embed to put the temperature into.
-        units: dict
-            The units to use.
-
-        Returns
-        -------
-        embed: disnake.Embed
-            The updated Embed.
-        """
-
-        wind = weather.wind(units["w_units"])
-
-        if units["w_units"] == "meters_sec":  # convert m/s to km/h
-            wind["speed"] *= 3.6
-
-        embed.add_field(name="Wind speed", value=f"{wind['speed']:.1f} {units['w_units_fmt']}", inline=False)
-        embed.add_field(
-            name="Wind bearing",
-            value=f"{wind['deg']:.01f}° ({self.__convert_degrees_to_cardinal_direction(wind['deg'])})",
-            inline=False,
+        one_call_request = requests.get(
+            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={units}&appid={API_KEY}",
+            timeout=5,
         )
 
-        return embed
+        if one_call_request.status_code != 200:
+            raise requests.RequestException(f"OneCall API failed for {location}")
 
-    def __add_everything_to_embed(
-        self, weather: pyowm.weatherapi25.observation.Observation, embed: disnake.Embed, units: dict
-    ) -> disnake.Embed:
-        """Put all three observables into a single embed.
+        return f"{name}, {country}", json.loads(one_call_request.content)
+
+    @staticmethod
+    def __get_weather_icon_url(icon_code: str) -> str:
+        """_summary_
 
         Parameters
         ----------
-        weather: pyowm.weatherapi25.observation.Observation
-            The weather object.
-        embed: disnake.Embed
-            The embed to put the temperature into.
-        units: dict
-            The units to use.
+        icon_code : str
+            _description_
 
         Returns
         -------
-        embed: disnake.Embed
-            The updated Embed.
+        str
+            _description_
         """
-
-        embed = self.__add_temperature_to_embed(weather, embed, units)
-        embed = self.__add_humidity_to_embed(weather, embed, None)
-        embed = self.__add_rain_to_embed(weather, embed, None)
-        embed = self.__add_wind_to_embed(weather, embed, units)
-
-        return embed
+        return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
     # Commands -----------------------------------------------------------------
 
@@ -330,6 +180,9 @@ class WeatherCommands(CustomCog):
         inter: disnake.ApplicationCommandInteraction,
         city: str = commands.Param(
             description="The city to get weather at, default is your saved location.", default=None
+        ),
+        units: str = commands.Param(
+            description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
         ),
         days: int = commands.Param(description="The number of days to get the weather for.", default=4, gt=0, lt=8),
     ) -> coroutine:
@@ -353,45 +206,10 @@ class WeatherCommands(CustomCog):
                     inter, "You need to either specify a city, or set your city and/or country using /set_info."
                 )
 
-        try:
-            weather_at_place = self.weather_manager.weather_at_place(city)
-        except pyowm.commons.exceptions.NotFoundError:
-            return await deferred_error_message(
-                inter, f"OpenWeatherMap couldn't find {city}. Try separating the city and country with a comma."
-            )
-        except Exception:  # pylint: disable=broad-except
-            return await deferred_error_message(
-                inter, "OpenWeatherMap failed. You can check the exact error using /logfile."
-            )
+        location, weather = self.__get_weather_response(city, units)
+        weather = weather["current"]
 
-        location = weather_at_place.location
-
-        try:
-            forecast_one_call = self.weather_manager.one_call(location.lat, location.lon)
-        except Exception:  # pylint: disable=broad-except
-            return await deferred_error_message(
-                inter, "OpenWeatherMap failed. You can check the exact error using /logfile."
-            )
-
-        embed = disnake.Embed(title=f"Forecast for {location.name}, {location.country}", color=disnake.Color.default())
-
-        for day in forecast_one_call.forecast_daily[:days]:
-            date = datetime.datetime.utcfromtimestamp(day.reference_time())
-            date = date.strftime(r"%A %d %B, %Y")
-            weather = day.detailed_status.capitalize()
-            temperature = day.temperature("celsius")
-            wind = day.wind("miles_hour")
-            embed.add_field(
-                name=f"{date}",
-                value=f"• {weather}\n• {temperature['max']:.1f}/{temperature['min']:.1f} °C\n"
-                f"• {wind['speed']:.1f} mph",
-                inline=False,
-            )
-
-        embed.set_thumbnail(url=forecast_one_call.forecast_daily[0].weather_icon_url())
-        embed.set_footer(text=f"{self.get_generated_sentence('forecast')}")
-
-        return await inter.edit_original_message(embed=embed)
+        embed = disnake.Embed(title=f"Weather for {location}", color=disnake.Color.default())
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="weather", description="get the current weather")
@@ -400,9 +218,6 @@ class WeatherCommands(CustomCog):
         inter: disnake.ApplicationCommandInteraction,
         city: str = commands.Param(
             description="The city to get weather for, default is your saved location.", default=None
-        ),
-        what: str = commands.Param(
-            description="The type of weather report to get.", default="everything", choices=WEATHER_COMMAND_CHOICES
         ),
         units: str = commands.Param(
             description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
@@ -430,44 +245,23 @@ class WeatherCommands(CustomCog):
                     inter, "You need to specify a city, or set your city and/or country using /set_info."
                 )
 
-        try:
-            weather_at_place = self.weather_manager.weather_at_place(city)
-        except pyowm.commons.exceptions.NotFoundError:
-            return await deferred_error_message(
-                inter, f"OpenWeatherMap couldn't find {city}. Try separating the city and country with a comma."
-            )
-        except Exception:  # pylint: disable=broad-except
-            return await deferred_error_message(
-                inter, "OpenWeatherMap failed. You can check the exact error using /logfile."
-            )
+        location, weather = self.__get_weather_response(city, units)
+        weather = weather["current"]
 
-        weather = weather_at_place.weather
-        units = self.__get_units_for_system(units)
-        title = what.capitalize() if what != "everything" else "Weather"
+        embed = disnake.Embed(title=f"Weather for {location}", color=disnake.Color.default())
 
-        embed = disnake.Embed(
-            title=f"{title} in {weather_at_place.location.name}, {weather_at_place.location.country}",
-            color=disnake.Color.default(),
+        # todo, add units to measurements https://openweathermap.org/api/one-call-3#data
+        embed.add_field(name="Description", value=weather["weather"][0]["description"].capitalize(), inline=False)
+        embed.add_field(name="Temperature", value=weather["temp"], inline=False)
+        embed.add_field(name="Humidity", value=weather["humidity"], inline=False)
+        embed.add_field(name="Wind speed", value=weather["wind_speed"], inline=False)
+        embed.add_field(
+            name="Wind direction",
+            value=f"{weather['wind_deg']:.01f}° ({self.__convert_degrees_to_cardinal_direction(weather['wind_deg'])})",
+            inline=False,
         )
 
-        match what:
-            case "everything":
-                embed.add_field(
-                    name="Description",
-                    value=f"{weather.detailed_status.capitalize()}",
-                    inline=False,
-                )
-                embed = self.__add_everything_to_embed(weather, embed, units)
-            case "temperature":
-                embed = self.__add_temperature_to_embed(weather, embed, units)
-            case "humidity":
-                embed = self.__add_humidity_to_embed(weather, embed, None)
-            case "rain":
-                embed = self.__add_rain_to_embed(weather, embed, "mm")
-            case "wind":
-                embed = self.__add_wind_to_embed(weather, embed, units)
-
         embed.set_footer(text=f"{self.get_generated_sentence('weather')}")
-        embed.set_thumbnail(url=weather.weather_icon_url())
+        embed.set_thumbnail(self.__get_weather_icon_url(weather["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
