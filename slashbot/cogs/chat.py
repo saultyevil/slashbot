@@ -143,5 +143,6 @@ class Chat(CustomCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
-            response = await self.get_openai_response(message.author.id, message.clean_content)
-            await message.channel.send(f"{message.author.mention} {response}")
+            async with message.channel.typing():
+                response = await self.get_openai_response(message.author.id, message.clean_content)
+                await message.channel.send(f"{message.author.mention} {response}")
