@@ -69,7 +69,7 @@ class WeatherCommands(CustomCog):
     # Private ------------------------------------------------------------------
 
     @staticmethod
-    def __convert_degrees_to_cardinal_direction(degrees: float) -> str:
+    def __degrees_to_cardinal_direction(degrees: float) -> str:
         """Convert a degrees value to a cardinal direction.
 
         Parameters
@@ -120,8 +120,9 @@ class WeatherCommands(CustomCog):
         """
         with Session(connect_to_database_engine()) as session:
             user = get_user(session, user_id, user_name)
-
-            return user.city
+            if not user.city:
+                return None
+            return f"{user.city}, {user.country_code if user.country_code else ''}"
 
     @staticmethod
     def __get_weather_response(location: str, units: str, extract_type: str) -> Tuple[str, dict]:
@@ -166,7 +167,7 @@ class WeatherCommands(CustomCog):
         name, country = geocode["name"], geocode["country"]
 
         one_call_request = requests.get(
-            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={units}&appid={API_KEY}",
+            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={units}&exclude=minutely&appid={API_KEY}",
             timeout=5,
         )
 
@@ -308,7 +309,7 @@ class WeatherCommands(CustomCog):
         )
         embed.add_field(
             name="Wind direction",
-            value=f"{weather['wind_deg']:.01f}° ({self.__convert_degrees_to_cardinal_direction(weather['wind_deg'])})",
+            value=f"{weather['wind_deg']:.01f}° ({self.__degrees_to_cardinal_direction(weather['wind_deg'])})",
             inline=False,
         )
 
