@@ -92,10 +92,13 @@ class Chat(CustomCog):
         """
         prompt = "\n".join(
             [
-                "Prompt: " + d["content"] if d["role"] in ["user", "system"] else "Response: " + d["content"]
-                for d in self.chat_history
+                "Prompt: " + d["content"].strip()
+                if d["role"] in ["user", "system"]
+                else "Response: " + d["content"].strip()
+                for d in self.chat_history[history_id]
             ]
         )
+
         response = (
             openai.Completion.create(
                 engine=self.text_model_engine,
@@ -103,9 +106,11 @@ class Chat(CustomCog):
                 temperature=self.model_temperature,
                 max_tokens=1024,
             )["choices"][0]
-            .text.replace("Response: ", "", 1)
+            .text.strip()
+            .replace("Response: ", "", 1)
             .strip()
         )
+
         self.chat_history[history_id].append({"role": "assistant", "content": response})
 
         return response
@@ -216,12 +221,12 @@ class Chat(CustomCog):
         return await inter.response.send_message("System prompt updated and chat history cleared.", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(description="Toggle a user into or out of the ignore list")
+    @commands.slash_command(description="Toggle a user in the ignore list")
     @commands.default_member_permissions(administrator=True)
     async def toggle_user_in_ignore_list(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        member: disnake.Member = commands.Param(name="the user to toggle from the ignore list"),
+        member: disnake.Member = commands.Param(description="the user to toggle from the ignore list"),
     ):
         """Add or remove a user from the ignore list.
 
@@ -263,46 +268,46 @@ class Chat(CustomCog):
         logger.info("Model temperature set to %f", temperature)
         return await inter.response.send_message(f"Temperature set to {temperature}", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(description="Set the type of model to generate responses with")
-    @commands.default_member_permissions(administrator=True)
-    async def set_model_type(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        model_type: str = commands.Param(
-            description="Set the model between conversational or generational", choices=ALLOWED_MODELS
-        ),
-    ):
-        """_summary_
+    # @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    # @commands.slash_command(description="Set the type of model to generate responses with")
+    # @commands.default_member_permissions(administrator=True)
+    # async def set_model_type(
+    #     self,
+    #     inter: disnake.ApplicationCommandInteraction,
+    #     model_type: str = commands.Param(
+    #         description="Set the model between conversational or generational", choices=ALLOWED_MODELS
+    #     ),
+    # ):
+    #     """_summary_
 
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            _description_
-        model_type : str
-            _description_
-        """
-        self.model_type = model_type
-        logger.info("Model type set to %s", model_type)
-        return await inter.response.send_message(f"Model type set to {model_type}", ephemeral=True)
+    #     Parameters
+    #     ----------
+    #     inter : disnake.ApplicationCommandInteraction
+    #         _description_
+    #     model_type : str
+    #         _description_
+    #     """
+    #     self.model_type = model_type
+    #     logger.info("Model type set to %s", model_type)
+    #     return await inter.response.send_message(f"Model type set to {model_type}", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(description="Set the model engine used to generate text completion responses")
-    @commands.default_member_permissions(administrator=True)
-    async def set_text_model_engine(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        engine: str = commands.Param(description="the name of the engine to use", choices=ALLOWED_TEXT_ENGINES),
-    ):
-        """_summary_
+    # @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    # @commands.slash_command(description="Set the model engine used to generate text completion responses")
+    # @commands.default_member_permissions(administrator=True)
+    # async def set_text_model_engine(
+    #     self,
+    #     inter: disnake.ApplicationCommandInteraction,
+    #     engine: str = commands.Param(description="the name of the engine to use", choices=ALLOWED_TEXT_ENGINES),
+    # ):
+    #     """_summary_
 
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            _description_
-        engine: str
-            _description_
-        """
-        self.text_model_engine = engine
-        logger.info("Text model engine set to %s", engine)
-        return await inter.response.send_message(f"Text model engine set to {engine}", ephemeral=True)
+    #     Parameters
+    #     ----------
+    #     inter : disnake.ApplicationCommandInteraction
+    #         _description_
+    #     engine: str
+    #         _description_
+    #     """
+    #     self.text_model_engine = engine
+    #     logger.info("Text model engine set to %s", engine)
+    #     return await inter.response.send_message(f"Text model engine set to {engine}", ephemeral=True)
