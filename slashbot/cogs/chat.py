@@ -54,6 +54,7 @@ class Chat(CustomCog):
         super().__init__()
         self.bot: ModifiedInteractionBot = bot
         self.chat_history = {}
+        # self.ignore_list = []
 
     async def get_openai_response(self, history_id: int, message: str) -> coroutine:
         """_summary_
@@ -111,7 +112,25 @@ class Chat(CustomCog):
         return await inter.response.send_message("Chat history has been reset.", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="set_system_prompt", description="add to the default system prompt")
+    @commands.slash_command(name="set_default_system_prompt", description="reset the chat to the default system prompt")
+    async def set_default_system_message(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """_summary_
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            _description_
+
+        """
+        logger.info("System prompt reset to default")
+        self.chat_history[inter.guild.id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+
+        return await inter.response.send_message(
+            "System prompt reset to default and chat history cleared.", ephemeral=True
+        )
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="set_system_prompt", description="change the chat system prompt")
     async def set_system_message(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
         """_summary_
 
@@ -122,13 +141,29 @@ class Chat(CustomCog):
         message : str
             _description_
         """
-        new_system_message = f"{DEFAULT_SYSTEM_MESSAGE} {message}"
-        self.chat_history[inter.guild.id] = [{"role": "system", "content": new_system_message}]
+        logger.info("New system prompt for chat: %s", message)
+        self.chat_history[inter.guild.id] = [{"role": "system", "content": message}]
 
         return await inter.response.send_message("System prompt updated and chat history cleared.", ephemeral=True)
 
+    # async def add_to_ignore_list(
+    #     self,
+    #     inter: disnake.ApplicationCommandInteraction,
+    #     member: disnake.Member = commands.Param(default=None, name="ignore_user"),
+    # ):
+    #     """Add a user to the ignore list.
+
+    #     Parameters
+    #     ----------
+    #     inter : disnake.ApplicationCommandInteraction
+    #         _description_
+    #     """
+    #     self.ignore_list.append(member)
+
+    #     return await inter.response.send_message(f"{member} added to ignore list for chat.")
+
     @commands.Cog.listener("on_message")
-    async def response_to_mention(self, message: disnake.Message) -> None:
+    async def respond_to_prompt(self, message: disnake.Message) -> None:
         """Respond to mentions with the AI.
 
         Parameters
