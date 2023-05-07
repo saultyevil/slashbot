@@ -171,6 +171,35 @@ class WeatherCommands(CustomCog):
         """
         return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
+    def __get_units_for_system(self, system: str) -> dict:
+        """Get the units for the system.
+
+        Parameters
+        ----------
+        system: str
+            The system of units to use, either metric or imperial.
+
+        Returns
+        -------
+        units: dict
+            The units in use, with keys t_units, t_units_fmt, w_units,
+            w_units_fmt.
+        """
+        if system == "imperial":
+            return {
+                "t_units": "fahrenheit",
+                "t_units_fmt": "F",
+                "w_units": "miles_hour",
+                "w_units_fmt": "mph",
+            }
+
+        return {
+            "t_units": "celsius",
+            "t_units_fmt": "C",
+            "w_units": "meters_sec",
+            "w_units_fmt": "km/h",
+        }
+
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -248,13 +277,19 @@ class WeatherCommands(CustomCog):
         location, weather = self.__get_weather_response(city, units)
         weather = weather["current"]
 
-        embed = disnake.Embed(title=f"Weather for {location}", color=disnake.Color.default())
+        if units == "metric":
+            temp_unit, wind_unit, wind_factor = "C", "km/h", 3.6
+        else:
+            temp_unit, wind_unit, wind_factor = "F", "mph", 1
 
-        # todo, add units to measurements https://openweathermap.org/api/one-call-3#data
+        embed = disnake.Embed(title=f"Current weather conditions for {location}", color=disnake.Color.default())
+
         embed.add_field(name="Description", value=weather["weather"][0]["description"].capitalize(), inline=False)
-        embed.add_field(name="Temperature", value=weather["temp"], inline=False)
-        embed.add_field(name="Humidity", value=weather["humidity"], inline=False)
-        embed.add_field(name="Wind speed", value=weather["wind_speed"], inline=False)
+        embed.add_field(name="Temperature", value=weather["temp"] + f" °{temp_unit}", inline=False)
+        embed.add_field(name="Humidity", value=weather["humidity"] + "%", inline=False)
+        embed.add_field(
+            name="Wind speed", value=f"{float(weather['wind_speed']) * wind_factor:.1f} {wind_unit}", inline=False
+        )
         embed.add_field(
             name="Wind direction",
             value=f"{weather['wind_deg']:.01f}° ({self.__convert_degrees_to_cardinal_direction(weather['wind_deg'])})",
