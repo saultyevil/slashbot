@@ -7,6 +7,7 @@ this bot is to sometimes annoy Gareth with its useful information.
 
 import logging
 import time
+import traceback
 from typing import Coroutine
 
 import disnake
@@ -99,15 +100,13 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     error: Exception
         The error that occurred.
     """
-    logger.error("%s for %s failed with error:", inter.application_command.name, inter.author.name)
-    logger.error("%s", error)
-    print(error)
-
     if isinstance(error, commands.errors.CommandOnCooldown):
         return await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
     if isinstance(error, disnake.NotFound):
         return await inter.response.send_message("The Discord API failed for some reason.", ephemeral=True)
+
+    logger.error(traceback.format_exc())
 
 
 # This finally runs the bot
