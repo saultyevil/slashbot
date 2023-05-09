@@ -6,6 +6,7 @@
 import json
 import logging
 from types import coroutine
+import datetime
 from typing import Tuple
 
 import disnake
@@ -174,8 +175,7 @@ class WeatherCommands(CustomCog):
         if one_call_request.status_code != 200:
             if one_call_request.status_code == 400:
                 raise LocationNotFoundException(f"{location} could not be found")
-            else:
-                raise OneCallException(f"OneCall API failed for {location}")
+            raise OneCallException(f"OneCall API failed for {location}")
 
         return f"{name}, {country}", json.loads(one_call_request.content)[extract_type]
 
@@ -211,7 +211,7 @@ class WeatherCommands(CustomCog):
         units: str = commands.Param(
             description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
         ),
-        amount: int = commands.Param(description="The number of results to return.", default=3, gt=0, lt=5),
+        amount: int = commands.Param(description="The number of results to return.", default=4, gt=0, lt=7),
     ) -> coroutine:
         """Print the weather forecast for a location.
 
@@ -242,12 +242,37 @@ class WeatherCommands(CustomCog):
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
+        if units == "metric":
+            temp_unit, wind_unit, wind_factor = "C", "km/h", 3.6
+        else:
+            temp_unit, wind_unit, wind_factor = "F", "mph", 1
+
         embed = disnake.Embed(
             title=f"{forecast_type.capitalize()} forecast for {location}", color=disnake.Color.default()
         )
 
+        for sub in forecast[1 : amount + 1]:
+            date = datetime.datetime.fromtimestamp(int(sub["dt"]))
+
+            if forecast_type == "hourly":
+                date_string = f"{date.strftime(r'%I:%M %p')} - {sub['weather'][0]['description'].capitalize()}"
+                temp_string = f"{sub['temp']:.0f} °{temp_unit}"
+            else:
+                date_string = f"{date.strftime(r'%a %d %b %Y')} - {sub['weather'][0]['description'].capitalize()}"
+                temp_string = f"{sub['temp']['min']:.0f}/{sub['temp']['max']:.0f} °{temp_unit}"
+
+            wind_string = (
+                f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} "
+                + f"({self.__degrees_to_cardinal_direction(sub['wind_deg'])}"
+            )
+            # humidity_string = f"{sub['humidity']}%"
+
+            forecast_string = f"•{temp_string:^30s}\n• {wind_string:^30s}"  # \n• {humidity_string:^30s}"
+
+            embed.add_field(name=date_string, value=forecast_string, inline=False)
+
         embed.set_footer(text=f"{self.get_generated_sentence('forecast')}")
-        embed.set_thumbnail(self.__get_weather_icon_url(forecast["weather"][0]["icon"]))
+        embed.set_thumbnail(self.__get_weather_icon_url(forecast[1]["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
 
@@ -299,17 +324,17 @@ class WeatherCommands(CustomCog):
         else:
             temp_unit, wind_unit, wind_factor = "F", "mph", 1
 
-        embed = disnake.Embed(title=f"Current weather conditions for {location}", color=disnake.Color.default())
+        embed = disnake.Embed(title=f"Current weather for {location}", color=disnake.Color.default())
 
         embed.add_field(name="Description", value=weather["weather"][0]["description"].capitalize(), inline=False)
-        embed.add_field(name="Temperature", value=weather["temp"] + f" °{temp_unit}", inline=False)
-        embed.add_field(name="Humidity", value=weather["humidity"] + "%", inline=False)
+        embed.add_field(name="Temperature", value=f"{weather['temp']:.0f} °{temp_unit}", inline=False)
+        embed.add_field(name="Humidity", value=f"{weather['humidity']}%", inline=False)
         embed.add_field(
-            name="Wind speed", value=f"{float(weather['wind_speed']) * wind_factor:.1f} {wind_unit}", inline=False
+            name="Wind speed", value=f"{float(weather['wind_speed']) * wind_factor:.0f} {wind_unit}", inline=False
         )
         embed.add_field(
             name="Wind direction",
-            value=f"{weather['wind_deg']:.01f}° ({self.__degrees_to_cardinal_direction(weather['wind_deg'])})",
+            value=f"{weather['wind_deg']:.0f}° ({self.__degrees_to_cardinal_direction(weather['wind_deg'])})",
             inline=False,
         )
 
