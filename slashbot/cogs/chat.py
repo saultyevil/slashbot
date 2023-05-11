@@ -51,7 +51,7 @@ class Chat(CustomCog):
 
     # Functions ----------------------------------------------------------------
 
-    def __chat_model(self, history_id: int) -> str:
+    async def __chat_model(self, history_id: int) -> str:
         """_summary_
 
         Parameters
@@ -72,7 +72,11 @@ class Chat(CustomCog):
         )
 
         usage = response["usage"]
-        message = re.sub(r"\n+", "\n", response["choices"][0]["message"]["content"])
+        # message = re.sub(r"\n+", "\n", response["choices"][0]["message"]["content"])
+        message = response["choices"][0]["message"]["content"]
+
+        if len(message) > 1920:
+            return "I generated a sentence too large for Discord!"
 
         self.guild_prompt_history[history_id].append({"role": "assistant", "content": message})
         self.guild_prompt_token_count[history_id] = float(usage["total_tokens"])
@@ -123,9 +127,9 @@ class Chat(CustomCog):
         self.guild_prompt_history[history_id].append({"role": "user", "content": prompt})
 
         try:
-            response = self.__chat_model(history_id)
+            response = await self.__chat_model(history_id)
         except openai.error.RateLimitError:
-            return "Uh oh! I'm hit my rate limit :-("
+            return "Uh oh! I've hit my rate limit :-("
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.error("OpenAI API failed with exception %s", exc)
             return "Uh oh! Something went wrong with that request :-("

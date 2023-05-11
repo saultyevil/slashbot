@@ -106,7 +106,7 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     if isinstance(error, disnake.NotFound):
         return await inter.response.send_message("The Discord API failed for some reason.", ephemeral=True)
 
-    logger.error(traceback.format_exc())
+    logger.error(traceback.format_exception(error))
 
 
 # This finally runs the bot

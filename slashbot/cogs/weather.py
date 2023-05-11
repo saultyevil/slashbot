@@ -263,7 +263,7 @@ class WeatherCommands(CustomCog):
 
             wind_string = (
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} "
-                + f"({self.__degrees_to_cardinal_direction(sub['wind_deg'])}"
+                + f"({self.__degrees_to_cardinal_direction(sub['wind_deg'])})"
             )
             # humidity_string = f"{sub['humidity']}%"
 
