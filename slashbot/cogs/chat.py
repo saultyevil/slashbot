@@ -78,7 +78,11 @@ class Chat(CustomCog):
         )
 
         usage = response["usage"]
-        message = re.sub(r"\n+", "\n", response["choices"][0]["message"]["content"])
+        # message = re.sub(r"\n+", "\n", response["choices"][0]["message"]["content"])
+        message = response["choices"][0]["message"]["content"]
+
+        if len(message) > 1920:
+            return "I generated a sentence too large for Discord!"
 
         self.guild_prompt_history[history_id].append({"role": "assistant", "content": message})
         self.guild_prompt_token_count[history_id] = float(usage["total_tokens"])
