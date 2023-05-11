@@ -179,14 +179,14 @@ async def update_markov_chain_for_model(
     if len(new_messages) == 0:
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
-        logger.info("No sentences to update model with")
+        logger.info("No sentences to update chain with")
         return
 
     messages = __clean_sentences_for_learning(new_messages)
     if len(messages) == 0:
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
-        logger.info("No 'clean' sentences to update model with")
+        logger.info("No sentences to update chain with")
         return
 
     shutil.copy2(save_location, str(save_location) + ".bak")
