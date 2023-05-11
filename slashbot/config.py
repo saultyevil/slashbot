@@ -21,7 +21,7 @@ class App:
     __conf = {
         "BOT_TOKEN": os.getenv("BOT_TOKEN"),
         # cooldown parameters
-        "COOLDOWN_RATE": 5,
+        "COOLDOWN_RATE": 3,
         "COOLDOWN_STANDARD": 60,
         "COOLDOWN_ONE_HOUR": 3600,
         "HOURS_IN_WEEK": 168,
