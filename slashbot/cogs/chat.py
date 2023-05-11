@@ -184,8 +184,7 @@ class Chat(CustomCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
-            # first check for any time limiting
-            if message.guild.id in TIME_LIMITED_SERVERS:
+            if not message_in_dm and message.guild.id in TIME_LIMITED_SERVERS:
                 current_time = time.time()
                 last_message_time, message_count = self.guild_cooldown[message.guild.id].get(message.author.id, (0, 0))
                 elapsed_time = current_time - last_message_time
