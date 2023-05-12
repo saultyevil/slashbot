@@ -158,7 +158,7 @@ class Chat(CustomCog):
         """
         if guild_id == App.config("ID_SERVER_ADULT_CHILDREN"):
             if App.config("ID_ROLE_TOP_GAY") in [role.id for role in author.roles]:
-                return (0, 0)
+                return (0, 999)
             return (App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE"))
 
         return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
