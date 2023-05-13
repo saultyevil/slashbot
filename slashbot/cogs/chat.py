@@ -5,19 +5,18 @@
 
 import logging
 import time
+from collections import defaultdict
 from types import coroutine
 from typing import Tuple
-from collections import defaultdict
 
+import disnake
 import openai
 import openai.error
-import disnake
 from disnake.ext import commands
 
 from slashbot.config import App
-from slashbot.custom_cog import CustomCog
 from slashbot.custom_bot import ModifiedInteractionBot
-
+from slashbot.custom_cog import CustomCog
 
 openai.api_key = App.config("OPENAI_API_KEY")
 
@@ -132,8 +131,8 @@ class Chat(CustomCog):
         """
         if guild_id == App.config("ID_SERVER_ADULT_CHILDREN"):
             if App.config("ID_ROLE_TOP_GAY") in [role.id for role in user.roles]:
-                return (0, 999)
-            return (App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE"))
+                return 0, 999
+            return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
 
         return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
 
@@ -231,21 +230,22 @@ class Chat(CustomCog):
             if not message_in_dm and message.guild.id in TIME_LIMITED_SERVERS:
                 on_cooldown = await self.__check_for_cooldown(message)
 
-            if on_cooldown:
-                try:
-                    await message.delete(delay=10)
-                    return await message.channel.send(f"Stop abusing me {message.author.mention}!", delete_after=10)
-                except disnake.Forbidden:
-                    logger.error("Bot does not have permission to delete time limited message.")
-                    return
+                if on_cooldown:
+                    try:
+                        await message.delete(delay=10)
+                        await message.channel.send(f"Stop abusing me {message.author.mention}!", delete_after=10)
+                        return
+                    except disnake.Forbidden:
+                        logger.error("Bot does not have permission to delete time limited message.")
+                        return
 
             # if everything ok, type and send
             async with message.channel.typing():
                 response = await self.respond_to_prompt(
-                    message.author.id if message_in_dm else message.guild.id, message.clean_content
+                    message.author.id if message_in_dm else message.guild.id, message.clean_content()
                 )
 
-            await message.channel.send(f"{message.author.mention} {response}")
+            await message.channel.send(f"{message.author.mention if not message_in_dm else ''} {response}")
 
     # Commands -----------------------------------------------------------------
 
