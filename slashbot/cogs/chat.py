@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Commands for interacting with the OpenAI chat bot interface."""
+"""Cog for AI interactions, from the OpenAI API."""
 
 import logging
 import time
 from types import coroutine
+from typing import Tuple
 from collections import defaultdict
 
 import openai
@@ -26,10 +27,8 @@ COOLDOWN_USER = commands.BucketType.user
 
 DEFAULT_SYSTEM_MESSAGE = " ".join(
     [
-        "Your name is Margaret and you are a helpful assistant. Your favourite animal are rabbits. You are a big fan of",
-        "the bands Anal Cunt and Megadeth. You really enjoy playing the board game Talisman. If you ever need to",
-        "change the topic, suggest that everyone should hop on for a quick game of Talisman, or watch you stream Yakuza"
-        "6.",
+        "You are playing a character named Margaret, a helpful assistant.",
+        "You should make references to popular culture wherever appropriate.",
     ]
 )
 
@@ -40,7 +39,7 @@ TIME_LIMITED_SERVERS = [
 
 
 class Chat(CustomCog):
-    """Chat tools for the bot."""
+    """AI chat features powered by OpenAI."""
 
     def __init__(self, bot: ModifiedInteractionBot):
         super().__init__()
@@ -57,17 +56,18 @@ class Chat(CustomCog):
     # Functions ----------------------------------------------------------------
 
     def __openai_chat_completion(self, history_id: int) -> str:
-        """_summary_
+        """Get a message from ChatGPT using the ChatCompletion API.
 
         Parameters
         ----------
         history_id : int
-            _description_
+            The ID to store chat history context to. Usually the guild or user
+            id.
 
         Returns
         -------
         str
-            _description_
+            The message returned by ChatGPT.
         """
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -77,11 +77,10 @@ class Chat(CustomCog):
         )
 
         usage = response["usage"]
-        # message = re.sub(r"\n+", "\n", response["choices"][0]["message"]["content"])
         message = response["choices"][0]["message"]["content"]
 
         if len(message) > 1920:
-            return "I generated a sentence too large for Discord!"
+            return "I've generated a sentence which is too large for Discord!"
 
         self.guild_prompt_history[history_id].append({"role": "assistant", "content": message})
         self.guild_prompt_token_count[history_id] = float(usage["total_tokens"])
@@ -89,12 +88,16 @@ class Chat(CustomCog):
         return message
 
     async def __trim_message_history(self, history_id: int) -> None:
-        """Remove old messages from a chat history when it gets too long.
+        """Remove messages from a chat history.
+
+        Removes a fraction of the messages from the chat history if the number
+        of tokens exceeds a threshold controlled by
+        `self.model.max_history_tokens`.
 
         Parameters
         ----------
         history_id : int
-            _description_
+            The chat history ID. Usually the guild or user id.
         """
         if self.guild_prompt_token_count[history_id] < self.model_max_history_tokens:
             return
@@ -107,20 +110,54 @@ class Chat(CustomCog):
 
         self.guild_prompt_token_count[history_id] = 0
 
-    async def respond_to_prompt(self, history_id: int, prompt: str) -> coroutine:
-        """_summary_
+    def __get_cooldown_length(self, guild_id: int, user: disnake.User | disnake.Member) -> Tuple[int, int]:
+        """Returns the cooldown length and interaction amount fo a user in a
+        guild.
+
+        What returns depends on the guild and the role of the user.
 
         Parameters
         ----------
-        author : disnake.User
-            _description_
-        prompt : str
-            _description_
+        guild_id : int
+            The ID of the guild the message was sent in.
+        user : disnake.User | disnake.Member
+            The User or Member object of the user who sent the prompt.
 
         Returns
         -------
-        coroutine
-            _description_
+        int
+            The cooldown time in minutes
+        int
+            The max number of interactions before a cooldown is applied
+        """
+        if guild_id == App.config("ID_SERVER_ADULT_CHILDREN"):
+            if App.config("ID_ROLE_TOP_GAY") in [role.id for role in user.roles]:
+                return (0, 999)
+            return (App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE"))
+
+        return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
+
+    async def respond_to_prompt(self, history_id: int, prompt: str) -> str:
+        """Process a prompt and get a response.
+
+        This function is the main steering function for getting a response from
+        OpenAI ChatGPT. The prompt is prepared, the chat history updated, and
+        a response is retrieved and returned.
+
+        If something goes wrong due to, e.g. rate limiting from OpenAI, special
+        strings are returned which can be sent to chat.
+
+        Parameters
+        ----------
+        history_id: int
+            An ID to store chat history to. Usually the guild or user id.
+        prompt : str
+            The latest prompt to give to ChatGPT.
+
+        Returns
+        -------
+        str
+            The generated response to the given prompt.
         """
         prompt = prompt.replace("@Margaret", "", 1).strip()  # todo, remove hardcoded reference
 
@@ -141,38 +178,46 @@ class Chat(CustomCog):
 
         return response
 
-    def __get_cooldown_length(self, guild_id: int, author: disnake.User | disnake.Member) -> int:
-        """_summary_
+    async def __check_for_cooldown(self, message: disnake.Message) -> bool:
+        """Check if a message author is on cooldown.
 
         Parameters
         ----------
-        guild_id : _type_
-            _description_
-        author : _type_
-            _description_
+        message : disnake.Message
+            The message recently sent to the bot.
 
         Returns
         -------
-        int
-            _description_
+        bool
+            True if the use is on cooldown, False if not.
         """
-        if guild_id == App.config("ID_SERVER_ADULT_CHILDREN"):
-            if App.config("ID_ROLE_TOP_GAY") in [role.id for role in author.roles]:
-                return (0, 999)
-            return (App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE"))
+        current_time = time.time()
+        last_message_time, message_count = self.guild_cooldown[message.guild.id].get(message.author.id, (0, 0))
+        elapsed_time = current_time - last_message_time
+        cooldown_length, max_message_count = self.__get_cooldown_length(message.guild.id, message.author)
 
-        return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
+        if elapsed_time <= cooldown_length and message_count >= max_message_count:
+            return True
+
+        if message_count >= cooldown_length:
+            message_count = 0
+
+        message_count += 1
+
+        self.guild_cooldown[message.guild.id][message.author.id] = (current_time, message_count)
+
+        return False
 
     # Listeners ----------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
     async def listen_for_mentions(self, message: disnake.Message) -> None:
-        """Respond to mentions with the AI.
+        """Listen for mentions which are prompts for the AI.
 
         Parameters
         ----------
         message : str
-            _description_
+            The message to process for mentions.
         """
         # ignore other both messages and itself
         if message.author.bot or message.author == App.config("BOT_USER_OBJECT"):
@@ -184,21 +229,15 @@ class Chat(CustomCog):
 
         if bot_mentioned or message_in_dm:
             if not message_in_dm and message.guild.id in TIME_LIMITED_SERVERS:
-                current_time = time.time()
-                last_message_time, message_count = self.guild_cooldown[message.guild.id].get(message.author.id, (0, 0))
-                elapsed_time = current_time - last_message_time
-                cooldown_length, max_message_count = self.__get_cooldown_length(message.guild.id, message.author)
-                if elapsed_time <= cooldown_length and message_count >= max_message_count:
-                    try:
-                        await message.delete(delay=10)
-                        return await message.channel.send(f"Stop abusing me {message.author.mention}!", delete_after=10)
-                    except disnake.Forbidden:
-                        logger.error("Bot does not have permission to delete time limited message.")
+                on_cooldown = await self.__check_for_cooldown(message)
+
+            if on_cooldown:
+                try:
+                    await message.delete(delay=10)
+                    return await message.channel.send(f"Stop abusing me {message.author.mention}!", delete_after=10)
+                except disnake.Forbidden:
+                    logger.error("Bot does not have permission to delete time limited message.")
                     return
-                if message_count >= cooldown_length:
-                    message_count = 0
-                message_count += 1
-                self.guild_cooldown[message.guild.id][message.author.id] = (current_time, message_count)
 
             # if everything ok, type and send
             async with message.channel.typing():
@@ -213,17 +252,12 @@ class Chat(CustomCog):
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="clear_ai_chat_history", description="reset your AI chat history")
     async def clear_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
-        """__description__
+        """Clear history context for where the interaction was called from.
 
         Parameters
         ----------
         inter : disnake.ApplicationCommandInteraction
-            _description_
-
-        Returns
-        -------
-        coroutine
-            _description_
+            The slash command interaction.
         """
         if inter.guild.id not in self.guild_prompt_history:
             return await inter.response.send_message("There is no chat history to clear.", ephemeral=True)
@@ -238,14 +272,18 @@ class Chat(CustomCog):
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_chat_system_prompt", description="change the chat system prompt")
     async def set_system_message(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
-        """_summary_
+        """Set a new system message for the location were the interaction came
+        from.
+
+        This typically does not override the default system message, and will
+        append a new system message.
 
         Parameters
         ----------
         inter : disnake.ApplicationCommandInteraction
-            _description_
+            The slash command interaction.
         message : str
-            _description_
+            The new system prompt to set.
         """
         if inter.guild.id in self.guild_prompt_history:
             self.guild_prompt_history[inter.guild.id].append([{"role": "system", "content": message}])
@@ -253,4 +291,7 @@ class Chat(CustomCog):
             self.guild_prompt_history[inter.guild.id] = [{"role": "system", "content": message}]
         logger.info("New system prompt for chat %s: %s", inter.guild.name, message)
 
-        return await inter.response.send_message("System prompt updated and chat history cleared.", ephemeral=True)
+        return await inter.response.send_message(
+            "System prompt updated and chat history cleared.",
+            ephemeral=True,
+        )
