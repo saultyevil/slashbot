@@ -4,14 +4,14 @@
 """Markov chain module
 """
 
-import pickle
 import logging
+import pickle
 import shutil
+import string
 from pathlib import Path
 from typing import Coroutine
-from typing import List
 from typing import Dict
-import string
+from typing import List
 
 import disnake
 
@@ -203,7 +203,7 @@ async def update_markov_chain_for_model(
     if inter:
         await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
 
-    logger.info("Markov chain updated with %s new messages", len(messages))
+    logger.info("Markov chain updated with %d new messages", len(messages))
 
     return model
 
