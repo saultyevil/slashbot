@@ -4,20 +4,21 @@
 """This module contains functions for modifying the slashbot database."""
 
 import json
-import pathlib
 import logging
+import pathlib
 
-from sqlalchemy import create_engine
 from sqlalchemy import Column
-from sqlalchemy import String
-from sqlalchemy import Integer
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Integer
+from sqlalchemy import String
+from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import relationship
 
 from slashbot.config import App
+
 
 # Models -----------------------------------------------------------------------
 
@@ -249,9 +250,9 @@ def get_user(session: Session, user_id: int, user_name: str) -> User:
     User
         The user database entry.
     """
-    user = session.query(User).filter(User.user_id == user_id).first()
+    user = session.query(User).filter(User.user_id == int(user_id)).first()
     if not user:
-        user = create_new_user(session, user_id, user_name)
+        user = create_new_user(session, int(user_id), user_name)
 
     return user
 
@@ -329,3 +330,27 @@ def get_bank_account(session: Session, user_id: int) -> BankAccount:
         account = create_new_bank_account(session, user_id)
 
     return account
+
+
+def get_user_location(user_id: str | int, user_name: str) -> str | None:
+    """Return the stored location set by a user.
+
+    Parameters
+    ----------
+    user_id : str
+        The user id of the user
+    user_name : str
+        The username of the user
+
+    Returns
+    -------
+    str | None
+        The location in format city, country. If the user has no location set,
+        None is returned instead.
+    """
+
+    with Session(connect_to_database_engine()) as session:
+        user = get_user(session, user_id, user_name)
+        if not user.city:
+            return None
+        return f"{user.city.capitalize()}, {user.country_code.upper() if user.country_code else ''}"

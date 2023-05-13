@@ -83,3 +83,37 @@ def remove_emojis_from_string(string: str) -> str:
         re.UNICODE,
     )
     return re.sub(emoj, "", string)
+
+
+def convert_radial_to_cardinal_direction(degrees: float) -> str:
+    """Convert a degrees value to a cardinal direction.
+
+    Parameters
+    ----------
+    degrees: float
+        The degrees direction.
+
+    Returns
+    -------
+    The cardinal direction as a string.
+    """
+    directions = [
+        "N",
+        "NNE",
+        "NE",
+        "ENE",
+        "E",
+        "ESE",
+        "SE",
+        "SSE",
+        "S",
+        "SSW",
+        "SW",
+        "WSW",
+        "W",
+        "WNW",
+        "NW",
+        "NNW",
+    ]
+
+    return directions[round(degrees / (360.0 / len(directions))) % len(directions)]

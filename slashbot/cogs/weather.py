@@ -3,25 +3,24 @@
 
 """Commands for getting the weather."""
 
+import datetime
 import json
 import logging
 from types import coroutine
-import datetime
+from typing import List
 from typing import Tuple
 
 import disnake
 import requests
 from disnake.ext import commands
-from sqlalchemy.orm import Session
 
 from slashbot.config import App
 from slashbot.custom_cog import CustomCog
+from slashbot.db import get_user_location
 from slashbot.error import deferred_error_message
-from slashbot.db import get_user
-from slashbot.db import connect_to_database_engine
 from slashbot.markov import MARKOV_MODEL
 from slashbot.markov import generate_sentences_for_seed_words
-
+from slashbot.util import convert_radial_to_cardinal_direction
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
@@ -70,85 +69,40 @@ class WeatherCommands(CustomCog):
     # Private ------------------------------------------------------------------
 
     @staticmethod
-    def __degrees_to_cardinal_direction(degrees: float) -> str:
-        """Convert a degrees value to a cardinal direction.
-
-        Parameters
-        ----------
-        degrees: float
-            The degrees direction.
-
-        Returns
-        -------
-        The cardinal direction as a string.
-        """
-        directions = [
-            "N",
-            "NNE",
-            "NE",
-            "ENE",
-            "E",
-            "ESE",
-            "SE",
-            "SSE",
-            "S",
-            "SSW",
-            "SW",
-            "WSW",
-            "W",
-            "WNW",
-            "NW",
-            "NNW",
-        ]
-
-        return directions[round(degrees / (360.0 / len(directions))) % len(directions)]
-
-    @staticmethod
-    def __get_user_location(user_id: str, user_name: str) -> str:
-        """Return the stored location set by a user.
-
-        Parameters
-        ----------
-        user_id : str
-            _description_
-        user_name : str
-            _description_
-
-        Returns
-        -------
-        _type_
-            _description_
-        """
-        with Session(connect_to_database_engine()) as session:
-            user = get_user(session, user_id, user_name)
-            if not user.city:
-                return None
-            return f"{user.city}, {user.country_code if user.country_code else ''}"
-
-    @staticmethod
-    def __get_weather_response(location: str, units: str, extract_type: str) -> Tuple[str, dict]:
+    def __get_weather_icon_url(icon_code: str) -> str:
         """_summary_
 
         Parameters
         ----------
-        location : str
-            _description_
-        units : str
-            _description_
-        extract_type : str
+        icon_code : str
             _description_
 
         Returns
         -------
-        dict
+        str
             _description_
+        """
+        return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
-        Raises
-        ------
-        requests.RequestException
-            _description_
-        requests.exceptions.Timeout
-            _description_
+    @staticmethod
+    def get_weather_for_location(location: str, units: str, extract_type: str | List | Tuple) -> Tuple[str, dict]:
+        """Query the OpenWeatherMap API for the weather.
+
+        Parameters
+        ----------
+        location : str
+            The location in format City, Country where country is the two letter
+            country code.
+        units : str
+            The units to return the weather in. Either imperial or metric.
+        extract_type : str | List | Tuple
+            The type of weather to return. Either current, hourly or daily.
+
+        Returns
+        -------
+        Tuple
+            The location, as from the API, and the weather requested as a dict
+            of the key provided in extract_type.
         """
         geocode_request = requests.get(
             f"http://api.openweathermap.org/geo/1.0/direct?q={location}&appid={API_KEY}",
@@ -177,23 +131,13 @@ class WeatherCommands(CustomCog):
                 raise LocationNotFoundException(f"{location} could not be found")
             raise OneCallException(f"OneCall API failed for {location}")
 
-        return f"{name}, {country}", json.loads(one_call_request.content)[extract_type]
+        content = json.loads(one_call_request.content)
+        if isinstance(extract_type, (list, tuple)):
+            weather_return = {key: value for key, value in content.items() if key in extract_type}
+        else:
+            weather_return = content[extract_type]
 
-    @staticmethod
-    def __get_weather_icon_url(icon_code: str) -> str:
-        """_summary_
-
-        Parameters
-        ----------
-        icon_code : str
-            _description_
-
-        Returns
-        -------
-        str
-            _description_
-        """
-        return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
+        return f"{name}, {country}", weather_return
 
     # Commands -----------------------------------------------------------------
 
@@ -213,30 +157,37 @@ class WeatherCommands(CustomCog):
         ),
         amount: int = commands.Param(description="The number of results to return.", default=4, gt=0, lt=7),
     ) -> coroutine:
-        """Print the weather forecast for a location.
+        """Send the weather forecast to chat, either daily or hourly.
 
         Parameters
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
-        location: str
+        user_location: str
             The location to get the weather forecast for.
-        days: int
-            The number of days to return the forecast for.
+        forecast_type: str
+            Either daily or hourly.
+        units: str
+            The units to get the forecast for.
+        amount: int
+            The number of items to return the forecast for, e.g. 4 days or 4
+            hours.
         """
         await inter.response.defer()
 
         if not user_location:
-            user_location = self.__get_user_location(inter.author.id, inter.author.name)
+            user_location = get_user_location(inter.author.id, inter.author.name)
             if not user_location:
                 return await deferred_error_message(
                     inter, "You need to either specify a city, or set your city and/or country using /set_info."
                 )
 
         try:
-            location, forecast = self.__get_weather_response(user_location, units, forecast_type)
+            location, forecast = self.get_weather_for_location(user_location, units, forecast_type)
         except (LocationNotFoundException, GeocodeException):
-            return await deferred_error_message(inter, f"{user_location} is not available in OpenWeatherMap.")
+            return await deferred_error_message(
+                inter, f"{user_location.capitalize()} is not available in OpenWeatherMap."
+            )
         except OneCallException:
             return await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
         except requests.Timeout:
@@ -251,7 +202,7 @@ class WeatherCommands(CustomCog):
             title=f"{forecast_type.capitalize()} forecast for {location}", color=disnake.Color.default()
         )
 
-        for sub in forecast[1 : amount + 1]:
+        for sub in forecast[: amount + 1]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]))
 
             if forecast_type == "hourly":
@@ -263,7 +214,7 @@ class WeatherCommands(CustomCog):
 
             wind_string = (
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} "
-                + f"({self.__degrees_to_cardinal_direction(sub['wind_deg'])})"
+                + f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
             # humidity_string = f"{sub['humidity']}%"
 
@@ -294,30 +245,33 @@ class WeatherCommands(CustomCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
-        where: str
+        user_location: str
             The location to get the weather for.
-        what: str
-            What to get, either the whole forecast, temperature, rain or wind.
         units: str
             The units to use, either metric or imperial.
         """
         await inter.response.defer()
 
         if not user_location:
-            user_location = self.__get_user_location(inter.author.id, inter.author.name)
+            user_location = get_user_location(inter.author.id, inter.author.name)
             if not user_location:
                 return await deferred_error_message(
                     inter, "You need to specify a city, or set your city and/or country using /set_info."
                 )
 
         try:
-            location, weather = self.__get_weather_response(user_location, units, "current")
+            location, weather = self.get_weather_for_location(user_location, units, ("current", "daily"))
         except (LocationNotFoundException, GeocodeException):
-            return await deferred_error_message(inter, f"{user_location} is not available in OpenWeatherMap.")
+            return await deferred_error_message(
+                inter, f"{user_location.capitalize()} is not available in OpenWeatherMap."
+            )
         except OneCallException:
             return await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
+
+        forecast = weather["daily"][0]
+        weather = weather["current"]
 
         if units == "metric":
             temp_unit, wind_unit, wind_factor = "C", "km/h", 3.6
@@ -328,13 +282,18 @@ class WeatherCommands(CustomCog):
 
         embed.add_field(name="Description", value=weather["weather"][0]["description"].capitalize(), inline=False)
         embed.add_field(name="Temperature", value=f"{weather['temp']:.0f} °{temp_unit}", inline=False)
+        embed.add_field(
+            name="Min/Max Temperature",
+            value=f"{forecast['temp']['min']:.0f}/{forecast['temp']['max']:.0f} °{temp_unit}",
+            inline=False,
+        )
         embed.add_field(name="Humidity", value=f"{weather['humidity']}%", inline=False)
         embed.add_field(
             name="Wind speed", value=f"{float(weather['wind_speed']) * wind_factor:.0f} {wind_unit}", inline=False
         )
         embed.add_field(
             name="Wind direction",
-            value=f"{weather['wind_deg']:.0f}° ({self.__degrees_to_cardinal_direction(weather['wind_deg'])})",
+            value=f"{weather['wind_deg']:.0f}° ({convert_radial_to_cardinal_direction(weather['wind_deg'])})",
             inline=False,
         )
 
