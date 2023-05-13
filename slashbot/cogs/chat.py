@@ -233,7 +233,10 @@ class Chat(CustomCog):
                 if on_cooldown:
                     try:
                         await message.delete(delay=10)
-                        await message.channel.send(f"Stop abusing me {message.author.mention}!", delete_after=10)
+                        await message.channel.send(
+                            f"Stop abusing me " f"{message.author.mention if not message_in_dm else ''}!",
+                            delete_after=10,
+                        )
                         return
                     except disnake.Forbidden:
                         logger.error("Bot does not have permission to delete time limited message.")
