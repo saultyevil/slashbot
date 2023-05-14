@@ -34,14 +34,14 @@ class AdminCommands(CustomCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="version", description="get the version number of the bot")
+    @commands.default_member_permissions(administrator=True)
     async def check_version(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
-        """Check the version of the bot in use
-        """
+        """Check the version of the bot in use"""
         await inter.response.send_message(f"Version {__version__}", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="logfile", description="get the tail of the logfile")
-    # @commands.default_member_permissions(administrator=True)
+    @commands.default_member_permissions(administrator=True)
     async def log_tail(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -64,7 +64,9 @@ class AdminCommands(CustomCog):
 
         Parameters
         ----------
-        n_lines: int
+        file: str
+            The name of the file to look at
+        num_lines: int
             The number of lines to print.
         """
         await inter.response.defer(ephemeral=True)

@@ -36,6 +36,8 @@ TIME_LIMITED_SERVERS = [
     App.config("ID_SERVER_FREEDOM"),
 ]
 
+TOKEN_COUNT_UNSET = -1
+
 
 class Chat(CustomCog):
     """AI chat features powered by OpenAI."""
@@ -48,6 +50,7 @@ class Chat(CustomCog):
         self.guild_prompt_token_count = defaultdict(dict)
         self.guild_cooldown = defaultdict(dict)
 
+        self.chat_model = "gpt-3.5-turbo"
         self.model_temperature = 0.5
         self.model_max_history_tokens = 1024  # tokens
         self.model_max_history_remove_fraction = 0.5
@@ -69,7 +72,7 @@ class Chat(CustomCog):
             The message returned by ChatGPT.
         """
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model=self.chat_model,
             messages=self.guild_prompt_history[history_id],
             temperature=self.model_temperature,
             max_tokens=1024,
@@ -101,13 +104,16 @@ class Chat(CustomCog):
         if self.guild_prompt_token_count[history_id] < self.model_max_history_tokens:
             return
 
-        num_remove = int(self.model_max_history_remove_fraction * len(self.guild_prompt_history[history_id]))
+        # num_remove = int(self.model_max_history_remove_fraction * len(self.guild_prompt_history[history_id]))
+        num_remove = 1
         logger.info("Removing last %d messages from %d prompt history", num_remove, history_id)
 
         for i in range(num_remove):
+            if i + 1 > len(self.guild_prompt_history[history_id]) - 2:  # -2 because we exclude the system message
+                break
             self.guild_prompt_history[history_id].pop(i + 1)  # + 1 to ignore system message
 
-        self.guild_prompt_token_count[history_id] = 0
+        self.guild_prompt_token_count[history_id] = TOKEN_COUNT_UNSET
 
     def __get_cooldown_length(self, guild_id: int, user: disnake.User | disnake.Member) -> Tuple[int, int]:
         """Returns the cooldown length and interaction amount fo a user in a
@@ -135,6 +141,36 @@ class Chat(CustomCog):
             return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
 
         return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
+
+    async def __check_for_cooldown(self, message: disnake.Message) -> bool:
+        """Check if a message author is on cooldown.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message recently sent to the bot.
+
+        Returns
+        -------
+        bool
+            True if the use is on cooldown, False if not.
+        """
+        current_time = time.time()
+        last_message_time, message_count = self.guild_cooldown[message.guild.id].get(message.author.id, (0, 0))
+        elapsed_time = current_time - last_message_time
+        cooldown_length, max_message_count = self.__get_cooldown_length(message.guild.id, message.author)
+
+        if elapsed_time <= cooldown_length and message_count >= max_message_count:
+            return True
+
+        if message_count >= cooldown_length:
+            message_count = 0
+
+        message_count += 1
+
+        self.guild_cooldown[message.guild.id][message.author.id] = (current_time, message_count)
+
+        return False
 
     async def respond_to_prompt(self, history_id: int, prompt: str) -> str:
         """Process a prompt and get a response.
@@ -176,36 +212,6 @@ class Chat(CustomCog):
             return "Uh oh! Something went wrong with that request :-("
 
         return response
-
-    async def __check_for_cooldown(self, message: disnake.Message) -> bool:
-        """Check if a message author is on cooldown.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The message recently sent to the bot.
-
-        Returns
-        -------
-        bool
-            True if the use is on cooldown, False if not.
-        """
-        current_time = time.time()
-        last_message_time, message_count = self.guild_cooldown[message.guild.id].get(message.author.id, (0, 0))
-        elapsed_time = current_time - last_message_time
-        cooldown_length, max_message_count = self.__get_cooldown_length(message.guild.id, message.author)
-
-        if elapsed_time <= cooldown_length and message_count >= max_message_count:
-            return True
-
-        if message_count >= cooldown_length:
-            message_count = 0
-
-        message_count += 1
-
-        self.guild_cooldown[message.guild.id][message.author.id] = (current_time, message_count)
-
-        return False
 
     # Listeners ----------------------------------------------------------------
 

@@ -5,6 +5,7 @@
 this bot is to sometimes annoy Gareth with its useful information.
 """
 
+import argparse
 import logging
 import time
 import traceback
@@ -24,10 +25,17 @@ import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
 import slashbot.cogs.weather
-
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
 from slashbot.db import migrate_old_json_to_db
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--disable-auto-markov-gen",
+    help="Disable automatic markov sentence generation and revert to on-the-fly generation",
+    action="store_false",
+)
+args = parser.parse_args()
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 logger.info("Initializing Slashbot...")
@@ -39,7 +47,7 @@ intents = disnake.Intents.default()
 intents.message_content = True
 intents.members = True
 
-bot = ModifiedInteractionBot(intents=intents)
+bot = ModifiedInteractionBot(pregen_markov=args.disable_auto_markov_gen, intents=intents)
 
 for cog in [
     slashbot.cogs.admin.AdminCommands(bot, App.config("LOGFILE_NAME")),
@@ -100,14 +108,14 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     error: Exception
         The error that occurred.
     """
+    stack = traceback.format_exception(type(error), error, error.__traceback__)
+    logger.exception("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
+
     if isinstance(error, commands.errors.CommandOnCooldown):
         return await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
 
     if isinstance(error, disnake.NotFound):
         return await inter.response.send_message("The Discord API failed for some reason.", ephemeral=True)
-
-    stack = traceback.format_exception(type(error), error, error.__traceback__)
-    logger.error("%s failed with error\n%s", inter.application_command.name, "".join(stack))
 
 
 # This finally runs the bot

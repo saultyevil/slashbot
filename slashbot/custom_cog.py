@@ -4,14 +4,15 @@
 """Custom Cog class."""
 
 import logging
+
 import disnake
 from disnake.ext import commands
 from disnake.ext import tasks
 
 from slashbot.config import App
 from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_sentence
 from slashbot.markov import generate_list_of_sentences_with_seed_word
+from slashbot.markov import generate_sentence
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
@@ -47,6 +48,8 @@ class CustomCog(commands.Cog):
     @tasks.loop(seconds=5)
     async def regenerate_markov_sentences(self) -> None:
         """Re-generate the markov sentences with a given seed word."""
+        if not self.bot.enable_auto_markov_gen:
+            return
         if len(self.markov_sentences) == 0:
             return
 
@@ -59,36 +62,35 @@ class CustomCog(commands.Cog):
 
     @regenerate_markov_sentences.before_loop
     async def wait_before_start(self) -> None:
-        """_summary_
-
-        Returns
-        -------
-        _type_
-            _description_
-        """
+        """Wait until the bot is ready for the task."""
         await self.bot.wait_until_ready()
 
     # Functions ----------------------------------------------------------------
 
     def get_generated_sentence(self, seed_word: str) -> str:
-        """_summary_
+        """Retrieve a pre-generated sentence from storage.
+
+        If a sentence for a seed word doesn't exist, then a sentence is created
+        on-the-fly instead.
 
         Parameters
         ----------
         seed_word : str
-            _description_
+            The seed word for the sentence.
 
         Returns
         -------
         str
-            _description_
+            The generated sentence.
         """
         if seed_word not in self.markov_sentences:
-            logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
+            if self.bot.enable_auto_markov_gen:
+                logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
             return generate_sentence(MARKOV_MODEL, seed_word)
 
         try:
             return self.markov_sentences[seed_word].pop()
         except IndexError:
-            logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
+            if self.bot.enable_auto_markov_gen:
+                logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
             return generate_sentence(MARKOV_MODEL, seed_word)

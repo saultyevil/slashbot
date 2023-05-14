@@ -7,6 +7,7 @@ import json
 import logging
 import pathlib
 
+import disnake
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
@@ -28,13 +29,7 @@ class Base(DeclarativeBase):
 
 
 class User(Base):
-    """User ORM class.
-
-    Parameters
-    ----------
-    Base : _type_
-        _description_
-    """
+    """User ORM class."""
 
     __tablename__ = "users"
 
@@ -83,13 +78,7 @@ class OracleWord(Base):
 
 
 class Reminder(Base):
-    """User ORM class.
-
-    Parameters
-    ----------
-    Base : _type_
-        _description_
-    """
+    """Reminder ORM class."""
 
     __tablename__ = "reminders"
 
@@ -106,13 +95,7 @@ class Reminder(Base):
 
 
 class Image(Base):
-    """_summary_
-
-    Parameters
-    ----------
-    Base : _type_
-        _description_
-    """
+    """Image database ORM class."""
 
     __tablename__ = "images"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -120,13 +103,7 @@ class Image(Base):
 
 
 class Tweet(Base):
-    """_summary_
-
-    Parameters
-    ----------
-    Base : _type_
-        _description_
-    """
+    """Tweet database ORM class."""
 
     __tablename__ = "tweets"
 
@@ -164,12 +141,17 @@ def connect_to_database_engine(location: str = None):
     return engine
 
 
-async def migrate_old_json_to_db(client) -> None:
+async def migrate_old_json_to_db(client: disnake.Client) -> None:
     """Migrate data stuck in a JSON backup to the database.
 
     This is typically run each time the bot is started up, as the JSON files
     should be unchanging. If a user is already in the database, then whatever
     is in the JSON is ignored.
+
+    Parameters
+    ----------
+    client : disnake.Client
+        A Disnake Client instance of the bot.
     """
     with Session(connect_to_database_engine()) as session:
         if (path := pathlib.Path("data/users.json")).exists():
@@ -235,6 +217,8 @@ def create_new_user(session: Session, user_id: int, user_name: str) -> User:
 
 def get_user(session: Session, user_id: int, user_name: str) -> User:
     """Get a user from the database.
+
+    If the user does not exist, a new entry is created for the user.
 
     Parameters
     ----------
