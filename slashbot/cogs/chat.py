@@ -245,7 +245,7 @@ class Chat(CustomCog):
             # if everything ok, type and send
             async with message.channel.typing():
                 response = await self.respond_to_prompt(
-                    message.author.id if message_in_dm else message.guild.id, message.clean_content()
+                    message.author.id if message_in_dm else message.guild.id, message.clean_content
                 )
 
             await message.channel.send(f"{message.author.mention if not message_in_dm else ''} {response}")
