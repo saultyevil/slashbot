@@ -281,10 +281,10 @@ class WeatherCommands(CustomCog):
         embed = disnake.Embed(title=f"Current weather for {location}", color=disnake.Color.default())
 
         embed.add_field(name="Description", value=weather["weather"][0]["description"].capitalize(), inline=False)
-        embed.add_field(name="Current Temperature", value=f"{weather['temp']:.0f} °{temp_unit}", inline=False)
         embed.add_field(
-            name="Temperature Min / Max",
-            value=f"{forecast['temp']['min']:.0f} / {forecast['temp']['max']:.0f} °{temp_unit}",
+            name="Current temperature (Min/Max)",
+            value=f"{weather['temp']:.0f} °{temp_unit}"
+            f" ({forecast['temp']['min']:.0f}/{forecast['temp']['max']:.0f} °{temp_unit})",
             inline=False,
         )
         embed.add_field(name="Humidity", value=f"{weather['humidity']}%", inline=False)
