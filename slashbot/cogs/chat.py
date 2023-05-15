@@ -51,7 +51,7 @@ class Chat(CustomCog):
         self.bot = bot
 
         self.guild_prompt_history = {}
-        self.guild_prompt_token_count = defaultdict(dict)
+        self.guild_prompt_token_count = defaultdict(int)
         self.guild_cooldown = defaultdict(dict)
 
         self.chat_model = "gpt-3.5-turbo"
@@ -300,11 +300,7 @@ class Chat(CustomCog):
             The new system prompt to set.
         """
         history_id = inter.guild.id if inter.guild else inter.author.id
-
-        if history_id in self.guild_prompt_history:
-            self.guild_prompt_history[history_id].append({"role": "system", "content": message})
-        else:
-            self.guild_prompt_history[history_id] = [{"role": "system", "content": message}]
+        self.guild_prompt_history[history_id] = [{"role": "system", "content": message}]
 
         return await inter.response.send_message(
             "System prompt updated and chat history cleared.",
