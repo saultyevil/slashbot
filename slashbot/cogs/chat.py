@@ -68,6 +68,30 @@ class Chat(CustomCog):
     # Static -------------------------------------------------------------------
 
     @staticmethod
+    def __check_if_in_thread(message: disnake.Message) -> bool:
+        """Check if the message came from a thread the bot is in.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to check if in a thread.
+
+        Returns
+        -------
+        bool
+            Returns True if the message came from a thread the bot is in.
+        """
+        in_thread = False
+
+        if isinstance(message.channel, disnake.Thread):
+            thread_members = await message.channel.fetch_members()
+            thread_members = [member.id for member in thread_members]
+            if App.config("ID_BOT") in thread_members:
+                in_thread = True
+
+        return in_thread
+
+    @staticmethod
     def __get_cooldown_length(guild_id: int, user: disnake.User | disnake.Member) -> Tuple[int, int]:
         """Returns the cooldown length and interaction amount fo a user in a
         guild.
@@ -316,11 +340,13 @@ class Chat(CustomCog):
         # only respond when mentioned, in DMs or when in own thread
         bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
-        in_thread = isinstance(message.channel.parent, disnake.ForumChannel) and message.thread.owner_id == App.config(
-            "ID_BOT"
-        )
 
-        logger.info("in_thread %s", in_thread)
+        in_thread = False
+        if isinstance(message.channel, disnake.Thread):
+            thread_members = await message.channel.fetch_members()
+            thread_members = [member.id for member in thread_members]
+            if App.config("ID_BOT") in thread_members:
+                in_thread = True
 
         if bot_mentioned or message_in_dm or in_thread:
             history_id = self.__get_history_id(message)
