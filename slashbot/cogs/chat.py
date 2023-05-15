@@ -117,6 +117,49 @@ class Chat(CustomCog):
 
         return history_id
 
+    @staticmethod
+    async def do_cooldown(message: disnake.Message) -> None:
+        """Respond to a user on cooldown.
+
+        Parameters
+        ----------
+        message :
+            The message to respond to.
+        """
+        try:
+            await message.delete(delay=10)
+            await message.channel.send(f"Stop abusing me " f"{message.author.mention}!", delete_after=10)
+        except disnake.Forbidden:
+            logger.error(f"Bot does not have permission to delete messages in {message.guild.id}")
+
+    @staticmethod
+    async def __get_response_destination(message: disnake.Message, response: str):
+        """Get the destination for a message.
+
+        If the sentence is long, then it goes to a thread.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message being responded to.
+        response : str
+            The response from OpenAI.
+        """
+        num_sentences = len(nltk.sent_tokenize(response))
+
+        if num_sentences > 4:
+            if message.thread:
+                return message.thread
+            try:
+                message_destination = await message.create_thread(name=f"{response[:20]}...", auto_archive_duration=640)
+            except disnake.Forbidden:
+                logger.error("Forbidden from creating a thread in channel %d", message.channel.id)
+                message_destination = message.channel
+        else:
+            message_destination = message.channel
+
+        return message_destination
+
     # Functions ----------------------------------------------------------------
 
     def __openai_chat_completion(self, history_id: int) -> str:
@@ -264,52 +307,25 @@ class Chat(CustomCog):
         if message.author.bot or message.author == App.config("BOT_USER_OBJECT"):
             return
 
-        # only respond when mentioned or in DMs
+        # only respond when mentioned, in DMs or when in own thread
         bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
+        in_thread = message.thread and message.thread.owner_id == App.config("ID_BOT")
 
-        if bot_mentioned or message_in_dm:
+        if bot_mentioned or message_in_dm or in_thread:
+            history_id = self.__get_history_id(message)
+
             if not message_in_dm and message.guild.id in TIME_LIMITED_SERVERS:
                 on_cooldown = await self.__check_for_cooldown(message)
 
                 if on_cooldown:
-                    try:
-                        await message.delete(delay=10)
-                        await message.channel.send(
-                            f"Stop abusing me " f"{message.author.mention if not message_in_dm else ''}!",
-                            delete_after=10,
-                        )
-                        return
-                    except disnake.Forbidden:
-                        logger.error(f"Bot does not have permission to delete messages in {message.guild.id}")
-                        return
-
-            if message_in_dm:
-                history_id = message.author.id
-            else:
-                if message.thread and message.thread.owner_id == App.config("ID_BOT"):
-                    history_id = message.thread.id
-                else:
-                    history_id = message.guild.id
+                    await self.do_cooldown(message)
+                    return
 
             # if everything ok, type and send
             async with message.channel.typing():
                 response = await self.respond_to_prompt(history_id, message.clean_content)
-
-                # todo, this might be too slow...
-                num_sentences = len(nltk.tokenize.sent_tokenize(response))
-
-                if num_sentences > 4 and not message_in_dm:
-                    try:
-                        message_destination = await message.create_thread(
-                            name=f"{response[:20]}...", auto_archive_duration=640
-                        )
-
-                    except disnake.Forbidden:
-                        logger.error("Forbidden from creating a thread in channel %d", message.channel.id)
-                        message_destination = message.channel
-                else:
-                    message_destination = message.channel
+                message_destination = await self.__get_response_destination(message, response)
 
                 await message_destination.send(f"{message.author.mention if not message_in_dm else ''} {response}")
 
