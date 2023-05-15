@@ -316,7 +316,11 @@ class Chat(CustomCog):
         # only respond when mentioned, in DMs or when in own thread
         bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
-        in_thread = message.flags.has_thread and message.thread.owner_id == App.config("ID_BOT")
+        in_thread = isinstance(message.channel.parent, disnake.ForumChannel) and message.thread.owner_id == App.config(
+            "ID_BOT"
+        )
+
+        logger.info("in_thread %s", in_thread)
 
         if bot_mentioned or message_in_dm or in_thread:
             history_id = self.__get_history_id(message)
