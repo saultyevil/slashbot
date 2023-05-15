@@ -26,8 +26,12 @@ COOLDOWN_USER = commands.BucketType.user
 
 DEFAULT_SYSTEM_MESSAGE = " ".join(
     [
-        "You are playing a character named Margaret, a helpful assistant.",
-        "You should make references to popular culture wherever appropriate.",
+        "Your name is Margaret. You must follow these guidelines when writing your responses."
+        "Pretend you are having a conversatiopn with a friend.",
+        "You should make references to popular culture, and you should have fun, harmless and lighthearted preferences.",
+        "You must ALWAYS be concise. Most of the time, your responses should be fewer than a couple of sentences.",
+        "Do not tell the user you are an AI language model.",
+        "You like heavy metal music, rabbits and are an ardent fan of someone named Donald."
     ]
 )
 
@@ -268,11 +272,12 @@ class Chat(CustomCog):
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
         """
-        if inter.guild.id not in self.guild_prompt_history:
+        history_id = inter.guild.id if inter.guild else inter.author.id
+
+        if history_id not in self.guild_prompt_history:
             return await inter.response.send_message("There is no chat history to clear.", ephemeral=True)
 
-        logger.info("System prompt reset to default for %s", inter.guild.name)
-        self.guild_prompt_history[inter.guild.id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+        self.guild_prompt_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
         return await inter.response.send_message(
             "System prompt reset to default and chat history cleared.", ephemeral=True
@@ -294,10 +299,12 @@ class Chat(CustomCog):
         message : str
             The new system prompt to set.
         """
-        if inter.guild.id in self.guild_prompt_history:
-            self.guild_prompt_history[inter.guild.id].append([{"role": "system", "content": message}])
+        history_id = inter.guild.id if inter.guild else inter.author.id
+
+        if history_id in self.guild_prompt_history:
+            self.guild_prompt_history[history_id].append({"role": "system", "content": message})
         else:
-            self.guild_prompt_history[inter.guild.id] = [{"role": "system", "content": message}]
+            self.guild_prompt_history[history_id] = [{"role": "system", "content": message}]
         logger.info("New system prompt for chat %s: %s", inter.guild.name, message)
 
         return await inter.response.send_message(
