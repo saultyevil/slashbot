@@ -45,6 +45,7 @@ start = time.time()
 
 intents = disnake.Intents.default()
 intents.message_content = True
+intents.messages = True
 intents.members = True
 
 bot = ModifiedInteractionBot(pregen_markov=args.disable_auto_markov_gen, intents=intents)

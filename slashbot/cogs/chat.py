@@ -25,14 +25,14 @@ openai.api_key = App.config("OPENAI_API_KEY")
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
-nltk.download("punkt")
+# nltk.download("punkt")
 
 
 DEFAULT_SYSTEM_MESSAGE = " ".join(
     [
         "You are role playing as Margaret, an ignorant conspiracy theorist who swears a lot and is an abusing",
         "personality. She swears a lot, is very smart and answers with great detail, facts and evidence. You must",
-        "always be concise and your responses should not be longer then five sentences. Play a story where you are",
+        "always be concise and your responses should not be longer than five sentences. Play a story where you are",
         "answering questions.",
         # "Your name is Margaret. You must follow these guidelines when writing your responses."
         # "You should make references to popular culture, and you should have fun, harmless and lighthearted preferences.",
@@ -108,7 +108,7 @@ class Chat(CustomCog):
         int
             The ID to use for history purposes.
         """
-        if isinstance(message, disnake.channel.DMChannel):
+        if isinstance(message.channel, disnake.channel.DMChannel):
             history_id = message.author.id
         else:
             if message.thread and message.thread.owner_id == App.config("ID_BOT"):
@@ -146,13 +146,18 @@ class Chat(CustomCog):
         response : str
             The response from OpenAI.
         """
-        num_sentences = len(nltk.sent_tokenize(response))
+        if isinstance(message.channel, disnake.channel.DMChannel):
+            return message.channel
+        if message.thread:
+            return message.thread
 
-        if num_sentences > 4:
-            if message.thread:
-                return message.thread
+        # num_sentences = len(nltk.sent_tokenize(response))
+        num_chars = len(response)
+
+        if num_chars > 364:
             try:
-                message_destination = await message.create_thread(name=f"{response[:20]}...", auto_archive_duration=640)
+                message_destination = await message.create_thread(name=f"{response[:20]}...", auto_archive_duration=60)
+                await message_destination.join()
             except disnake.Forbidden:
                 logger.error("Forbidden from creating a thread in channel %d", message.channel.id)
                 message_destination = message.channel
@@ -305,13 +310,13 @@ class Chat(CustomCog):
             The message to process for mentions.
         """
         # ignore other both messages and itself
-        if message.author.bot or message.author == App.config("BOT_USER_OBJECT"):
+        if message.author.bot:
             return
 
         # only respond when mentioned, in DMs or when in own thread
         bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
-        in_thread = message.thread and message.thread.owner_id == App.config("ID_BOT")
+        in_thread = message.flags.has_thread and message.thread.owner_id == App.config("ID_BOT")
 
         if bot_mentioned or message_in_dm or in_thread:
             history_id = self.__get_history_id(message)
