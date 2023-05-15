@@ -305,7 +305,6 @@ class Chat(CustomCog):
             self.guild_prompt_history[history_id].append({"role": "system", "content": message})
         else:
             self.guild_prompt_history[history_id] = [{"role": "system", "content": message}]
-        logger.info("New system prompt for chat %s: %s", inter.guild.name, message)
 
         return await inter.response.send_message(
             "System prompt updated and chat history cleared.",
