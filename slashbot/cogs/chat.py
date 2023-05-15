@@ -5,10 +5,12 @@
 
 import logging
 import time
+import traceback
 from collections import defaultdict
 from types import coroutine
 from typing import Tuple
 
+import nltk
 import disnake
 import openai
 import openai.error
@@ -23,6 +25,8 @@ openai.api_key = App.config("OPENAI_API_KEY")
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
+nltk.download("punkt")
+
 
 DEFAULT_SYSTEM_MESSAGE = " ".join(
     [
@@ -31,7 +35,7 @@ DEFAULT_SYSTEM_MESSAGE = " ".join(
         "You should make references to popular culture, and you should have fun, harmless and lighthearted preferences.",
         "You must ALWAYS be concise. Most of the time, your responses should be fewer than a couple of sentences.",
         "Do not tell the user you are an AI language model.",
-        "You like heavy metal music, rabbits and are an ardent fan of someone named Donald."
+        "You like heavy metal music, rabbits and are an ardent fan of someone named Donald.",
     ]
 )
 
@@ -55,71 +59,15 @@ class Chat(CustomCog):
         self.guild_cooldown = defaultdict(dict)
 
         self.chat_model = "gpt-3.5-turbo"
+        self.model_max_output_tokens = 364
         self.model_temperature = 0.5
-        self.model_max_history_tokens = 1024  # tokens
+        self.model_max_history_tokens = 1456  # tokens
         self.model_max_history_remove_fraction = 0.5
 
-    # Functions ----------------------------------------------------------------
+    # Static -------------------------------------------------------------------
 
-    def __openai_chat_completion(self, history_id: int) -> str:
-        """Get a message from ChatGPT using the ChatCompletion API.
-
-        Parameters
-        ----------
-        history_id : int
-            The ID to store chat history context to. Usually the guild or user
-            id.
-
-        Returns
-        -------
-        str
-            The message returned by ChatGPT.
-        """
-        response = openai.ChatCompletion.create(
-            model=self.chat_model,
-            messages=self.guild_prompt_history[history_id],
-            temperature=self.model_temperature,
-            max_tokens=1024,
-        )
-
-        usage = response["usage"]
-        message = response["choices"][0]["message"]["content"]
-
-        if len(message) > 1920:
-            return "I've generated a sentence which is too large for Discord!"
-
-        self.guild_prompt_history[history_id].append({"role": "assistant", "content": message})
-        self.guild_prompt_token_count[history_id] = float(usage["total_tokens"])
-
-        return message
-
-    async def __trim_message_history(self, history_id: int) -> None:
-        """Remove messages from a chat history.
-
-        Removes a fraction of the messages from the chat history if the number
-        of tokens exceeds a threshold controlled by
-        `self.model.max_history_tokens`.
-
-        Parameters
-        ----------
-        history_id : int
-            The chat history ID. Usually the guild or user id.
-        """
-        if self.guild_prompt_token_count[history_id] < self.model_max_history_tokens:
-            return
-
-        # num_remove = int(self.model_max_history_remove_fraction * len(self.guild_prompt_history[history_id]))
-        num_remove = 1
-        logger.info("Removing last %d messages from %d prompt history", num_remove, history_id)
-
-        for i in range(num_remove):
-            if i + 1 > len(self.guild_prompt_history[history_id]) - 2:  # -2 because we exclude the system message
-                break
-            self.guild_prompt_history[history_id].pop(i + 1)  # + 1 to ignore system message
-
-        self.guild_prompt_token_count[history_id] = TOKEN_COUNT_UNSET
-
-    def __get_cooldown_length(self, guild_id: int, user: disnake.User | disnake.Member) -> Tuple[int, int]:
+    @staticmethod
+    def __get_cooldown_length(guild_id: int, user: disnake.User | disnake.Member) -> Tuple[int, int]:
         """Returns the cooldown length and interaction amount fo a user in a
         guild.
 
@@ -145,6 +93,89 @@ class Chat(CustomCog):
             return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
 
         return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
+
+    @staticmethod
+    def __get_history_id(message: disnake.Message) -> int:
+        """Determine the history ID to use given the origin of the message.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The recent message.
+        Returns
+        -------
+        int
+            The ID to use for history purposes.
+        """
+        if isinstance(message, disnake.channel.DMChannel):
+            history_id = message.author.id
+        else:
+            if message.thread and message.thread.owner_id == App.config("ID_BOT"):
+                history_id = message.thread.id
+            else:
+                history_id = message.guild.id
+
+        return history_id
+
+    # Functions ----------------------------------------------------------------
+
+    def __openai_chat_completion(self, history_id: int) -> str:
+        """Get a message from ChatGPT using the ChatCompletion API.
+
+        Parameters
+        ----------
+        history_id : int
+            The ID to store chat history context to. Usually the guild or user
+            id.
+
+        Returns
+        -------
+        str
+            The message returned by ChatGPT.
+        """
+        response = openai.ChatCompletion.create(
+            model=self.chat_model,
+            messages=self.guild_prompt_history[history_id],
+            temperature=self.model_temperature,
+            max_tokens=self.model_max_output_tokens,
+        )
+
+        usage = response["usage"]
+        message = response["choices"][0]["message"]["content"]
+
+        # if len(message) > 1920:
+        #     return "I've generated a sentence which is too large for Discord!"
+
+        self.guild_prompt_history[history_id].append({"role": "assistant", "content": message})
+        self.guild_prompt_token_count[history_id] = int(usage["total_tokens"])
+
+        return message
+
+    async def __trim_message_history(self, history_id: int) -> None:
+        """Remove messages from a chat history.
+
+        Removes a fraction of the messages from the chat history if the number
+        of tokens exceeds a threshold controlled by
+        `self.model.max_history_tokens`.
+
+        Parameters
+        ----------
+        history_id : int
+            The chat history ID. Usually the guild or user id.
+        """
+        if self.guild_prompt_token_count[history_id] < self.model_max_history_tokens:
+            return
+
+        num_remove = int(self.model_max_history_remove_fraction * len(self.guild_prompt_history[history_id]))
+        # num_remove = 1
+        logger.info("Removing last %d messages from %d prompt history", num_remove, history_id)
+
+        for i in range(num_remove):
+            if i + 1 > len(self.guild_prompt_history[history_id]) - 2:  # -2 because we exclude the system message
+                break
+            self.guild_prompt_history[history_id].pop(i + 1)  # + 1 to ignore system message
+
+        self.guild_prompt_token_count[history_id] = TOKEN_COUNT_UNSET
 
     async def __check_for_cooldown(self, message: disnake.Message) -> bool:
         """Check if a message author is on cooldown.
@@ -212,7 +243,8 @@ class Chat(CustomCog):
         except openai.error.RateLimitError:
             return "Uh oh! I've hit OpenAI's rate limit :-("
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            logger.error("OpenAI API failed with exception %s", exc)
+            stack = traceback.format_exception(type(exc), exc, exc.__traceback__)
+            logger.exception("OpenAI API failed with exception:\n%s", "".join(stack))
             return "Uh oh! Something went wrong with that request :-("
 
         return response
@@ -249,16 +281,37 @@ class Chat(CustomCog):
                         )
                         return
                     except disnake.Forbidden:
-                        logger.error("Bot does not have permission to delete time limited message.")
+                        logger.error(f"Bot does not have permission to delete messages in {message.guild.id}")
                         return
+
+            if message_in_dm:
+                history_id = message.author.id
+            else:
+                if message.thread and message.thread.owner_id == App.config("ID_BOT"):
+                    history_id = message.thread.id
+                else:
+                    history_id = message.guild.id
 
             # if everything ok, type and send
             async with message.channel.typing():
-                response = await self.respond_to_prompt(
-                    message.author.id if message_in_dm else message.guild.id, message.clean_content
-                )
+                response = await self.respond_to_prompt(history_id, message.clean_content)
 
-            await message.channel.send(f"{message.author.mention if not message_in_dm else ''} {response}")
+                # todo, this might be too slow...
+                num_sentences = len(nltk.tokenize.sent_tokenize(response))
+
+                if num_sentences > 4 and not message_in_dm:
+                    try:
+                        message_destination = await message.create_thread(
+                            name=f"{response[:20]}...", auto_archive_duration=640
+                        )
+
+                    except disnake.Forbidden:
+                        logger.error("Forbidden from creating a thread in channel %d", message.channel.id)
+                        message_destination = message.channel
+                else:
+                    message_destination = message.channel
+
+                await message_destination.send(f"{message.author.mention if not message_in_dm else ''} {response}")
 
     # Commands -----------------------------------------------------------------
 
@@ -284,7 +337,7 @@ class Chat(CustomCog):
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="set_chat_system_prompt", description="change the chat system prompt")
+    @commands.slash_command(name="set_new_system_prompt", description="change the chat system prompt")
     async def set_system_message(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
         """Set a new system message for the location were the interaction came
         from.
@@ -306,3 +359,68 @@ class Chat(CustomCog):
             "System prompt updated and chat history cleared.",
             ephemeral=True,
         )
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="reset_chat_history", description="reset the chat history")
+    async def reset_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Reset the chat history to default.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
+        """
+        history_id = inter.guild.id if inter.guild else inter.author.id
+        self.guild_prompt_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+
+        return await inter.response.send_message("Chat history reset.", ephemeral=True)
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(
+        name="set_chat_output_tokens", description="change the maximum number of output tokens for a ai response"
+    )
+    @commands.default_member_permissions(administrator=True)
+    async def set_max_tokens(
+        self, inter: disnake.ApplicationCommandInteraction, num_tokens: int = commands.Param(gt=25, lt=1024)
+    ) -> coroutine:
+        """Set the number of tokens the model can return.
+
+        Parameters
+        ----------
+        inter : disnake.Interaction
+            The slash command interaction.
+        num_tokens : int
+            The number of tokens
+        """
+        self.model_max_output_tokens = num_tokens
+        self.model_max_history_tokens = num_tokens * 3
+
+        if self.model_max_history_tokens > 2048:
+            self.model_max_history_tokens = 2048
+
+        logger.info("Output tokens set to %d", num_tokens)
+
+        await inter.response.send_message(f"Max output tokens set to {num_tokens}", ephemeral=True)
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(
+        name="set_model_temperature",
+        description="change the temperature of the model which affects the randomness of responses",
+    )
+    @commands.default_member_permissions(administrator=True)
+    async def set_model_temperature(
+        self, inter: disnake.ApplicationCommandInteraction, temperature: float = commands.Param(ge=0, le=2)
+    ) -> coroutine:
+        """Set the number of tokens the model can return.
+
+        Parameters
+        ----------
+        inter : disnake.Interaction
+            The slash command interaction.
+        temperature: float
+            The new temperature to use
+        """
+        self.model_temperature = temperature
+        logger.info("Model temperature tokens set to %f", temperature)
+
+        await inter.response.send_message(f"Model temperature set to {temperature}", ephemeral=True)
