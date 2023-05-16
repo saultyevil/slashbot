@@ -28,8 +28,9 @@ COOLDOWN_USER = commands.BucketType.user
 
 DEFAULT_SYSTEM_MESSAGE = " ".join(
     [
-        "You are role playing as Margaret, an ignorant Reddit user who swears a lot and is an abusing",
-        "personality. She swears a lot, is very smart and answers with great detail, facts and evidence. You must",
+        "You are role playing as Margaret, an ignorant conspiracy theorist who wholeheartedly believes the",
+        "conspiracies. Margaret swears a lot and is an abusing personality",
+        "She swears a lot, is very smart and answers with great detail, facts and evidence. You must",
         "always be concise and your responses should not be longer than a few sentences. Play a story where you are",
         "having a conversation with a friend and answering questions.",
     ]
@@ -55,6 +56,8 @@ class Chat(CustomCog):
         self.chat_history = {}
         self.token_count = defaultdict(list)
         self.guild_cooldown = defaultdict(dict)
+
+        self.threads_enabled = False
 
         self.chat_model = "gpt-3.5-turbo"
         self.max_output_tokens = 364
@@ -131,37 +134,6 @@ class Chat(CustomCog):
             await message.delete(delay=10)
         except disnake.Forbidden:
             logger.error(f"Bot does not have permission to delete messages in {message.guild.id}")
-
-    @staticmethod
-    async def __get_response_destination(message: disnake.Message, response: str):
-        """Get the destination for a message.
-
-        If the sentence is long, then it goes to a thread.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The message being responded to.
-        response : str
-            The response from OpenAI.
-        """
-        # can't create threads in DMs or Threads
-        if isinstance(message.channel, disnake.channel.DMChannel):
-            return message.channel
-        if isinstance(message.channel, disnake.Thread):
-            return message.channel
-
-        # but we can create threads in channels, unless we don't have permission
-        if len(response) > MAX_CHARS_UNTIL_THREAD:
-            try:
-                message_destination = await message.create_thread(name=f"{response[:20]}...", auto_archive_duration=60)
-            except disnake.Forbidden:
-                message_destination = message.channel
-                logger.error("Forbidden from creating a thread in channel %d", message.channel.id)
-        else:
-            message_destination = message.channel
-
-        return message_destination
 
     # Functions ----------------------------------------------------------------
 
@@ -251,6 +223,40 @@ class Chat(CustomCog):
         self.guild_cooldown[message.guild.id][message.author.id] = (current_time, message_count)
 
         return False
+
+    async def __get_response_destination(self, message: disnake.Message, response: str):
+        """Get the destination for a message.
+
+        If the sentence is long, then it goes to a thread.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message being responded to.
+        response : str
+            The response from OpenAI.
+        """
+        # can't create threads in DMs or Threads
+        if isinstance(message.channel, disnake.channel.DMChannel):
+            return message.channel
+
+        if not self.threads_enabled:
+            return message.channel
+
+        if isinstance(message.channel, disnake.Thread):
+            return message.channel
+
+        # but we can create threads in channels, unless we don't have permission
+        if len(response) > MAX_CHARS_UNTIL_THREAD:
+            try:
+                message_destination = await message.create_thread(name=f"{response[:20]}...", auto_archive_duration=60)
+            except disnake.Forbidden:
+                message_destination = message.channel
+                logger.error("Forbidden from creating a thread in channel %d", message.channel.id)
+        else:
+            message_destination = message.channel
+
+        return message_destination
 
     async def respond_to_prompt(self, history_id: int | str, prompt: str) -> str:
         """Process a prompt and get a response.
@@ -404,4 +410,27 @@ class Chat(CustomCog):
 
         return await inter.response.send_message(
             f"Max output tokens set to {num_tokens} with a token total of {self.max_tokens_allowed}.", ephemeral=True
+        )
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="switch_thread_behaviour", description="change the thread behaviour for the ai")
+    @commands.default_member_permissions(administrator=True)
+    async def switch_thread_behaviour(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+    ) -> coroutine:
+        """Enable or disable thread responses
+
+        Parameters
+        ----------
+        inter : disnake.Interaction
+            The slash command interaction.
+        """
+        if self.threads_enabled:
+            self.threads_enabled = False
+        else:
+            self.threads_enabled = True
+
+        return await inter.response.send_message(
+            "Thread responses enabled." if self.threads_enabled else "Thread responses disabled.", ephemeral=True
         )
