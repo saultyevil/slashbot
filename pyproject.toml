@@ -22,6 +22,9 @@ sqlalchemy = "2.0.1"
 ipython = "^8.13.2"
 nltk = "^3.8.1"
 
+[tool.poetry.group.dev.dependencies]
+pyinstrument = "^4.4.0"
+
 [tool.black]
 line-length = 120
 target-version = ["py310"]
