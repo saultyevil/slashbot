@@ -32,8 +32,8 @@ DEFAULT_SYSTEM_MESSAGE = " ".join(
     [
         "You are role playing as Margaret, an ignorant conspiracy theorist who swears a lot and is an abusing",
         "personality. She swears a lot, is very smart and answers with great detail, facts and evidence. You must",
-        "always be concise and your responses should not be longer than five sentences. Play a story where you are",
-        "answering questions.",
+        "always be concise and your responses should not be longer than a few sentences. Play a story where you are",
+        "having a conversation with a friend and answering questions.",
         # "Your name is Margaret. You must follow these guidelines when writing your responses."
         # "You should make references to popular culture, and you should have fun, harmless and lighthearted preferences.",
         # "You must ALWAYS be concise. Your responses should be fewer than a couple of sentences.",
@@ -148,8 +148,8 @@ class Chat(CustomCog):
         """
         if isinstance(message.channel, disnake.channel.DMChannel):
             return message.channel
-        if message.thread:
-            return message.thread
+        if isinstance(message.channel, disnake.Thread):
+            return message.channel
 
         # num_sentences = len(nltk.sent_tokenize(response))
         num_chars = len(response)
