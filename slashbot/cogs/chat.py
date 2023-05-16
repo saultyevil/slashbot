@@ -32,8 +32,8 @@ DEFAULT_SYSTEM_MESSAGE = " ".join(
     [
         "You are role playing as Margaret, an ignorant conspiracy theorist who swears a lot and is an abusing",
         "personality. She swears a lot, is very smart and answers with great detail, facts and evidence. You must",
-        "always be concise and your responses should not be longer than five sentences. Play a story where you are",
-        "answering questions.",
+        "always be concise and your responses should not be longer than a few sentences. Play a story where you are",
+        "having a conversation with a friend and answering questions.",
         # "Your name is Margaret. You must follow these guidelines when writing your responses."
         # "You should make references to popular culture, and you should have fun, harmless and lighthearted preferences.",
         # "You must ALWAYS be concise. Your responses should be fewer than a couple of sentences.",
@@ -115,7 +115,7 @@ class Chat(CustomCog):
         if guild_id == App.config("ID_SERVER_ADULT_CHILDREN"):
             if App.config("ID_ROLE_TOP_GAY") in [role.id for role in user.roles]:
                 return 0, 999
-            return App.config("COOLDOWN_STANDARD"), 1
+            return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
 
         return App.config("COOLDOWN_STANDARD"), App.config("COOLDOWN_RATE")
 
@@ -156,6 +156,39 @@ class Chat(CustomCog):
             await message.channel.send(f"Stop abusing me " f"{message.author.mention}!", delete_after=10)
         except disnake.Forbidden:
             logger.error(f"Bot does not have permission to delete messages in {message.guild.id}")
+
+    @staticmethod
+    async def __get_response_destination(message: disnake.Message, response: str):
+        """Get the destination for a message.
+
+        If the sentence is long, then it goes to a thread.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message being responded to.
+        response : str
+            The response from OpenAI.
+        """
+        if isinstance(message.channel, disnake.channel.DMChannel):
+            return message.channel
+        if isinstance(message.channel, disnake.Thread):
+            return message.channel
+
+        # num_sentences = len(nltk.sent_tokenize(response))
+        num_chars = len(response)
+
+        if num_chars > 364:
+            try:
+                message_destination = await message.create_thread(name=f"{response[:20]}...", auto_archive_duration=60)
+                await message_destination.join()
+            except disnake.Forbidden:
+                logger.error("Forbidden from creating a thread in channel %d", message.channel.id)
+                message_destination = message.channel
+        else:
+            message_destination = message.channel
+
+        return message_destination
 
     # Functions ----------------------------------------------------------------
 
@@ -247,41 +280,6 @@ class Chat(CustomCog):
 
         return False
 
-    async def __get_response_destination(
-        self, message: disnake.Message, response: str, history_id: int, in_thread: bool
-    ):
-        """Get the destination for a message.
-
-        If the sentence is long, then it goes to a thread.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The message being responded to.
-        response : str
-            The response from OpenAI.
-        """
-        if isinstance(message.channel, disnake.channel.DMChannel):
-            return message.channel
-        if in_thread:
-            return message.channel
-
-        # num_sentences = len(nltk.sent_tokenize(response))
-        num_chars = len(response)
-
-        if num_chars > 250:
-            try:
-                message_destination = await message.create_thread(name=f"{response[:20]}...", auto_archive_duration=60)
-                await message_destination.join()
-                self.guild_prompt_history[message_destination.id] = copy.copy(self.guild_prompt_history[history_id])
-            except disnake.Forbidden:
-                logger.error("Forbidden from creating a thread in channel %d", message.channel.id)
-                message_destination = message.channel
-        else:
-            message_destination = message.channel
-
-        return message_destination
-
     async def respond_to_prompt(self, history_id: int, prompt: str) -> str:
         """Process a prompt and get a response.
 
@@ -357,7 +355,7 @@ class Chat(CustomCog):
             # if everything ok, type and send
             async with message.channel.typing():
                 response = await self.respond_to_prompt(history_id, message.clean_content)
-                message_destination = await self.__get_response_destination(message, response, history_id, in_thread)
+                message_destination = await self.__get_response_destination(message, response)
 
                 await message_destination.send(f"{message.author.mention if not message_in_dm else ''} {response}")
 
