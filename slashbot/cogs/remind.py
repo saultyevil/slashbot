@@ -72,10 +72,14 @@ class ReminderCommands(CustomCog):
 
         self.session = sessionmaker(connect_to_database_engine())()
 
-        self.markov_sentences = generate_sentences_for_seed_words(
-            MARKOV_MODEL,
-            ["reminder"],
-            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        self.markov_sentences = (
+            generate_sentences_for_seed_words(
+                MARKOV_MODEL,
+                ["reminder"],
+                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+            )
+            if self.bot.enable_auto_markov_gen
+            else {"reminder": []}
         )
 
         self.bot.add_to_cleanup(None, self.__close_session, (None))

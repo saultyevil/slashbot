@@ -35,13 +35,17 @@ class VideoCommands(CustomCog):
         super().__init__()
         self.bot = bot
 
-        self.markov_sentences = generate_sentences_for_seed_words(
-            MARKOV_MODEL,
-            [
-                "admin",
-                "admin abuse",
-            ],
-            5,  # these only happen once in a while, so dont need a big bank of them
+        self.markov_sentences = (
+            generate_sentences_for_seed_words(
+                MARKOV_MODEL,
+                [
+                    "admin",
+                    "admin abuse",
+                ],
+                5,  # these only happen once in a while, so dont need a big bank of them
+            )
+            if self.bot.enable_auto_markov_gen
+            else {"admin": [], "admin abuse": []}
         )
 
     # Commands -----------------------------------------------------------------

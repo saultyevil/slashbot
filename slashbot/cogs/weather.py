@@ -60,10 +60,14 @@ class WeatherCommands(CustomCog):
         super().__init__()
         self.bot = bot
 
-        self.markov_sentences = generate_sentences_for_seed_words(
-            MARKOV_MODEL,
-            ["weather", "forecast"],
-            App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        self.markov_sentences = (
+            generate_sentences_for_seed_words(
+                MARKOV_MODEL,
+                ["weather", "forecast"],
+                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+            )
+            if self.bot.enable_auto_markov_gen
+            else {"weather": [], "forecast": []}
         )
 
     # Private ------------------------------------------------------------------
