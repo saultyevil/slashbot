@@ -69,6 +69,37 @@ class Chat(CustomCog):
     # Static -------------------------------------------------------------------
 
     @staticmethod
+    def __chunk_messages(message: str) -> list:
+        """Split a message into smaller chunks.
+
+        Parameters
+        ----------
+        message : str
+            The message to split.
+
+        Returns
+        -------
+        list
+            A list of strings of smaller messages.
+        """
+
+        i = 0
+        result = []
+        while i < len(message):
+            start = i
+            i += MAX_LENGTH
+
+            # At end of string
+            if i >= len(message):
+                result.append(message[start:i])
+                return result
+
+            # Back up until space
+            while message[i - 1] != " ":
+                i -= 1
+            result.append(message[start:i])
+
+    @staticmethod
     def __get_cooldown_length(guild_id: int, user: disnake.User | disnake.Member) -> Tuple[int, int]:
         """Returns the cooldown length and interaction amount fo a user in a
         guild.
@@ -137,7 +168,7 @@ class Chat(CustomCog):
 
     # Functions ----------------------------------------------------------------
 
-    def __openai_chat_completion(self, history_id: int | str) -> str:
+    async def __openai_chat_completion(self, history_id: int | str) -> str:
         """Get a message from ChatGPT using the ChatCompletion API.
 
         Parameters
@@ -151,12 +182,20 @@ class Chat(CustomCog):
         str
             The message returned by ChatGPT.
         """
-        response = openai.ChatCompletion.create(
+
+        response = await openai.ChatCompletion.acreate(
             model=self.chat_model,
             messages=self.chat_history[history_id],
             temperature=self.model_temperature,
-            max_tokens=self.max_output_tokens,
+            max_tokens=self.max_tokens_allowed,
         )
+
+        # response = openai.ChatCompletion.create(
+        #     model=self.chat_model,
+        #     messages=self.chat_history[history_id],
+        #     temperature=self.model_temperature,
+        #     max_tokens=self.max_output_tokens,
+        # )
 
         message = response["choices"][0]["message"]["content"]
         self.chat_history[history_id].append({"role": "assistant", "content": message})
@@ -290,7 +329,7 @@ class Chat(CustomCog):
         self.chat_history[history_id].append({"role": "user", "content": prompt})
 
         try:
-            response = self.__openai_chat_completion(history_id)
+            response = await self.__openai_chat_completion(history_id)
         except openai.error.RateLimitError:
             return "Uh oh! I've hit OpenAI's rate limit :-("
         except Exception as exc:  # pylint: disable=broad-exception-caught
@@ -334,7 +373,14 @@ class Chat(CustomCog):
                 response = await self.respond_to_prompt(history_id, message.clean_content)
                 message_destination = await self.__get_response_destination(message, response)
 
-                await message_destination.send(f"{message.author.mention if not message_in_dm else ''} {response}")
+                if len(response) > MAX_LENGTH:
+                    responses = self.__chunk_messages(response)
+                    for response in responses:
+                        await message_destination.send(
+                            f"{message.author.mention if not message_in_dm else ''} {response}"
+                        )
+                else:
+                    await message_destination.send(f"{message.author.mention if not message_in_dm else ''} {response}")
 
     # Commands -----------------------------------------------------------------
 
