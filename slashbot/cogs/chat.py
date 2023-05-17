@@ -394,7 +394,7 @@ class Chat(CustomCog):
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
         """
-        history_id = inter.guild.id if inter.guild else inter.author.id
+        history_id = inter.channel.id if inter.guild else inter.author.id
         if history_id not in self.chat_history:
             return await inter.response.send_message("There is no chat history to clear.", ephemeral=True)
         self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
@@ -419,7 +419,7 @@ class Chat(CustomCog):
         message : str
             The new system prompt to set.
         """
-        history_id = inter.guild.id if inter.guild else inter.author.id
+        history_id = inter.channel.id if inter.guild else inter.author.id
         self.chat_history[history_id] = [{"role": "system", "content": message}]
 
         return await inter.response.send_message(
