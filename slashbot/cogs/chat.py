@@ -226,7 +226,16 @@ class Chat(CustomCog):
                 if i > len(self.chat_history[history_id]) - 2:  # -2 because we exclude the system message
                     break
                 self.chat_history[history_id].pop(i)
-                tokens_removed += self.token_count[history_id].pop(i)
+                try:
+                    tokens_removed += self.token_count[history_id].pop(i)
+                except IndexError:
+                    logger.error(
+                        "Index error when removing tokens index %d len %d len chat history %d",
+                        i,
+                        len(self.token_count[history_id]),
+                        len(self.chat_history[history_id]),
+                    )
+                    self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
             for i in range(1, len(self.token_count[history_id])):
                 self.token_count[history_id][i] -= tokens_removed
