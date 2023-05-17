@@ -228,7 +228,7 @@ class Chat(CustomCog):
                 self.chat_history[history_id].pop(i)
                 tokens_removed += self.token_count[history_id].pop(i)
 
-            for i in range(1, len(self.chat_history[history_id])):
+            for i in range(1, len(self.token_count[history_id])):
                 self.token_count[history_id][i] -= tokens_removed
 
     async def __check_for_cooldown(self, message: disnake.Message) -> bool:
