@@ -226,9 +226,18 @@ class Chat(CustomCog):
                 if i > len(self.chat_history[history_id]) - 2:  # -2 because we exclude the system message
                     break
                 self.chat_history[history_id].pop(i)
-                tokens_removed += self.token_count[history_id].pop(i)
+                try:
+                    tokens_removed += self.token_count[history_id].pop(i)
+                except IndexError:
+                    logger.error(
+                        "Index error when removing tokens index %d len %d len chat history %d",
+                        i,
+                        len(self.token_count[history_id]),
+                        len(self.chat_history[history_id]),
+                    )
+                    self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
-            for i in range(1, len(self.chat_history[history_id])):
+            for i in range(1, len(self.token_count[history_id])):
                 self.token_count[history_id][i] -= tokens_removed
 
     async def __check_for_cooldown(self, message: disnake.Message) -> bool:
@@ -394,7 +403,7 @@ class Chat(CustomCog):
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
         """
-        history_id = inter.guild.id if inter.guild else inter.author.id
+        history_id = inter.channel.id if inter.guild else inter.author.id
         if history_id not in self.chat_history:
             return await inter.response.send_message("There is no chat history to clear.", ephemeral=True)
         self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
@@ -419,7 +428,7 @@ class Chat(CustomCog):
         message : str
             The new system prompt to set.
         """
-        history_id = inter.guild.id if inter.guild else inter.author.id
+        history_id = inter.channel.id if inter.guild else inter.author.id
         self.chat_history[history_id] = [{"role": "system", "content": message}]
 
         return await inter.response.send_message(
