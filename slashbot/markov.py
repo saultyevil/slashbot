@@ -4,14 +4,14 @@
 """Markov chain module
 """
 
-import pickle
 import logging
+import pickle
 import shutil
+import string
 from pathlib import Path
 from typing import Coroutine
-from typing import List
 from typing import Dict
-import string
+from typing import List
 
 import disnake
 
@@ -179,14 +179,14 @@ async def update_markov_chain_for_model(
     if len(new_messages) == 0:
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
-        logger.info("No sentences to update model with")
+        logger.info("No sentences to update chain with")
         return
 
     messages = __clean_sentences_for_learning(new_messages)
     if len(messages) == 0:
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
-        logger.info("No 'clean' sentences to update model with")
+        logger.info("No sentences to update chain with")
         return
 
     shutil.copy2(save_location, str(save_location) + ".bak")
@@ -203,7 +203,7 @@ async def update_markov_chain_for_model(
     if inter:
         await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
 
-    logger.info("Markov chain updated with %s new messages", len(messages))
+    logger.info("Markov chain updated with %d new messages", len(messages))
 
     return model
 

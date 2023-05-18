@@ -21,7 +21,7 @@ class App:
     __conf = {
         "BOT_TOKEN": os.getenv("BOT_TOKEN"),
         # cooldown parameters
-        "COOLDOWN_RATE": 5,
+        "COOLDOWN_RATE": 3,
         "COOLDOWN_STANDARD": 60,
         "COOLDOWN_ONE_HOUR": 3600,
         "HOURS_IN_WEEK": 168,
@@ -42,6 +42,7 @@ class App:
         "ID_CHANNEL_IDIOTS": 237647756049514498,
         "ID_CHANNEL_SPAM": 627234669791805450,
         "ID_CHANNEL_ENGORGED": 710120383235227670,
+        "ID_ROLE_TOP_GAY": 237651499541331969,
         # API keys
         "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
         "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),

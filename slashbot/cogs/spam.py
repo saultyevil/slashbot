@@ -143,7 +143,7 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
         return await inter.response.send_message(":clap:" + ":clap:".join(text.split()) + ":clap:")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="update_chat_responses", description="force update the markov chain for /chat")
+    @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /chat")
     async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction) -> Union[coroutine, None]:
         """Update the Markov chain model.
 

@@ -21,11 +21,18 @@ class ModifiedInteractionBot(commands.InteractionBot):
     is exited, e.g. with ctrl+c.
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, pregen_markov, **kwargs) -> None:
         """Initialize the class."""
         super().__init__(**kwargs)
         self.cleanup_functions = []
         self.times_connected = 0
+        self.enable_auto_markov_gen = pregen_markov
+
+        if self.enable_auto_markov_gen:
+            logger.info("Automatic Markov sentence generation is enabled")
+        else:
+
+            logger.info("Automatic Markov sentence generation is disabled")
 
     def add_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:
         """Add a function to the cleanup list.
