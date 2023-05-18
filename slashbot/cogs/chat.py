@@ -3,6 +3,7 @@
 
 """Cog for AI interactions, from the OpenAI API."""
 
+
 import re
 import logging
 import time
@@ -37,6 +38,15 @@ DEFAULT_SYSTEM_MESSAGE = " ".join(
         "having a conversation with a friend.",
     ]
 )
+
+TIME_LIMITED_SERVERS = [
+    App.config("ID_SERVER_ADULT_CHILDREN"),
+    App.config("ID_SERVER_FREEDOM"),
+]
+
+MAX_LENGTH = 1920
+MAX_CHARS_UNTIL_THREAD = 364
+TOKEN_COUNT_UNSET = -1
 
 
 TIME_LIMITED_SERVERS = [
@@ -85,6 +95,7 @@ class Chat(CustomCog):
             The string to split into chunks
         max_chunk_length : int
             The cutoff length (in characters) for when to split a sentence.
+
 
         Returns
         -------
@@ -206,7 +217,7 @@ class Chat(CustomCog):
 
         return message
 
-    async def __trim_message_history(self, history_id: int | str) -> None:
+      async def __trim_message_history(self, history_id: int | str) -> None:
         """Remove messages from a chat history.
 
         Removes a fraction of the messages from the chat history if the number
@@ -298,7 +309,7 @@ class Chat(CustomCog):
         if isinstance(message.channel, disnake.Thread):
             return message.channel
 
-        # but we can create threads in channels, unless we don't have permission
+          # but we can create threads in channels, unless we don't have permission
 
         sentences = re.split(r"(?<=[.!?])\s+", response)
 
@@ -439,6 +450,7 @@ class Chat(CustomCog):
         history_id = inter.channel.id if inter.guild else inter.author.id
         self.chat_history[history_id] = [{"role": "system", "content": message}]
         self.token_count = [len(tiktoken.encoding_for_model(self.chat_model).encode(message))]
+
 
         return await inter.response.send_message(
             "System prompt updated and chat history cleared.",
