@@ -217,7 +217,7 @@ class Chat(CustomCog):
 
         return message
 
-      async def __trim_message_history(self, history_id: int | str) -> None:
+    async def __trim_message_history(self, history_id: int | str) -> None:
         """Remove messages from a chat history.
 
         Removes a fraction of the messages from the chat history if the number
