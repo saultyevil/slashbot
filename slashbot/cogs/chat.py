@@ -3,7 +3,7 @@
 
 """Cog for AI interactions, from the OpenAI API."""
 
-import copy
+import re
 import logging
 import time
 import traceback
@@ -11,10 +11,12 @@ from collections import defaultdict
 from types import coroutine
 from typing import Tuple
 
+
 import disnake
 import openai
 import openai.error
 from disnake.ext import commands
+import tiktoken
 
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
@@ -36,13 +38,14 @@ DEFAULT_SYSTEM_MESSAGE = " ".join(
     ]
 )
 
+
 TIME_LIMITED_SERVERS = [
     App.config("ID_SERVER_ADULT_CHILDREN"),
     App.config("ID_SERVER_FREEDOM"),
 ]
 
 MAX_LENGTH = 1920
-MAX_CHARS_UNTIL_THREAD = 364
+MAX_SENTENCES_UNTIL_THREAD = 5
 TOKEN_COUNT_UNSET = -1
 
 
@@ -66,38 +69,45 @@ class Chat(CustomCog):
         self.trim_faction = 0.25
         self.max_chat_history = 20
 
+        self.default_system_token_count = len(
+            tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
+        )
+
     # Static -------------------------------------------------------------------
 
     @staticmethod
-    def __chunk_messages(message: str) -> list:
-        """Split a message into smaller chunks.
+    def __split_message_into_chunks(string: str, max_chunk_length: int) -> list:
+        """Split a string into chunks less than a certain size.
 
         Parameters
         ----------
-        message : str
-            The message to split.
+        string : str
+            The string to split into chunks
+        max_chunk_length : int
+            The cutoff length (in characters) for when to split a sentence.
 
         Returns
         -------
         list
-            A list of strings of smaller messages.
+            A list of strings less than max_chunk_length.
         """
+        sentences = re.split(r"(?<=[.!?])\s+", string)
 
-        i = 0
-        result = []
-        while i < len(message):
-            start = i
-            i += MAX_LENGTH
+        chunks = []
+        current_chunk = ""
 
-            # At end of string
-            if i >= len(message):
-                result.append(message[start:i])
-                return result
+        for sentence in sentences:
+            if len(current_chunk) + len(sentence) <= max_chunk_length:
+                current_chunk += sentence
+            else:
+                chunks.append(current_chunk.strip())
+                current_chunk = sentence
 
-            # Back up until space
-            while message[i - 1] != " ":
-                i -= 1
-            result.append(message[start:i])
+        # Add the last chunk
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+
+        return chunks
 
     @staticmethod
     def __get_cooldown_length(guild_id: int, user: disnake.User | disnake.Member) -> Tuple[int, int]:
@@ -151,7 +161,7 @@ class Chat(CustomCog):
         return history_id
 
     @staticmethod
-    async def do_cooldown(message: disnake.Message) -> None:
+    async def __do_cooldown(message: disnake.Message) -> None:
         """Respond to a user on cooldown.
 
         Parameters
@@ -190,13 +200,6 @@ class Chat(CustomCog):
             max_tokens=self.max_tokens_allowed,
         )
 
-        # response = openai.ChatCompletion.create(
-        #     model=self.chat_model,
-        #     messages=self.chat_history[history_id],
-        #     temperature=self.model_temperature,
-        #     max_tokens=self.max_output_tokens,
-        # )
-
         message = response["choices"][0]["message"]["content"]
         self.chat_history[history_id].append({"role": "assistant", "content": message})
         self.token_count[history_id].append(int(response["usage"]["total_tokens"]))
@@ -227,15 +230,16 @@ class Chat(CustomCog):
                     break
                 self.chat_history[history_id].pop(i)
                 try:
-                    tokens_removed += self.token_count[history_id].pop(i)
+                    tokens_removed += self.token_count[history_id].pop(i - 1)
                 except IndexError:
                     logger.error(
-                        "Index error when removing tokens index %d len %d len chat history %d",
-                        i,
+                        "Index error when removing tokens: index = %d, len = %d len history = %d",
+                        i - 1,
                         len(self.token_count[history_id]),
                         len(self.chat_history[history_id]),
                     )
-                    self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+                    self.chat_history = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+                    self.token_count = [self.default_system_token_count]
 
             for i in range(1, len(self.token_count[history_id])):
                 self.token_count[history_id][i] -= tokens_removed
@@ -295,7 +299,10 @@ class Chat(CustomCog):
             return message.channel
 
         # but we can create threads in channels, unless we don't have permission
-        if len(response) > MAX_CHARS_UNTIL_THREAD:
+
+        sentences = re.split(r"(?<=[.!?])\s+", response)
+
+        if len(sentences) > MAX_SENTENCES_UNTIL_THREAD:
             try:
                 message_destination = await message.create_thread(name=f"{response[:20]}...", auto_archive_duration=60)
             except disnake.Forbidden:
@@ -331,7 +338,7 @@ class Chat(CustomCog):
         prompt = prompt.replace("@Margaret", "", 1).strip()
 
         if history_id not in self.chat_history:
-            self.token_count[history_id] = [0]
+            self.token_count[history_id] = [self.default_system_token_count]
             self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
         await self.__trim_message_history(history_id)
@@ -342,8 +349,10 @@ class Chat(CustomCog):
         except openai.error.RateLimitError:
             return "Uh oh! I've hit OpenAI's rate limit :-("
         except Exception as exc:  # pylint: disable=broad-exception-caught
-            stack = traceback.format_exception(type(exc), exc, exc.__traceback__)
-            logger.exception("OpenAI API failed with exception:\n%s", "".join(stack))
+            logger.exception(
+                "OpenAI API failed with exception:\n%s",
+                "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+            )
             return "Uh oh! Something went wrong with that request :-("
 
         return response
@@ -374,20 +383,18 @@ class Chat(CustomCog):
                 on_cooldown = await self.__check_for_cooldown(message)
 
                 if on_cooldown:
-                    await self.do_cooldown(message)
+                    await self.__do_cooldown(message)
                     return
 
             # if everything ok, type and send
             async with message.channel.typing():
                 response = await self.respond_to_prompt(history_id, message.clean_content)
                 message_destination = await self.__get_response_destination(message, response)
-
                 if len(response) > MAX_LENGTH:
-                    responses = self.__chunk_messages(response)
-                    for response in responses:
-                        await message_destination.send(
-                            f"{message.author.mention if not message_in_dm else ''} {response}"
-                        )
+                    responses = self.__split_message_into_chunks(response, MAX_LENGTH)
+                    for n, response in enumerate(responses):
+                        mention_user = message.author.mention if not message_in_dm else ""
+                        await message_destination.send(f"{mention_user if n == 0 else ''} {response}")
                 else:
                     await message_destination.send(f"{message.author.mention if not message_in_dm else ''} {response}")
 
@@ -407,6 +414,7 @@ class Chat(CustomCog):
         if history_id not in self.chat_history:
             return await inter.response.send_message("There is no chat history to clear.", ephemeral=True)
         self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+        self.token_count[history_id] = [self.default_system_token_count]
 
         return await inter.response.send_message(
             "System prompt reset to default and chat history cleared.", ephemeral=True
@@ -430,6 +438,7 @@ class Chat(CustomCog):
         """
         history_id = inter.channel.id if inter.guild else inter.author.id
         self.chat_history[history_id] = [{"role": "system", "content": message}]
+        self.token_count = [len(tiktoken.encoding_for_model(self.chat_model).encode(message))]
 
         return await inter.response.send_message(
             "System prompt updated and chat history cleared.",
