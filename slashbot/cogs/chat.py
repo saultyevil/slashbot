@@ -67,7 +67,7 @@ class Chat(CustomCog):
         self.bot = bot
 
         self.chat_history = {}
-        self.token_count = defaultdict(list)
+        self.token_count = defaultdict(lambda: [0,])
         self.guild_cooldown = defaultdict(dict)
 
         self.threads_enabled = False
@@ -449,7 +449,7 @@ class Chat(CustomCog):
         """
         history_id = inter.channel.id if inter.guild else inter.author.id
         self.chat_history[history_id] = [{"role": "system", "content": message}]
-        self.token_count = [len(tiktoken.encoding_for_model(self.chat_model).encode(message))]
+        self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(message))]
 
 
         return await inter.response.send_message(
