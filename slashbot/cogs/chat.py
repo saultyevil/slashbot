@@ -241,7 +241,7 @@ class Chat(CustomCog):
                         len(self.chat_history[history_id]),
                     )
                     self.chat_history = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
-                    self.token_count = [self.default_system_token_count]
+                    self.token_count[history_id] = [self.default_system_token_count]
 
             for i in range(1, len(self.token_count[history_id])):
                 self.token_count[history_id][i] -= tokens_removed
