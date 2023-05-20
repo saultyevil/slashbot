@@ -49,16 +49,6 @@ MAX_CHARS_UNTIL_THREAD = 364
 TOKEN_COUNT_UNSET = -1
 
 
-TIME_LIMITED_SERVERS = [
-    App.config("ID_SERVER_ADULT_CHILDREN"),
-    App.config("ID_SERVER_FREEDOM"),
-]
-
-MAX_LENGTH = 1920
-MAX_SENTENCES_UNTIL_THREAD = 5
-TOKEN_COUNT_UNSET = -1
-
-
 class Chat(CustomCog):
     """AI chat features powered by OpenAI."""
 
@@ -241,7 +231,8 @@ class Chat(CustomCog):
                     break
                 self.chat_history[history_id].pop(i)
                 try:
-                    tokens_removed += self.token_count[history_id].pop(i - 1)
+                    if i < len(self.token_count[history_id]) - 1:
+                        tokens_removed += self.token_count[history_id].pop(i)
                 except IndexError:
                     logger.error(
                         "Index error when removing tokens: index = %d, len = %d len history = %d",
