@@ -209,12 +209,14 @@ class ReminderCommands(CustomCog):
             try:
                 future = parser.parse(when, tzinfos=TIMEZONES)
             except parser.ParserError:
+                logger.error("Invalid timestamp %d", when)
                 return await inter.response.send_message("That is not a valid timestamp.", ephemeral=True)
             if not future.tzinfo:
                 logger.debug("No timezone provided, defaulting to bot timezone")
-                logger.debhg("input: %s", when)
+                logger.debug("input: %s", when)
                 logger.debug("parsed: %s", future)
                 future = future.replace(tzinfo=self.timezone)
+                logger.debug("replaced: %s", future)
         else:
             seconds = when * TIME_UNITS[time_unit]
             future = now + datetime.timedelta(seconds=seconds)
@@ -255,8 +257,8 @@ class ReminderCommands(CustomCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction object for the command.
-        m_id: str
-            The id of the reminder to remove.
+        reminder: str
+            The reminder to forget
         """
         reminder = self.session.query(ReminderDB).filter(ReminderDB.reminder == reminder).first()
         if not reminder:

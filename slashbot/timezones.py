@@ -1,4 +1,4 @@
-TIMEZONES = {
+__TIMEZONES_CAPS = {
     "A": 1 * 3600,
     "ACDT": 10.5 * 3600,
     "ACST": 9.5 * 3600,
@@ -223,3 +223,6 @@ TIMEZONES = {
     "YEKT": 5 * 3600,
     "Z": 0 * 3600,
 }
+
+__TIMEZONES_SMALL = {tz.lower(): value for tz, value in __TIMEZONES_CAPS.items()}
+TIMEZONES = __TIMEZONES_CAPS.update(__TIMEZONES_SMALL)
