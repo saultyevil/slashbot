@@ -227,6 +227,9 @@ class ReminderCommands(CustomCog):
 
         tagged_users, reminder = await self.__replace_mentions_in_sentence(reminder)
 
+        logger.info("Time requested %s", future)
+        logger.info("UTC time conversation %s", future.astimezone(datetime.UTC))
+
         self.session.add(
             ReminderDB(
                 user_id=inter.author.id,
