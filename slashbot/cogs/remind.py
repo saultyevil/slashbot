@@ -10,6 +10,7 @@ from types import coroutine
 from typing import List
 from typing import Union
 
+import dateutil.parser
 import disnake
 from dateutil import parser
 from disnake.ext import commands, tasks
@@ -23,7 +24,6 @@ from slashbot.db import Reminder as ReminderDB
 from slashbot.db import connect_to_database_engine
 from slashbot.markov import MARKOV_MODEL
 from slashbot.markov import generate_sentences_for_seed_words
-from slashbot.timezones import TIMEZONES
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -207,7 +207,9 @@ class ReminderCommands(CustomCog):
 
         if time_unit == "Time stamp":
             try:
-                future = parser.parse(when, tzinfos=TIMEZONES)
+                future = parser.parse(when)
+            except dateutil.parser.UnknownTimezoneWarning:
+                return await inter.response.send_message("That's an unknown timezone, trying using UTC-5 or whatever.")
             except parser.ParserError:
                 logger.error("Invalid timestamp %d", when)
                 return await inter.response.send_message("That is not a valid timestamp.", ephemeral=True)
