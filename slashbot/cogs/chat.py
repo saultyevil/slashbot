@@ -47,6 +47,7 @@ TIME_LIMITED_SERVERS = [
 MAX_LENGTH = 1920
 MAX_CHARS_UNTIL_THREAD = 364
 TOKEN_COUNT_UNSET = -1
+MAX_SENTENCES_UNTIL_THREAD = 5
 
 
 class Chat(CustomCog):
@@ -57,7 +58,11 @@ class Chat(CustomCog):
         self.bot = bot
 
         self.chat_history = {}
-        self.token_count = defaultdict(lambda: [0,])
+        self.token_count = defaultdict(
+            lambda: [
+                0,
+            ]
+        )
         self.guild_cooldown = defaultdict(dict)
 
         self.threads_enabled = False
@@ -92,21 +97,19 @@ class Chat(CustomCog):
         list
             A list of strings less than max_chunk_length.
         """
-        sentences = re.split(r"(?<=[.!?])\s+", string)
-
         chunks = []
         current_chunk = ""
+        sentences = re.split(r"(?<=[.!?])\s+", string)
 
         for sentence in sentences:
-            if len(current_chunk) + len(sentence) <= max_chunk_length:
-                current_chunk += sentence
+            if len(current_chunk) + len(sentence) + 1 <= max_chunk_length:
+                current_chunk += sentence + " "
             else:
-                chunks.append(current_chunk.strip())
-                current_chunk = sentence
+                chunks.append(current_chunk.rstrip())
+                current_chunk = sentence + " "
 
-        # Add the last chunk
         if current_chunk:
-            chunks.append(current_chunk.strip())
+            chunks.append(current_chunk.rstrip())
 
         return chunks
 
@@ -300,7 +303,7 @@ class Chat(CustomCog):
         if isinstance(message.channel, disnake.Thread):
             return message.channel
 
-          # but we can create threads in channels, unless we don't have permission
+        # but we can create threads in channels, unless we don't have permission
 
         sentences = re.split(r"(?<=[.!?])\s+", response)
 
@@ -441,7 +444,6 @@ class Chat(CustomCog):
         history_id = inter.channel.id if inter.guild else inter.author.id
         self.chat_history[history_id] = [{"role": "system", "content": message}]
         self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(message))]
-
 
         return await inter.response.send_message(
             "System prompt updated and chat history cleared.",

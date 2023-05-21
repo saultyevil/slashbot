@@ -10,9 +10,8 @@ from types import coroutine
 from typing import List
 from typing import Union
 
-import dateutil.parser
 import disnake
-from dateutil import parser
+import dateparser
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 from sqlalchemy.orm import sessionmaker
@@ -82,7 +81,7 @@ class ReminderCommands(CustomCog):
             else {"reminder": []}
         )
 
-        self.bot.add_to_cleanup(None, self.__close_session, (None))
+        self.bot.add_to_cleanup(None, self.__close_session, (None,))
 
     # Private methods ----------------------------------------------------------
 
@@ -206,19 +205,11 @@ class ReminderCommands(CustomCog):
         now = datetime.datetime.now(tz=self.timezone)
 
         if time_unit == "Time stamp":
-            try:
-                future = parser.parse(when)
-            except dateutil.parser.UnknownTimezoneWarning:
-                return await inter.response.send_message("That's an unknown timezone, trying using UTC-5 or whatever.")
-            except parser.ParserError:
-                logger.error("Invalid timestamp %d", when)
-                return await inter.response.send_message("That is not a valid timestamp.", ephemeral=True)
+            future = dateparser.parse(when)
+            if not future:
+                return await inter.response.send_message(f"Unable to parse string {when}")
             if not future.tzinfo:
-                logger.debug("No timezone provided, defaulting to bot timezone")
-                logger.debug("input: %s", when)
-                logger.debug("parsed: %s", future)
                 future = future.replace(tzinfo=self.timezone)
-                logger.debug("replaced: %s", future)
         else:
             seconds = when * TIME_UNITS[time_unit]
             future = now + datetime.timedelta(seconds=seconds)
@@ -228,9 +219,6 @@ class ReminderCommands(CustomCog):
             return await inter.response.send_message("You can't set a reminder in the past.", ephemeral=True)
 
         tagged_users, reminder = await self.__replace_mentions_in_sentence(reminder)
-
-        logger.info("Time requested %s", future)
-        logger.info("UTC time conversation %s", future.astimezone(datetime.UTC))
 
         self.session.add(
             ReminderDB(
