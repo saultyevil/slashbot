@@ -26,12 +26,6 @@ from slashbot.markov import generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
-TIME_UNITS = {
-    "Time stamp": 1,
-    "Seconds": 1,
-    "Minutes": 60,
-    "Hours": 3600,
-}
 
 
 def get_reminders_for_user(inter: disnake.ApplicationCommandInteraction, _: str) -> List[str]:
@@ -161,13 +155,7 @@ class ReminderCommands(CustomCog):
     async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
         inter: disnake.ApplicationCommandInteraction,
-        time_unit: str = commands.Param(
-            description="The time-frame to set for your reminder.",
-            choices=list(TIME_UNITS.keys()),
-        ),
-        when: str = commands.Param(
-            description='When you want to be reminded, remember the timezone if you\'ve chosen "time stamp".'
-        ),
+        when: str = commands.Param(description="When you want to be reminded, UTC timezones are preferred."),
         reminder: str = commands.Param(description="What you want to be reminded about."),
     ) -> coroutine:
         """Set a reminder.
@@ -176,14 +164,10 @@ class ReminderCommands(CustomCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction object for the command.
-        time_unit: str
-            The unit of time to wait before the reminder.
         when: float
             The amount of time to wait before the reminder.
         reminder: str
             The reminder to set.
-        where: str
-            Where to be reminded, either "here", "dm" or "both".
         """
         if len(reminder) > 1024:
             return await inter.response.send_message(
@@ -191,33 +175,26 @@ class ReminderCommands(CustomCog):
                 ephemeral=True,
             )
 
-        if time_unit != "Time stamp":
-            try:
-                when = float(when)
-            except ValueError:
-                return await inter.response.send_message("That is not a valid number.", ephemeral=True)
-            if when <= 0:
-                return await inter.response.send_message(
-                    f"You can't set a reminder for 0 {time_unit} or less.",
-                    ephemeral=True,
-                )
-
+        # now we need to figure out the time for when the reminder is supposed
+        # to happen
         now = datetime.datetime.now(tz=self.timezone)
 
-        if time_unit == "Time stamp":
-            future = dateparser.parse(when)
-            if not future:
-                return await inter.response.send_message(f"Unable to parse string {when}")
-            if not future.tzinfo:
-                future = future.replace(tzinfo=self.timezone)
-        else:
-            seconds = when * TIME_UNITS[time_unit]
-            future = now + datetime.timedelta(seconds=seconds)
+        # settings makes BST -> British Summer Time instead of Bangladesh, but
+        # it does some odd things. If you do something like 21:30 UTC+6, it will
+        # convert that date to the bot's local timezone. For an input of 21:30
+        # UTC+6 when the bot's timezone is UTC+1, future = 16:30 UTC + 1
+        future = dateparser.parse(when, settings={"TIMEZONE": "Europe/London"})
+        if not future.tzinfo:
             future = future.replace(tzinfo=self.timezone)
 
-        if future < now:
-            return await inter.response.send_message("You can't set a reminder in the past.", ephemeral=True)
+        date_string = future.strftime(r"%H:%M UTC%z %d %B %Y")
 
+        if future < now:
+            logger.debug("future < now: Parsed time  %s", future)
+            logger.debug("future < now: Current time %s", now)
+            return await inter.response.send_message(f"{date_string} is in the past.", ephemeral=True)
+
+        # this is a bit of a hack, because the tagged users is a CSV string....
         tagged_users, reminder = await self.__replace_mentions_in_sentence(reminder)
 
         self.session.add(
@@ -231,9 +208,7 @@ class ReminderCommands(CustomCog):
         )
         self.session.commit()
 
-        return await inter.response.send_message(
-            f"Reminder set for {future.strftime(r'%H:%M %Z, %d %B %Y')}.", ephemeral=True
-        )
+        return await inter.response.send_message(f"Reminder set for {date_string}.", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forget_reminder", description="forget a reminder")
