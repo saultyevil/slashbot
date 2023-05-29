@@ -4,6 +4,8 @@
 """Cog for AI interactions, from the OpenAI API."""
 
 
+import json
+import pathlib
 import re
 import logging
 import time
@@ -28,16 +30,13 @@ openai.api_key = App.config("OPENAI_API_KEY")
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
+PROMPTS_CHOICES = [json.load(open(file)) for file in pathlib.Path("data/prompts").glob("*.json")]
+PROMPT_NAMES = list(map(lambda l: l["name"], PROMPTS_CHOICES))
 
-DEFAULT_SYSTEM_MESSAGE = " ".join(
-    [
-        "You are role playing as Margaret, an ignorant conspiracy theorist who wholeheartedly believes the",
-        "conspiracies. Margaret swears a lot and is an abusing personality, but does not mention conspiracies",
-        "unless directly asked. She swears a lot, is very smart and answers with great detail. You must",
-        "always be concise and your responses should not be longer than a few sentences. Play a story where you are",
-        "having a conversation with a friend.",
-    ]
-)
+if len(set(PROMPT_NAMES)) != len(PROMPT_NAMES):
+    raise OSError("Prompts with duplicate names have been found")
+
+DEFAULT_SYSTEM_MESSAGE = json.load(open("data/prompts/split.json"))["prompt"]
 
 TIME_LIMITED_SERVERS = [
     App.config("ID_SERVER_ADULT_CHILDREN"),
@@ -424,6 +423,49 @@ class Chat(CustomCog):
         return await inter.response.send_message(
             "System prompt reset to default and chat history cleared.", ephemeral=True
         )
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(
+        name="choose_system_prompt", description="set the chat system prompt from a list of pre-defined ones"
+    )
+    async def select_system_prompt(
+        self, inter: disnake.ApplicationCommandInteraction, choice: str = commands.Param(choices=PROMPT_NAMES)
+    ) -> coroutine:
+        """Select a system prompt from a set of pre-defined prompts.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
+        choice : str
+            The choice of system prompt
+        """
+
+        # todo, this should be an admin command and the data should be part of the class
+        global PROMPTS_CHOICES
+        global PROMPT_NAMES
+
+        prompt_filter = list(filter(lambda l: l["name"] == choice, PROMPTS_CHOICES))
+        if len(prompt_filter) != 1:
+            return await inter.response.send_message(
+                "An unknown error happened when setting the chosen prompt.", ephemeral=True
+            )
+
+        prompt = prompt_filter[0]["prompt"]
+
+        history_id = inter.channel.id if inter.guild else inter.author.id
+        self.chat_history[history_id] = [{"role": "system", "content": prompt}]
+        self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))]
+
+        await inter.response.send_message(
+            "System prompt updated and chat history cleared.",
+            ephemeral=True,
+        )
+
+        # reload the prompt files, in case more have been added
+        PROMPTS_CHOICES = [json.load(open(file)) for file in pathlib.Path("data/prompts").glob("*.json")]
+        PROMPT_NAMES = list(map(lambda l: l["name"], PROMPTS_CHOICES))
+
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_system_prompt", description="change the chat system prompt")
