@@ -63,8 +63,6 @@ def get_prompt_json(filepath: str | pathlib.Path) -> dict:
         "prompt",
     )
 
-    print(filepath)
-
     with open(filepath, "r", encoding="utf-8") as prompt_in:
         prompt = json.load(prompt_in)
         if not all(key in prompt for key in required_keys):
