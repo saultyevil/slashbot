@@ -63,6 +63,8 @@ def get_prompt_json(filepath: str | pathlib.Path) -> dict:
         "prompt",
     )
 
+    print(filepath)
+
     with open(filepath, "r", encoding="utf-8") as prompt_in:
         prompt = json.load(prompt_in)
         if not all(key in prompt for key in required_keys):
@@ -105,13 +107,11 @@ class PromptFileHandler(FileSystemEventHandler):
                 prompt = get_prompt_json(event.src_path)
                 if prompt not in PROMPT_CHOICES:
                     PROMPT_CHOICES.append(prompt)
+                    logger.info("%s added to prompts", event.src_path)
                 get_prompt_names(PROMPT_CHOICES)
         if event.event_type == "deleted":
             if event.src_path.endswith(".json"):
-                try:
-                    PROMPT_CHOICES.remove(get_prompt_json(event.src_path))
-                except ValueError:
-                    logger.error("Trying to remove prompt %s which isn't in list of prompts", event.src_path)
+                PROMPT_CHOICES = [get_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
                 get_prompt_names(PROMPT_CHOICES)
 
 
@@ -606,5 +606,5 @@ class Chat(CustomCog):
 
 
 observer = Observer()
-observer.schedule(PromptFileHandler, "data/prompts", recursive=True)
+observer.schedule(PromptFileHandler(), "data/prompts", recursive=True)
 observer.start()
