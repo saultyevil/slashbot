@@ -14,12 +14,14 @@ from collections import defaultdict
 from types import coroutine
 from typing import Tuple
 
-
 import disnake
 import openai
+import tiktoken
 import openai.error
 from disnake.ext import commands
-import tiktoken
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
 
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
@@ -29,12 +31,6 @@ openai.api_key = App.config("OPENAI_API_KEY")
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
-
-PROMPTS_CHOICES = [json.load(open(file)) for file in pathlib.Path("data/prompts").glob("*.json")]
-PROMPT_NAMES = list(map(lambda l: l["name"], PROMPTS_CHOICES))
-
-if len(set(PROMPT_NAMES)) != len(PROMPT_NAMES):
-    raise OSError("Prompts with duplicate names have been found")
 
 DEFAULT_SYSTEM_MESSAGE = json.load(open("data/prompts/split.json"))["prompt"]
 
@@ -47,6 +43,76 @@ MAX_LENGTH = 1920
 MAX_CHARS_UNTIL_THREAD = 364
 TOKEN_COUNT_UNSET = -1
 MAX_SENTENCES_UNTIL_THREAD = 5
+
+
+def get_prompt_json(filepath: str | pathlib.Path) -> dict:
+    """Turn a prompt JSON into a dict.
+
+    Parameters
+    ----------
+    filepath : str | pathlib.Path
+        The path to the prompt JSON.
+
+    Returns
+    -------
+    dict
+        A prompt dict
+    """
+    required_keys = (
+        "name",
+        "prompt",
+    )
+
+    with open(filepath, "r", encoding="utf-8") as prompt_in:
+        prompt = json.load(prompt_in)
+        if not all(key in prompt for key in required_keys):
+            raise OSError(f"{filepath} is missing either 'name' or 'prompt' key")
+
+    return prompt
+
+
+def get_prompt_names(prompt_dicts: list[dict]) -> list:
+    """From a list of prompt dicts, get the names of the prompts.
+
+    Parameters
+    ----------
+    prompt_dicts : dict
+        The prompts
+
+    Returns
+    -------
+    list
+        The list of names
+    """
+    return list(map(lambda x: x["name"], prompt_dicts))
+
+
+# todo, why don't I just make this a dict instead...?
+PROMPT_CHOICES = [get_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
+PROMPT_NAMES = get_prompt_names(PROMPT_CHOICES)
+
+
+class PromptFileHandler(FileSystemEventHandler):
+    """Event handler for changes to json files"""
+
+    def on_any_event(self, event):
+        global PROMPT_CHOICES
+
+        if event.is_directory:
+            return
+        if event.event_type == "created" or event.event_type == "modified":
+            if event.src_path.endswith(".json"):
+                prompt = get_prompt_json(event.src_path)
+                if prompt not in PROMPT_CHOICES:
+                    PROMPT_CHOICES.append(prompt)
+                get_prompt_names(PROMPT_CHOICES)
+        if event.event_type == "deleted":
+            if event.src_path.endswith(".json"):
+                try:
+                    PROMPT_CHOICES.remove(get_prompt_json(event.src_path))
+                except ValueError:
+                    logger.error("Trying to remove prompt %s which isn't in list of prompts", event.src_path)
+                get_prompt_names(PROMPT_CHOICES)
 
 
 class Chat(CustomCog):
@@ -76,6 +142,8 @@ class Chat(CustomCog):
         self.default_system_token_count = len(
             tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
         )
+
+        self.prompt_choices = []
 
     # Static -------------------------------------------------------------------
 
@@ -440,12 +508,7 @@ class Chat(CustomCog):
         choice : str
             The choice of system prompt
         """
-
-        # todo, this should be an admin command and the data should be part of the class
-        global PROMPTS_CHOICES
-        global PROMPT_NAMES
-
-        prompt_filter = list(filter(lambda l: l["name"] == choice, PROMPTS_CHOICES))
+        prompt_filter = list(filter(lambda l: l["name"] == choice, PROMPT_CHOICES))
         if len(prompt_filter) != 1:
             return await inter.response.send_message(
                 "An unknown error happened when setting the chosen prompt.", ephemeral=True
@@ -461,11 +524,6 @@ class Chat(CustomCog):
             "System prompt updated and chat history cleared.",
             ephemeral=True,
         )
-
-        # reload the prompt files, in case more have been added
-        PROMPTS_CHOICES = [json.load(open(file)) for file in pathlib.Path("data/prompts").glob("*.json")]
-        PROMPT_NAMES = list(map(lambda l: l["name"], PROMPTS_CHOICES))
-
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_system_prompt", description="change the chat system prompt")
@@ -545,3 +603,8 @@ class Chat(CustomCog):
         return await inter.response.send_message(
             "Thread responses enabled." if self.threads_enabled else "Thread responses disabled.", ephemeral=True
         )
+
+
+observer = Observer()
+observer.schedule(PromptFileHandler, "data/prompts", recursive=True)
+observer.start()
