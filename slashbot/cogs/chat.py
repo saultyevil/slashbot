@@ -71,7 +71,7 @@ def get_prompt_json(filepath: str | pathlib.Path) -> dict:
     return prompt
 
 
-def get_prompt_names(prompt_dicts: list[dict]) -> list:
+def get_prompt_names(prompt_dicts: list[dict]) -> list[str]:
     """From a list of prompt dicts, get the names of the prompts.
 
     Parameters
@@ -84,7 +84,7 @@ def get_prompt_names(prompt_dicts: list[dict]) -> list:
     list
         The list of names
     """
-    return list(map(lambda x: x["name"], prompt_dicts))
+    return sorted(list(map(lambda x: x["name"], prompt_dicts)), key=str.lower)
 
 
 # todo, why don't I just make this a dict instead...?
@@ -97,6 +97,7 @@ class PromptFileHandler(FileSystemEventHandler):
 
     def on_any_event(self, event):
         global PROMPT_CHOICES
+        global PROMPT_NAMES
 
         if event.is_directory:
             return
@@ -106,11 +107,12 @@ class PromptFileHandler(FileSystemEventHandler):
                 if prompt not in PROMPT_CHOICES:
                     PROMPT_CHOICES.append(prompt)
                     logger.info("%s added to prompts", event.src_path)
-                get_prompt_names(PROMPT_CHOICES)
+                PROMPT_NAMES = get_prompt_names(PROMPT_CHOICES)
         if event.event_type == "deleted":
             if event.src_path.endswith(".json"):
                 PROMPT_CHOICES = [get_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
-                get_prompt_names(PROMPT_CHOICES)
+                PROMPT_NAMES = get_prompt_names(PROMPT_CHOICES)
+                logger.info("%s removed from prompts", event.src_path)
 
 
 class Chat(CustomCog):
@@ -495,7 +497,9 @@ class Chat(CustomCog):
         name="choose_system_prompt", description="set the chat system prompt from a list of pre-defined ones"
     )
     async def select_system_prompt(
-        self, inter: disnake.ApplicationCommandInteraction, choice: str = commands.Param(choices=PROMPT_NAMES)
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        choice: str = commands.Param(autocomplete=lambda _inter, _input: PROMPT_NAMES),
     ) -> coroutine:
         """Select a system prompt from a set of pre-defined prompts.
 
