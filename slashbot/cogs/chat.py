@@ -47,7 +47,7 @@ def get_prompt_dicts() -> list[dict]:
 
 
 def create_prompt_dict() -> dict:
-    return {prompt_dict["name"]: prompt_dict["value"] for prompt_dict in get_prompt_dicts()}
+    return {prompt_dict["name"]: prompt_dict["prompt"] for prompt_dict in get_prompt_dicts()}
 
 
 openai.api_key = App.config("OPENAI_API_KEY")
@@ -454,18 +454,17 @@ class Chat(CustomCog):
             The slash command interaction.
         """
         history_id = inter.channel.id if inter.guild else inter.author.id
-        if history_id not in self.chat_history:
-            return await inter.response.send_message("There is no chat history to clear.", ephemeral=True)
         self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
         self.token_count[history_id] = [self.default_system_token_count]
 
-        return await inter.response.send_message(
-            "System prompt reset to default and chat history cleared.", ephemeral=True
+        await inter.response.send_message(
+            f"History cleared and system prompt changed to:\n\n{DEFAULT_SYSTEM_MESSAGE}",
+            ephemeral=True,
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
-        name="choose_system_prompt", description="set the chat system prompt from a list of pre-defined ones"
+        name="select_system_prompt", description="set the chat system prompt from a list of pre-defined ones"
     )
     async def select_system_prompt(
         self,
@@ -484,7 +483,7 @@ class Chat(CustomCog):
         prompt = PROMPT_CHOICES.get(choice, None)
         if prompt is None:
             return await inter.response.send_message(
-                f"An error with the Discord API has occurred and allowed you to pick a prompt which doesn't exist",
+                "An error with the Discord API has occurred and allowed you to pick a prompt which doesn't exist",
                 ephemeral=True,
             )
 
@@ -493,13 +492,13 @@ class Chat(CustomCog):
         self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))]
 
         await inter.response.send_message(
-            "System prompt updated and chat history cleared.",
+            f"History cleared and system prompt changed to:\n\n{prompt}",
             ephemeral=True,
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_system_prompt", description="change the chat system prompt")
-    async def set_system_message(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
+    async def set_system_prompt(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
         """Set a new system message for the location were the interaction came
         from.
 
@@ -517,8 +516,8 @@ class Chat(CustomCog):
         self.chat_history[history_id] = [{"role": "system", "content": message}]
         self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(message))]
 
-        return await inter.response.send_message(
-            "System prompt updated and chat history cleared.",
+        await inter.response.send_message(
+            f"History cleared and system prompt changed to:\n\n{message}",
             ephemeral=True,
         )
 
@@ -526,10 +525,10 @@ class Chat(CustomCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
-        name="set_output_tokens", description="change the maximum number of output tokens for an ai response"
+        name="set_chat_tokens", description="change the maximum number of output tokens for an ai response"
     )
     @commands.default_member_permissions(administrator=True)
-    async def set_max_tokens(
+    async def set_chat_tokens(
         self, inter: disnake.ApplicationCommandInteraction, num_tokens: int = commands.Param(gt=25, lt=1024)
     ) -> coroutine:
         """Set the number of tokens the model can return.
@@ -549,31 +548,8 @@ class Chat(CustomCog):
         if self.max_tokens_allowed < 768:
             self.max_tokens_allowed = 768
 
-        return await inter.response.send_message(
+        await inter.response.send_message(
             f"Max output tokens set to {num_tokens} with a token total of {self.max_tokens_allowed}.", ephemeral=True
-        )
-
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="switch_thread_behaviour", description="change the thread behaviour for the ai")
-    @commands.default_member_permissions(administrator=True)
-    async def switch_thread_behaviour(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-    ) -> coroutine:
-        """Enable or disable thread responses
-
-        Parameters
-        ----------
-        inter : disnake.Interaction
-            The slash command interaction.
-        """
-        if self.threads_enabled:
-            self.threads_enabled = False
-        else:
-            self.threads_enabled = True
-
-        return await inter.response.send_message(
-            "Thread responses enabled." if self.threads_enabled else "Thread responses disabled.", ephemeral=True
         )
 
 
