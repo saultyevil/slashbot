@@ -27,37 +27,8 @@ from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
 from slashbot.custom_cog import CustomCog
 
-openai.api_key = App.config("OPENAI_API_KEY")
-
-logger = logging.getLogger(App.config("LOGGER_NAME"))
-COOLDOWN_USER = commands.BucketType.user
-
-DEFAULT_SYSTEM_MESSAGE = json.load(open("data/prompts/split.json"))["prompt"]
-
-TIME_LIMITED_SERVERS = [
-    App.config("ID_SERVER_ADULT_CHILDREN"),
-    App.config("ID_SERVER_FREEDOM"),
-]
-
-MAX_LENGTH = 1920
-MAX_CHARS_UNTIL_THREAD = 364
-TOKEN_COUNT_UNSET = -1
-MAX_SENTENCES_UNTIL_THREAD = 5
-
 
 def get_prompt_json(filepath: str | pathlib.Path) -> dict:
-    """Turn a prompt JSON into a dict.
-
-    Parameters
-    ----------
-    filepath : str | pathlib.Path
-        The path to the prompt JSON.
-
-    Returns
-    -------
-    dict
-        A prompt dict
-    """
     required_keys = (
         "name",
         "prompt",
@@ -71,25 +42,29 @@ def get_prompt_json(filepath: str | pathlib.Path) -> dict:
     return prompt
 
 
-def get_prompt_names(prompt_dicts: list[dict]) -> list[str]:
-    """From a list of prompt dicts, get the names of the prompts.
-
-    Parameters
-    ----------
-    prompt_dicts : dict
-        The prompts
-
-    Returns
-    -------
-    list
-        The list of names
-    """
-    return sorted(list(map(lambda x: x["name"], prompt_dicts)), key=str.lower)
+def get_prompt_dicts() -> list[dict]:
+    return [get_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
 
 
-# todo, why don't I just make this a dict instead...?
-PROMPT_CHOICES = [get_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
-PROMPT_NAMES = get_prompt_names(PROMPT_CHOICES)
+def create_prompt_dict() -> dict:
+    return {prompt_dict["name"]: prompt_dict["value"] for prompt_dict in get_prompt_dicts()}
+
+
+openai.api_key = App.config("OPENAI_API_KEY")
+logger = logging.getLogger(App.config("LOGGER_NAME"))
+
+COOLDOWN_USER = commands.BucketType.user
+DEFAULT_SYSTEM_MESSAGE = json.load(open("data/prompts/split.json"))["prompt"]
+PROMPT_CHOICES = create_prompt_dict()
+MAX_MESSAGE_LENGTH = 1920
+MAX_CHARS_UNTIL_THREAD = 364
+TOKEN_COUNT_UNSET = -1
+MAX_SENTENCES_UNTIL_THREAD = 5
+
+TIME_LIMITED_SERVERS = [
+    App.config("ID_SERVER_ADULT_CHILDREN"),
+    App.config("ID_SERVER_FREEDOM"),
+]
 
 
 class PromptFileHandler(FileSystemEventHandler):
@@ -97,21 +72,17 @@ class PromptFileHandler(FileSystemEventHandler):
 
     def on_any_event(self, event):
         global PROMPT_CHOICES
-        global PROMPT_NAMES
 
         if event.is_directory:
             return
         if event.event_type == "created" or event.event_type == "modified":
             if event.src_path.endswith(".json"):
                 prompt = get_prompt_json(event.src_path)
-                if prompt not in PROMPT_CHOICES:
-                    PROMPT_CHOICES.append(prompt)
-                    logger.info("%s added to prompts", event.src_path)
-                PROMPT_NAMES = get_prompt_names(PROMPT_CHOICES)
+                PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
+                logger.info("%s added to prompts", event.src_path)
         if event.event_type == "deleted":
             if event.src_path.endswith(".json"):
-                PROMPT_CHOICES = [get_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
-                PROMPT_NAMES = get_prompt_names(PROMPT_CHOICES)
+                PROMPT_CHOICES = create_prompt_dict()
                 logger.info("%s removed from prompts", event.src_path)
 
 
@@ -462,8 +433,8 @@ class Chat(CustomCog):
             async with message.channel.typing():
                 response = await self.respond_to_prompt(history_id, message.clean_content)
                 message_destination = await self.__get_response_destination(message, response)
-                if len(response) > MAX_LENGTH:
-                    responses = self.__split_message_into_chunks(response, MAX_LENGTH)
+                if len(response) > MAX_MESSAGE_LENGTH:
+                    responses = self.__split_message_into_chunks(response, MAX_MESSAGE_LENGTH)
                     for n, response in enumerate(responses):
                         mention_user = message.author.mention if not message_in_dm else ""
                         await message_destination.send(f"{mention_user if n == 0 else ''} {response}")
@@ -499,7 +470,7 @@ class Chat(CustomCog):
     async def select_system_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        choice: str = commands.Param(autocomplete=lambda _inter, _input: PROMPT_NAMES),
+        choice: str = commands.Param(autocomplete=lambda _inter, _input: PROMPT_CHOICES.keys()),
     ) -> coroutine:
         """Select a system prompt from a set of pre-defined prompts.
 
@@ -510,13 +481,12 @@ class Chat(CustomCog):
         choice : str
             The choice of system prompt
         """
-        prompt_filter = list(filter(lambda l: l["name"] == choice, PROMPT_CHOICES))
-        if len(prompt_filter) != 1:
+        prompt = PROMPT_CHOICES.get(choice, None)
+        if prompt is None:
             return await inter.response.send_message(
-                "An unknown error happened when setting the chosen prompt.", ephemeral=True
+                f"An error with the Discord API has occurred and allowed you to pick a prompt which doesn't exist",
+                ephemeral=True,
             )
-
-        prompt = prompt_filter[0]["prompt"]
 
         history_id = inter.channel.id if inter.guild else inter.author.id
         self.chat_history[history_id] = [{"role": "system", "content": prompt}]
