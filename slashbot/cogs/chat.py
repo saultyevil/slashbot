@@ -122,35 +122,41 @@ class Chat(CustomCog):
     # Static -------------------------------------------------------------------
 
     @staticmethod
-    def __split_message_into_chunks(string: str, max_chunk_length: int) -> list:
-        """Split a string into chunks less than a certain size.
+    def __split_message_into_chunks(text: str, chunk_length: int) -> list:
+        """
+        Split text into smaller chunks of a set length while preserving sentences.
 
         Parameters
         ----------
-        string : str
-            The string to split into chunks
-        max_chunk_length : int
-            The cutoff length (in characters) for when to split a sentence.
-
+        text : str
+            The input text to be split into chunks.
+        chunk_length : int, optional
+            The maximum length of each chunk. Default is 1648.
 
         Returns
         -------
         list
-            A list of strings less than max_chunk_length.
+            A list of strings where each string represents a chunk of the text.
         """
         chunks = []
         current_chunk = ""
-        sentences = re.split(r"(?<=[.!?])\s+", string)
 
-        for sentence in sentences:
-            if len(current_chunk) + len(sentence) + 1 <= max_chunk_length:
-                current_chunk += sentence + " "
-            else:
-                chunks.append(current_chunk.rstrip())
-                current_chunk = sentence + " "
+        while len(text) > 0:
+            # Find the nearest sentence end within the chunk length
+            end_index = min(len(text), chunk_length)
+            while end_index > 0 and text[end_index - 1] not in (".", "!", "?"):
+                end_index -= 1
 
-        if current_chunk:
-            chunks.append(current_chunk.rstrip())
+            # If no sentence end found, break at chunk length
+            if end_index == 0:
+                end_index = chunk_length
+
+            current_chunk += text[:end_index]
+            text = text[end_index:]
+
+            if len(text) == 0 or len(current_chunk) + len(text) > chunk_length:
+                chunks.append(current_chunk)
+                current_chunk = ""
 
         return chunks
 
@@ -359,7 +365,7 @@ class Chat(CustomCog):
 
         return message_destination
 
-    async def respond_to_prompt(self, history_id: int | str, prompt: str) -> str:
+    async def respond_to_prompt(self, user_name: str, history_id: int | str, prompt: str) -> str:
         """Process a prompt and get a response.
 
         This function is the main steering function for getting a response from
@@ -371,6 +377,8 @@ class Chat(CustomCog):
 
         Parameters
         ----------
+        user_name : str
+            The name of the user who sent the prompt
         history_id: int
             An ID to store chat history to. Usually the guild or user id.
         prompt : str
@@ -381,24 +389,24 @@ class Chat(CustomCog):
         str
             The generated response to the given prompt.
         """
-        prompt = prompt.replace("@Margaret", "", 1).strip()
-
         if history_id not in self.chat_history:
             self.token_count[history_id] = [self.default_system_token_count]
             self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
         await self.__trim_message_history(history_id)
-        self.chat_history[history_id].append({"role": "user", "content": prompt})
+        self.chat_history[history_id].append({"role": "user", "content": f"{user_name}: {prompt}"})
 
         try:
             response = await self.__openai_chat_completion(history_id)
         except openai.error.RateLimitError:
+            self.chat_history[history_id].pop()
             return "Uh oh! I've hit OpenAI's rate limit :-("
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.exception(
                 "OpenAI API failed with exception:\n%s",
                 "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
             )
+            self.chat_history[history_id].pop()
             return "Uh oh! Something went wrong with that request :-("
 
         return response
@@ -434,7 +442,7 @@ class Chat(CustomCog):
 
             # if everything ok, type and send
             async with message.channel.typing():
-                response = await self.respond_to_prompt(history_id, message.clean_content)
+                response = await self.respond_to_prompt(message.author.name, history_id, message.clean_content)
                 message_destination = await self.__get_response_destination(message, response)
                 if len(response) > MAX_MESSAGE_LENGTH:
                     responses = self.__split_message_into_chunks(response, MAX_MESSAGE_LENGTH)
@@ -447,8 +455,8 @@ class Chat(CustomCog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="clear_chat_history", description="reset the AI chat history")
-    async def clear_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    @commands.slash_command(name="reset_chat", description="reset the AI chat history")
+    async def reset_chat(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Clear history context for where the interaction was called from.
 
         Parameters
@@ -524,13 +532,10 @@ class Chat(CustomCog):
             ephemeral=True,
         )
 
-    # Admin commands -----------------------------------------------------------
-
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
         name="set_chat_tokens", description="change the maximum number of output tokens for an ai response"
     )
-    @commands.default_member_permissions(administrator=True)
     async def set_chat_tokens(
         self, inter: disnake.ApplicationCommandInteraction, num_tokens: int = commands.Param(gt=25, lt=1024)
     ) -> coroutine:
@@ -544,13 +549,38 @@ class Chat(CustomCog):
             The number of tokens
         """
         self.max_output_tokens = num_tokens
-        self.max_tokens_allowed = num_tokens * 3
-
-        if self.max_tokens_allowed > 2048:
-            self.max_tokens_allowed = 2048
-        if self.max_tokens_allowed < 768:
-            self.max_tokens_allowed = 768
+        self.max_tokens_allowed = max(num_tokens * 2, 256)
 
         await inter.response.send_message(
             f"Max output tokens set to {num_tokens} with a token total of {self.max_tokens_allowed}.", ephemeral=True
         )
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="add_chat_prompt", description="add a system prompt to the bot's selection")
+    async def save_prompt(self, inter: disnake.ApplicationCommandInteraction, name: str, prompt: str):
+        """
+
+        Parameters
+        ----------
+        inter
+        name
+        prompt
+
+        Returns
+        -------
+
+        """
+        if len(name) > 64:
+            return await inter.response.send_message("The prompt name should not exceed 64 characters.", epehmeral=True)
+
+        num_tokens = len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))
+        if num_tokens > 256:
+            return await inter.response.send_message("The prompt should not exceed 256 tokens.", epehmeral=True)
+
+        with open(f"prompt-{name}.json", "w", encoding="utf-8") as file_out:
+            json.dump(
+                {"name": name, "prompt": prompt},
+                file_out,
+            )
+
+        await inter.response.send_message(f"Your prompt {name} has been saved.", ephemeral=True)
