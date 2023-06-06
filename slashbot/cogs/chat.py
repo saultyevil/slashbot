@@ -101,7 +101,7 @@ class Chat(CustomCog):
         super().__init__()
         self.bot = bot
 
-        self.chat_history = {}
+        self.chat_history = defaultdict(list)
         self.token_count = defaultdict(lambda: [0])
         self.guild_cooldown = defaultdict(dict)
         self.threads_enabled = False
@@ -365,6 +365,11 @@ class Chat(CustomCog):
 
         return message_destination
 
+    def prepare_history(self, history_id: int | str):
+        if history_id not in self.chat_history:
+            self.token_count[history_id] = [self.default_system_token_count]
+            self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+
     async def respond_to_prompt(self, user_name: str, history_id: int | str, prompt: str) -> str:
         """Process a prompt and get a response.
 
@@ -389,12 +394,9 @@ class Chat(CustomCog):
         str
             The generated response to the given prompt.
         """
-        if history_id not in self.chat_history:
-            self.token_count[history_id] = [self.default_system_token_count]
-            self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
-
+        self.prepare_history(history_id)
         await self.__trim_message_history(history_id)
-        self.chat_history[history_id].append({"role": "user", "content": f"{user_name}: {prompt}"})
+        self.chat_history[history_id].append({"role": "user", "content": prompt})
 
         try:
             response = await self.__openai_chat_completion(history_id)
@@ -548,6 +550,9 @@ class Chat(CustomCog):
         num_tokens : int
             The number of tokens
         """
+        history_id = inter.channel.id if inter.guild else inter.author.id
+        self.prepare_history(history_id)
+
         self.max_output_tokens = num_tokens
         self.max_tokens_allowed = max(num_tokens * 2, 256)
 
@@ -570,6 +575,9 @@ class Chat(CustomCog):
         -------
 
         """
+        history_id = inter.channel.id if inter.guild else inter.author.id
+        self.prepare_history(history_id)
+
         if len(name) > 64:
             return await inter.response.send_message("The prompt name should not exceed 64 characters.", epehmeral=True)
 
@@ -584,3 +592,34 @@ class Chat(CustomCog):
             )
 
         await inter.response.send_message(f"Your prompt {name} has been saved.", ephemeral=True)
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="echo_system_prompt", description="echo the current system prompt")
+    async def echo_system_prompt(self, inter: disnake.ApplicationCommandInteraction):
+        """
+
+        Parameters
+        ----------
+        inter
+
+        Returns
+        -------
+
+        """
+        history_id = inter.channel.id if inter.guild else inter.author.id
+        self.prepare_history(history_id)
+
+        # the system prompt is always the first entry
+        try:
+            prompt = self.chat_history[history_id][0].get("content", None)
+        except IndexError:
+            return await inter.response.send_message(
+                "The chat cog has not been initialized yet, send a prompt request first.", ephemeral=True
+            )
+
+        if prompt is None:
+            return await inter.response.send_message(
+                "There is currently no system prompt set or chat history.", ephemeral=True
+            )
+
+        await inter.response.send_message(f"The current prompt is:\n\n{prompt}", ephemeral=True)
