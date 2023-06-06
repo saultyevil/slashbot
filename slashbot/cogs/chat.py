@@ -577,7 +577,7 @@ class Chat(CustomCog):
         if num_tokens > 256:
             return await inter.response.send_message("The prompt should not exceed 256 tokens.", epehmeral=True)
 
-        with open(f"prompt-{name}.json", "w", encoding="utf-8") as file_out:
+        with open(f"data/prompts/prompt-{name}.json", "w", encoding="utf-8") as file_out:
             json.dump(
                 {"name": name, "prompt": prompt},
                 file_out,
