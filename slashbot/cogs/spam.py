@@ -103,10 +103,10 @@ class SpamCommands(CustomCog):  # pylint: disable=too-many-instance-attributes,t
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
-        name="chat",
+        name="sentence",
         description="artificial intelligence, powered by markov chain sentence generation",
     )
-    async def chat(
+    async def sentence(
         self,
         inter: disnake.ApplicationCommandInteraction,
         words: str = commands.Param(

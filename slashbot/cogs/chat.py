@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""Cog for AI interactions, from the OpenAI API."""
-
+"""
+The purpose of this cog is to enable the bot to communicate with the OpenAI API
+and to generate responses to prompts given.
+"""
 
 import json
 import pathlib
@@ -22,13 +24,28 @@ from disnake.ext import commands
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
 from slashbot.custom_cog import CustomCog
 
+openai.api_key = App.config("OPENAI_API_KEY")
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 
-def get_prompt_json(filepath: str | pathlib.Path) -> dict:
+COOLDOWN_USER = commands.BucketType.user
+DEFAULT_SYSTEM_MESSAGE = json.load(open("data/prompts/split.json"))["prompt"]
+MAX_MESSAGE_LENGTH = 1920
+MAX_CHARS_UNTIL_THREAD = 364
+TOKEN_COUNT_UNSET = -1
+MAX_SENTENCES_UNTIL_THREAD = 5
+
+TIME_LIMITED_SERVERS = [
+    # App.config("ID_SERVER_ADULT_CHILDREN"),
+    # App.config("ID_SERVER_FREEDOM"),
+]
+
+
+def read_in_prompt_json(filepath: str | pathlib.Path) -> dict:
+    """Read in a prompt and check for keys."""
     required_keys = (
         "name",
         "prompt",
@@ -42,29 +59,17 @@ def get_prompt_json(filepath: str | pathlib.Path) -> dict:
     return prompt
 
 
-def get_prompt_dicts() -> list[dict]:
-    return [get_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
+def get_prompt_json() -> list[dict]:
+    """Create a list of prompt dicts."""
+    return [read_in_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
 
 
 def create_prompt_dict() -> dict:
-    return {prompt_dict["name"]: prompt_dict["prompt"] for prompt_dict in get_prompt_dicts()}
+    """Creates a dict of prompt_name: prompt."""
+    return {prompt_dict["name"]: prompt_dict["prompt"] for prompt_dict in get_prompt_json()}
 
 
-openai.api_key = App.config("OPENAI_API_KEY")
-logger = logging.getLogger(App.config("LOGGER_NAME"))
-
-COOLDOWN_USER = commands.BucketType.user
-DEFAULT_SYSTEM_MESSAGE = json.load(open("data/prompts/split.json"))["prompt"]
 PROMPT_CHOICES = create_prompt_dict()
-MAX_MESSAGE_LENGTH = 1920
-MAX_CHARS_UNTIL_THREAD = 364
-TOKEN_COUNT_UNSET = -1
-MAX_SENTENCES_UNTIL_THREAD = 5
-
-TIME_LIMITED_SERVERS = [
-    App.config("ID_SERVER_ADULT_CHILDREN"),
-    App.config("ID_SERVER_FREEDOM"),
-]
 
 
 class PromptFileHandler(FileSystemEventHandler):
@@ -77,13 +82,16 @@ class PromptFileHandler(FileSystemEventHandler):
             return
         if event.event_type == "created" or event.event_type == "modified":
             if event.src_path.endswith(".json"):
-                prompt = get_prompt_json(event.src_path)
+                prompt = read_in_prompt_json(event.src_path)
                 PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
-                logger.info("%s added to prompts", event.src_path)
         if event.event_type == "deleted":
             if event.src_path.endswith(".json"):
                 PROMPT_CHOICES = create_prompt_dict()
-                logger.info("%s removed from prompts", event.src_path)
+
+
+observer = Observer()
+observer.schedule(PromptFileHandler(), "data/prompts", recursive=True)
+observer.start()
 
 
 class Chat(CustomCog):
@@ -94,13 +102,8 @@ class Chat(CustomCog):
         self.bot = bot
 
         self.chat_history = {}
-        self.token_count = defaultdict(
-            lambda: [
-                0,
-            ]
-        )
+        self.token_count = defaultdict(lambda: [0])
         self.guild_cooldown = defaultdict(dict)
-
         self.threads_enabled = False
 
         self.chat_model = "gpt-3.5-turbo"
@@ -551,8 +554,3 @@ class Chat(CustomCog):
         await inter.response.send_message(
             f"Max output tokens set to {num_tokens} with a token total of {self.max_tokens_allowed}.", ephemeral=True
         )
-
-
-observer = Observer()
-observer.schedule(PromptFileHandler(), "data/prompts", recursive=True)
-observer.start()
