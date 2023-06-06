@@ -193,7 +193,10 @@ async def update_markov_chain_for_model(
     try:
         new_model = markovify.NewlineText(messages)
     except KeyError:  # I can't remember what causes this... but it can happen when indexing new words
-        return await deferred_error_message(inter, "The interim model failed to train.")
+        if inter:
+            await deferred_error_message(inter, "The interim model failed to train.")
+        logger.error("The interim model failed to train.")
+        return
 
     combined_chain = markovify.combine([model.chain, new_model.chain])
     with open(save_location, "wb") as file_out:
