@@ -235,6 +235,11 @@ class Chat(CustomCog):
         str
             The generated response to the given prompt.
         """
+
+        if history_id not in self.chat_history:
+            self.token_count[history_id] = [self.default_system_token_count]
+            self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+
         await self.__reduce_chat_history(history_id)
         self.chat_history[history_id].append({"role": "user", "content": prompt})
 
