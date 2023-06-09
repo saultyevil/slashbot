@@ -4,9 +4,72 @@
 """Various utility functions used through slashbot."""
 
 import re
+import json
 from typing import Any
+import logging
+import pathlib
 
 import disnake
+
+from slashbot.config import App
+
+logger = logging.getLogger(App.config("LOGGER_NAME"))
+
+
+async def send_cooldown_message(
+    channel: disnake.TextChannel | disnake.DMChannel, author: disnake.User | disnake.Member
+) -> None:
+    """Respond to a user on cooldown.
+
+    Historically, this used to do a lot more.
+
+    Parameters
+    ----------
+    channel
+        The channel to send the message to
+    author
+        The user to respond to
+    """
+    await channel.send(f"Stop abusing me {author.mention}!")
+
+
+def split_text_into_chunks(text: str, chunk_length: int) -> list:
+    """
+    Split text into smaller chunks of a set length while preserving sentences.
+
+    Parameters
+    ----------
+    text : str
+        The input text to be split into chunks.
+    chunk_length : int, optional
+        The maximum length of each chunk. Default is 1648.
+
+    Returns
+    -------
+    list
+        A list of strings where each string represents a chunk of the text.
+    """
+    chunks = []
+    current_chunk = ""
+
+    while len(text) > 0:
+        # Find the nearest sentence end within the chunk length
+        end_index = min(len(text), chunk_length)
+        while end_index > 0 and text[end_index - 1] not in (".", "!", "?"):
+            end_index -= 1
+
+        # If no sentence end found, break at chunk length
+        if end_index == 0:
+            end_index = chunk_length
+
+        current_chunk += text[:end_index]
+        text = text[end_index:]
+
+        if len(text) == 0 or len(current_chunk) + len(text) > chunk_length:
+            chunks.append(current_chunk)
+            current_chunk = ""
+
+    return chunks
 
 
 def convert_string_to_lower(_inter: disnake.ApplicationCommandInteraction, variable: Any) -> Any:
@@ -117,3 +180,26 @@ def convert_radial_to_cardinal_direction(degrees: float) -> str:
     ]
 
     return directions[round(degrees / (360.0 / len(directions))) % len(directions)]
+
+
+def read_in_prompt_json(filepath: str | pathlib.Path) -> dict:
+    """Read in a prompt and check for keys."""
+    required_keys = (
+        "name",
+        "prompt",
+    )
+
+    with open(filepath, "r", encoding="utf-8") as prompt_in:
+        prompt = json.load(prompt_in)
+        if not all(key in prompt for key in required_keys):
+            raise OSError(f"{filepath} is missing either 'name' or 'prompt' key")
+
+    return prompt
+
+
+def create_prompt_dict() -> dict:
+    """Creates a dict of prompt_name: prompt."""
+    return {
+        prompt_dict["name"]: prompt_dict["prompt"]
+        for prompt_dict in [read_in_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
+    }
