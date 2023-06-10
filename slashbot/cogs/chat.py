@@ -106,7 +106,7 @@ class Chat(CustomCog):
     # Static -------------------------------------------------------------------
 
     @staticmethod
-    def history_id(obj: disnake.Message | disnake.ApplicationCommandInteraction) -> int:
+    def history_id(obj: disnake.Message | disnake.ApplicationCommandInteraction) -> str | int:
         """Determine the history ID to use given the origin of the message.
 
         Historically, this used to return different values for text channels and
@@ -292,7 +292,7 @@ class Chat(CustomCog):
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
         """
-        history_id = inter.channel.id if inter.guild else inter.author.id
+        history_id = self.history_id(inter)
         self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
         self.token_count[history_id] = [self.default_system_token_count]
 
@@ -326,7 +326,7 @@ class Chat(CustomCog):
                 ephemeral=True,
             )
 
-        history_id = inter.channel.id if inter.guild else inter.author.id
+        history_id = self.history_id(inter)
         self.chat_history[history_id] = [{"role": "system", "content": prompt}]
         self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))]
 
@@ -351,7 +351,7 @@ class Chat(CustomCog):
         message : str
             The new system prompt to set.
         """
-        history_id = inter.channel.id if inter.guild else inter.author.id
+        history_id = self.history_id(inter)
         self.chat_history[history_id] = [{"role": "system", "content": message}]
         self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(message))]
 
