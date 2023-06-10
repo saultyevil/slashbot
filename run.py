@@ -25,6 +25,8 @@ import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
 import slashbot.cogs.weather
+import slashbot.cogs.image
+
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
 from slashbot.db import migrate_old_json_to_db
@@ -55,6 +57,7 @@ for cog in [
     slashbot.cogs.archive.ArchiveCommands(bot),
     slashbot.cogs.chat.Chat(bot),
     slashbot.cogs.content.ContentCommands(bot),
+    slashbot.cogs.image.ImageGen(bot),
     slashbot.cogs.info.InfoCommands(bot),
     slashbot.cogs.remind.ReminderCommands(bot),
     slashbot.cogs.schedule.ScheduledPosts(bot),
