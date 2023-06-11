@@ -152,6 +152,9 @@ class ImageGen(CustomCog):
         except requests.exceptions.Timeout:
             return inter.edit_original_message(content="The image generation API took too long to respond.")
 
+        if process_id == "":
+            return await inter.edit_original_message("There was an error when submitting your request.")
+
         self.running_tasks[inter.author.id] = process_id
         logger.info("text2image: Request %s for user %s (%d)", process_id, inter.author.name, inter.author.id)
         await inter.edit_original_message(content=f"Request submitted: {process_id}")
