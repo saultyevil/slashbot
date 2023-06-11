@@ -9,6 +9,8 @@ services:
       - OWM_API_KEY
       - WOLFRAM_API_KEY
       - OPENAI_API_KEY
+      - MONSTER_API_KEY
+      - MONSTER_TOKEN
       - TZ=Europe/London
     env_file: docker-env.env
     volumes:
