@@ -112,10 +112,7 @@ class ImageGen(CustomCog):
         return process_id
 
     @commands.cooldown(rate=1, per=300, type=commands.BucketType.user)
-    @commands.slash_command(
-        description="Generate an image from a text prompt",
-        guild_ids=[App.config("ID_SERVER_ADULT_CHILDREN"), App.config("ID_SERVER_FREEDOM")],
-    )
+    @commands.slash_command(description="Generate an image from a text prompt", dm_permission=False)
     async def text_to_image(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -140,9 +137,6 @@ class ImageGen(CustomCog):
         aspect_ratio : str, optional
             The aspect ratio of the image.
         """
-        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
-            return inter.response.send_message("You aren't allowed to use this command.", ephemeral=True)
-
         if inter.author.id in self.running_tasks:
             return await inter.response.send_message("You already have a request processing.", ephemeral=True)
 
