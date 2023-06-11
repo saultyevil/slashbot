@@ -3,61 +3,85 @@
 
 import time
 import json
+import logging
 
 import asyncio
 import disnake
 import requests
 from disnake.ext import commands
 
-# from disnake.ext import tasks
-
 from slashbot.custom_bot import ModifiedInteractionBot
 from slashbot.custom_cog import CustomCog
 from slashbot.config import App
-from slashbot.error import deferred_error_message
 
 MAX_ELAPSED_TIME = 300
+logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
 class ImageGen(CustomCog):
+    """Cog for text to image generation using Monster API.
+
+    Possibly in the future, we'll use OpenAI instead.
+    """
+
     def __init__(self, bot: ModifiedInteractionBot):
         super().__init__()
         self.bot = bot
-
-        self.current_tasks = {}
-
-        # self.check_for_completed_tasks.start()
+        self.running_tasks = {}
 
     @staticmethod
-    def check_progress(process_id: str):
-        """Check the progress."""
-        payload = '{\n    "process_id" :  "%s"\n}' % process_id
+    def check_request_status(process_id: str) -> str:
+        """Check the progress of a request.
+
+        Parameters
+        ----------
+        process_id : str
+            The UUID for the process to check.
+
+        Returns
+        -------
+        str
+            If the process has finished, the URL to the finished process is
+            returned. Otherwise an empty string is returned.
+        """
+        payload = '{\n    "process_id" :  "%s"\n}' % process_id  # pylint: disable=C0209
         headers = {
             "x-api-key": App.config("MONSTER_API_KEY"),
             "Authorization": App.config("MONSTER_TOKEN"),
         }
-
         response = requests.request(
             "POST", "https://api.monsterapi.ai/apis/task-status", headers=headers, data=payload, timeout=5
         )
 
-        content = json.loads(response.text)
+        response_data = json.loads(response.text)
+        response_data = response_data["response_data"]
+        response_status = response_data.get("status", None)
 
-        print(content)
-
-        content = content["response_data"]
-        status = content.get("status", None)
-
-        url = None
-        if status == "COMPLETED":
-            url = content["result"]["output"][0]
+        if response_status == "COMPLETED":
+            url = response_data["result"]["output"][0]
+        else:
+            url = ""
 
         return url
 
     @staticmethod
-    def send_request(prompt: str, steps: int, aspect_ratio: str) -> str:
-        """Send a request to Monster API."""
+    def send_image_request(prompt: str, steps: int, aspect_ratio: str) -> str:
+        """Send an image request to the API.
 
+        Parameters
+        ----------
+        prompt : str
+            The prompt to generate an image for.
+        steps : int
+            The number of sampling steps to use.
+        aspect_ratio : str
+            The aspect ratio of the image.
+
+        Returns
+        -------
+        str
+            The process ID if successful, or an empty string if unsuccessful.
+        """
         payload = json.dumps(
             {
                 "model": "txt2img",
@@ -82,14 +106,12 @@ class ImageGen(CustomCog):
             timeout=5,
         )
 
-        content = json.loads(response.text)
-
-        print(content)
-
-        process_id = content.get("process_id", None)
+        response_data = json.loads(response.text)
+        process_id = response_data.get("process_id", "")
 
         return process_id
 
+    @commands.cooldown(rate=1, per=300, type=commands.BucketType.user)
     @commands.slash_command(
         description="Generate an image from a text prompt",
         guild_ids=[App.config("ID_SERVER_ADULT_CHILDREN"), App.config("ID_SERVER_FREEDOM")],
@@ -105,66 +127,54 @@ class ImageGen(CustomCog):
     ):
         """Generate an image from a text prompt.
 
+        Uses Monster API. The request to the API is not made asynchronously.
+
         Parameters
         ----------
         inter : disnake.ApplicationCommandInteraction
-
+            The interaction to respond to.
         prompt : str, optional
-
+            The prompt to generate an image for.
         steps : int, optional
-
+            The number of sampling steps
         aspect_ratio : str, optional
-
+            The aspect ratio of the image.
         """
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
-            return inter.response.send_message("You don't get to use this command yet")
+            return inter.response.send_message("You aren't allowed to use this command.", ephemeral=True)
 
-        if inter.author.id in self.current_tasks:
+        if inter.author.id in self.running_tasks:
             return await inter.response.send_message("You already have a request processing.", ephemeral=True)
 
-        follow_up = inter.followup
-        await inter.response.defer(ephemeral=False)
+        next_interaction = inter.followup
+        await inter.response.defer(ephemeral=True)
 
         try:
-            process_id = self.send_request(prompt, steps, aspect_ratio)
+            process_id = self.send_image_request(prompt, steps, aspect_ratio)
         except requests.exceptions.Timeout:
-            return deferred_error_message(inter, "There has been an error with the API. Try again later.")
+            return inter.edit_original_message(content="The image generation API took too long to respond.")
 
-        self.current_tasks[inter.author.id] = process_id
-
-        print(self.current_tasks)
-
-        await inter.edit_original_message(content=f"{process_id}")
+        self.running_tasks[inter.author.id] = process_id
+        logger.info("text2image: Request %s for user %s (%d)", process_id, inter.author.name, inter.author.id)
+        await inter.edit_original_message(content=f"Request submitted: {process_id}")
 
         start = time.time()
         elapsed_time = 0
 
         while elapsed_time < MAX_ELAPSED_TIME:
             try:
-                print(f"checking progress for {process_id}")
-                url = self.check_progress(process_id)
+                url = self.check_request_status(process_id)
             except requests.exceptions.Timeout:
                 pass
-
-            print(url)
-
             if url:
-                self.current_tasks.pop(inter.author.id)
-                print(self.current_tasks)
+                self.running_tasks.pop(inter.author.id)
                 break
 
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
             elapsed_time = time.time() - start
 
         if elapsed_time > MAX_ELAPSED_TIME:
-            await follow_up.send("Command timed out :-(")
+            logger.error("text2image: timed out %s", process_id)
+            await next_interaction.send(f'Your request ({process_id}) for "{prompt}" timed out.')
         else:
-            await follow_up.send(f"{url}")
-
-    # @tasks.loop(seconds=20)
-    # async def check_for_completed_tasks(self):
-    #     if len(self.current_tasks) == 0:
-    #         return
-
-    #     for user, process_id in self.current_tasks:
-    #         pass
+            await next_interaction.send(f"{url}\n>>> {prompt}")
