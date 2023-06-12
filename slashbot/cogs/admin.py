@@ -36,7 +36,7 @@ class AdminCommands(CustomCog):
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["unban"],
-                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                1,
             )
             if self.bot.enable_auto_markov_gen
             else {"unban": []}
@@ -168,4 +168,4 @@ class AdminCommands(CustomCog):
             return await inter.response.send_message("Do not have permission to create an invite.", ephemeral=True)
 
         await user.send(f"{self.get_generated_sentence('unban')}: {invite}")
-        await inter.response.send_message("Adam has been unbanned and re-invited.", ephemeral=True)
+        await inter.response.send_message("The user has been unbanned and re-invited.", ephemeral=True)

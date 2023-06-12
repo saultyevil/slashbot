@@ -42,7 +42,7 @@ class VideoCommands(CustomCog):
                     "admin",
                     "admin abuse",
                 ],
-                5,  # these only happen once in a while, so dont need a big bank of them
+                1,  # these only happen once in a while, so dont need a big bank of them
             )
             if self.bot.enable_auto_markov_gen
             else {"admin": [], "admin abuse": []}
