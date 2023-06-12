@@ -16,6 +16,8 @@ from disnake.ext import commands
 from slashbot import __version__
 from slashbot.config import App
 from slashbot.custom_cog import CustomCog
+from slashbot.markov import MARKOV_MODEL
+from slashbot.markov import generate_sentences_for_seed_words
 
 cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -29,6 +31,16 @@ class AdminCommands(CustomCog):
         super().__init__()
         self.bot = bot
         self.log_path = Path(log_path)
+
+        self.markov_sentences = (
+            generate_sentences_for_seed_words(
+                MARKOV_MODEL,
+                ["unban"],
+                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+            )
+            if self.bot.enable_auto_markov_gen
+            else {"unban": []}
+        )
 
     # Commands -----------------------------------------------------------------
 
@@ -120,3 +132,40 @@ class AdminCommands(CustomCog):
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
 
         os.execv(sys.executable, ["python"] + sys.argv)
+
+    @commands.slash_command(description="unban adam and invite to the server")
+    @commands.default_member_permissions(administrator=True)
+    async def unban_adam(self, inter: disnake.ApplicationCommandInteraction):
+        """Un-ban and re-invite Adam.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The command interaction.
+        """
+        user = await self.bot.fetch_user(App.config("ID_USER_ADAM"))
+        guild = await self.bot.fetch_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
+        channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
+
+        if inter.author.guild != guild:
+            return await inter.response.send_message(
+                "You can only use this in the adult children server.", ephemeral=True
+            )
+
+        # If the user isn't banned, fetch_ban raises NotFound
+        try:
+            _ban = await guild.fetch_ban(user)
+        except disnake.NotFound:
+            return await inter.response.send_message("The user is not currently banned.", ephemeral=True)
+
+        try:
+            await guild.unban(user)
+        except disnake.Forbidden:
+            return await inter.response.send_message("Do not have permission to un-ban user.", ephemeral=True)
+        try:
+            invite = await channel.create_invite(reason="Invite Adam", max_uses=1, unique=True)
+        except disnake.Forbidden:
+            return await inter.response.send_message("Do not have permission to create an invite.", ephemeral=True)
+
+        await user.send(f"{self.get_generated_sentence('unban')}: {invite}")
+        await inter.response.send_message("Adam has been unbanned and re-invited.", ephemeral=True)
