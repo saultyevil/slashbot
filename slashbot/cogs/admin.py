@@ -36,7 +36,7 @@ class AdminCommands(CustomCog):
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["unban"],
-                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                1,
             )
             if self.bot.enable_auto_markov_gen
             else {"unban": []}
