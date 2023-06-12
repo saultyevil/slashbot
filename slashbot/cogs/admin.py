@@ -120,3 +120,31 @@ class AdminCommands(CustomCog):
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
 
         os.execv(sys.executable, ["python"] + sys.argv)
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
+    @commands.slash_command(name="restart_bot", description="restart the bot")
+    @commands.default_member_permissions(administrator=True)
+    async def unban_adam(self, inter: disnake.ApplicationCommandInteraction):
+        """Un-ban and re-invite Adam.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The command interaction.
+        """
+        user = await self.bot.fetch_user(App.config("ID_USER_ADAM"))
+        guild = await self.bot.fetch_guild(App.config("ID_SERVER_ADULT_CHILDREN"))
+        channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
+
+        try:
+            await guild.unban(user)
+        except disnake.Forbidden:
+            return await inter.response.send_message("Do not have permission to un-ban user.", ephemeral=True)
+
+        try:
+            invite = await channel.create_invite(reason="Invite Adam", max_uses=1, unique=True)
+        except disnake.Forbidden:
+            return await inter.response.send_message("Do not have permission to create an invite.", ephemeral=True)
+
+        await user.send(f"Here is your invite: {invite}")
+        await inter.response.send_message("Adam has been unbanned and re-invited.", ephemeral=True)

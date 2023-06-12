@@ -19,6 +19,7 @@ import openai.error
 from disnake.ext import commands
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from fuzzywuzzy import fuzz, process
 
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
@@ -31,7 +32,7 @@ openai.api_key = App.config("OPENAI_API_KEY")
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
-DEFAULT_SYSTEM_MESSAGE = json.load(open("data/prompts/split.json"))["prompt"]
+DEFAULT_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/split.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 MAX_CHARS_UNTIL_THREAD = 364
 TOKEN_COUNT_UNSET = -1
@@ -308,7 +309,11 @@ class Chat(CustomCog):
     async def select_system_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        choice: str = commands.Param(autocomplete=lambda _inter, _input: PROMPT_CHOICES.keys()),
+        choice: str = commands.Param(
+            autocomplete=lambda _inter, user_input: list(  # one-liners are very readable
+                map(lambda x: x[0], process.extract(user_input, PROMPT_CHOICES.keys(), scorer=fuzz.ratio))
+            )
+        ),
     ) -> coroutine:
         """Select a system prompt from a set of pre-defined prompts.
 
