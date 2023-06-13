@@ -311,8 +311,16 @@ class Chat(CustomCog):
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
             autocomplete=lambda _inter, user_input: list(  # one-liners are very readable
-                map(lambda x: x[0], process.extract(user_input, PROMPT_CHOICES.keys(), scorer=fuzz.ratio))
-            )
+                map(
+                    lambda x: x[0],
+                    process.extract(
+                        user_input,
+                        PROMPT_CHOICES.keys(),
+                        scorer=fuzz.ratio,
+                        limit=len(PROMPT_CHOICES.keys()),
+                    ),
+                )
+            ),
         ),
     ) -> coroutine:
         """Select a system prompt from a set of pre-defined prompts.
@@ -336,7 +344,7 @@ class Chat(CustomCog):
         self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))]
 
         await inter.response.send_message(
-            f"History cleared and system prompt changed to:\n\n{prompt}",
+            f"History cleared and system prompt changed to:\n\n{prompt[:1928]}",
             ephemeral=True,
         )
 
@@ -443,7 +451,7 @@ class Chat(CustomCog):
                 "There is currently no system prompt set or chat history.", ephemeral=True
             )
 
-        await inter.response.send_message(f"The current prompt is:\n\n{prompt}", ephemeral=True)
+        await inter.response.send_message(f"The current prompt is:\n\n{prompt[:1928]}", ephemeral=True)
 
 
 observer = Observer()
