@@ -201,5 +201,9 @@ def create_prompt_dict() -> dict:
     """Creates a dict of prompt_name: prompt."""
     return {
         prompt_dict["name"]: prompt_dict["prompt"]
-        for prompt_dict in [read_in_prompt_json(file) for file in pathlib.Path("data/prompts").glob("*.json")]
+        for prompt_dict in [
+            read_in_prompt_json(file)
+            for file in pathlib.Path("data/prompts").glob("*.json")
+            if not file.name.startswith("_")  # prompts which start with _ are hidden prompts
+        ]
     }

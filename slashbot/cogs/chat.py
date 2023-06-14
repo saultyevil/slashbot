@@ -6,6 +6,7 @@ The purpose of this cog is to enable the bot to communicate with the OpenAI API
 and to generate responses to prompts given.
 """
 
+import copy
 import json
 import logging
 import traceback
@@ -33,6 +34,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
 DEFAULT_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/split.json")["prompt"]
+JAMIE_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/_jamie.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 MAX_CHARS_UNTIL_THREAD = 364
 TOKEN_COUNT_UNSET = -1
@@ -147,6 +149,11 @@ class Chat(CustomCog):
 
     # Private methods ----------------------------------------------------------
 
+    def __create_history_if_missing(self, history_id: str | int):
+        if history_id not in self.chat_history:
+            self.token_count[history_id] = [self.default_system_token_count]
+            self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+
     async def __api_response(self, history_id: int | str) -> str:
         """Get a message from ChatGPT using the ChatCompletion API.
 
@@ -237,10 +244,6 @@ class Chat(CustomCog):
             The generated response to the given prompt.
         """
 
-        if history_id not in self.chat_history:
-            self.token_count[history_id] = [self.default_system_token_count]
-            self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
-
         await self.__reduce_chat_history(history_id)
         self.chat_history[history_id].append({"role": "user", "content": prompt})
 
@@ -277,8 +280,17 @@ class Chat(CustomCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
+            history_id = self.history_id(message)
+            self.__create_history_if_missing(history_id)
+
+            # Give Jamie a little surprise :-)
+            if message.author.id == App.config("ID_USER_JAMIE"):
+                history_id = message.author.id
+                self.chat_history[history_id] = copy.copy(self.chat_history[self.history_id(message)])
+                self.chat_history[0] = {"role": "system", "content": JAMIE_SYSTEM_MESSAGE}
+
             async with message.channel.typing():
-                response = await self.get_message_response(self.history_id(message), message.clean_content)
+                response = await self.get_message_response(history_id, message.clean_content)
                 await self.send_response_to_channel(response, message, message_in_dm)
 
     # Commands -----------------------------------------------------------------
