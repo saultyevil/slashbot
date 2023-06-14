@@ -133,7 +133,7 @@ class AdminCommands(CustomCog):
 
         os.execv(sys.executable, ["python"] + sys.argv)
 
-    @commands.slash_command(description="unban adam and invite to the server")
+    @commands.slash_command(description="unban adam and invite to the server", dm_permission=False)
     @commands.default_member_permissions(administrator=True)
     async def unban_adam(self, inter: disnake.ApplicationCommandInteraction):
         """Un-ban and re-invite Adam.

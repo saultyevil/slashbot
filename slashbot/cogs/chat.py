@@ -310,17 +310,18 @@ class Chat(CustomCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
-            autocomplete=lambda _inter, user_input: list(  # one-liners are very readable
-                map(
-                    lambda x: x[0],
-                    process.extract(
-                        user_input,
-                        PROMPT_CHOICES.keys(),
-                        scorer=fuzz.ratio,
-                        limit=len(PROMPT_CHOICES.keys()),
-                    ),
-                )
-            ),
+            autocomplete=lambda _x, _y: PROMPT_CHOICES.keys(),
+            #autocomplete=lambda _inter, user_input: list(  # one-liners are very readable
+            #    map(
+            #        lambda x: x[0],
+            #        process.extract(
+            #            user_input,
+            #            PROMPT_CHOICES.keys(),
+            #            scorer=fuzz.ratio,
+            #            limit=len(PROMPT_CHOICES.keys()),
+            #        ),
+            #    )
+            # ),
         ),
     ) -> coroutine:
         """Select a system prompt from a set of pre-defined prompts.
