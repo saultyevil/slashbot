@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """Admin commands for the bot."""
-
+import random
+import asyncio
 import logging
 import os
 import sys
@@ -158,6 +159,12 @@ class AdminCommands(CustomCog):
         except disnake.NotFound:
             return await inter.response.send_message("The user is not currently banned.", ephemeral=True)
 
+        # Generate a funny little timer between 1 and 24 hours
+        delay = random.randint(1, 24) * 3600
+
+        # Wait for the random timer before unbanning
+        await asyncio.sleep(delay)
+        
         try:
             await guild.unban(user)
         except disnake.Forbidden:
