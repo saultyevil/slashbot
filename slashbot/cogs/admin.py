@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """Admin commands for the bot."""
-
+import random
+import asyncio
 import logging
 import os
 import sys
@@ -158,14 +159,29 @@ class AdminCommands(CustomCog):
         except disnake.NotFound:
             return await inter.response.send_message("The user is not currently banned.", ephemeral=True)
 
+        # Generate a funny little timer between 1 and 24 hours
+        delay = random.randint(1, 24) * 3600
+
+        # Let the user know that the process has started
+        await inter.response.send_message(
+            "The unbanning process has started. This can take anywhere from 1 to 24 hours.", ephemeral=True
+        )
+
+        # Start a background task to handle the unbanning and re-invitation
+        self.bot.loop.create_task(self.delayed_unban_and_invite(user, guild, channel, delay))
+
+    async def delayed_unban_and_invite(self, user, guild, channel, delay):
+        # Wait for the random timer before unbanning
+        await asyncio.sleep(delay)
+
         try:
             await guild.unban(user)
         except disnake.Forbidden:
-            return await inter.response.send_message("Do not have permission to un-ban user.", ephemeral=True)
+            return print("Do not have permission to un-ban user.")  # Adjust this to handle the error as desired
+
         try:
             invite = await channel.create_invite(reason="Invite Adam", max_uses=1, unique=True)
         except disnake.Forbidden:
-            return await inter.response.send_message("Do not have permission to create an invite.", ephemeral=True)
+            return print("Do not have permission to create an invite.")  # Adjust this to handle the error as desired
 
         await user.send(f"{self.get_generated_sentence('unban')}: {invite}")
-        await inter.response.send_message("The user has been unbanned and re-invited.", ephemeral=True)
