@@ -170,18 +170,18 @@ class AdminCommands(CustomCog):
         # Start a background task to handle the unbanning and re-invitation
         self.bot.loop.create_task(self.delayed_unban_and_invite(user, guild, channel, delay))
 
-        async def delayed_unban_and_invite(self, user, guild, channel, delay):
-            # Wait for the random timer before unbanning
-            await asyncio.sleep(delay)
+    async def delayed_unban_and_invite(self, user, guild, channel, delay):
+        # Wait for the random timer before unbanning
+        await asyncio.sleep(delay)
 
-            try:
-                await guild.unban(user)
-            except disnake.Forbidden:
-                return print("Do not have permission to un-ban user.")  # Adjust this to handle the error as desired
+        try:
+            await guild.unban(user)
+        except disnake.Forbidden:
+            return print("Do not have permission to un-ban user.")  # Adjust this to handle the error as desired
 
-            try:
-                invite = await channel.create_invite(reason="Invite Adam", max_uses=1, unique=True)
-            except disnake.Forbidden:
-                return print("Do not have permission to create an invite.")  # Adjust this to handle the error as desired
+        try:
+            invite = await channel.create_invite(reason="Invite Adam", max_uses=1, unique=True)
+        except disnake.Forbidden:
+            return print("Do not have permission to create an invite.")  # Adjust this to handle the error as desired
 
-            await user.send(f"{self.get_generated_sentence('unban')}: {invite}")
+        await user.send(f"{self.get_generated_sentence('unban')}: {invite}")
