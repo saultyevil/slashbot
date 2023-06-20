@@ -187,7 +187,7 @@ class ReminderCommands(CustomCog):
 
         if not future:
             logger.debug("future is None type for %s", when)
-            return await inter.response.send_message(f"Unable to parse {when}.")
+            return await inter.response.send_message(f'Unable to parse "{when}".', ephemeral=True)
 
         if not future.tzinfo:
             future = future.replace(tzinfo=self.timezone)
