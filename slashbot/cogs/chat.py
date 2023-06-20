@@ -72,7 +72,7 @@ class Chat(CustomCog):
         self.max_output_tokens = 364
         self.model_temperature = 0.7
         self.max_tokens_allowed = 1456
-        self.trim_faction = 0.25
+        self.trim_faction = 0.5
         self.max_chat_history = 20
 
         self.default_system_token_count = len(
@@ -247,16 +247,23 @@ class Chat(CustomCog):
 
         try:
             return await self.__api_response(history_id)
-        except openai.error.RateLimitError:
+        except openai.error.RateLimitError as exc:
+            logger.exception(
+                "OpenAI API failed with exception:\n%s",
+                "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+            )
             self.chat_history[history_id].pop()
-            return "Uh oh! I've hit OpenAI's rate limit :-("
+            return "Uh oh! I've hit my rate limit :-(!"
+        except openai.error.ServiceUnavailableError:
+            self.chat_history[history_id].pop()
+            return "Uh oh, my services are currently unavailable!"
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.exception(
                 "OpenAI API failed with exception:\n%s",
                 "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
             )
             self.chat_history[history_id].pop()
-            return "Uh oh! Something went wrong with that request :-("
+            return str(exc)
 
     # Listeners ----------------------------------------------------------------
 
