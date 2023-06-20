@@ -6,7 +6,6 @@ The purpose of this cog is to enable the bot to communicate with the OpenAI API
 and to generate responses to prompts given.
 """
 
-import copy
 import json
 import logging
 import traceback
@@ -20,7 +19,6 @@ import openai.error
 from disnake.ext import commands
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from fuzzywuzzy import fuzz, process
 
 from slashbot.config import App
 from slashbot.custom_bot import ModifiedInteractionBot
@@ -283,12 +281,6 @@ class Chat(CustomCog):
             history_id = self.history_id(message)
             self.__create_history_if_missing(history_id)
 
-            # Give Jamie a little surprise :-)
-            if message.author.id == App.config("ID_USER_JAMIE"):
-                history_id = message.author.id
-                self.chat_history[history_id] = copy.copy(self.chat_history[self.history_id(message)])
-                self.chat_history[0] = {"role": "system", "content": JAMIE_SYSTEM_MESSAGE}
-
             async with message.channel.typing():
                 response = await self.get_message_response(history_id, message.clean_content)
                 await self.send_response_to_channel(response, message, message_in_dm)
@@ -322,18 +314,7 @@ class Chat(CustomCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
-            autocomplete=lambda _x, _y: PROMPT_CHOICES.keys(),
-            #autocomplete=lambda _inter, user_input: list(  # one-liners are very readable
-            #    map(
-            #        lambda x: x[0],
-            #        process.extract(
-            #            user_input,
-            #            PROMPT_CHOICES.keys(),
-            #            scorer=fuzz.ratio,
-            #            limit=len(PROMPT_CHOICES.keys()),
-            #        ),
-            #    )
-            # ),
+            autocomplete=lambda _inter, uin: [choice for choice in PROMPT_CHOICES.keys() if choice.startswith(uin)]
         ),
     ) -> coroutine:
         """Select a system prompt from a set of pre-defined prompts.
