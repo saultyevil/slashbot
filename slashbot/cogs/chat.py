@@ -32,7 +32,6 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
 DEFAULT_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/split.json")["prompt"]
-JAMIE_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/_jamie.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 MAX_CHARS_UNTIL_THREAD = 364
 TOKEN_COUNT_UNSET = -1
