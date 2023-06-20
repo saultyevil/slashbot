@@ -184,6 +184,11 @@ class ReminderCommands(CustomCog):
         # convert that date to the bot's local timezone. For an input of 21:30
         # UTC+6 when the bot's timezone is UTC+1, future = 16:30 UTC + 1
         future = dateparser.parse(when, settings={"TIMEZONE": "Europe/London"})
+
+        if not future:
+            logger.debug("future is None type for %s", when)
+            return await inter.response.send_message(f"Unable to parse {when}.")
+
         if not future.tzinfo:
             future = future.replace(tzinfo=self.timezone)
 
