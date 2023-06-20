@@ -74,7 +74,7 @@ class Chat(CustomCog):
         self.max_output_tokens = 364
         self.model_temperature = 0.7
         self.max_tokens_allowed = 1456
-        self.trim_faction = 0.25
+        self.trim_faction = 0.5
         self.max_chat_history = 20
 
         self.default_system_token_count = len(
@@ -249,16 +249,23 @@ class Chat(CustomCog):
 
         try:
             return await self.__api_response(history_id)
-        except openai.error.RateLimitError:
+        except openai.error.RateLimitError as exc:
+            logger.exception(
+                "OpenAI API failed with exception:\n%s",
+                "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
+            )
             self.chat_history[history_id].pop()
-            return "Uh oh! I've hit OpenAI's rate limit :-("
+            return "Uh oh! I've hit my rate limit :-(!"
+        except openai.error.ServiceUnavailableError:
+            self.chat_history[history_id].pop()
+            return "Uh oh, my services are currently unavailable!"
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.exception(
                 "OpenAI API failed with exception:\n%s",
                 "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
             )
             self.chat_history[history_id].pop()
-            return "Uh oh! Something went wrong with that request :-("
+            return str(exc)
 
     # Listeners ----------------------------------------------------------------
 
@@ -286,8 +293,8 @@ class Chat(CustomCog):
             # Give Jamie a little surprise :-)
             if message.author.id == App.config("ID_USER_JAMIE"):
                 history_id = message.author.id
-                self.chat_history[history_id] = copy.copy(self.chat_history[self.history_id(message)])
-                self.chat_history[0] = {"role": "system", "content": JAMIE_SYSTEM_MESSAGE}
+                # self.chat_history[history_id] = copy.copy(self.chat_history[self.history_id(message)])
+                self.chat_history[history_id] = [{"role": "system", "content": JAMIE_SYSTEM_MESSAGE}]
 
             async with message.channel.typing():
                 response = await self.get_message_response(history_id, message.clean_content)

@@ -183,7 +183,9 @@ async def update_markov_chain_for_model(
         return
 
     messages = __clean_sentences_for_learning(new_messages)
-    if len(messages) == 0:
+    num_messages = len(messages)
+
+    if num_messages == 0:
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
         logger.info("No sentences to update chain with")
@@ -204,9 +206,10 @@ async def update_markov_chain_for_model(
     model.chain = combined_chain
 
     if inter:
-        await inter.edit_original_message(content=f"Markov chain updated with {len(messages)} new messages.")
+        await inter.edit_original_message(content=f"Markov chain updated with {num_messages} new messages.")
 
-    logger.info("Markov chain updated with %d new messages", len(messages))
+    # num_messages should already but an int, but sometimes it isn't...
+    logger.info("Markov chain updated with %d new messages", int(num_messages))
 
     return model
 
