@@ -53,7 +53,18 @@ def get_reminders_for_user(inter: disnake.ApplicationCommandInteraction, _: str)
     return [reminder.reminder for reminder in reminders]
 
 
-class ReminderCommands(CustomCog):
+async def close_session(session: Session):
+    """Close a database session.
+
+    Parameters
+    ----------
+    session : Session
+        The session to close.
+    """
+    session.close()
+
+
+class Reminders(CustomCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot):
@@ -75,13 +86,9 @@ class ReminderCommands(CustomCog):
             else {"reminder": []}
         )
 
-        self.bot.add_to_cleanup(None, self.__close_session, (None,))
+        self.bot.add_to_cleanup(None, close_session, (self.session,))
 
     # Private methods ----------------------------------------------------------
-
-    async def __close_session(self) -> None:
-        """Close the session."""
-        self.session.close()
 
     async def __replace_mentions_in_sentence(self, sentence: str) -> Union[List[str], str]:
         """Replace mentions from a post with the user name.
