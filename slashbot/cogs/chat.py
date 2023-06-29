@@ -185,7 +185,12 @@ class Chat(CustomCog):
         )
 
         if len(self.chat_history[history_id]) != len(self.token_count[history_id]):
-            logger.error("chat history and token count has diverged for history id %d", history_id)
+            logger.error(
+                "History id %d chat (%d) and token (%d) history not not equal",
+                history_id,
+                len(self.chat_history[history_id]),
+                len(self.token_count[history_id])
+            )
 
         return message
 
