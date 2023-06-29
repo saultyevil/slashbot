@@ -177,6 +177,15 @@ class Chat(CustomCog):
         self.chat_history[history_id].append({"role": "assistant", "content": message})
         self.token_count[history_id].append(int(response["usage"]["total_tokens"]))
 
+        logger.debug(
+            "History id %d is currently at %d tokens with %d messages",
+            self.token_count[history_id][-1],
+            len(self.chat_history[history_id]) - 1,
+        )
+
+        if len(self.chat_history[history_id]) != len(self.token_count[history_id]):
+            logger.error("chat history and token count has diverged for history id %d", history_id)
+
         return message
 
     async def __reduce_chat_history(self, history_id: int | str) -> None:
@@ -192,14 +201,18 @@ class Chat(CustomCog):
             The chat history ID. Usually the guild or user id.
         """
         if len(self.chat_history[history_id][1:]) > self.max_chat_history:
-            self.chat_history[history_id].pop(1)
+            for i in range(1, 3):  # remove two elements to get prompt + response
+                self.chat_history[history_id].pop(i)
+                self.token_count[history_id].pop(i)
 
         if self.token_count[history_id][-1] > self.max_tokens_allowed:
             num_remove = int(self.trim_faction * len(self.chat_history[history_id]))
 
             tokens_removed = 0
             for i in range(1, num_remove + 1):
-                if i > len(self.chat_history[history_id]) - 2:  # -2 because we exclude the system message
+                if (
+                    i > len(self.chat_history[history_id]) - 2
+                ):  # -2 because we exclude the system message todo: no idea why
                     break
                 self.chat_history[history_id].pop(i)
                 try:
@@ -215,8 +228,13 @@ class Chat(CustomCog):
                     self.chat_history = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
                     self.token_count[history_id] = [self.default_system_token_count]
 
+            # todo, why do we start from 1..?
             for i in range(1, len(self.token_count[history_id])):
                 self.token_count[history_id][i] -= tokens_removed
+
+            logger.debug(
+                "History id %d has %d tokens in history after removal", history_id, self.token_count[history_id][-1]
+            )
 
     async def get_message_response(self, history_id: int | str, prompt: str) -> str:
         """Process a prompt and get a response.
