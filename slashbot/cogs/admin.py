@@ -147,7 +147,7 @@ class AdminCommands(CustomCog):
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
-        arguments = []
+        arguments = ["run.py"]
 
         if disable_markov:
             arguments.append("--disable-auto-markov-gen")
