@@ -37,6 +37,11 @@ parser.add_argument(
     help="Disable automatic markov sentence generation and revert to on-the-fly generation",
     action="store_false",
 )
+parser.add_argument(
+    "--develop-mode",
+    help="Enable developer mode where cogs reload in real time",
+    action="store_true",
+)
 args = parser.parse_args()
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -50,7 +55,11 @@ intents.message_content = True
 intents.messages = True
 intents.members = True
 
-bot = ModifiedInteractionBot(pregen_markov=args.disable_auto_markov_gen, intents=intents)
+bot = ModifiedInteractionBot(
+    pregen_markov=args.disable_auto_markov_gen,
+    intents=intents,
+    reload=args.develop_mode,
+)
 
 for cog in [
     slashbot.cogs.admin.AdminCommands(bot, App.config("LOGFILE_NAME")),
@@ -59,7 +68,7 @@ for cog in [
     slashbot.cogs.content.ContentCommands(bot),
     slashbot.cogs.image.ImageGen(bot),
     slashbot.cogs.info.InfoCommands(bot),
-    slashbot.cogs.remind.ReminderCommands(bot),
+    slashbot.cogs.remind.Reminders(bot),
     slashbot.cogs.schedule.ScheduledPosts(bot),
     slashbot.cogs.spam.SpamCommands(bot),
     slashbot.cogs.users.UserCommands(bot),

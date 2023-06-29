@@ -13,6 +13,7 @@ from typing import Tuple
 import disnake
 import requests
 from disnake.ext import commands
+from geopy import GoogleV3
 
 from slashbot.config import App
 from slashbot.custom_cog import CustomCog
@@ -59,6 +60,7 @@ class WeatherCommands(CustomCog):
         """
         super().__init__()
         self.bot = bot
+        self.geolocator = GoogleV3(api_key=App.config("GOOGLE_API_KEY"))
 
         self.markov_sentences = (
             generate_sentences_for_seed_words(
@@ -89,7 +91,25 @@ class WeatherCommands(CustomCog):
         return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
     @staticmethod
-    def get_weather_for_location(location: str, units: str, extract_type: str | List | Tuple) -> Tuple[str, dict]:
+    def get_address_from_raw(raw: dict) -> str:
+        """Convert a Google API address components into an address.
+
+        Parameters
+        ----------
+        raw : dict
+            A dictionary of address components from the Google API.
+
+        Returns
+        -------
+        str
+            The processed address.
+        """
+        locality = next((comp["long_name"] for comp in raw if "locality" in comp["types"]), "")
+        country = next((comp["short_name"] for comp in raw if "country" in comp["types"]), "")
+
+        return f"{locality}, {country}"
+
+    def get_weather_for_location(self, location: str, units: str, extract_type: str | List | Tuple) -> Tuple[str, dict]:
         """Query the OpenWeatherMap API for the weather.
 
         Parameters
@@ -108,22 +128,13 @@ class WeatherCommands(CustomCog):
             The location, as from the API, and the weather requested as a dict
             of the key provided in extract_type.
         """
-        geocode_request = requests.get(
-            f"http://api.openweathermap.org/geo/1.0/direct?q={location}&appid={API_KEY}",
-            timeout=5,
-        )
+        location = self.geolocator.geocode(location)
 
-        if geocode_request.status_code != 200:
-            raise GeocodeException(f"Geocoding API failed for {location}")
-
-        geocode = json.loads(geocode_request.content)
-
-        if len(geocode) == 0:
+        if location is None:
             raise LocationNotFoundException(f"{location} not found in Geocoding API")
 
-        geocode = geocode[0]
-        lat, lon = geocode["lat"], geocode["lon"]
-        name, country = geocode["name"], geocode["country"]
+        lat, lon = location.latitude, location.longitude
+        address = self.get_address_from_raw(location.raw["address_components"]) + f" ({lat}, {lon})"
 
         one_call_request = requests.get(
             f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={units}&exclude=minutely&appid={API_KEY}",
@@ -141,7 +152,7 @@ class WeatherCommands(CustomCog):
         else:
             weather_return = content[extract_type]
 
-        return f"{name}, {country}", weather_return
+        return address, weather_return
 
     # Commands -----------------------------------------------------------------
 
@@ -189,9 +200,7 @@ class WeatherCommands(CustomCog):
         try:
             location, forecast = self.get_weather_for_location(user_location, units, forecast_type)
         except (LocationNotFoundException, GeocodeException):
-            return await deferred_error_message(
-                inter, f"{user_location.capitalize()} is not available in OpenWeatherMap."
-            )
+            return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
         except OneCallException:
             return await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
         except requests.Timeout:
@@ -202,32 +211,33 @@ class WeatherCommands(CustomCog):
         else:
             temp_unit, wind_unit, wind_factor = "F", "mph", 1
 
-        embed = disnake.Embed(
-            title=f"{forecast_type.capitalize()} forecast for {location}", color=disnake.Color.default()
-        )
+        embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
 
         for sub in forecast[: amount + 1]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]))
 
             if forecast_type == "hourly":
-                date_string = f"{date.strftime(r'%I:%M %p')} - {sub['weather'][0]['description'].capitalize()}"
+                date_string = f"{date.strftime(r'%I:%M %p')}"
                 temp_string = f"{sub['temp']:.0f} °{temp_unit}"
             else:
-                date_string = f"{date.strftime(r'%a %d %b %Y')} - {sub['weather'][0]['description'].capitalize()}"
-                temp_string = f"{sub['temp']['min']:.0f}/{sub['temp']['max']:.0f} °{temp_unit}"
+                date_string = f"{date.strftime(r'%a %d %b %Y')}"
+                temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
 
+            desc_string = f"{sub['weather'][0]['description'].capitalize()}"
             wind_string = (
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} "
                 + f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
             # humidity_string = f"{sub['humidity']}%"
 
-            forecast_string = f"•{temp_string:^30s}\n• {wind_string:^30s}"  # \n• {humidity_string:^30s}"
+            forecast_string = (
+                f"• {desc_string:^30s}\n• {temp_string:^30s}\n• {wind_string:^30s}"  # \n• {humidity_string:^30s}"
+            )
 
             embed.add_field(name=date_string, value=forecast_string, inline=False)
 
         embed.set_footer(text=f"{self.get_generated_sentence('forecast')}")
-        embed.set_thumbnail(self.__get_weather_icon_url(forecast[1]["weather"][0]["icon"]))
+        embed.set_thumbnail(self.__get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
 
@@ -266,9 +276,7 @@ class WeatherCommands(CustomCog):
         try:
             location, weather = self.get_weather_for_location(user_location, units, ("current", "daily"))
         except (LocationNotFoundException, GeocodeException):
-            return await deferred_error_message(
-                inter, f"{user_location.capitalize()} is not available in OpenWeatherMap."
-            )
+            return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
         except OneCallException:
             return await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
         except requests.Timeout:
@@ -282,13 +290,17 @@ class WeatherCommands(CustomCog):
         else:
             temp_unit, wind_unit, wind_factor = "F", "mph", 1
 
-        embed = disnake.Embed(title=f"Current weather for {location}", color=disnake.Color.default())
+        embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
 
         embed.add_field(name="Description", value=weather["weather"][0]["description"].capitalize(), inline=False)
         embed.add_field(
-            name="Current temperature (Min/Max)",
-            value=f"{weather['temp']:.0f} °{temp_unit}"
-            f" ({forecast['temp']['min']:.0f}/{forecast['temp']['max']:.0f} °{temp_unit})",
+            name="Current temperature",
+            value=f"{weather['temp']:.0f} °{temp_unit}",
+            inline=False,
+        )
+        embed.add_field(
+            name="Min / max temperature",
+            value=f"{forecast['temp']['min']:.0f} / {forecast['temp']['max']:.0f} °{temp_unit}",
             inline=False,
         )
         embed.add_field(name="Humidity", value=f"{weather['humidity']}%", inline=False)
