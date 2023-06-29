@@ -98,7 +98,7 @@ class Chat(CustomCog):
             history_id = inter.channel.id
 
         if history_id not in self.chat_history:
-            self.token_count[history_id] = [self.default_system_token_count]
+            self.token_count[history_id] = self.default_system_token_count
             self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
         return await super(Chat, self).cog_before_slash_command_invoke(inter)
@@ -148,7 +148,7 @@ class Chat(CustomCog):
 
     def __create_history_if_missing(self, history_id: str | int):
         if history_id not in self.chat_history:
-            self.token_count[history_id] = [self.default_system_token_count]
+            self.token_count[history_id] = self.default_system_token_count
             self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
     async def __api_response(self, history_id: int | str) -> str:
@@ -175,22 +175,14 @@ class Chat(CustomCog):
 
         message = response["choices"][0]["message"]["content"]
         self.chat_history[history_id].append({"role": "assistant", "content": message})
-        self.token_count[history_id].append(int(response["usage"]["total_tokens"]))
+        self.token_count[history_id] = int(response["usage"]["total_tokens"])
 
         logger.debug(
             "History id %d is currently at %d tokens with %d messages",
             history_id,
-            self.token_count[history_id][-1],
-            len(self.chat_history[history_id]) - 1,
+            self.token_count[history_id],
+            len(self.chat_history[history_id]),
         )
-
-        if len(self.chat_history[history_id]) != len(self.token_count[history_id]):
-            logger.error(
-                "History id %d chat (%d) and token (%d) history not not equal",
-                history_id,
-                len(self.chat_history[history_id]),
-                len(self.token_count[history_id])
-            )
 
         return message
 
@@ -209,38 +201,15 @@ class Chat(CustomCog):
         if len(self.chat_history[history_id][1:]) > self.max_chat_history:
             for i in range(1, 3):  # remove two elements to get prompt + response
                 self.chat_history[history_id].pop(i)
-                self.token_count[history_id].pop(i)
+            self.token_count[history_id] = TOKEN_COUNT_UNSET
+            logger.debug("History id %d had 1 message and response removed due to message count", history_id)
 
         if self.token_count[history_id][-1] > self.max_tokens_allowed:
-            num_remove = int(self.trim_faction * len(self.chat_history[history_id]))
-
-            tokens_removed = 0
-            for i in range(1, num_remove + 1):
-                if (
-                    i > len(self.chat_history[history_id]) - 2
-                ):  # -2 because we exclude the system message todo: no idea why
-                    break
+            num_remove = int(self.trim_faction * (len(self.chat_history[history_id]) - 1))
+            for i in range(1, num_remove):
                 self.chat_history[history_id].pop(i)
-                try:
-                    if i < len(self.token_count[history_id]) - 1:
-                        tokens_removed += self.token_count[history_id].pop(i)
-                except IndexError:
-                    logger.error(
-                        "Index error when removing tokens: index = %d, len = %d len history = %d",
-                        i - 1,
-                        len(self.token_count[history_id]),
-                        len(self.chat_history[history_id]),
-                    )
-                    self.chat_history = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
-                    self.token_count[history_id] = [self.default_system_token_count]
-
-            # todo, why do we start from 1..?
-            for i in range(1, len(self.token_count[history_id])):
-                self.token_count[history_id][i] -= tokens_removed
-
-            logger.debug(
-                "History id %d has %d tokens in history after removal", history_id, self.token_count[history_id][-1]
-            )
+            self.token_count = TOKEN_COUNT_UNSET
+            logger.debug("History id %d had %d messages remove due to token count ", history_id, num_remove)
 
     async def get_message_response(self, history_id: int | str, prompt: str) -> str:
         """Process a prompt and get a response.
@@ -329,7 +298,7 @@ class Chat(CustomCog):
         """
         history_id = self.history_id(inter)
         self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
-        self.token_count[history_id] = [self.default_system_token_count]
+        self.token_count[history_id] = self.default_system_token_count
 
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{DEFAULT_SYSTEM_MESSAGE}",
@@ -365,12 +334,13 @@ class Chat(CustomCog):
 
         history_id = self.history_id(inter)
         self.chat_history[history_id] = [{"role": "system", "content": prompt}]
-        self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))]
 
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt[:1928]}",
             ephemeral=True,
         )
+
+        self.token_count[history_id] = len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_system_prompt", description="change the chat system prompt")
@@ -390,12 +360,13 @@ class Chat(CustomCog):
         """
         history_id = self.history_id(inter)
         self.chat_history[history_id] = [{"role": "system", "content": message}]
-        self.token_count[history_id] = [len(tiktoken.encoding_for_model(self.chat_model).encode(message))]
 
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{message}",
             ephemeral=True,
         )
+
+        self.token_count[history_id] = len(tiktoken.encoding_for_model(self.chat_model).encode(message))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
