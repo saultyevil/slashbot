@@ -24,6 +24,13 @@ cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
+def switch_conversion(_: disnake.ApplicationCommandInteraction, user_input: str) -> bool:
+    if user_input == "True":
+        return True
+    else:
+        return False
+
+
 class AdminCommands(CustomCog):
     """Admin tools for the bot."""
 
@@ -124,13 +131,30 @@ class AdminCommands(CustomCog):
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), cd_user)
     @commands.slash_command(name="restart_bot", description="restart the bot")
     @commands.default_member_permissions(administrator=True)
-    async def restart_bot(self, inter: disnake.ApplicationCommandInteraction):
+    async def restart_bot(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        disable_markov: bool = commands.Param(
+            choices=["True", "False"],
+            default="False",
+            description="Disable Markov sentence generation for faster load times",
+        ),
+        reload_mode: bool = commands.Param(
+            choices=["True", "False"], default="False", description="Enable developer reload mode"
+        ),
+    ):
         """Restart the bot."""
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
-        logger.info("restarting bot with new process")
+        arguments = []
+
+        if disable_markov:
+            arguments.append("--disable-auto-markov-gen")
+        if reload_mode:
+            arguments.append("--develop-mode")
+
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
+        logger.info("Restarting with new process with arguments %s")
 
-        os.execv(sys.executable, ["python"] + sys.argv)
-
+        os.execv(sys.executable, ["python"] + arguments)
