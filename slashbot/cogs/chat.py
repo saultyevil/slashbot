@@ -179,6 +179,7 @@ class Chat(CustomCog):
 
         logger.debug(
             "History id %d is currently at %d tokens with %d messages",
+            history_id,
             self.token_count[history_id][-1],
             len(self.chat_history[history_id]) - 1,
         )
