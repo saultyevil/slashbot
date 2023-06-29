@@ -204,7 +204,7 @@ class Chat(CustomCog):
             self.token_count[history_id] = TOKEN_COUNT_UNSET
             logger.debug("History id %d had 1 message and response removed due to message count", history_id)
 
-        if self.token_count[history_id][-1] > self.max_tokens_allowed:
+        if self.token_count[history_id] > self.max_tokens_allowed:
             num_remove = int(self.trim_faction * (len(self.chat_history[history_id]) - 1))
             for i in range(1, num_remove):
                 self.chat_history[history_id].pop(i)

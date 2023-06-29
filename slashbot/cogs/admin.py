@@ -139,9 +139,6 @@ class AdminCommands(CustomCog):
             default="False",
             description="Disable Markov sentence generation for faster load times",
         ),
-        reload_mode: bool = commands.Param(
-            choices=["True", "False"], default="False", description="Enable developer reload mode"
-        ),
     ):
         """Restart the bot."""
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
@@ -151,10 +148,8 @@ class AdminCommands(CustomCog):
 
         if disable_markov:
             arguments.append("--disable-auto-markov-gen")
-        if reload_mode:
-            arguments.append("--develop-mode")
 
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
-        logger.info("Restarting with new process with arguments %s")
+        logger.info("Restarting with new process with arguments %s", arguments)
 
         os.execv(sys.executable, ["python"] + arguments)
