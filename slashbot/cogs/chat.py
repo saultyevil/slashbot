@@ -63,7 +63,7 @@ class Chat(CustomCog):
         self.bot = bot
 
         self.chat_history = defaultdict(list)
-        self.token_count = defaultdict(lambda: [0])
+        self.token_count = defaultdict(int)
         self.guild_cooldown = defaultdict(dict)
         self.threads_enabled = False
 
@@ -208,7 +208,7 @@ class Chat(CustomCog):
             num_remove = int(self.trim_faction * (len(self.chat_history[history_id]) - 1))
             for i in range(1, num_remove):
                 self.chat_history[history_id].pop(i)
-            self.token_count = TOKEN_COUNT_UNSET
+            self.token_count[history_id] = TOKEN_COUNT_UNSET
             logger.debug("History id %d had %d messages remove due to token count ", history_id, num_remove)
 
     async def get_message_response(self, history_id: int | str, prompt: str) -> str:
