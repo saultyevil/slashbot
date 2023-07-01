@@ -17,7 +17,7 @@ from slashbot.markov import generate_sentence
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-class CustomCog(commands.Cog):
+class SlashbotCog(commands.Cog):
     """A custom cog class which modifies cooldown behavior."""
 
     def __init__(self):
@@ -48,7 +48,7 @@ class CustomCog(commands.Cog):
     @tasks.loop(seconds=5)
     async def regenerate_markov_sentences(self) -> None:
         """Re-generate the markov sentences with a given seed word."""
-        if not self.bot.enable_auto_markov_gen:
+        if not self.bot.markov_gen_on:
             return
         if len(self.markov_sentences) == 0:
             return
@@ -84,13 +84,13 @@ class CustomCog(commands.Cog):
             The generated sentence.
         """
         if seed_word not in self.markov_sentences:
-            if self.bot.enable_auto_markov_gen:
+            if self.bot.markov_gen_on:
                 logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
             return generate_sentence(MARKOV_MODEL, seed_word)
 
         try:
             return self.markov_sentences[seed_word].pop()
         except IndexError:
-            if self.bot.enable_auto_markov_gen:
+            if self.bot.markov_gen_on:
                 logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
             return generate_sentence(MARKOV_MODEL, seed_word)

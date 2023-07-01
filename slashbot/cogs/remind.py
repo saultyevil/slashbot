@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import Session
 
 from slashbot.config import App
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_cog import SlashbotCog
 from slashbot.db import Reminder as ReminderDB
 from slashbot.db import connect_to_database_engine
 from slashbot.markov import MARKOV_MODEL
@@ -64,7 +64,7 @@ async def close_session(session: Session):
     session.close()
 
 
-class Reminders(CustomCog):
+class Reminders(SlashbotCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot):
@@ -82,11 +82,11 @@ class Reminders(CustomCog):
                 ["reminder"],
                 App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
-            if self.bot.enable_auto_markov_gen
+            if self.bot.markov_gen_on
             else {"reminder": []}
         )
 
-        self.bot.add_to_cleanup(None, close_session, (self.session,))
+        self.bot.add_function_to_cleanup(None, close_session, (self.session,))
 
     # Private methods ----------------------------------------------------------
 

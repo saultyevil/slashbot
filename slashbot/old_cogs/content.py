@@ -17,7 +17,7 @@ from slashbot.config import App
 from slashbot.db import connect_to_database_engine
 from slashbot.db import get_bank_account
 from slashbot.db import BankAccount
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import MARKOV_MODEL
 from slashbot.markov import generate_sentences_for_seed_words
 
@@ -28,16 +28,8 @@ CHECK_FREQUENCY_SECONDS = 30
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
-    """Demand and provide content, and track leech balance.
-
-    Parameters
-    ----------
-    bot: commands.InteractionBot
-        The bot object.
-    stale_minutes: int
-        The frequency to check for stale requests to remove.
-    """
+class Content(SlashbotCog):  # pylint: disable=too-many-instance-attributes
+    """Demand and provide content, and track leech balance."""
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
@@ -58,7 +50,7 @@ class ContentCommands(CustomCog):  # pylint: disable=too-many-instance-attribute
                 ["content"],
                 App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
-            if self.bot.enable_auto_markov_gen
+            if self.bot.markov_gen_on
             else {"content": []}
         )
 

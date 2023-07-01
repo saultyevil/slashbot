@@ -16,7 +16,7 @@ from disnake.ext import commands
 from geopy import GoogleV3
 
 from slashbot.config import App
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_cog import SlashbotCog
 from slashbot.db import get_user_location
 from slashbot.error import deferred_error_message
 from slashbot.markov import MARKOV_MODEL
@@ -44,7 +44,7 @@ class LocationNotFoundException(Exception):
     """Location not in OWM failure"""
 
 
-class WeatherCommands(CustomCog):
+class Weather(SlashbotCog):
     """Query information about the weather."""
 
     def __init__(
@@ -68,7 +68,7 @@ class WeatherCommands(CustomCog):
                 ["weather", "forecast"],
                 App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
-            if self.bot.enable_auto_markov_gen
+            if self.bot.markov_gen_on
             else {"weather": [], "forecast": []}
         )
 

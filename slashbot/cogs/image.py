@@ -10,21 +10,21 @@ import disnake
 import requests
 from disnake.ext import commands
 
-from slashbot.custom_bot import ModifiedInteractionBot
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_bot import SlashbotInterationBot
+from slashbot.custom_cog import SlashbotCog
 from slashbot.config import App
 
 MAX_ELAPSED_TIME = 300
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-class ImageGen(CustomCog):
+class ImageGen(SlashbotCog):
     """Cog for text to image generation using Monster API.
 
     Possibly in the future, we'll use OpenAI instead.
     """
 
-    def __init__(self, bot: ModifiedInteractionBot):
+    def __init__(self, bot: SlashbotInterationBot):
         super().__init__()
         self.bot = bot
         self.running_tasks = {}

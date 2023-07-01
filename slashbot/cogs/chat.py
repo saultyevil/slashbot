@@ -21,8 +21,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from slashbot.config import App
-from slashbot.custom_bot import ModifiedInteractionBot
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_bot import SlashbotInterationBot
+from slashbot.custom_cog import SlashbotCog
 from slashbot.util import split_text_into_chunks
 from slashbot.util import create_prompt_dict
 from slashbot.util import read_in_prompt_json
@@ -55,10 +55,10 @@ class JsonFileWatcher(FileSystemEventHandler):
                 PROMPT_CHOICES = create_prompt_dict()
 
 
-class Chat(CustomCog):
+class Chat(SlashbotCog):
     """AI chat features powered by OpenAI."""
 
-    def __init__(self, bot: ModifiedInteractionBot):
+    def __init__(self, bot: SlashbotInterationBot):
         super().__init__()
         self.bot = bot
 

@@ -15,7 +15,7 @@ from disnake.ext import commands
 from slashbot.config import App
 from slashbot.db import connect_to_database_engine
 from slashbot.db import BadWord
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import MARKOV_MODEL
 from slashbot.markov import generate_sentences_for_seed_words
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
+class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -50,15 +50,15 @@ class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
                 ["wolfram"],
                 App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
-            if self.bot.enable_auto_markov_gen
+            if self.bot.markov_gen_on
             else {"wolfram": []}
         )
 
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="roll", description="roll a dice")
-    async def roll(
+    @commands.slash_command(name="die_roll", description="roll a dice")
+    async def die_roll(
         self,
         inter: disnake.ApplicationCommandInteraction,
         num_sides: int = commands.Param(default=6, description="The number of sides to the dice.", min_value=1),
@@ -67,7 +67,7 @@ class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
 
         Parameters
         ----------
-        n: int
+        num_sides: int
             The number of sides of the dice.
         """
         return await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
@@ -86,7 +86,7 @@ class InfoCommands(CustomCog):  # pylint: disable=too-many-instance-attributes
         ----------
         question: str
             The question to ask.
-        n_solutions: int
+        num_solutions: int
             The number of solutions to return.
         """
         await inter.response.defer()

@@ -17,7 +17,7 @@ from disnake.ext import commands
 from sqlalchemy.orm import Session
 
 from slashbot.config import App
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_cog import SlashbotCog
 from slashbot.db import connect_to_database_engine
 from slashbot.db import Tweet
 from slashbot.db import Image
@@ -27,7 +27,7 @@ cd_user = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-class ArchiveCommands(CustomCog):
+class Archive(SlashbotCog):
     """Admin tools for the bot."""
 
     def __init__(self, bot: commands.InteractionBot):

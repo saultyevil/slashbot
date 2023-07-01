@@ -14,7 +14,7 @@ import disnake
 from disnake.ext import commands, tasks
 
 from slashbot.config import App
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_cog import SlashbotCog
 
 # from slashbot.markov import MARKOV_MODEL
 # from slashbot.markov import generate_sentences_for_seed_words
@@ -152,7 +152,7 @@ class Post:
         self.time_until_post = calculate_sleep_time(self.day, self.hour, self.minute)
 
 
-class ScheduledPosts(CustomCog):
+class ScheduledPosts(SlashbotCog):
     """Scheduled post cog.
 
     Scheduled posts should be added to self.scheduled_posts using a Post

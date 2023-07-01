@@ -15,12 +15,14 @@ import disnake
 from disnake.ext import commands
 
 import slashbot.cogs.admin
-import slashbot.cogs.archive
+
+# import slashbot.cogs.archive
 import slashbot.cogs.chat
-import slashbot.cogs.content
+
+# import slashbot.cogs.content
 import slashbot.cogs.info
 import slashbot.cogs.remind
-import slashbot.cogs.schedule
+import slashbot.cogs.scheduled_posts
 import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
@@ -28,7 +30,7 @@ import slashbot.cogs.weather
 import slashbot.cogs.image
 
 from slashbot.config import App
-from slashbot.custom_bot import ModifiedInteractionBot
+from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.db import migrate_old_json_to_db
 
 parser = argparse.ArgumentParser()
@@ -55,25 +57,25 @@ intents.message_content = True
 intents.messages = True
 intents.members = True
 
-bot = ModifiedInteractionBot(
-    pregen_markov=args.disable_auto_markov_gen,
+bot = SlashbotInterationBot(
+    markov_gen_on=args.disable_auto_markov_gen,
     intents=intents,
     reload=args.develop_mode,
 )
 
 for cog in [
-    slashbot.cogs.admin.AdminCommands(bot, App.config("LOGFILE_NAME")),
-    slashbot.cogs.archive.ArchiveCommands(bot),
+    slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME")),
+    # slashbot.cogs.archive.Archive(bot),
     slashbot.cogs.chat.Chat(bot),
-    slashbot.cogs.content.ContentCommands(bot),
+    # slashbot.cogs.content.Content(bot),
     slashbot.cogs.image.ImageGen(bot),
-    slashbot.cogs.info.InfoCommands(bot),
+    slashbot.cogs.info.Info(bot),
     slashbot.cogs.remind.Reminders(bot),
-    slashbot.cogs.schedule.ScheduledPosts(bot),
-    slashbot.cogs.spam.SpamCommands(bot),
-    slashbot.cogs.users.UserCommands(bot),
-    slashbot.cogs.videos.VideoCommands(bot),
-    slashbot.cogs.weather.WeatherCommands(bot),
+    slashbot.cogs.scheduled_posts.ScheduledPosts(bot),
+    slashbot.cogs.spam.Spam(bot),
+    slashbot.cogs.users.Users(bot),
+    slashbot.cogs.videos.Videos(bot),
+    slashbot.cogs.weather.Weather(bot),
 ]:
     bot.add_cog(cog)
 

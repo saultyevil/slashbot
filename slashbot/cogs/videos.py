@@ -11,7 +11,7 @@ import disnake
 from disnake.ext import commands
 
 from slashbot.config import App
-from slashbot.custom_cog import CustomCog
+from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import MARKOV_MODEL
 from slashbot.markov import generate_sentences_for_seed_words
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class VideoCommands(CustomCog):
+class Videos(SlashbotCog):
     """Send short clips to the channel."""
 
     def __init__(self, bot: commands.InteractionBot):
@@ -29,8 +29,6 @@ class VideoCommands(CustomCog):
         ----------
         bot: commands.InteractionBot
             The bot object.
-        generate_sentence: callable
-            A function to generate a sentence given a seed word.
         """
         super().__init__()
         self.bot = bot
@@ -44,7 +42,7 @@ class VideoCommands(CustomCog):
                 ],
                 1,  # these only happen once in a while, so dont need a big bank of them
             )
-            if self.bot.enable_auto_markov_gen
+            if self.bot.markov_gen_on
             else {"admin": [], "admin abuse": []}
         )
 

@@ -15,26 +15,24 @@ from slashbot.config import App
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-class ModifiedInteractionBot(commands.InteractionBot):
-    """Bot is a modified version of disnake.ext.commands.InteractionBot which
-    includes a function to add additional clean up functions when the bot
-    is exited, e.g. with ctrl+c.
+class SlashbotInterationBot(commands.InteractionBot):
+    """ "SlashbotInterationBot is a modified version of
+    disnake.ext.commands.InteractionBot which includes a function to add
+    additional clean up functions when the bot is exited, e.g. with ctrl+c.
     """
 
-    def __init__(self, pregen_markov, **kwargs) -> None:
-        """Initialize the class."""
+    def __init__(self, markov_gen_on: bool, **kwargs) -> None:
         super().__init__(**kwargs)
         self.cleanup_functions = []
         self.times_connected = 0
-        self.enable_auto_markov_gen = pregen_markov
+        self.markov_gen_on = markov_gen_on
 
-        if self.enable_auto_markov_gen:
+        if self.markov_gen_on:
             logger.info("Automatic Markov sentence generation is enabled")
         else:
-
             logger.info("Automatic Markov sentence generation is disabled")
 
-    def add_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:
+    def add_function_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:
         """Add a function to the cleanup list.
 
         Parameters
@@ -42,7 +40,7 @@ class ModifiedInteractionBot(commands.InteractionBot):
         message: str
             A message to print when running the function
         function: callable
-            The function to add to the clean up routine.
+            The function to add to the cleanup routine.
         args: iterable | None
             The arguments to pass to the function.
         """
