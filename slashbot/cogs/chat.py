@@ -177,9 +177,11 @@ class Chat(SlashbotCog):
         self.chat_history[history_id].append({"role": "assistant", "content": message})
         self.token_count[history_id] = int(response["usage"]["total_tokens"])
 
+        channel = await self.bot.fetch_channel(history_id)
+
         logger.debug(
-            "History id %d is currently at %d tokens with %d messages",
-            history_id,
+            "%s is currently at %d tokens with %d messages",
+            channel.name,
             self.token_count[history_id],
             len(self.chat_history[history_id]),
         )
@@ -198,18 +200,23 @@ class Chat(SlashbotCog):
         history_id : int | str
             The chat history ID. Usually the guild or user id.
         """
-        if len(self.chat_history[history_id][1:]) > self.max_chat_history:
-            for i in range(1, 3):  # remove two elements to get prompt + response
-                self.chat_history[history_id].pop(i)
-            self.token_count[history_id] = TOKEN_COUNT_UNSET
-            logger.debug("History id %d had 1 message and response removed due to message count", history_id)
+        channel = await self.bot.fetch_channel(history_id)
+        channel_name = channel.name
 
+        # max token count
         if self.token_count[history_id] > self.max_tokens_allowed:
             num_remove = int(self.trim_faction * (len(self.chat_history[history_id]) - 1))
             for i in range(1, num_remove):
                 self.chat_history[history_id].pop(i)
             self.token_count[history_id] = TOKEN_COUNT_UNSET
-            logger.debug("History id %d had %d messages remove due to token count ", history_id, num_remove)
+            logger.debug("%s had %d messages removed due to token count", channel_name, num_remove)
+
+        # max history count
+        if len(self.chat_history[history_id][1:]) > self.max_chat_history:
+            for i in range(1, 3):  # remove two elements to get prompt + response
+                self.chat_history[history_id].pop(i)
+            self.token_count[history_id] = TOKEN_COUNT_UNSET
+            # logger.debug("%s had 1 message and response removed due to message count", channel_name)
 
     async def get_message_response(self, history_id: int | str, prompt: str) -> str:
         """Process a prompt and get a response.
