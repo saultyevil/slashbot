@@ -63,7 +63,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         populate_word_tables_with_new_words()
 
         # this forces a markov chain update when the bot exits, e.g. ctrl+c
-        self.bot.add_to_cleanup(
+        self.bot.add_function_to_cleanup(
             None,
             update_markov_chain_for_model,
             (
