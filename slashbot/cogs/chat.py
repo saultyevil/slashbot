@@ -44,6 +44,8 @@ AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4.0")
 class Chat(SlashbotCog):
     """AI chat features powered by OpenAI."""
 
+    token_model = "cl100k_base"
+
     def __init__(self, bot: SlashbotInterationBot):
         super().__init__()
         self.bot = bot
@@ -60,7 +62,7 @@ class Chat(SlashbotCog):
         self.max_chat_history = 20
 
         self.default_system_token_count = len(
-            tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
+            tiktoken.encoding_for_model(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE)
         )
 
         self.prompt_choices = []
@@ -352,7 +354,7 @@ class Chat(SlashbotCog):
             ephemeral=True,
         )
 
-        self.token_count[history_id] = len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))
+        self.token_count[history_id] = TOKEN_COUNT_UNSET
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_system_prompt", description="change the chat system prompt")
@@ -378,7 +380,7 @@ class Chat(SlashbotCog):
             ephemeral=True,
         )
 
-        self.token_count[history_id] = len(tiktoken.encoding_for_model(self.chat_model).encode(message))
+        self.token_count[history_id] = len(tiktoken.encoding_for_model(self.token_model).encode(message))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
@@ -420,9 +422,11 @@ class Chat(SlashbotCog):
         if len(name) > 64:
             return await inter.response.send_message("The prompt name should not exceed 64 characters.", epehmeral=True)
 
-        num_tokens = len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))
+        await inter.response.defer(ephemeral=True)
+
+        num_tokens = len(tiktoken.encoding_for_model(self.token_model).encode(prompt))
         if num_tokens > 256:
-            return await inter.response.send_message("The prompt should not exceed 256 tokens.", epehmeral=True)
+            return await inter.edit_original_message(content="The prompt should not exceed 256 tokens.")
 
         with open(f"data/prompts/prompt-{name}.json", "w", encoding="utf-8") as file_out:
             json.dump(
@@ -430,7 +434,7 @@ class Chat(SlashbotCog):
                 file_out,
             )
 
-        await inter.response.send_message(f"Your prompt {name} has been saved.", ephemeral=True)
+        await inter.edit_original_message(content=f"Your prompt {name} has been saved.")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="echo_system_prompt", description="echo the current system prompt")
@@ -457,8 +461,8 @@ class Chat(SlashbotCog):
         await inter.response.send_message(f"The current prompt is:\n\n{prompt[:1928]}", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="switch_chat_model", description="Change the current chat model")
-    async def switch_model(
+    @commands.slash_command(name="select_chat_model", description="Change the current chat model")
+    async def select_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
         model_name: str = commands.Param(description="The name of the model to use", choices=AVAILABLE_MODELS),
@@ -481,12 +485,16 @@ class Chat(SlashbotCog):
                 f"{model_name} is not a recognized model. Allowed: {AVAILABLE_MODELS}", ephemeral=True
             )
 
+        await inter.response.defer(ephemeral=True)
+
         self.chat_model = model_name
         self.default_system_token_count = len(
-            tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
+            tiktoken.encoding_for_model(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE)
         )
 
         self.__set_max_allowed_tokens(self.chat_model)
+
+        await inter.edit_original_message(content=f"Chat model has been switched to {model_name}")
 
 
 class JsonFileWatcher(FileSystemEventHandler):
