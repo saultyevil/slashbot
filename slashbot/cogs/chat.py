@@ -51,10 +51,9 @@ class Chat(SlashbotCog):
         self.chat_history = defaultdict(list)
         self.token_count = defaultdict(int)
         self.guild_cooldown = defaultdict(dict)
-        self.threads_enabled = False
 
         self.chat_model = "gpt-3.5-turbo"
-        self.max_output_tokens = 364
+        self.output_tokens = 512
         self.model_temperature = 0.7
         self.max_tokens_allowed = 1456
         self.trim_faction = 0.5
@@ -131,6 +130,19 @@ class Chat(SlashbotCog):
             await message.channel.send(f"{message.author.mention if not in_dm else ''} {response}")
 
     # Private methods ----------------------------------------------------------
+
+    def __set_max_allowed_tokens(self, model_name: str):
+        """Set the max allowed tokens.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model.
+        """
+        if model_name != "gpt-3.5-turbo":
+            self.max_tokens_allowed = 8192
+        else:
+            self.max_tokens_allowed = 4096
 
     def __create_history_if_missing(self, history_id: str | int):
         """Populate a new dict entry if one doesn't exist for a history_id.
@@ -288,7 +300,7 @@ class Chat(SlashbotCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="reset_chat_history", description="reset the AI chat history")
-    async def reset_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Clear history context for where the interaction was called from.
 
         Parameters
@@ -309,7 +321,7 @@ class Chat(SlashbotCog):
     @commands.slash_command(
         name="select_system_prompt", description="set the chat system prompt from a list of pre-defined ones"
     )
-    async def select_system_prompt(
+    async def select_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
@@ -344,7 +356,7 @@ class Chat(SlashbotCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_system_prompt", description="change the chat system prompt")
-    async def set_system_prompt(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
+    async def set_prompt(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
         """Set a new system message for the location were the interaction came
         from.
 
@@ -372,8 +384,8 @@ class Chat(SlashbotCog):
     @commands.slash_command(
         name="set_chat_tokens", description="change the maximum number of output tokens for an ai response"
     )
-    async def set_chat_tokens(
-        self, inter: disnake.ApplicationCommandInteraction, num_tokens: int = commands.Param(gt=25, lt=1024)
+    async def set_output_tokens(
+        self, inter: disnake.ApplicationCommandInteraction, num_tokens: int = commands.Param(gt=256, lt=2048)
     ) -> coroutine:
         """Set the number of tokens the model can return.
 
@@ -384,8 +396,8 @@ class Chat(SlashbotCog):
         num_tokens : int
             The number of tokens
         """
-        self.max_output_tokens = num_tokens
-        self.max_tokens_allowed = max(num_tokens * 2, 256)
+        self.output_tokens = num_tokens
+        self.__set_max_allowed_tokens(self.chat_model)
 
         await inter.response.send_message(
             f"Max output tokens set to {num_tokens} with a token total of {self.max_tokens_allowed}.", ephemeral=True
@@ -393,7 +405,7 @@ class Chat(SlashbotCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="add_chat_prompt", description="add a system prompt to the bot's selection")
-    async def add_chat_prompt(self, inter: disnake.ApplicationCommandInteraction, name: str, prompt: str):
+    async def save_prompt(self, inter: disnake.ApplicationCommandInteraction, name: str, prompt: str):
         """Add a new prompt to the bot's available prompts.
 
         Parameters
@@ -422,7 +434,7 @@ class Chat(SlashbotCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="echo_system_prompt", description="echo the current system prompt")
-    async def echo_system_prompt(self, inter: disnake.ApplicationCommandInteraction):
+    async def echo_prompt(self, inter: disnake.ApplicationCommandInteraction):
         """Print the system prompt to the screen.
 
         Parameters
@@ -473,6 +485,8 @@ class Chat(SlashbotCog):
         self.default_system_token_count = len(
             tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
         )
+
+        self.__set_max_allowed_tokens(self.chat_model)
 
 
 class JsonFileWatcher(FileSystemEventHandler):
