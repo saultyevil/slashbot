@@ -186,7 +186,7 @@ class Chat(SlashbotCog):
 
         logger.debug(
             "%s is currently at %d tokens with %d messages",
-            channel.name,
+            channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}",
             self.token_count[history_id],
             len(self.chat_history[history_id]),
         )
@@ -206,7 +206,7 @@ class Chat(SlashbotCog):
             The chat history ID. Usually the guild or user id.
         """
         channel = await self.bot.fetch_channel(history_id)
-        channel_name = channel.name
+        channel_name = channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}"
 
         # max token count
         if self.token_count[history_id] > self.max_tokens_allowed:
