@@ -37,22 +37,8 @@ MAX_CHARS_UNTIL_THREAD = 364
 TOKEN_COUNT_UNSET = -1
 PROMPT_CHOICES = create_prompt_dict()
 
-
-class JsonFileWatcher(FileSystemEventHandler):
-    """Event handler for changes to json files"""
-
-    def on_any_event(self, event):
-        global PROMPT_CHOICES
-
-        if event.is_directory:
-            return
-        if event.event_type == "created" or event.event_type == "modified":
-            if event.src_path.endswith(".json"):
-                prompt = read_in_prompt_json(event.src_path)
-                PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
-        if event.event_type == "deleted":
-            if event.src_path.endswith(".json"):
-                PROMPT_CHOICES = create_prompt_dict()
+# this is global so you can use it as a choice in interactions
+AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4.0")
 
 
 class Chat(SlashbotCog):
@@ -147,6 +133,13 @@ class Chat(SlashbotCog):
     # Private methods ----------------------------------------------------------
 
     def __create_history_if_missing(self, history_id: str | int):
+        """Populate a new dict entry if one doesn't exist for a history_id.
+
+        Parameters
+        ----------
+        history_id : str | int
+            The history_id to make something for.
+        """
         if history_id not in self.chat_history:
             self.token_count[history_id] = self.default_system_token_count
             self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
@@ -401,17 +394,16 @@ class Chat(SlashbotCog):
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="add_chat_prompt", description="add a system prompt to the bot's selection")
     async def add_chat_prompt(self, inter: disnake.ApplicationCommandInteraction, name: str, prompt: str):
-        """
+        """Add a new prompt to the bot's available prompts.
 
         Parameters
         ----------
-        inter
-        name
-        prompt
-
-        Returns
-        -------
-
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
+        name : str
+            The name of the new prompt.
+        prompt : str
+            The contents of the prompt.
         """
         if len(name) > 64:
             return await inter.response.send_message("The prompt name should not exceed 64 characters.", epehmeral=True)
@@ -431,15 +423,12 @@ class Chat(SlashbotCog):
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="echo_system_prompt", description="echo the current system prompt")
     async def echo_system_prompt(self, inter: disnake.ApplicationCommandInteraction):
-        """
+        """Print the system prompt to the screen.
 
         Parameters
         ----------
-        inter
-
-        Returns
-        -------
-
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
         """
         try:
             prompt = self.chat_history[self.history_id(inter)][0].get("content", None)
@@ -454,6 +443,51 @@ class Chat(SlashbotCog):
             )
 
         await inter.response.send_message(f"The current prompt is:\n\n{prompt[:1928]}", ephemeral=True)
+
+    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="switch_chat_model", description="Change the current chat model")
+    async def switch_model(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        model_name: str = commands.Param(description="The name of the model to use", choices=AVAILABLE_MODELS),
+    ):
+        """Change the chat model to generate text.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The disnake command interaction.
+        model_name : str
+            The name of the model to use.
+        """
+        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
+            return await inter.response.send_message("You do not have permission to use this command.", ephemeral=True)
+
+        # not really required, as the user should only be able to select from a set of choices
+        if model_name not in AVAILABLE_MODELS:
+            return await inter.response.send_message(
+                f"{model_name} is not a recognized model. Allowed: {AVAILABLE_MODELS}", ephemeral=True
+            )
+
+        self.chat_model = model_name
+        self.default_system_token_count = len(
+            tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
+        )
+
+
+class JsonFileWatcher(FileSystemEventHandler):
+    def on_any_event(self, event):
+        global PROMPT_CHOICES
+
+        if event.is_directory:
+            return
+        if event.event_type == "created" or event.event_type == "modified":
+            if event.src_path.endswith(".json"):
+                prompt = read_in_prompt_json(event.src_path)
+                PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
+        if event.event_type == "deleted":
+            if event.src_path.endswith(".json"):
+                PROMPT_CHOICES = create_prompt_dict()
 
 
 observer = Observer()
