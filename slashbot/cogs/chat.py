@@ -61,9 +61,7 @@ class Chat(SlashbotCog):
         self.trim_faction = 0.5
         self.max_chat_history = 20
 
-        self.default_system_token_count = len(
-            tiktoken.encoding_for_model(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE)
-        )
+        self.default_system_token_count = len(tiktoken.get_encoding(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE))
 
         self.prompt_choices = []
 
@@ -380,7 +378,7 @@ class Chat(SlashbotCog):
             ephemeral=True,
         )
 
-        self.token_count[history_id] = len(tiktoken.encoding_for_model(self.token_model).encode(message))
+        self.token_count[history_id] = len(tiktoken.get_encoding(self.token_model).encode(message))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
@@ -424,7 +422,7 @@ class Chat(SlashbotCog):
 
         await inter.response.defer(ephemeral=True)
 
-        num_tokens = len(tiktoken.encoding_for_model(self.token_model).encode(prompt))
+        num_tokens = len(tiktoken.get_encoding(self.token_model).encode(prompt))
         if num_tokens > 256:
             return await inter.edit_original_message(content="The prompt should not exceed 256 tokens.")
 
@@ -488,9 +486,7 @@ class Chat(SlashbotCog):
         await inter.response.defer(ephemeral=True)
 
         self.chat_model = model_name
-        self.default_system_token_count = len(
-            tiktoken.encoding_for_model(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE)
-        )
+        self.default_system_token_count = len(tiktoken.get_encoding(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE))
 
         self.__set_max_allowed_tokens(self.chat_model)
 
