@@ -129,6 +129,7 @@ class Admin(SlashbotCog):
             choices=["True", "False"],
             default="False",
             description="Disable Markov sentence generation for faster load times",
+            converter=lambda _, user_input: user_input == "True",
         ),
     ):
         """Restart the bot."""
