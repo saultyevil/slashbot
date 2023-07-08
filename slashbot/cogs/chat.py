@@ -141,9 +141,9 @@ class Chat(SlashbotCog):
             The name of the model.
         """
         if model_name != "gpt-3.5-turbo":
-            self.max_tokens_allowed = 8192
+            self.max_tokens_allowed = 7500
         else:
-            self.max_tokens_allowed = 4096
+            self.max_tokens_allowed = 3500
 
     def __create_history_if_missing(self, history_id: str | int):
         """Populate a new dict entry if one doesn't exist for a history_id.
@@ -176,7 +176,7 @@ class Chat(SlashbotCog):
             model=self.chat_model,
             messages=self.chat_history[history_id],
             temperature=self.model_temperature,
-            max_tokens=self.max_tokens_allowed,
+            max_tokens=self.output_tokens,
         )
 
         message = response["choices"][0]["message"]["content"]
