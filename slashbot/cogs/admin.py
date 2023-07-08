@@ -121,22 +121,35 @@ class Admin(SlashbotCog):
             await inter.response.send_message("The IP request timed out.", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="restart_bot", description="restart the bot")
+    @commands.slash_command(
+        name="restart_bot", description="restart the bot", guild_ids=[App.config("ID_SERVER_ADULT_CHILDREN")]
+    )
     async def restart_bot(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        disable_markov: bool = commands.Param(
-            choices=["True", "False"],
-            default="False",
+        disable_markov: str = commands.Param(
+            choices=["Yes", "No"],
+            default=False,
             description="Disable Markov sentence generation for faster load times",
-            converter=lambda _, user_input: user_input == "True",
+            converter=lambda _, arg: arg == "Yes",
         ),
     ):
-        """Restart the bot."""
+        """Restart the bot with a new process.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
+        disable_markov : str / bool
+            A bool to indicate if we should disable cached markov sentences. The
+            input is a string of "Yes" or "No" which is converted into a bool.
+        """
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
         arguments = ["run.py"]
+
+        print("disable_arguments:", disable_markov, type(disable_markov))
 
         if disable_markov:
             arguments.append("--disable-auto-markov-gen")
