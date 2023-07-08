@@ -166,7 +166,7 @@ class ImageGen(SlashbotCog):
             try:
                 url = self.check_request_status(process_id)
             except requests.exceptions.Timeout:
-                pass
+                url = ""
             if url:
                 self.running_tasks.pop(inter.author.id)
                 break
@@ -174,8 +174,8 @@ class ImageGen(SlashbotCog):
             await asyncio.sleep(3)
             elapsed_time = time.time() - start
 
-        if elapsed_time > MAX_ELAPSED_TIME:
+        if elapsed_time >= MAX_ELAPSED_TIME:
             logger.error("text2image: timed out %s", process_id)
-            await next_interaction.send(f'Your request ({process_id}) for "{prompt}" timed out.')
+            await next_interaction.send(f'{inter.author.name}\'s request ({process_id}) for "{prompt}" timed out.')
         else:
-            await next_interaction.send(f"{url}\n>>> {prompt}")
+            await next_interaction.send(f'{inter.author.name}\'s request for "{prompt}" {url}')

@@ -16,6 +16,7 @@ import disnake
 import openai
 import tiktoken
 import openai.error
+import openai.version
 from disnake.ext import commands
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -38,7 +39,7 @@ TOKEN_COUNT_UNSET = -1
 PROMPT_CHOICES = create_prompt_dict()
 
 # this is global so you can use it as a choice in interactions
-AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4.0")
+AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4")
 
 
 class Chat(SlashbotCog):
@@ -57,7 +58,7 @@ class Chat(SlashbotCog):
         self.chat_model = "gpt-3.5-turbo"
         self.output_tokens = 512
         self.model_temperature = 0.7
-        self.max_tokens_allowed = 1456
+        self.max_tokens_allowed = 2048
         self.trim_faction = 0.5
         self.max_chat_history = 20
 
@@ -299,7 +300,7 @@ class Chat(SlashbotCog):
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="reset_chat_history", description="reset the AI chat history")
+    @commands.slash_command(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Clear history context for where the interaction was called from.
 
@@ -319,7 +320,7 @@ class Chat(SlashbotCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
-        name="select_system_prompt", description="set the chat system prompt from a list of pre-defined ones"
+        name="select_chat_prompt", description="Set the AI conversation prompt from a list of choices"
     )
     async def select_prompt(
         self,
@@ -355,7 +356,7 @@ class Chat(SlashbotCog):
         self.token_count[history_id] = TOKEN_COUNT_UNSET
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="set_system_prompt", description="change the chat system prompt")
+    @commands.slash_command(name="set_system_prompt", description="Change the AI conversation prompt to one you write")
     async def set_prompt(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
         """Set a new system message for the location were the interaction came
         from.
@@ -381,9 +382,7 @@ class Chat(SlashbotCog):
         self.token_count[history_id] = len(tiktoken.get_encoding(self.token_model).encode(message))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(
-        name="set_chat_tokens", description="change the maximum number of output tokens for an ai response"
-    )
+    @commands.slash_command(name="set_chat_tokens", description="Set the max token length for AI conversation output")
     async def set_output_tokens(
         self, inter: disnake.ApplicationCommandInteraction, num_tokens: int = commands.Param(gt=256, lt=2048)
     ) -> coroutine:
@@ -404,7 +403,7 @@ class Chat(SlashbotCog):
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="add_chat_prompt", description="add a system prompt to the bot's selection")
+    @commands.slash_command(name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection")
     async def save_prompt(self, inter: disnake.ApplicationCommandInteraction, name: str, prompt: str):
         """Add a new prompt to the bot's available prompts.
 
@@ -435,8 +434,8 @@ class Chat(SlashbotCog):
         await inter.edit_original_message(content=f"Your prompt {name} has been saved.")
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="echo_system_prompt", description="echo the current system prompt")
-    async def echo_prompt(self, inter: disnake.ApplicationCommandInteraction):
+    @commands.slash_command(name="show_ai_info", description="Print information about the current AI conversation")
+    async def echo_info(self, inter: disnake.ApplicationCommandInteraction):
         """Print the system prompt to the screen.
 
         Parameters
@@ -444,22 +443,33 @@ class Chat(SlashbotCog):
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
         """
-        try:
-            prompt = self.chat_history[self.history_id(inter)][0].get("content", None)
-        except IndexError:
-            return await inter.response.send_message(
-                "The chat cog has not been initialized yet, send a prompt request first.", ephemeral=True
-            )
+        await inter.response.defer(ephemeral=True)
+        history_id = self.history_id(inter)
+        self.__create_history_if_missing(history_id)
 
-        if prompt is None:
-            return await inter.response.send_message(
-                "There is currently no system prompt set or chat history.", ephemeral=True
-            )
+        response = ""
 
-        await inter.response.send_message(f"The current prompt is:\n\n{prompt[:1928]}", ephemeral=True)
+        response += f"**Chat model**: {self.chat_model}\n"
+        response += f"**Model temperature**: {self.model_temperature}\n"
+        response += f"**OpenAI version**: {openai.version.VERSION}\n"
+        response += f"**Current token usage**: {self.token_count[history_id]}\n"
+        response += f"**Output tokens**: {self.output_tokens}\n"
+        response += f"**Max tokens**: {self.max_tokens_allowed}\n"
+
+        prompt_name = "Unknown"
+        prompt = self.chat_history[history_id][0].get("content", None)
+        for name, text in PROMPT_CHOICES.items():
+            if prompt == text:
+                prompt_name = name
+        response += "**Prompt name**: " + prompt_name + "\n"
+        response += f"**Prompt**: {prompt[:1024] if prompt else 'Unknown'}\n"
+
+        await inter.edit_original_message(content=response)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="select_chat_model", description="Change the current chat model")
+    @commands.slash_command(
+        name="select_chat_model", description="Change the current AI conversation model for a set of choices"
+    )
     async def select_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
