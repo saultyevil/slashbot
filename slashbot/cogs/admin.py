@@ -121,9 +121,7 @@ class Admin(SlashbotCog):
             await inter.response.send_message("The IP request timed out.", ephemeral=True)
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(
-        name="restart_bot", description="restart the bot", guild_ids=[App.config("ID_SERVER_ADULT_CHILDREN")]
-    )
+    @commands.slash_command(name="restart_bot", description="restart the bot")
     async def restart_bot(
         self,
         inter: disnake.ApplicationCommandInteraction,
