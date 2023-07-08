@@ -498,6 +498,10 @@ class Chat(SlashbotCog):
         self.chat_model = model_name
         self.default_system_token_count = len(tiktoken.get_encoding(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE))
 
+        history_id = self.history_id(inter)
+        self.token_count[history_id] = self.default_system_token_count
+        self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+
         self.__set_max_allowed_tokens(self.chat_model)
 
         await inter.edit_original_message(content=f"Chat model has been switched to {model_name}")
