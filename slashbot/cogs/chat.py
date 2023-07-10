@@ -34,7 +34,6 @@ logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 DEFAULT_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/split.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
-MAX_CHARS_UNTIL_THREAD = 364
 TOKEN_COUNT_UNSET = -1
 PROMPT_CHOICES = create_prompt_dict()
 
@@ -286,11 +285,13 @@ class Chat(SlashbotCog):
         if message.author.bot:
             return
 
-        # only respond when mentioned, in DMs or when in own thread
+        # only respond when mentioned or in DM. Don't respond to replies which
+        # reference a previous slash command response
         bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
+        reply_to_interaction = isinstance(message.interaction, disnake.InteractionReference)
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
-        if bot_mentioned or message_in_dm:
+        if (bot_mentioned and not reply_to_interaction) or message_in_dm:
             history_id = self.history_id(message)
             self.__create_history_if_missing(history_id)
 
@@ -325,7 +326,8 @@ class Chat(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
-            autocomplete=lambda _inter, uin: [choice for choice in PROMPT_CHOICES.keys() if choice.startswith(uin)]
+            autocomplete=lambda _inter, uin: [choice for choice in PROMPT_CHOICES.keys() if uin in choice],
+            description="The choice of prompt to use",
         ),
     ) -> coroutine:
         """Select a system prompt from a set of pre-defined prompts.
@@ -405,7 +407,12 @@ class Chat(SlashbotCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection")
-    async def save_prompt(self, inter: disnake.ApplicationCommandInteraction, name: str, prompt: str):
+    async def save_prompt(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        name: str = commands.Param(description="The name to save the prompt as"),
+        prompt: str = commands.Param(description="The prompt to save"),
+    ):
         """Add a new prompt to the bot's available prompts.
 
         Parameters
@@ -511,8 +518,11 @@ class Chat(SlashbotCog):
 
 
 class JsonFileWatcher(FileSystemEventHandler):
+    """FileSystemEventHandler specifically for JSON files in the data/prompts
+    directory."""
+
     def on_any_event(self, event):
-        global PROMPT_CHOICES
+        global PROMPT_CHOICES  # pylint: disable=W0603
 
         if event.is_directory:
             return
