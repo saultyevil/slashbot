@@ -360,7 +360,11 @@ class Chat(SlashbotCog):
     @commands.slash_command(
         name="set_custom_chat_prompt", description="Change the AI conversation prompt to one you write"
     )
-    async def set_prompt(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
+    async def set_prompt(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        message: str = commands.Param(description="The prompt to set"),
+    ) -> coroutine:
         """Set a new system message for the location were the interaction came
         from.
 
