@@ -58,13 +58,14 @@ class Chat(SlashbotCog):
         self.chat_model = "gpt-3.5-turbo"
         self.output_tokens = 512
         self.model_temperature = 0.7
-        self.max_tokens_allowed = 2048
+        self.max_tokens_allowed = TOKEN_COUNT_UNSET
         self.trim_faction = 0.5
         self.max_chat_history = 20
+        self.default_system_token_count = len(
+            tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
+        )
 
-        self.default_system_token_count = len(tiktoken.get_encoding(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE))
-
-        self.prompt_choices = []
+        self.__set_max_allowed_tokens(self.chat_model)
 
     # Disnake method -----------------------------------------------------------
 
@@ -319,9 +320,7 @@ class Chat(SlashbotCog):
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(
-        name="select_chat_prompt", description="Set the AI conversation prompt from a list of choices"
-    )
+    @commands.slash_command(name="set_chat_prompt", description="Set the AI conversation prompt from a list of choices")
     async def select_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -356,7 +355,9 @@ class Chat(SlashbotCog):
         self.token_count[history_id] = TOKEN_COUNT_UNSET
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="set_system_prompt", description="Change the AI conversation prompt to one you write")
+    @commands.slash_command(
+        name="set_custom_chat_prompt", description="Change the AI conversation prompt to one you write"
+    )
     async def set_prompt(self, inter: disnake.ApplicationCommandInteraction, message: str) -> coroutine:
         """Set a new system message for the location were the interaction came
         from.
@@ -379,7 +380,7 @@ class Chat(SlashbotCog):
             ephemeral=True,
         )
 
-        self.token_count[history_id] = len(tiktoken.get_encoding(self.token_model).encode(message))
+        self.token_count[history_id] = len(tiktoken.encoding_for_model(self.chat_model).encode(message))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_chat_tokens", description="Set the max token length for AI conversation output")
@@ -421,7 +422,7 @@ class Chat(SlashbotCog):
 
         await inter.response.defer(ephemeral=True)
 
-        num_tokens = len(tiktoken.get_encoding(self.token_model).encode(prompt))
+        num_tokens = len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))
         if num_tokens > 256:
             return await inter.edit_original_message(content="The prompt should not exceed 256 tokens.")
 
@@ -468,7 +469,7 @@ class Chat(SlashbotCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
-        name="select_chat_model", description="Change the current AI conversation model for a set of choices"
+        name="set_chat_model", description="Change the current AI conversation model for a set of choices"
     )
     async def select_model(
         self,
@@ -496,7 +497,9 @@ class Chat(SlashbotCog):
         await inter.response.defer(ephemeral=True)
 
         self.chat_model = model_name
-        self.default_system_token_count = len(tiktoken.get_encoding(self.token_model).encode(DEFAULT_SYSTEM_MESSAGE))
+        self.default_system_token_count = len(
+            tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
+        )
 
         history_id = self.history_id(inter)
         self.token_count[history_id] = self.default_system_token_count
