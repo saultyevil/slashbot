@@ -86,7 +86,7 @@ class Chat(SlashbotCog):
         return obj.channel.id
 
     @staticmethod
-    async def send_response_to_channel(response: str, message: disnake.Message, in_dm: bool):
+    async def send_response_to_channel(raw_response: str, message: disnake.Message, in_dm: bool):
         """Send a response to the provided message channel and author.
 
         Parameters
@@ -98,11 +98,11 @@ class Chat(SlashbotCog):
         in_dm : bool
             Boolean to indicate if DM channel.
         """
-        if len(response) > MAX_MESSAGE_LENGTH:
-            responses = split_text_into_chunks(response, MAX_MESSAGE_LENGTH)
-            for n, response in enumerate(responses):
+        if len(raw_response) > MAX_MESSAGE_LENGTH:
+            responses = split_text_into_chunks(raw_response, MAX_MESSAGE_LENGTH)
+            for i, response in enumerate(responses):
                 mention_user = message.author.mention if not in_dm else ""
-                await message.channel.send(f"{mention_user if n == 0 else ''} {response}")
+                await message.channel.send(f"{mention_user if i == 0 else ''} {response}")
         else:
             await message.channel.send(f"{message.author.mention if not in_dm else ''} {response}")
 
@@ -159,7 +159,6 @@ class Chat(SlashbotCog):
         self.token_count[history_id] = int(response["usage"]["total_tokens"])
 
         channel = await self.bot.fetch_channel(history_id)
-
         logger.debug(
             "%s is currently at %d tokens with %d messages",
             channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}",
