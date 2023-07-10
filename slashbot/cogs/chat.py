@@ -50,10 +50,6 @@ class Chat(SlashbotCog):
         super().__init__()
         self.bot = bot
 
-        self.chat_history = defaultdict(list)
-        self.token_count = defaultdict(int)
-        self.guild_cooldown = defaultdict(dict)
-
         self.chat_model = "gpt-3.5-turbo"
         self.output_tokens = 512
         self.model_temperature = 0.7
@@ -66,28 +62,8 @@ class Chat(SlashbotCog):
 
         self.__set_max_allowed_tokens(self.chat_model)
 
-    # Disnake method -----------------------------------------------------------
-
-    async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
-    ) -> disnake.ApplicationCommandInteraction:
-        """Populate empty history on slash invoke.
-
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteration
-            The interation to do something before.
-        """
-        if isinstance(inter.channel, disnake.channel.DMChannel):
-            history_id = inter.author.id
-        else:
-            history_id = inter.channel.id
-
-        if history_id not in self.chat_history:
-            self.token_count[history_id] = self.default_system_token_count
-            self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
-
-        return await super(Chat, self).cog_before_slash_command_invoke(inter)
+        self.token_count = defaultdict(lambda: self.default_system_token_count)
+        self.chat_history = defaultdict(lambda: [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}])
 
     # Static -------------------------------------------------------------------
 
@@ -132,6 +108,17 @@ class Chat(SlashbotCog):
 
     # Private methods ----------------------------------------------------------
 
+    def __reset_chat_history(self, history_id: str | int):
+        """Clear chat history and reset the token counter.
+
+        Parameters
+        ----------
+        history_id : str | int
+            The index to reset in chat history.
+        """
+        self.token_count[history_id] = self.default_system_token_count
+        self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
+
     def __set_max_allowed_tokens(self, model_name: str):
         """Set the max allowed tokens.
 
@@ -144,18 +131,6 @@ class Chat(SlashbotCog):
             self.max_tokens_allowed = 7500
         else:
             self.max_tokens_allowed = 3500
-
-    def __create_history_if_missing(self, history_id: str | int):
-        """Populate a new dict entry if one doesn't exist for a history_id.
-
-        Parameters
-        ----------
-        history_id : str | int
-            The history_id to make something for.
-        """
-        if history_id not in self.chat_history:
-            self.token_count[history_id] = self.default_system_token_count
-            self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
     async def __api_response(self, history_id: int | str) -> str:
         """Get a message from ChatGPT using the ChatCompletion API.
@@ -293,7 +268,6 @@ class Chat(SlashbotCog):
 
         if (bot_mentioned and not reply_to_interaction) or message_in_dm:
             history_id = self.history_id(message)
-            self.__create_history_if_missing(history_id)
 
             async with message.channel.typing():
                 response = await self.get_message_response(history_id, message.clean_content)
@@ -311,9 +285,7 @@ class Chat(SlashbotCog):
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
         """
-        history_id = self.history_id(inter)
-        self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
-        self.token_count[history_id] = self.default_system_token_count
+        self.__reset_chat_history(self.history_id(inter))
 
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{DEFAULT_SYSTEM_MESSAGE}",
@@ -403,7 +375,6 @@ class Chat(SlashbotCog):
             The number of tokens
         """
         self.output_tokens = num_tokens
-        self.__set_max_allowed_tokens(self.chat_model)
 
         await inter.response.send_message(
             f"Max output tokens set to {num_tokens} with a token total of {self.max_tokens_allowed}.", ephemeral=True
@@ -457,7 +428,6 @@ class Chat(SlashbotCog):
         """
         await inter.response.defer(ephemeral=True)
         history_id = self.history_id(inter)
-        self.__create_history_if_missing(history_id)
 
         response = ""
 
@@ -508,14 +478,7 @@ class Chat(SlashbotCog):
         await inter.response.defer(ephemeral=True)
 
         self.chat_model = model_name
-        self.default_system_token_count = len(
-            tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
-        )
-
-        history_id = self.history_id(inter)
-        self.token_count[history_id] = self.default_system_token_count
-        self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
-
+        self.__reset_chat_history(self.history_id(inter))
         self.__set_max_allowed_tokens(self.chat_model)
 
         await inter.edit_original_message(content=f"Chat model has been switched to {model_name}")
