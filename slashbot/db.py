@@ -8,18 +8,10 @@ import logging
 import pathlib
 
 import disnake
-from sqlalchemy import Column
-from sqlalchemy import DateTime
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, Session, relationship
 
 from slashbot.config import App
-
 
 # Models -----------------------------------------------------------------------
 

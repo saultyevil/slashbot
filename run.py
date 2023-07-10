@@ -18,6 +18,7 @@ import slashbot.cogs.admin
 
 # import slashbot.cogs.archive
 import slashbot.cogs.chat
+import slashbot.cogs.image
 
 # import slashbot.cogs.content
 import slashbot.cogs.info
@@ -27,8 +28,6 @@ import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
 import slashbot.cogs.weather
-import slashbot.cogs.image
-
 from slashbot.config import App
 from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.db import migrate_old_json_to_db

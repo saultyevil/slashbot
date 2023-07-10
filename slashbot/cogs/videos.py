@@ -3,17 +3,17 @@
 
 """Commands for sending videos, and scheduled videos."""
 
-import logging
 import datetime
+import logging
 import random
 from types import coroutine
+
 import disnake
 from disnake.ext import commands
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_sentences_for_seed_words
+from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

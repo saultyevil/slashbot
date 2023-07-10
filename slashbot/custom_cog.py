@@ -6,13 +6,14 @@
 import logging
 
 import disnake
-from disnake.ext import commands
-from disnake.ext import tasks
+from disnake.ext import commands, tasks
 
 from slashbot.config import App
-from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_list_of_sentences_with_seed_word
-from slashbot.markov import generate_sentence
+from slashbot.markov import (
+    MARKOV_MODEL,
+    generate_list_of_sentences_with_seed_word,
+    generate_sentence,
+)
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 

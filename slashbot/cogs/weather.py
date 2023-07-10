@@ -7,8 +7,7 @@ import datetime
 import json
 import logging
 from types import coroutine
-from typing import List
-from typing import Tuple
+from typing import List, Tuple
 
 import disnake
 import requests
@@ -19,8 +18,7 @@ from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import get_user_location
 from slashbot.error import deferred_error_message
-from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_sentences_for_seed_words
+from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 from slashbot.util import convert_radial_to_cardinal_direction
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))

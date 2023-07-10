@@ -3,11 +3,11 @@
 
 """Various utility functions used through slashbot."""
 
-import re
 import json
-from typing import Any
 import logging
 import pathlib
+import re
+from typing import Any
 
 import disnake
 

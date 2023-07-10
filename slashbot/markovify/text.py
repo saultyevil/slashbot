@@ -17,7 +17,6 @@ class ParamError(Exception):
 
 
 class Text(object):
-
     reject_pat = re.compile(r"(^')|('$)|\s'|'\s|[\"(\(\)\[\])]")
 
     def __init__(
@@ -404,7 +403,6 @@ class Text(object):
             output = self.make_sentence(init_state, **kwargs)
             # print(output)
             if output is not None:
-
                 end_of_sentence = output
                 end_of_sentence_first_word = end_of_sentence.split(" ")[1]
                 # print(contains)

@@ -16,8 +16,7 @@ from disnake.ext import commands
 from slashbot import __version__
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_sentences_for_seed_words
+from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))

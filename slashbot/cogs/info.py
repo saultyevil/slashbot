@@ -6,19 +6,16 @@
 import logging
 import random
 from types import coroutine
-from sqlalchemy.orm import Session
 
 import disnake
 import wolframalpha
 from disnake.ext import commands
+from sqlalchemy.orm import Session
 
 from slashbot.config import App
-from slashbot.db import connect_to_database_engine
-from slashbot.db import BadWord
 from slashbot.custom_cog import SlashbotCog
-from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_sentences_for_seed_words
-
+from slashbot.db import BadWord, connect_to_database_engine
+from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

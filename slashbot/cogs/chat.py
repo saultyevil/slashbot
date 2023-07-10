@@ -13,20 +13,22 @@ from collections import defaultdict
 from types import coroutine
 
 import disnake
-import tiktoken
 import openai
 import openai.error
 import openai.version
+import tiktoken
 from disnake.ext import commands
-from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 from slashbot.config import App
 from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog
-from slashbot.util import split_text_into_chunks
-from slashbot.util import create_prompt_dict
-from slashbot.util import read_in_prompt_json
+from slashbot.util import (
+    create_prompt_dict,
+    read_in_prompt_json,
+    split_text_into_chunks,
+)
 
 openai.api_key = App.config("OPENAI_API_KEY")
 logger = logging.getLogger(App.config("LOGGER_NAME"))

@@ -9,9 +9,7 @@ import pickle
 import shutil
 import string
 from pathlib import Path
-from typing import Coroutine
-from typing import Dict
-from typing import List
+from typing import Coroutine, Dict, List
 
 import disnake
 

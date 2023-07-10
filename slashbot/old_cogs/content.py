@@ -14,13 +14,9 @@ from prettytable import PrettyTable
 from sqlalchemy.orm import Session
 
 from slashbot.config import App
-from slashbot.db import connect_to_database_engine
-from slashbot.db import get_bank_account
-from slashbot.db import BankAccount
 from slashbot.custom_cog import SlashbotCog
-from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import generate_sentences_for_seed_words
-
+from slashbot.db import BankAccount, connect_to_database_engine, get_bank_account
+from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 COOLDOWN_USER = commands.BucketType.user
 CHECK_FREQUENCY_SECONDS = 30

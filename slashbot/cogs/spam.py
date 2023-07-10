@@ -18,15 +18,19 @@ from disnake.ext import commands, tasks
 from sqlalchemy.orm import Session
 
 from slashbot.config import App
-from slashbot.db import connect_to_database_engine
-from slashbot.db import BadWord
-from slashbot.db import User
-from slashbot.db import OracleWord
-from slashbot.db import populate_word_tables_with_new_words
 from slashbot.custom_cog import SlashbotCog
-from slashbot.markov import MARKOV_MODEL
-from slashbot.markov import update_markov_chain_for_model
-from slashbot.markov import generate_sentence
+from slashbot.db import (
+    BadWord,
+    OracleWord,
+    User,
+    connect_to_database_engine,
+    populate_word_tables_with_new_words,
+)
+from slashbot.markov import (
+    MARKOV_MODEL,
+    generate_sentence,
+    update_markov_chain_for_model,
+)
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
