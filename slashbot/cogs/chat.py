@@ -198,7 +198,38 @@ class Chat(SlashbotCog):
             self.token_count[history_id] = TOKEN_COUNT_UNSET
             # logger.debug("%s had 1 message and response removed due to message count", channel_name)
 
-    async def get_message_response(self, history_id: int | str, prompt: str) -> str:
+    async def __check_for_slash_command_reply(self, message: disnake.Message) -> bool:
+        """Check if a message is in response to a slash command.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to check.
+
+        Returns
+        -------
+        bool
+            If the message is a reply to a slash command, True is returned.
+            Otherwise False is returned.
+        """
+        if not message.reference:
+            return False
+
+        reference = message.reference
+        old_message = (
+            reference.cached_message if reference.cached_message else await message.channel.fetch_message(message.id)
+        )
+
+        # can't see how this can happen (unless no message intents, but then the
+        # chat cog won't work at all) but should take into account just in case
+        if not old_message:
+            logger.error("Message %d not found in internal cache or through channel.fetch_message()", message.id)
+            return False
+
+        # if old_message is an interaction response, this will return true
+        return isinstance(old_message.interaction, disnake.InteractionReference)
+
+    async def __get_api_response(self, history_id: int | str, prompt: str) -> str:
         """Process a prompt and get a response.
 
         This function is the main steering function for getting a response from
@@ -262,14 +293,14 @@ class Chat(SlashbotCog):
         # only respond when mentioned or in DM. Don't respond to replies which
         # reference a previous slash command response
         bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
-        reply_to_interaction = isinstance(message.interaction, disnake.InteractionReference)
+        reply_to_interaction = await self.__check_for_slash_command_reply(message)
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
-        if (bot_mentioned and not reply_to_interaction) or message_in_dm:
+        if not reply_to_interaction and (bot_mentioned or message_in_dm):
             history_id = self.history_id(message)
 
             async with message.channel.typing():
-                response = await self.get_message_response(history_id, message.clean_content)
+                response = await self.__get_api_response(history_id, message.clean_content)
                 await self.send_response_to_channel(response, message, message_in_dm)
 
     # Commands -----------------------------------------------------------------
