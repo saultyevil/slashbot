@@ -13,8 +13,8 @@ from collections import defaultdict
 from types import coroutine
 
 import disnake
-import openai
 import tiktoken
+import openai
 import openai.error
 import openai.version
 from disnake.ext import commands
@@ -86,7 +86,7 @@ class Chat(SlashbotCog):
         return obj.channel.id
 
     @staticmethod
-    async def send_response_to_channel(raw_response: str, message: disnake.Message, in_dm: bool):
+    async def send_response_to_channel(response: str, message: disnake.Message, in_dm: bool):
         """Send a response to the provided message channel and author.
 
         Parameters
@@ -98,11 +98,11 @@ class Chat(SlashbotCog):
         in_dm : bool
             Boolean to indicate if DM channel.
         """
-        if len(raw_response) > MAX_MESSAGE_LENGTH:
-            responses = split_text_into_chunks(raw_response, MAX_MESSAGE_LENGTH)
-            for i, response in enumerate(responses):
+        if len(response) > MAX_MESSAGE_LENGTH:
+            response_chunks = split_text_into_chunks(response, MAX_MESSAGE_LENGTH)
+            for i, response_chunk in enumerate(response_chunks):
                 mention_user = message.author.mention if not in_dm else ""
-                await message.channel.send(f"{mention_user if i == 0 else ''} {response}")
+                await message.channel.send(f"{mention_user if i == 0 else ''} {response_chunk}")
         else:
             await message.channel.send(f"{message.author.mention if not in_dm else ''} {response}")
 
