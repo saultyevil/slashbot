@@ -8,6 +8,7 @@ data/chain.pickle.bak
 log/
 data/images
 data/tweets.csv
+scratch/
 
 # IDE specific directories
 
