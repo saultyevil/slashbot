@@ -18,6 +18,7 @@ from slashbot.config import App
 from slashbot.error import deferred_error_message
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
+MARKOV_MODEL = None
 
 
 # Private functions ------------------------------------------------------------
@@ -42,14 +43,16 @@ def __clean_sentences_for_learning(sentences: List[str]) -> List[str]:
     clean_sentences = []
 
     for sentence in sentences:
-        if len(sentence) == 0:
+        # ignore empty strings
+        if not sentence:
             continue
         # ignore commands, which usually start with punctuation
-        if sentence.startswith(string.punctuation):
+        if sentence[0] in string.punctuation:
             continue
         # don't want to learn how to mention :)
         if "@" in sentence:
             continue
+
         clean_sentences.append(sentence)
 
     return clean_sentences
@@ -77,20 +80,27 @@ def load_markov_model(chain_location: str | Path) -> markovify.Text:
     if not isinstance(str, Path):
         chain_location = Path(chain_location)
 
-    model = markovify.Text("Jack is a naughty boy. Edward is a good boy.")
+    state_size = App.config("MARKOV_STATE_SIZE")
+    model = markovify.Text(
+        "This is an empty markov model. I think you may need two sentences",
+        state_size=state_size,
+    )
+    chain_location = Path(f"{chain_location.with_suffix('').as_posix()}-{state_size}.pickle")
 
     if chain_location.exists():
         with open(chain_location, "rb") as file_in:
             try:
-                model.chain = pickle.load(file_in)
+                chain = pickle.load(file_in)
             except EOFError:
                 shutil.copy2(str(chain_location) + ".bak", chain_location)
                 model = load_markov_model(chain_location)  # the recursion might be a bit spicy here
+    else:
+        raise IOError(f"No chain at {chain_location}")
+
+    model.chain = markovify.combine([model.chain, chain])
+    logger.info("Model %s has been loaded", str(chain_location))
 
     return model
-
-
-MARKOV_MODEL = load_markov_model(App.config("MARKOV_CHAIN_FILE"))
 
 
 def generate_sentence(model: markovify.Text = None, seed_word: str = None, attempts: int = 5) -> str:
@@ -174,6 +184,9 @@ async def update_markov_chain_for_model(
     if not isinstance(save_location, Path):
         save_location = Path(save_location)
 
+    state_size = App.config("MARKOV_STATE_SIZE")
+    save_location = Path(f"{save_location.with_suffix('').as_posix()}-{state_size}.pickle")
+
     if len(new_messages) == 0:
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
@@ -191,7 +204,7 @@ async def update_markov_chain_for_model(
 
     shutil.copy2(save_location, str(save_location) + ".bak")
     try:
-        new_model = markovify.NewlineText(messages)
+        new_model = markovify.NewlineText("\n".join(messages), state_size=state_size)
     except KeyError:  # I can't remember what causes this... but it can happen when indexing new words
         if inter:
             await deferred_error_message(inter, "The interim model failed to train.")
@@ -207,7 +220,7 @@ async def update_markov_chain_for_model(
         await inter.edit_original_message(content=f"Markov chain updated with {num_messages} new messages.")
 
     # num_messages should already but an int, but sometimes it isn't...
-    logger.info("Markov chain updated with %d new messages", int(num_messages))
+    logger.info("Markov chain (%s) updated with %d new messages", str(save_location), int(num_messages))
 
     return model
 

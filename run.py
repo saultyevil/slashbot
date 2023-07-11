@@ -28,22 +28,26 @@ import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
 import slashbot.cogs.weather
+from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.db import migrate_old_json_to_db
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--disable-auto-markov-gen",
+    "--disable-auto-markov",
     help="Disable automatic markov sentence generation and revert to on-the-fly generation",
     action="store_false",
 )
 parser.add_argument(
-    "--develop-mode",
-    help="Enable developer mode where cogs reload in real time",
-    action="store_true",
+    "--state-size",
+    default=3,
+    help="The state size of the Markov model to use",
+    choices=[1, 2, 3, 4],
+    type=int,
 )
 args = parser.parse_args()
+App.set("MARKOV_STATE_SIZE", int(args.state_size))
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 logger.info("Initializing Slashbot...")
@@ -57,10 +61,11 @@ intents.messages = True
 intents.members = True
 
 bot = SlashbotInterationBot(
-    markov_gen_on=args.disable_auto_markov_gen,
+    markov_gen_on=args.disable_auto_markov,
     intents=intents,
-    reload=args.develop_mode,
 )
+
+markov.MARKOV_MODEL = markov.load_markov_model(App.config("MARKOV_CHAIN_FILE"))
 
 for cog in [
     slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME")),

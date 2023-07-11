@@ -130,6 +130,9 @@ class Admin(SlashbotCog):
             description="Disable Markov sentence generation for faster load times",
             converter=lambda _, arg: arg == "Yes",
         ),
+        state_size: int = commands.Param(
+            choices=["1", "2", "3", "4"], default=3, description="Set the state size of the markov model"
+        ),
     ):
         """Restart the bot with a new process.
 
@@ -146,10 +149,11 @@ class Admin(SlashbotCog):
 
         arguments = ["run.py"]
 
-        print("disable_arguments:", disable_markov, type(disable_markov))
-
         if disable_markov:
-            arguments.append("--disable-auto-markov-gen")
+            arguments.append("--disable-auto-markov")
+
+        if state_size:
+            arguments.append(f"--state-size {state_size}")
 
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
         logger.info("Restarting with new process with arguments %s", arguments)

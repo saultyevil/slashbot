@@ -2,8 +2,8 @@ docker-env.env
 data/reminders.json
 data/users.json
 data/bank.json
-data/chain.pickle
-data/chain.pickle.bak
+data/*.pickle
+data/*.bak
 *.db
 log/
 data/images
