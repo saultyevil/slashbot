@@ -53,7 +53,7 @@ class Chat(SlashbotCog):
         self.bot = bot
 
         self.chat_model = "gpt-3.5-turbo"
-        self.output_tokens = 512
+        self.output_tokens = 256
         self.model_temperature = 0.7
         self.max_tokens_allowed = TOKEN_COUNT_UNSET
         self.trim_faction = 0.5
