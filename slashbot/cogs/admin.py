@@ -8,6 +8,7 @@ import os
 import re
 import sys
 from pathlib import Path
+import subprocess
 from types import coroutine
 
 import disnake
@@ -144,15 +145,23 @@ class Admin(SlashbotCog):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
         arguments = ["run.py"]
-
         if disable_markov:
             arguments.append("--disable-auto-markov")
-
         if state_size:
             arguments.append(f"--state-size={state_size}")
+        logger.info("Restarting with new process with arguments %s", arguments)
 
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
-        logger.info("Restarting with new process with arguments %s", arguments)
+
+        try:
+            git_diff_proc = subprocess.run(
+                ["git", "diff-index", "--quiet", "HEAD", "--"], capture_output=True, check=True
+            )
+            if git_diff_proc.returncode != 0:
+                subprocess.run(["git", "reset", "--hard"], check=True)
+                subprocess.run(["git", "pull"], check=True)
+        except subprocess.CalledProcessError:
+            logger.error("Failed to update bot code due to git problem")
 
         os.execv(sys.executable, ["python"] + arguments)
 
