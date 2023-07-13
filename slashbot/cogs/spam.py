@@ -125,7 +125,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             A seed word (or words) to generate a message from.
         """
         await inter.response.defer()
-        return await inter.edit_original_message(content=generate_sentence(MARKOV_MODEL, words))
+        return await inter.edit_original_message(content=generate_sentence(markov.MARKOV_MODEL, words))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="clap", description="send a clapped out message")
