@@ -6,6 +6,7 @@
 
 import logging
 import pickle
+import re
 import shutil
 import string
 from pathlib import Path
@@ -61,7 +62,7 @@ def __clean_sentences_for_learning(sentences: List[str]) -> List[str]:
 # Public functions -------------------------------------------------------------
 
 
-def load_markov_model(chain_location: str | Path) -> markovify.Text:
+def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.Text:
     """Load a Markovify model.
 
     If a chain exists at chain_location, this is read in and applied. Otherwise
@@ -71,6 +72,8 @@ def load_markov_model(chain_location: str | Path) -> markovify.Text:
     ----------
     chain_location : str | Path
         The location of the markov chain to load. Must be a pickle.
+    state_size : int
+        The state size of the model.
 
     Returns
     -------
@@ -80,25 +83,22 @@ def load_markov_model(chain_location: str | Path) -> markovify.Text:
     if not isinstance(str, Path):
         chain_location = Path(chain_location)
 
-    state_size = App.config("MARKOV_STATE_SIZE")
     model = markovify.Text(
-        "This is an empty markov model. I think you may need two sentences",
-        state_size=state_size,
+        "This is an empty markov model. I think you may need two sentences.",
+        state_size=state_size if state_size != 0 else 2,
     )
-    chain_location = Path(f"{chain_location.with_suffix('').as_posix()}-{state_size}.pickle")
 
     if chain_location.exists():
         with open(chain_location, "rb") as file_in:
             try:
-                chain = pickle.load(file_in)
+                model.chain = pickle.load(file_in)
+                App.set("MARKOV_CHAIN_FILE", chain_location)
+                logger.info("Model %s has been loaded", str(chain_location))
             except EOFError:
                 shutil.copy2(str(chain_location) + ".bak", chain_location)
                 model = load_markov_model(chain_location)  # the recursion might be a bit spicy here
     else:
         raise IOError(f"No chain at {chain_location}")
-
-    model.chain = markovify.combine([model.chain, chain])
-    logger.info("Model %s has been loaded", str(chain_location))
 
     return model
 
@@ -184,8 +184,7 @@ async def update_markov_chain_for_model(
     if not isinstance(save_location, Path):
         save_location = Path(save_location)
 
-    state_size = App.config("MARKOV_STATE_SIZE")
-    save_location = Path(f"{save_location.with_suffix('').as_posix()}-{state_size}.pickle")
+    state_size = int(re.findall(r"\d+", save_location.name)[0])
 
     if len(new_messages) == 0:
         if inter:
@@ -204,7 +203,7 @@ async def update_markov_chain_for_model(
 
     shutil.copy2(save_location, str(save_location) + ".bak")
     try:
-        new_model = markovify.NewlineText("\n".join(messages), state_size=state_size)
+        new_model = markovify.NewlineText("\n".join(messages), state_size=state_size if state_size != 0 else 2)
     except KeyError:  # I can't remember what causes this... but it can happen when indexing new words
         if inter:
             await deferred_error_message(inter, "The interim model failed to train.")

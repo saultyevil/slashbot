@@ -7,6 +7,7 @@ this bot is to sometimes annoy Gareth with its useful information.
 
 import argparse
 import logging
+import re
 import time
 import traceback
 from typing import Coroutine
@@ -41,13 +42,12 @@ parser.add_argument(
 )
 parser.add_argument(
     "--state-size",
-    default=3,
+    default=0,
     help="The state size of the Markov model to use",
-    choices=[1, 2, 3, 4],
+    choices=[0, 1, 2, 3, 4],
     type=int,
 )
 args = parser.parse_args()
-App.set("MARKOV_STATE_SIZE", int(args.state_size))
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 logger.info("Initializing Slashbot...")
@@ -65,7 +65,7 @@ bot = SlashbotInterationBot(
     intents=intents,
 )
 
-markov.MARKOV_MODEL = markov.load_markov_model(App.config("MARKOV_CHAIN_FILE"))
+markov.MARKOV_MODEL = markov.load_markov_model(f"data/chain-{args.state_size}.pickle", args.state_size)
 
 for cog in [
     slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME")),

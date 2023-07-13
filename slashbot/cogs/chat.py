@@ -330,7 +330,11 @@ class Chat(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
-            autocomplete=lambda _inter, uin: [choice for choice in PROMPT_CHOICES.keys() if uin in choice],
+            autocomplete=lambda _inter, user_input: [
+                choice
+                for choice in sorted(PROMPT_CHOICES.keys(), key=str.lower())
+                if user_input.lower() in choice.lower()
+            ],
             description="The choice of prompt to use",
         ),
     ) -> coroutine:

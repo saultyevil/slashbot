@@ -17,6 +17,7 @@ import rule34 as r34
 from disnake.ext import commands, tasks
 from sqlalchemy.orm import Session
 
+from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import (
@@ -26,11 +27,7 @@ from slashbot.db import (
     connect_to_database_engine,
     populate_word_tables_with_new_words,
 )
-from slashbot.markov import (
-    MARKOV_MODEL,
-    generate_sentence,
-    update_markov_chain_for_model,
-)
+from slashbot.markov import generate_sentence, update_markov_chain_for_model
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -72,7 +69,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             update_markov_chain_for_model,
             (
                 None,
-                MARKOV_MODEL,
+                markov.MARKOV_MODEL,
                 self.markov_update_sentences.values(),
                 App.config("MARKOV_CHAIN_FILE"),
             ),
@@ -167,7 +164,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
         await update_markov_chain_for_model(
             inter,
-            MARKOV_MODEL,
+            markov.MARKOV_MODEL,
             self.markov_update_sentences.values(),
             App.config("MARKOV_CHAIN_FILE"),
         )
@@ -315,7 +312,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         """Get the bot to update the chain every 4 hours."""
         await update_markov_chain_for_model(
             None,
-            MARKOV_MODEL,
+            markov.MARKOV_MODEL,
             self.markov_update_sentences.values(),
             App.config("MARKOV_CHAIN_FILE"),
         )

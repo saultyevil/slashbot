@@ -5,6 +5,7 @@
 
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 from types import coroutine
@@ -13,13 +14,20 @@ import disnake
 import requests
 from disnake.ext import commands
 
-from slashbot import __version__
+from slashbot import __version__, markov
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
+
+AVAILABLE_CHAINS = (
+    "chain-0.pickle",
+    "chain-1.pickle",
+    "chain-2.pickle",
+    "chain-3.pickle",
+    "chain-4.pickle",
+)
 
 
 class Admin(SlashbotCog):
@@ -33,16 +41,6 @@ class Admin(SlashbotCog):
         super().__init__()
         self.bot = bot
         self.logfile_path = Path(logfile_path)
-
-        self.markov_sentences = (
-            generate_sentences_for_seed_words(
-                MARKOV_MODEL,
-                ["unban"],
-                1,
-            )
-            if self.bot.markov_gen_on
-            else {"unban": []}
-        )
 
     # Commands -----------------------------------------------------------------
 
@@ -106,7 +104,6 @@ class Admin(SlashbotCog):
 
         return await inter.edit_original_message(f"```{''.join(tail[::-1])}```")
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="ip", description="get the external ip address for the bot")
     async def print_ip_address(self, inter: disnake.ApplicationCommandInteraction):
         """Get the external IP of the bot."""
@@ -119,7 +116,6 @@ class Admin(SlashbotCog):
         except requests.exceptions.Timeout:
             await inter.response.send_message("The IP request timed out.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="restart_bot", description="restart the bot")
     async def restart_bot(
         self,
@@ -131,7 +127,7 @@ class Admin(SlashbotCog):
             converter=lambda _, arg: arg == "Yes",
         ),
         state_size: int = commands.Param(
-            choices=["1", "2", "3", "4"], default=3, description="Set the state size of the markov model"
+            choices=["0", "1", "2", "3", "4"], default=3, description="Set the state size of the markov model"
         ),
     ):
         """Restart the bot with a new process.
@@ -159,3 +155,26 @@ class Admin(SlashbotCog):
         logger.info("Restarting with new process with arguments %s", arguments)
 
         os.execv(sys.executable, ["python"] + arguments)
+
+    @commands.slash_command(name="set_markov_chain", description="Set a new Markov chain")
+    async def set_markov_chain(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        chain_name: str = commands.Param(choices=AVAILABLE_CHAINS, description="The name of the Markov chain to use."),
+    ):
+        """Switch the current Markov chain.
+
+        Parameters
+        ----------
+        chain_name : str, optional
+            The name of the chain to use.
+        """
+        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
+            return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
+
+        await inter.response.send_message(f"Loading chain: {chain_name}", ephemeral=True)
+
+        state_size = int(re.findall(r"\d+", chain_name)[0])
+        markov.MARKOV_MODEL = markov.load_markov_model(f"data/{chain_name}", state_size)
+
+        await inter.followup.send(f"{chain_name} has successfully loaded.", ephemeral=True)

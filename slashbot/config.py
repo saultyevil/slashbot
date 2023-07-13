@@ -52,8 +52,7 @@ class App:
         "MONSTER_API_KEY": os.getenv("MONSTER_API_KEY"),
         "MONSTER_TOKEN": os.getenv("MONSTER_TOKEN"),
         # File locations
-        "MARKOV_CHAIN_FILE": Path("data/chain.pickle"),
-        "MARKOV_STATE_SIZE": 2,
+        "MARKOV_CHAIN_FILE": None,
         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
         "BAD_WORDS_FILE": Path("data/badwords.txt"),
         "GOD_WORDS_FILE": Path("data/godwords.txt"),
@@ -78,7 +77,7 @@ class App:
     __conf["NO_COOL_DOWN_USERS"] = [__conf["ID_USER_SAULTYEVIL"]]
 
     # __setters is a tuple of parameters which can be set
-    __setters = ("BOT_USER_OBJECT", "MARKOV_STATE_SIZE")
+    __setters = ("BOT_USER_OBJECT", "MARKOV_CHAIN_FILE")
 
     # Special methods ----------------------------------------------------------
 
