@@ -96,7 +96,7 @@ def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.
                 logger.info("Model %s has been loaded", str(chain_location))
             except EOFError:
                 shutil.copy2(str(chain_location) + ".bak", chain_location)
-                model = load_markov_model(chain_location)  # the recursion might be a bit spicy here
+                model = load_markov_model(chain_location, state_size)  # the recursion might be a bit spicy here
     else:
         raise IOError(f"No chain at {chain_location}")
 
