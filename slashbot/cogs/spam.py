@@ -232,7 +232,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
     # Listeners ---------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
-    async def listen_to_messages(self, message: disnake.Message) -> None:
+    async def add_message_to_markov_training_message(self, message: disnake.Message) -> None:
         """Record messages for the Markov chain to learn.
 
         Parameters
@@ -240,19 +240,23 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         message: disnake.Message
             The message to record.
         """
-        if len(message.content) == 0:
-            return
+        self.markov_update_sentences[message.id] = message.clean_content
 
-        # store to update markov chain with
-        self.markov_update_sentences[message.id] = message.content
+    @commands.Cog.listener("on_message")
+    async def respond_to_same(self, message: disnake.Message) -> None:
+        """Respond "same" to a user who says same.
 
-        # say same whenever someone just says same
-        if message.content.strip().lower() == "same":
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to check for "same".
+        """
+        if message.clean_content.strip().lower() == "same":
             await message.channel.send(f"{message.content}")
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_delete_messages(self, payload: disnake.RawMessageDeleteEvent) -> None:
-        """Remove a deleted message from self.messages.
+        """Remove a deleted message from the Markov training sentences.
 
         Parameters
         ----------
@@ -260,11 +264,14 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The payload containing the message.
         """
         message = payload.cached_message
-        if message is None:
-            return
-        self.markov_update_sentences.pop(message.id, None)
 
-        await self.bot.wait_until_ready()
+        # if the message isn't cached, for some reason, we can fetch the channel
+        # and the message
+        if message is None:
+            channel = await self.bot.fetch_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+
+        self.markov_update_sentences.pop(message.id, None)
 
     # Utility functions --------------------------------------------------------
 
