@@ -6,9 +6,9 @@
 import logging
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
-import subprocess
 from types import coroutine
 
 import disnake
@@ -152,16 +152,6 @@ class Admin(SlashbotCog):
         logger.info("Restarting with new process with arguments %s", arguments)
 
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
-
-        try:
-            git_diff_proc = subprocess.run(
-                ["git", "diff-index", "--quiet", "HEAD", "--"], capture_output=True, check=True
-            )
-            if git_diff_proc.returncode != 0:
-                subprocess.run(["git", "reset", "--hard"], check=True)
-                subprocess.run(["git", "pull"], check=True)
-        except subprocess.CalledProcessError:
-            logger.error("Failed to update bot code due to git problem")
 
         os.execv(sys.executable, ["python"] + arguments)
 
