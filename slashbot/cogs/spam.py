@@ -240,6 +240,8 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         message: disnake.Message
             The message to record.
         """
+        if message.author.bot:
+            return
         self.markov_update_sentences[message.id] = message.clean_content
 
     @commands.Cog.listener("on_message")
@@ -251,6 +253,8 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         message : disnake.Message
             The message to check for "same".
         """
+        if message.author.bot:
+            return
         if message.clean_content.strip().lower() == "same":
             await message.channel.send(f"{message.content}")
 
