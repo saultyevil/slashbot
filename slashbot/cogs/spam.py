@@ -232,7 +232,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
     # Listeners ---------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
-    async def listen_to_messages(self, message: str) -> None:
+    async def listen_to_messages(self, message: disnake.Message) -> None:
         """Record messages for the Markov chain to learn.
 
         Parameters
@@ -240,7 +240,15 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         message: disnake.Message
             The message to record.
         """
+        if len(message.content) == 0:
+            return
+
+        # store to update markov chain with
         self.markov_update_sentences[message.id] = message.content
+
+        # say same whenever someone just says same
+        if message.content.strip().lower() == "same":
+            await message.channel.send(f"{message.content}")
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_delete_messages(self, payload: disnake.RawMessageDeleteEvent) -> None:
