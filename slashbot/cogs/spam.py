@@ -7,7 +7,9 @@ import atexit
 import datetime
 import logging
 import random
+import time
 import xml
+from collections import defaultdict
 from types import coroutine
 from typing import Union
 
@@ -55,6 +57,10 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.attempts = attempts
         self.markov_update_sentences = {}
         self.rule34_api = r34.Rule34()
+        self.user_cooldown = defaultdict(lambda: {"time": 0, "count": 0})  # tracks last unix time someone used it
+        self.cooldown_duration = 30  # seconds
+        self.cooldown_rate = 3
+
         self.scheduled_update_markov_chain.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
@@ -256,9 +262,15 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         if message.author.bot:
             return
 
+        if self.check_user_on_cooldown(message.author.id):
+            return
+
+        self.user_cooldown[message.author.id]["time"] = time.time()
+        self.user_cooldown[message.author.id]["count"] += 1
+
         content = message.clean_content.strip().lower()
 
-        if content in ["same", "man", "real?", "proof?", "fr?"]:
+        if content in ["same", "man", "sad", "fr?"]:
             await message.channel.send(f"{message.content}")
 
     @commands.Cog.listener("on_raw_message_delete")
@@ -281,6 +293,27 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.markov_update_sentences.pop(message.id, None)
 
     # Utility functions --------------------------------------------------------
+
+    def check_user_on_cooldown(self, user_id: str | int) -> bool:
+        """Check if a user is on cooldown, due to hitting the rate limit.
+
+        Parameters
+        ----------
+        user_id : str | int
+            The ID of the user.
+
+        Returns
+        -------
+        bool
+            Returns True if user on cooldown.
+        """
+        if self.user_cooldown["count"] > self.cooldown_rate:
+            if time.time() - self.user_cooldown[user_id]["time"] < self.cooldown_duration:
+                return True
+            self.user_cooldown["count"] = 0
+            return False
+
+        return False
 
     @staticmethod
     def rule34_comments(post_id: Union[int, str] = None) -> Union[str, str, str]:
