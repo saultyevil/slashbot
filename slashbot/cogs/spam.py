@@ -307,10 +307,10 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         bool
             Returns True if user on cooldown.
         """
-        if self.user_cooldown["count"] > self.cooldown_rate:
+        if self.user_cooldown[user_id]["count"] > self.cooldown_rate:
             if time.time() - self.user_cooldown[user_id]["time"] < self.cooldown_duration:
                 return True
-            self.user_cooldown["count"] = 0
+            self.user_cooldown[user_id]["count"] = 0
             return False
 
         return False
