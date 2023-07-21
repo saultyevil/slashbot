@@ -255,7 +255,10 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         """
         if message.author.bot:
             return
-        if message.clean_content.strip().lower() == "same":
+
+        content = message.clean_content.strip().lower()
+
+        if content in ["same", "man"]:
             await message.channel.send(f"{message.content}")
 
     @commands.Cog.listener("on_raw_message_delete")
