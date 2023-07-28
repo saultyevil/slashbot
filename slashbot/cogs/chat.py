@@ -53,7 +53,7 @@ class Chat(SlashbotCog):
         self.bot = bot
 
         self.chat_model = "gpt-3.5-turbo"
-        self.output_tokens = 512
+        self.output_tokens = 768
         self.model_temperature = 0.7
         self.max_tokens_allowed = int(TOKEN_COUNT_UNSET)
         self.trim_faction = 0.5
@@ -201,10 +201,10 @@ class Chat(SlashbotCog):
             if num_remove > num_messages:
                 num_remove = num_messages
 
-            logger.debug("%s messages before removal %s", self.chat_history[history_id])
+            logger.debug("%s messages before removal %s", channel_name, self.chat_history[history_id])
             for i in range(1, num_remove):
                 self.chat_history[history_id].pop(i)
-            logger.debug("%s messages after removal %s", self.chat_history[history_id])
+            logger.debug("%s messages after removal %s", channel_name, self.chat_history[history_id])
 
             logger.debug("%s had %d messages removed due to token count", channel_name, num_remove)
             self.token_count[history_id] = TOKEN_COUNT_UNSET
