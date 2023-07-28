@@ -134,9 +134,6 @@ class Chat(SlashbotCog):
         else:
             self.max_tokens_allowed = 3500
 
-        # TODO, remove
-        self.max_tokens_allowed = 300
-
         logger.debug("Max model tokens set to %d", self.max_tokens_allowed)
 
     async def __api_response(self, history_id: int | str) -> str:
@@ -153,8 +150,6 @@ class Chat(SlashbotCog):
         str
             The message returned by ChatGPT.
         """
-        logger.debug("Chat history being sent %d", self.chat_history[history_id])
-
         response = await openai.ChatCompletion.acreate(
             model=self.chat_model,
             messages=self.chat_history[history_id],
@@ -166,15 +161,13 @@ class Chat(SlashbotCog):
         self.chat_history[history_id].append({"role": "assistant", "content": message})
         self.token_count[history_id] = int(response["usage"]["total_tokens"])
 
-        logger.debug("%s", response)
-
-        channel = await self.bot.fetch_channel(history_id)
-        logger.debug(
-            "%s is currently at %d tokens with %d messages",
-            channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}",
-            self.token_count[history_id],
-            len(self.chat_history[history_id]),
-        )
+        # channel = await self.bot.fetch_channel(history_id)
+        # logger.debug(
+        #     "%s is currently at %d tokens with %d messages",
+        #     channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}",
+        #     self.token_count[history_id],
+        #     len(self.chat_history[history_id][1:]),
+        # )
 
         return message
 
@@ -190,31 +183,26 @@ class Chat(SlashbotCog):
         history_id : int | str
             The chat history ID. Usually the guild or user id.
         """
-        channel = await self.bot.fetch_channel(history_id)
-        channel_name = channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}"
-
         token_count = int(self.token_count[history_id])
         num_messages = len(self.chat_history[history_id][1:])
 
+        if num_messages == 0:
+            return
+
         # max token count
         if token_count > self.max_tokens_allowed:
-            num_remove = int(self.trim_faction * num_messages)
-            if num_remove > num_messages:
-                num_remove = num_messages
+            num_remove = min(int(self.trim_faction * num_messages) * 2, num_messages)  # * 2 to delete prompt + message
 
-            logger.debug("%s messages before removal %s", channel_name, self.chat_history[history_id])
-            for i in range(1, num_remove):
-                self.chat_history[history_id].pop(i)
-            logger.debug("%s messages after removal %s", channel_name, self.chat_history[history_id])
+            for i in range(1, num_remove + 1):
+                self.chat_history[history_id].pop(1)
 
-            logger.debug("%s had %d messages removed due to token count", channel_name, num_remove)
-            self.token_count[history_id] = TOKEN_COUNT_UNSET
+            self.token_count[history_id] = int(TOKEN_COUNT_UNSET)
 
-        # max history count
+        # max history count -- remove oldest message
         if num_messages > self.max_chat_history:
             for i in range(1, 3):  # remove two elements to get prompt + response
-                self.chat_history[history_id].pop(i)
-            self.token_count[history_id] = TOKEN_COUNT_UNSET
+                self.chat_history[history_id].pop(1)
+            self.token_count[history_id] = int(TOKEN_COUNT_UNSET)
 
     @staticmethod
     async def __check_for_slash_command_reply(message: disnake.Message) -> bool:
