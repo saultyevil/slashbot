@@ -55,7 +55,7 @@ class Chat(SlashbotCog):
         self.chat_model = "gpt-3.5-turbo"
         self.output_tokens = 512
         self.model_temperature = 0.7
-        self.max_tokens_allowed = TOKEN_COUNT_UNSET
+        self.max_tokens_allowed = int(TOKEN_COUNT_UNSET)
         self.trim_faction = 0.5
         self.max_chat_history = 20
         self.default_system_token_count = len(
@@ -134,6 +134,8 @@ class Chat(SlashbotCog):
         else:
             self.max_tokens_allowed = 3500
 
+        logger.debug("Max model tokens set to %d", self.max_tokens_allowed)
+
     async def __api_response(self, history_id: int | str) -> str:
         """Get a message from ChatGPT using the ChatCompletion API.
 
@@ -159,6 +161,8 @@ class Chat(SlashbotCog):
         message = response["choices"][0]["message"]["content"]
         self.chat_history[history_id].append({"role": "assistant", "content": message})
         self.token_count[history_id] = int(response["usage"]["total_tokens"])
+
+        logger.debug("%s", response["choices"][0])
 
         channel = await self.bot.fetch_channel(history_id)
         logger.debug(
@@ -186,21 +190,25 @@ class Chat(SlashbotCog):
         channel_name = channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}"
 
         # max token count
-        if self.token_count[history_id] > self.max_tokens_allowed:
-            num_remove = int(self.trim_faction * (len(self.chat_history[history_id]) - 1))
+        token_count = int(self.token_count[history_id])
+        if token_count > self.max_tokens_allowed:
+            num_remove = int(self.trim_faction * len(self.chat_history[history_id][1:]))
+            logger.debug("%s messages before removal %s", self.chat_history[history_id])
             for i in range(1, num_remove):
                 self.chat_history[history_id].pop(i)
-            self.token_count[history_id] = TOKEN_COUNT_UNSET
+            logger.debug("%s messages after removal %s", self.chat_history[history_id])
             logger.debug("%s had %d messages removed due to token count", channel_name, num_remove)
+            self.token_count[history_id] = TOKEN_COUNT_UNSET
 
         # max history count
-        if len(self.chat_history[history_id][1:]) > self.max_chat_history:
+        num_messages = len(self.chat_history[history_id][1:])
+        if num_messages > self.max_chat_history:
             for i in range(1, 3):  # remove two elements to get prompt + response
                 self.chat_history[history_id].pop(i)
             self.token_count[history_id] = TOKEN_COUNT_UNSET
-            # logger.debug("%s had 1 message and response removed due to message count", channel_name)
 
-    async def __check_for_slash_command_reply(self, message: disnake.Message) -> bool:
+    @staticmethod
+    async def __check_for_slash_command_reply(message: disnake.Message) -> bool:
         """Check if a message is in response to a slash command.
 
         Parameters
@@ -212,7 +220,7 @@ class Chat(SlashbotCog):
         -------
         bool
             If the message is a reply to a slash command, True is returned.
-            Otherwise False is returned.
+            Otherwise, False is returned.
         """
         if not message.reference:
             return False
