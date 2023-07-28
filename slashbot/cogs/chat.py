@@ -134,6 +134,9 @@ class Chat(SlashbotCog):
         else:
             self.max_tokens_allowed = 3500
 
+        # TODO, remove
+        self.max_tokens_allowed = 300
+
         logger.debug("Max model tokens set to %d", self.max_tokens_allowed)
 
     async def __api_response(self, history_id: int | str) -> str:
@@ -189,19 +192,24 @@ class Chat(SlashbotCog):
         channel = await self.bot.fetch_channel(history_id)
         channel_name = channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}"
 
-        # max token count
         token_count = int(self.token_count[history_id])
+        num_messages = len(self.chat_history[history_id][1:])
+
+        # max token count
         if token_count > self.max_tokens_allowed:
-            num_remove = int(self.trim_faction * len(self.chat_history[history_id][1:]))
+            num_remove = int(self.trim_faction * num_messages)
+            if num_remove > num_messages:
+                num_remove = num_messages
+
             logger.debug("%s messages before removal %s", self.chat_history[history_id])
             for i in range(1, num_remove):
                 self.chat_history[history_id].pop(i)
             logger.debug("%s messages after removal %s", self.chat_history[history_id])
+
             logger.debug("%s had %d messages removed due to token count", channel_name, num_remove)
             self.token_count[history_id] = TOKEN_COUNT_UNSET
 
         # max history count
-        num_messages = len(self.chat_history[history_id][1:])
         if num_messages > self.max_chat_history:
             for i in range(1, 3):  # remove two elements to get prompt + response
                 self.chat_history[history_id].pop(i)
