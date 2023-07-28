@@ -162,7 +162,7 @@ class Chat(SlashbotCog):
         self.chat_history[history_id].append({"role": "assistant", "content": message})
         self.token_count[history_id] = int(response["usage"]["total_tokens"])
 
-        logger.debug("%s", response["choices"][0])
+        logger.debug("%s", response)
 
         channel = await self.bot.fetch_channel(history_id)
         logger.debug(
