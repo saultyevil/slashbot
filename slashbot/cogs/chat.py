@@ -153,6 +153,7 @@ class Chat(SlashbotCog):
         str
             The message returned by ChatGPT.
         """
+        logger.debug("Chat history being sent %d", self.chat_history[history_id])
 
         response = await openai.ChatCompletion.acreate(
             model=self.chat_model,
