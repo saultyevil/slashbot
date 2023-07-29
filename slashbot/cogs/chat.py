@@ -41,6 +41,7 @@ PROMPT_CHOICES = create_prompt_dict()
 
 # this is global so you can use it as a choice in interactions
 AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4")
+DEFAULT_MODEL = AVAILABLE_MODELS[0]
 
 
 class Chat(SlashbotCog):
@@ -52,20 +53,18 @@ class Chat(SlashbotCog):
         super().__init__()
         self.bot = bot
 
-        self.chat_model = "gpt-3.5-turbo"
         self.output_tokens = 768
         self.model_temperature = 0.7
         self.max_tokens_allowed = int(TOKEN_COUNT_UNSET)
         self.trim_faction = 0.5
         self.max_chat_history = 20
-        self.default_system_token_count = len(
-            tiktoken.encoding_for_model(self.chat_model).encode(DEFAULT_SYSTEM_MESSAGE)
-        )
+        self.default_system_token_count = len(tiktoken.encoding_for_model(DEFAULT_MODEL).encode(DEFAULT_SYSTEM_MESSAGE))
 
-        self.__set_max_allowed_tokens(self.chat_model)
+        self.__set_max_allowed_tokens(DEFAULT_MODEL)
 
-        self.token_count = defaultdict(lambda: self.default_system_token_count)
+        self.chat_tokens = defaultdict(lambda: self.default_system_token_count)
         self.chat_history = defaultdict(lambda: [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}])
+        self.chat_model = defaultdict(lambda: DEFAULT_MODEL)
 
     # Static -------------------------------------------------------------------
 
@@ -118,7 +117,7 @@ class Chat(SlashbotCog):
         history_id : str | int
             The index to reset in chat history.
         """
-        self.token_count[history_id] = self.default_system_token_count
+        self.chat_tokens[history_id] = self.default_system_token_count
         self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
     def __set_max_allowed_tokens(self, model_name: str):
@@ -130,9 +129,9 @@ class Chat(SlashbotCog):
             The name of the model.
         """
         if model_name != "gpt-3.5-turbo":
-            self.max_tokens_allowed = 7500
+            self.max_tokens_allowed = 8000
         else:
-            self.max_tokens_allowed = 3500
+            self.max_tokens_allowed = 4000
 
         logger.debug("Max model tokens set to %d", self.max_tokens_allowed)
 
@@ -151,7 +150,7 @@ class Chat(SlashbotCog):
             The message returned by ChatGPT.
         """
         response = await openai.ChatCompletion.acreate(
-            model=self.chat_model,
+            model=self.chat_model[history_id],
             messages=self.chat_history[history_id],
             temperature=self.model_temperature,
             max_tokens=self.output_tokens,
@@ -159,7 +158,7 @@ class Chat(SlashbotCog):
 
         message = response["choices"][0]["message"]["content"]
         self.chat_history[history_id].append({"role": "assistant", "content": message})
-        self.token_count[history_id] = int(response["usage"]["total_tokens"])
+        self.chat_tokens[history_id] = int(response["usage"]["total_tokens"])
 
         # channel = await self.bot.fetch_channel(history_id)
         # logger.debug(
@@ -183,7 +182,7 @@ class Chat(SlashbotCog):
         history_id : int | str
             The chat history ID. Usually the guild or user id.
         """
-        token_count = int(self.token_count[history_id])
+        token_count = int(self.chat_tokens[history_id])
         num_messages = len(self.chat_history[history_id][1:])
 
         if num_messages == 0:
@@ -196,13 +195,13 @@ class Chat(SlashbotCog):
             for i in range(1, num_remove + 1):
                 self.chat_history[history_id].pop(1)
 
-            self.token_count[history_id] = int(TOKEN_COUNT_UNSET)
+            self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
 
         # max history count -- remove oldest message
         if num_messages > self.max_chat_history:
             for i in range(1, 3):  # remove two elements to get prompt + response
                 self.chat_history[history_id].pop(1)
-            self.token_count[history_id] = int(TOKEN_COUNT_UNSET)
+            self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
 
     @staticmethod
     async def __check_for_slash_command_reply(message: disnake.Message) -> bool:
@@ -365,7 +364,7 @@ class Chat(SlashbotCog):
             ephemeral=True,
         )
 
-        self.token_count[history_id] = TOKEN_COUNT_UNSET
+        self.chat_tokens[history_id] = TOKEN_COUNT_UNSET
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
@@ -397,7 +396,7 @@ class Chat(SlashbotCog):
             ephemeral=True,
         )
 
-        self.token_count[history_id] = len(tiktoken.encoding_for_model(self.chat_model).encode(message))
+        self.chat_tokens[history_id] = len(tiktoken.encoding_for_model(self.chat_model[history_id]).encode(message))
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_chat_tokens", description="Set the max token length for AI conversation output")
@@ -443,7 +442,7 @@ class Chat(SlashbotCog):
 
         await inter.response.defer(ephemeral=True)
 
-        num_tokens = len(tiktoken.encoding_for_model(self.chat_model).encode(prompt))
+        num_tokens = len(tiktoken.encoding_for_model(self.chat_model[self.history_id(inter)]).encode(prompt))
         if num_tokens > 256:
             return await inter.edit_original_message(content="The prompt should not exceed 256 tokens.")
 
@@ -470,10 +469,10 @@ class Chat(SlashbotCog):
 
         response = ""
 
-        response += f"**Chat model**: {self.chat_model}\n"
+        response += f"**Chat model**: {self.chat_model[history_id]}\n"
         response += f"**Model temperature**: {self.model_temperature}\n"
         response += f"**OpenAI version**: {openai.version.VERSION}\n"
-        response += f"**Current token usage**: {self.token_count[history_id]}\n"
+        response += f"**Current token usage**: {self.chat_tokens[history_id]}\n"
         response += f"**Output tokens**: {self.output_tokens}\n"
         response += f"**Max tokens**: {self.max_tokens_allowed}\n"
 
@@ -516,9 +515,9 @@ class Chat(SlashbotCog):
 
         await inter.response.defer(ephemeral=True)
 
-        self.chat_model = model_name
+        self.chat_model[self.history_id(inter)] = model_name
         self.__reset_chat_history(self.history_id(inter))
-        self.__set_max_allowed_tokens(self.chat_model)
+        self.__set_max_allowed_tokens(self.chat_model[self.history_id(inter)])
 
         await inter.edit_original_message(content=f"Chat model has been switched to {model_name}")
 
