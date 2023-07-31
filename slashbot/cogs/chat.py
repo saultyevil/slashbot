@@ -190,7 +190,7 @@ class Chat(SlashbotCog):
 
         # max token count
         if token_count > self.max_tokens_allowed:
-            num_remove = min(int(self.trim_faction * num_messages) * 2, num_messages)  # * 2 to delete prompt + message
+            num_remove = min(int(self.trim_faction * num_messages), num_messages)  # * 2 to delete prompt + message
             for i in range(1, num_remove + 1):
                 self.chat_history[history_id].pop(1)
             self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
