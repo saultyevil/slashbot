@@ -161,12 +161,12 @@ class Chat(SlashbotCog):
         self.chat_tokens[history_id] = int(response["usage"]["total_tokens"])
 
         # channel = await self.bot.fetch_channel(history_id)
-        # logger.debug(
-        #     "%s is currently at %d tokens with %d messages",
-        #     channel.name if not isinstance(channel, disnake.DMChannel) else f"DM {channel.id}",
-        #     self.token_count[history_id],
-        #     len(self.chat_history[history_id][1:]),
-        # )
+        logger.debug(
+            "%s is currently at %d tokens with %d messages",
+            history_id,
+            self.chat_tokens[history_id],
+            len(self.chat_history[history_id][1:]),
+        )
 
         return message
 
@@ -191,17 +191,17 @@ class Chat(SlashbotCog):
         # max token count
         if token_count > self.max_tokens_allowed:
             num_remove = min(int(self.trim_faction * num_messages) * 2, num_messages)  # * 2 to delete prompt + message
-
             for i in range(1, num_remove + 1):
                 self.chat_history[history_id].pop(1)
-
             self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
+            logger.info("%d messages removed from %s due to token limit", num_remove, history_id)
 
-        # max history count -- remove oldest message
+        # max history count -- remove the oldest message and response
         if num_messages > self.max_chat_history:
             for i in range(1, 3):  # remove two elements to get prompt + response
                 self.chat_history[history_id].pop(1)
             self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
+            logger.info("%d messages removed from %s due to message limit", 2, history_id)
 
     @staticmethod
     async def __check_for_slash_command_reply(message: disnake.Message) -> bool:
