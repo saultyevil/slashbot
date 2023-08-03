@@ -22,14 +22,13 @@ from sqlalchemy.orm import Session
 from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import (
+from slashbot.db import (  # populate_word_tables_with_new_words,
     BadWord,
     OracleWord,
     User,
     connect_to_database_engine,
-    populate_word_tables_with_new_words,
 )
-from slashbot.markov import generate_sentence, update_markov_chain_for_model
+from slashbot.markov import generate_sentence  # update_markov_chain_for_model
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
