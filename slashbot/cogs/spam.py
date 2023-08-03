@@ -11,7 +11,7 @@ import time
 import xml
 from collections import defaultdict
 from types import coroutine
-from typing import Union
+from typing import Any, Tuple, Union
 
 import disnake
 import requests
@@ -57,9 +57,10 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.attempts = attempts
         self.markov_update_sentences = {}
         self.rule34_api = r34.Rule34()
-        self.user_cooldown = defaultdict(lambda: {"time": 0, "count": 0})  # tracks last unix time someone used it
+        self.user_cooldown = defaultdict(lambda: {"time": 0.0, "count": 0})  # tracks last unix time someone used it
         self.cooldown_duration = 30  # seconds
         self.cooldown_rate = 3
+        self.update_chain = False
 
         self.scheduled_update_markov_chain.start()  # pylint: disable=no-member
 
@@ -228,27 +229,30 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
         image = random.choice(choices)
 
-        comment, user_name_comment, _ = self.rule34_comments(image.id)
+        comment, user_name_comment, _ = self.get_comments_for_rule34_post(image.id)
         if not comment:
             comment = "*Too cursed for comments*"
         message = f"|| {image.file_url} ||"
 
         return await inter.edit_original_message(content=f'{message}\n>>> "{comment}"\n*{user_name_comment}*')
 
-    # Listeners ---------------------------------------------------------------
-
-    @commands.Cog.listener("on_message")
-    async def add_message_to_markov_training_message(self, message: disnake.Message) -> None:
-        """Record messages for the Markov chain to learn.
-
-        Parameters
-        ----------
-        message: disnake.Message
-            The message to record.
+    async def disable_markov_updates(self):
         """
-        if message.author.bot:
-            return
-        self.markov_update_sentences[message.id] = message.clean_content
+
+        Returns
+        -------
+
+        """
+        self.update_chain = not self.update_chain
+
+        if self.update_chain:
+            logger.info("Markov chain update enabled")
+            self.scheduled_update_markov_chain.start()
+        else:
+            logger.info("Markov chain update disabled")
+            self.scheduled_update_markov_chain.stop()
+
+    # Listeners ---------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
     async def respond_to_same(self, message: disnake.Message) -> None:
@@ -273,8 +277,23 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         if content in ["same", "man", "sad", "fr?"]:
             await message.channel.send(f"{message.content}")
 
+    @commands.Cog.listener("on_message")
+    async def add_message_to_markov_training_sample(self, message: disnake.Message) -> None:
+        """Record messages for the Markov chain to learn.
+
+        Parameters
+        ----------
+        message: disnake.Message
+            The message to record.
+        """
+        if not self.update_chain:
+            return
+        if message.author.bot:
+            return
+        self.markov_update_sentences[message.id] = message.clean_content
+
     @commands.Cog.listener("on_raw_message_delete")
-    async def remove_delete_messages(self, payload: disnake.RawMessageDeleteEvent) -> None:
+    async def removed_message_from_markov_training_sample(self, payload: disnake.RawMessageDeleteEvent) -> None:
         """Remove a deleted message from the Markov training sentences.
 
         Parameters
@@ -282,10 +301,13 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         payload: disnake.RawMessageDeleteEvent
             The payload containing the message.
         """
+        if not self.update_chain:
+            return
+
         message = payload.cached_message
 
         # if the message isn't cached, for some reason, we can fetch the channel
-        # and the message
+        # and the message from the channel
         if message is None:
             channel = await self.bot.fetch_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
@@ -316,12 +338,12 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         return False
 
     @staticmethod
-    def rule34_comments(post_id: Union[int, str] = None) -> Union[str, str, str]:
+    def get_comments_for_rule34_post(post_id: Union[int, str] = None) -> tuple[None, None, None] | tuple[Any, Any, str]:
         """Get a random comment from a rule34.xxx post.
 
         Parameters
         ----------
-        id: int
+        post_id: int
             The post ID number.
 
         Returns
@@ -345,34 +367,33 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         if response.status_code != 200:
             return None, None, None
 
+        # the response from the rule34 api is XML, so we have to try and parse
+        # that
         try:
             tree = xml.etree.ElementTree.fromstring(response.content)
         except xml.etree.ElementTree.ParseError:
             return None, None, None
+        post_comments = [
+            (elem.get("body"), elem.get("creator"), elem.get("created_at")) for elem in tree.iter("comment")
+        ]
 
-        comments = [(elem.get("body"), elem.get("creator"), elem.get("created_at")) for elem in tree.iter("comment")]
-        if len(comments) == 0:
+        if not post_comments:
             return None, None, None
 
-        comment, who, when = random.choice(comments)
-        d_time = datetime.datetime.strptime(when, "%Y-%m-%d %H:%M")
-        when = d_time.strftime("%d %B, %Y")
+        comment, who, when = random.choice(post_comments)
+        when = datetime.datetime.strptime(when, "%Y-%m-%d %H:%M").strftime("%d %B, %Y")
 
         return comment, who, when
 
     # Scheduled tasks ----------------------------------------------------------
 
-    @tasks.loop(hours=1)
+    @tasks.loop(hours=6)
     async def scheduled_update_markov_chain(self):
-        """Get the bot to update the chain every 4 hours."""
+        """Get the bot to update the chain every 6 hours."""
         await update_markov_chain_for_model(
             None,
             markov.MARKOV_MODEL,
-            self.markov_update_sentences.values(),
+            list(self.markov_update_sentences.values()),
             App.config("MARKOV_CHAIN_FILE"),
         )
-
         self.markov_update_sentences.clear()
-
-        if len(self.markov_update_sentences) != 0:
-            logger.error("markov sentences to learn has not been cleared correctly")

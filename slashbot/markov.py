@@ -155,7 +155,7 @@ def generate_sentence(model: markovify.Text = None, seed_word: str = None, attem
 
 
 async def update_markov_chain_for_model(
-    inter: disnake.ApplicationCommandInteraction,
+    inter: disnake.ApplicationCommandInteraction | None,
     model: markovify.Text,
     new_messages: List[str],
     save_location: str | Path,
