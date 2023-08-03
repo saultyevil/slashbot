@@ -56,14 +56,14 @@ class App:
         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
         "BAD_WORDS_FILE": Path("data/badwords.txt"),
         "GOD_WORDS_FILE": Path("data/godwords.txt"),
+        "SCHEDULED_POST_FILE": Path("data/posts.json"),
+        "RANDOM_MEDIA_DIRECTORY": Path("data/random"),
         # Configuration
-        "CONTENT_BANK_STARTING_BALANCE": 3,
+        # "CONTENT_BANK_STARTING_BALANCE": 3,
         "PREGEN_MARKOV_SENTENCES_AMOUNT": 5,
         "PREGEN_REGENERATE_LIMIT": 1,
         "ENABLE_PREGEN_SENTENCES": True,
-        "IMAGE_DIRECTORY": Path("data/images"),
-        "TWEET_FILE": Path("data/tweets.csv"),
-        "RANDOM_MEDIA_DIRECTORY": Path("data/random"),
+        # "TWEET_FILE": Path("data/tweets.csv"),
         # Setters
         "BOT_USER_OBJECT": None,
     }

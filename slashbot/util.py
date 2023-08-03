@@ -3,6 +3,7 @@
 
 """Various utility functions used through slashbot."""
 
+import datetime
 import json
 import logging
 import pathlib
@@ -207,3 +208,74 @@ def create_prompt_dict() -> dict:
             if not file.name.startswith("_")  # prompts which start with _ are hidden prompts
         ]
     }
+
+
+def add_week_to_datetime(
+    time: datetime.datetime, days: float, hour: int, minute: int, second: int
+) -> datetime.datetime:
+    """Add a week to a datetime object.
+
+    Parameters
+    ----------
+    time: datetime.datetime
+        The datetime to calculate from.
+    days: float
+        The number of additional days to sleep for
+    hour: int
+        The scheduled hour
+    minute: int
+        The scheduled minute
+    second: int
+        The scheduled second
+
+    Returns
+    -------
+    A datetime object a week after the given one.
+    """
+    next_date = time + datetime.timedelta(days=days)
+    when = datetime.datetime(
+        year=next_date.year,
+        month=next_date.month,
+        day=next_date.day,
+        hour=hour,
+        minute=minute,
+        second=second,
+    )
+    next_date = when - time
+
+    return next_date.days * 86400 + next_date.seconds
+
+
+def calculate_sleep_time(day: int, hour: int, minute: int) -> int:
+    """Calculate the time to sleep until the next specified week day.
+
+    Parameters
+    ----------
+    day: int
+        The day of the week to wake up, i.e. calender.MONDAY
+    hour: int
+        The hour to wake up.
+    minute: int
+        The minute to wake up.
+
+    Returns
+    -------
+    sleep: int
+        The time to sleep in seconds.
+    """
+    now = datetime.datetime.now()
+    next_date = now + datetime.timedelta(days=(day - now.weekday()) % 7)
+    when = datetime.datetime(
+        year=next_date.year,
+        month=next_date.month,
+        day=next_date.day,
+        hour=hour,
+        minute=minute,
+        second=0,
+    )
+    next_date = when - now
+    sleep = next_date.days * 86400 + next_date.seconds
+    if sleep < 0:
+        sleep = add_week_to_datetime(when, 7, hour, minute, 0)
+
+    return sleep
