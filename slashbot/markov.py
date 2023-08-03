@@ -225,21 +225,21 @@ async def update_markov_chain_for_model(
 
 
 def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: str, amount: int) -> List[str]:
-    """_summary_
+    """Generates a list of markov generated sentences for a specific key word.
 
     Parameters
     ----------
     model : markovify.Text
-        _description_
+        The markov model to use to generate sentences.
     seed_word : str
-        _description_
+        The seed word to use.
     amount : int, optional
-        _description_
+        The number of sentences to generate.
 
     Returns
     -------
     List[str]
-        _description_
+        The generated sentences.
     """
     return [generate_sentence(model, seed_word) for _ in range(amount)]
 
@@ -247,20 +247,21 @@ def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: 
 def generate_sentences_for_seed_words(
     model: markovify.Text, seed_words: List[str], amount: int
 ) -> Dict[str, List[str]]:
-    """_summary_
+    """Create a dictionary containing markov generated sentences, where the keys
+    are seed words and the values are a list of sentences.
 
     Parameters
     ----------
     model : markovify.Text
-        _description_
+        The markov sentence to use.
     seed_words : List[str]
-        _description_
+        A list of seed words to generate sentences for.
     amount : int
-        _description_
+        The number of sentences to generate for each seed word.
 
     Returns
     -------
     Dict[List[str]]
-        _description_
+        The generated dictionary.
     """
     return {seed_word: generate_list_of_sentences_with_seed_word(model, seed_word, amount) for seed_word in seed_words}

@@ -16,11 +16,12 @@ async def deferred_error_message(
     Parameters
     ----------
     inter : disnake.ApplicationCommandInteraction
-        _description_
+        The deferred interaction.
     message : str
-        _description_
+        An error message to send to chat.
     delay : int, optional
-        _description_, by default 10
+        The delay (in seconds) before the error message is deleted, by
+        default 10
     """
     await inter.edit_original_message(content=message)
     await inter.delete_original_message(delay=delay)

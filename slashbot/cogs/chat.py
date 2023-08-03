@@ -204,7 +204,7 @@ class Chat(SlashbotCog):
             logger.info("%d messages removed from %s due to message limit", 2, history_id)
 
     @staticmethod
-    async def __check_for_slash_command_reply(message: disnake.Message) -> bool:
+    async def is_slash_interaction_highlight(message: disnake.Message) -> bool:
         """Check if a message is in response to a slash command.
 
         Parameters
@@ -296,17 +296,19 @@ class Chat(SlashbotCog):
         if message.author.bot:
             return
 
-        # only respond when mentioned or in DM. Don't respond to replies which
-        # reference a previous slash command response
+        # Don't respond to replies, or mentions, which have a reference to a
+        # slash command response or interaction
+        if await self.is_slash_interaction_highlight(message):
+            return
+
+        # only respond when mentioned or in DM
         bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
-        reply_to_interaction = await self.__check_for_slash_command_reply(message)
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
-        if not reply_to_interaction and (bot_mentioned or message_in_dm):
+        if bot_mentioned or message_in_dm:
             history_id = self.history_id(message)
-
             async with message.channel.typing():
-                response = await self.__get_api_response(history_id, message.clean_content)
+                response = await self.__get_api_response(history_id, str(message.clean_content))
                 await self.send_response_to_channel(response, message, message_in_dm)
 
     # Commands -----------------------------------------------------------------
