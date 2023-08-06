@@ -3,13 +3,13 @@
     {
       "title": "monday-morning",
       "files": ["data/videos/monday.mp4"],
-      "channels": [237647756049514498],
+      "channels": [237647756049514498, 710120383235227670],
       "users": [],
       "day": 0,
       "hour": 9,
       "minute": 30,
       "seed_word": "monday",
-      "message": ""
+      "message": "oh fug.."
     },
     {
       "title": "ed-bin",
@@ -25,13 +25,13 @@
     {
       "title": "wednesday-morning",
       "files": ["data/videos/wednesday.mp4"],
-      "channels": [237647756049514498],
+      "channels": [237647756049514498, 710120383235227670],
       "users": [],
       "day": 2,
       "hour": 9,
       "minute": 0,
       "seed_word": "wednesday",
-      "message": ""
+      "message": "haha hump day!!"
     },
     {
       "title": "jack-bin",
@@ -46,8 +46,8 @@
     },
     {
       "title": "friday-morning",
-      "files": ["data/videos/friday.mp4"],
-      "channels": [237647756049514498],
+      "files": ["data/videos/friday.mov"],
+      "channels": [237647756049514498, 710120383235227670],
       "users": [],
       "day": 4,
       "hour": 9,
@@ -69,7 +69,7 @@
     {
       "title": "sunday-morning",
       "files": ["data/videos/sunday.mp4"],
-      "channels": [237647756049514498],
+      "channels": [237647756049514498, 710120383235227670],
       "users": [],
       "day": 6,
       "hour": 10,

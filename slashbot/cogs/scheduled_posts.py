@@ -97,6 +97,10 @@ class ScheduledPosts(SlashbotCog):
             assert hasattr(post["users"], "__iter__"), f"{post['title']} has non-iterable users"
             assert hasattr(post["channels"], "__iter__"), f"{post['title']} has non-iterable channels"
 
+            for file in post["files"]:
+                if not Path(file).exists():
+                    raise IOError(f"{file} does not exist for post {post['title']}")
+
         logger.info("%d scheduled posts loaded from %s", len(self.scheduled_posts), App.config("SCHEDULED_POST_FILE"))
         self.__order_scheduled_posts_by_soonest()
 
