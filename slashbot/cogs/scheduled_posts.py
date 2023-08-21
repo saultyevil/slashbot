@@ -70,12 +70,16 @@ class ScheduledPosts(SlashbotCog):
         observer.schedule(MyHandler(self), path=str(App.config("SCHEDULED_POST_FILE").parent.absolute()))
         observer.start()
 
+    def __calculate_time_until_post(self):
+        """Calculates how long until a post is to be posted."""
+        for post in self.scheduled_posts:
+            post["time_until_post"] = calculate_sleep_time(post["day"], post["hour"], post["minute"])
+
     def __order_scheduled_posts_by_soonest(self):
         """Orders self.scheduled_posts to where the first entry is the video
         which is scheduled to be sent the soonest.
         """
-        for post in self.scheduled_posts:
-            post["time_until_post"] = calculate_sleep_time(post["day"], post["hour"], post["minute"])
+        self.__calculate_time_until_post()
         self.scheduled_posts.sort(key=lambda x: x["time_until_post"])
 
     def get_scheduled_posts(self):
@@ -87,8 +91,7 @@ class ScheduledPosts(SlashbotCog):
         self.scheduled_posts = posts_json["scheduled"]
 
         # Before we return from this function, we should first check to make
-        # sure each post has the correct fields and they're in the correct
-        # format
+        # sure each post has the correct fields in the correct format
         for post in self.scheduled_posts:
             assert all(
                 key in post
@@ -97,10 +100,6 @@ class ScheduledPosts(SlashbotCog):
             assert hasattr(post["files"], "__iter__"), f"{post['title']} has non-iterable files"
             assert hasattr(post["users"], "__iter__"), f"{post['title']} has non-iterable users"
             assert hasattr(post["channels"], "__iter__"), f"{post['title']} has non-iterable channels"
-
-            for file in post["files"]:
-                if not Path(file).exists():
-                    raise IOError(f"{file} does not exist for post {post['title']}")
 
         logger.info("%d scheduled posts loaded from %s", len(self.scheduled_posts), App.config("SCHEDULED_POST_FILE"))
         self.__order_scheduled_posts_by_soonest()
@@ -122,7 +121,10 @@ class ScheduledPosts(SlashbotCog):
         self.__order_scheduled_posts_by_soonest()
 
         for post in self.scheduled_posts:
-            sleep_for = post["time_until_post"]
+            # we first should update sleep_for, as the original value calculated
+            # when read in is no longer valid as it is a static, and not
+            # dynamic, value
+            sleep_for = calculate_sleep_time(post["day"], post["hour"], post["minute"])
             logger.info(
                 "Waiting %d seconds/%d minutes/%.1f hours until posting %s",
                 sleep_for,
