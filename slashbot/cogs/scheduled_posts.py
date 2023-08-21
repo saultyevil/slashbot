@@ -37,6 +37,7 @@ class ScheduledPosts(SlashbotCog):
         super().__init__()
         self.bot = bot
 
+        self.random_channels = None
         self.scheduled_posts = None
         self.get_scheduled_posts()
         self.random_media_files = [
@@ -80,7 +81,10 @@ class ScheduledPosts(SlashbotCog):
     def get_scheduled_posts(self):
         """Read in the scheduled posts Json file."""
         with open(App.config("SCHEDULED_POST_FILE"), "r") as file_in:
-            self.scheduled_posts = json.load(file_in)["posts"]
+            posts_json = json.load(file_in)
+
+        self.random_channels = posts_json["random"]["channels"]
+        self.scheduled_posts = posts_json["scheduled"]
 
         # Before we return from this function, we should first check to make
         # sure each post has the correct fields and they're in the correct
@@ -159,9 +163,9 @@ class ScheduledPosts(SlashbotCog):
         await asyncio.sleep(sleep_for)
 
         # return after sleep to avoid return and calling every 1 sec
-        if len(self.random_media_files) == 0:
+        if len(self.random_media_files) == 0 or len(self.random_channels) == 0:
             return
 
-        for channel_id in (App.config("ID_CHANNEL_IDIOTS"), App.config("ID_CHANNEL_ENGORGED")):
-            channel = await self.bot.fetch_channel(channel_id)
+        for channel_id in self.random_channels:
+            channel = await self.bot.fetch_channel(int(channel_id))
             await channel.send(file=disnake.File(random.choice(self.random_media_files)))

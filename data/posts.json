@@ -1,9 +1,14 @@
 {
-  "posts" : [
+  "random": {
+    "channels": [
+      237647756049514498
+    ]
+  },
+  "scheduled" : [
     {
       "title": "monday-morning",
       "files": ["data/videos/monday.mp4"],
-      "channels": [237647756049514498, 710120383235227670],
+      "channels": [237647756049514498],
       "users": [],
       "day": 0,
       "hour": 9,
@@ -25,7 +30,7 @@
     {
       "title": "wednesday-morning",
       "files": ["data/videos/wednesday.mp4"],
-      "channels": [237647756049514498, 710120383235227670],
+      "channels": [237647756049514498],
       "users": [],
       "day": 2,
       "hour": 9,
@@ -47,7 +52,7 @@
     {
       "title": "friday-morning",
       "files": ["data/videos/friday.mov"],
-      "channels": [237647756049514498, 710120383235227670],
+      "channels": [237647756049514498],
       "users": [],
       "day": 4,
       "hour": 9,
@@ -58,7 +63,7 @@
     {
       "title": "friday-night",
       "files": ["data/its_friday.gif", "data/friday_night.png", "data/videos/weekend.mp4"],
-      "channels": [237647756049514498],
+      "channels": [237647756049514498, 710120383235227670],
       "users": [],
       "day": 4,
       "hour": 18,
@@ -69,7 +74,7 @@
     {
       "title": "sunday-morning",
       "files": ["data/videos/sunday.mp4"],
-      "channels": [237647756049514498, 710120383235227670],
+      "channels": [237647756049514498],
       "users": [],
       "day": 6,
       "hour": 10,
