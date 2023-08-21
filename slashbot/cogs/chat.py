@@ -194,14 +194,14 @@ class Chat(SlashbotCog):
             for i in range(1, num_remove + 1):
                 self.chat_history[history_id].pop(1)
             self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
-            logger.info("%d messages removed from %s due to token limit", num_remove, history_id)
+            # logger.info("%d messages removed from %s due to token limit", num_remove, history_id)
 
         # max history count -- remove the oldest message and response
         if num_messages > self.max_chat_history:
             for i in range(1, 3):  # remove two elements to get prompt + response
                 self.chat_history[history_id].pop(1)
             self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
-            logger.info("%d messages removed from %s due to message limit", 2, history_id)
+            # logger.info("%d messages removed from %s due to message limit", 2, history_id)
 
     @staticmethod
     async def is_slash_interaction_highlight(message: disnake.Message) -> bool:
