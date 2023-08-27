@@ -161,12 +161,12 @@ class Chat(SlashbotCog):
         self.chat_tokens[history_id] = int(response["usage"]["total_tokens"])
 
         # channel = await self.bot.fetch_channel(history_id)
-        logger.debug(
-            "%s is currently at %d tokens with %d messages",
-            history_id,
-            self.chat_tokens[history_id],
-            len(self.chat_history[history_id][1:]),
-        )
+        # logger.debug(
+        #     "%s is currently at %d tokens with %d messages",
+        #     history_id,
+        #     self.chat_tokens[history_id],
+        #     len(self.chat_history[history_id][1:]),
+        # )
 
         return message
 
