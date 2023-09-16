@@ -128,9 +128,9 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             "||evil wii||",
             "||evil|| ||wii||"
         ])
+
         file = disnake.File("data/evil_wii.png")
-        if message.startswith("||"):
-            file.filename = f"SPOILER_{file.filename}"
+        file.filename = f"SPOILER_{file.filename}"
 
         await inter.response.send_message(
             content=message,
