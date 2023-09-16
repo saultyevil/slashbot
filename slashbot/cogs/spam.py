@@ -121,9 +121,20 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         inter: disnake.ApplicationCommandInteraction
             The interaction to respond to.
         """
+        message = random.choice([
+            "evil wii",
+            "evil wii?",
+            "have you seen this?",
+            "||evil wii||",
+            "||evil|| ||wii||"
+        ])
+        file = disnake.File("data/evil_wii.png")
+        if message.startswith("||"):
+            file.filename = f"SPOILER_{file.filename}"
+
         await inter.response.send_message(
-            content="||evil wii||",
-            file=disnake.File("data/evil_wii.png")
+            content=message,
+            file=file
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
