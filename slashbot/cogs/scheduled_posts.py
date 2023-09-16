@@ -47,6 +47,7 @@ class ScheduledPosts(SlashbotCog):
 
         self.post_scheduled_post_loop.start()  # pylint: disable=no-member
         self.post_random_media_file_loop.start()  # pylint: disable=no-member
+        self.post_evil_wii_loop.start()  # pylint: disable=no-member
 
         self.watch_thread = threading.Thread(target=self.__update_posts_on_modify)
         self.watch_thread.start()
@@ -171,3 +172,17 @@ class ScheduledPosts(SlashbotCog):
         for channel_id in self.random_channels:
             channel = await self.bot.fetch_channel(int(channel_id))
             await channel.send(file=disnake.File(random.choice(self.random_media_files)))
+
+    @tasks.loop(minutes=1)
+    async def post_evil_wii_loop(self):
+        """Posts a random piece of medium from a directory at a random
+        interval.
+        """
+        await self.bot.wait_until_ready()
+
+        sleep_for = random.randint(3600, 86400)  # generate a number for anywhere between 1 - 24 hours
+        logger.info("Next random evil wii in %.1f hours", sleep_for / 3600)
+        await asyncio.sleep(sleep_for)
+
+        channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
+        await channel.send(content="||evil wii||", file=disnake.File("data/evil_wii.png"))
