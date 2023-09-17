@@ -184,5 +184,7 @@ class ScheduledPosts(SlashbotCog):
         logger.info("Next random evil wii in %.1f hours", sleep_for / 3600)
         await asyncio.sleep(sleep_for)
 
+        file = disnake.File("data/evil_wii.png")
+        file.filename = f"SPOILER_{file.filename}"
         channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
-        await channel.send(content="||evil wii||", file=disnake.File("data/evil_wii.png"))
+        await channel.send(file=file)
