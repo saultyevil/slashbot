@@ -161,7 +161,7 @@ class ScheduledPosts(SlashbotCog):
         """
         await self.bot.wait_until_ready()
 
-        sleep_for = random.randint(3600, 86400)  # generate a number for anywhere between 1 - 24 hours
+        sleep_for = random.randint(12 * 3600, 48 * 3600)
         logger.info("Next random image in %.1f hours", sleep_for / 3600)
         await asyncio.sleep(sleep_for)
 
@@ -180,7 +180,7 @@ class ScheduledPosts(SlashbotCog):
         """
         await self.bot.wait_until_ready()
 
-        sleep_for = random.randint(3600, 86400)  # generate a number for anywhere between 1 - 24 hours
+        sleep_for = random.randint(24 * 3600, 72 * 3600)
         logger.info("Next random evil wii in %.1f hours", sleep_for / 3600)
         await asyncio.sleep(sleep_for)
 
