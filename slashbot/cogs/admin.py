@@ -6,12 +6,12 @@
 import logging
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 from types import coroutine
 
 import disnake
+import git
 import requests
 from disnake.ext import commands
 
@@ -140,6 +140,8 @@ class Admin(SlashbotCog):
         disable_markov : str / bool
             A bool to indicate if we should disable cached markov sentences. The
             input is a string of "Yes" or "No" which is converted into a bool.
+        state_size : int
+            The state size of the Markov Chain to load.
         """
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
@@ -154,6 +156,58 @@ class Admin(SlashbotCog):
         await inter.response.send_message("Restarting the bot...", ephemeral=True)
 
         os.execv(sys.executable, ["python"] + arguments)
+
+    @commands.slash_command(name="update_bot", description="Update and restart the bot")
+    async def update_and_restart(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        branch: str = commands.Param(
+            default="main",
+            description="The branch to update to",
+        ),
+        disable_markov: str = commands.Param(
+            choices=["Yes", "No"],
+            default=False,
+            description="Disable Markov sentence generation for faster load times",
+            converter=lambda _, arg: arg == "Yes",
+        ),
+        state_size: int = commands.Param(
+            choices=["0", "1", "2", "3", "4"], default=0, description="Set the state size of the markov model"
+        ),
+    ):
+        """Update and restart the bot with a new process.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
+        disable_markov : str / bool
+            A bool to indicate if we should disable cached markov sentences. The
+            input is a string of "Yes" or "No" which is converted into a bool.
+        state_size : int
+            The state size of the Markov Chain to load.
+        """
+        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
+            return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
+
+        repo = git.Repo(".", search_parent_directories=True)
+
+        if repo.active_branch != branch:
+            try:
+                branch = repo.branches[branch]
+                branch.checkout()
+                logger.info("Switched to branch %s", branch)
+            except git.exc.GitCommandError as e:
+                logger.exception("Failed to switch branch during update: %s", e)
+                return await inter.response.send_message(f"Failed to checkout {branch} during update", ephemeral=True)
+
+        repo.remotes.origin.pull()
+
+        self.restart_bot(
+            inter,
+            disable_markov,
+            state_size,
+        )
 
     @commands.slash_command(name="set_markov_chain", description="Set a new Markov chain")
     async def set_markov_chain(
