@@ -135,7 +135,13 @@ class Weather(SlashbotCog):
             raise LocationNotFoundException(f"{location} not found in Geocoding API")
 
         lat, lon = location.latitude, location.longitude
-        address = self.get_address_from_raw(location.raw["address_components"]) + f"\n({lat}, {lon})"
+        address = self.get_address_from_raw(location.raw["address_components"])
+
+        # If either the city of country are missing, send the str() of the location
+        # instead which may be a bit verbose
+        if address.startswith(",") or address.endswith(","):
+            address = str(location)
+        address += f"\n({lat}, {lon})"
 
         one_call_request = requests.get(
             f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={units}&exclude=minutely&appid={API_KEY}",

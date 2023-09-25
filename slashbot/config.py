@@ -20,6 +20,7 @@ class App:
     # __conf is a dictionary of configuration parameters
     __conf = {
         "BOT_TOKEN": os.getenv("BOT_TOKEN"),
+        "BOT_DEVELOPMENT_TOKEN": os.getenv("BOT_DEVELOPMENT_TOKEN"),
         # cooldown parameters
         "COOLDOWN_RATE": 3,
         "COOLDOWN_STANDARD": 60,

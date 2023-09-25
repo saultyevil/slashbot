@@ -36,6 +36,12 @@ from slashbot.db import migrate_old_json_to_db
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
+    "-d",
+    "--development",
+    help="Launch to development bot",
+    action="store_true",
+)
+parser.add_argument(
     "--disable-auto-markov",
     help="Disable automatic markov sentence generation and revert to on-the-fly generation",
     action="store_false",
@@ -52,6 +58,10 @@ args = parser.parse_args()
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 logger.info("Initializing Slashbot...")
 start = time.time()
+
+if args.development:
+    logger.debug("Disabling automatic markov generation for development mode")
+    args.disable_auto_markov = False
 
 # Set up the bot and cogs --------------------------------------------------
 
@@ -139,4 +149,7 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
 
 # This finally runs the bot
 
-bot.run(App.config("BOT_TOKEN"))
+if args.development:
+    bot.run(App.config("BOT_DEVELOPMENT_TOKEN"))
+else:
+    bot.run(App.config("BOT_TOKEN"))
