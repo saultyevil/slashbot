@@ -238,7 +238,7 @@ class Weather(SlashbotCog):
             humidity_string = f"{sub['humidity']}%"
 
             forecast_string = (
-                f"{desc_string:^30s}\n{temp_string:^30s}\n{humidity_string:^30s}\n{wind_string:^30s}"
+                f"{desc_string:^30s}\nTemperature: {temp_string:^30s}\nHumidity: {humidity_string:^30s}\nWind: {wind_string:^30s}"
             )
 
             embed.add_field(name=date_string, value=forecast_string, inline=False)
