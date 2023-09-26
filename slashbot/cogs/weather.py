@@ -220,7 +220,7 @@ class Weather(SlashbotCog):
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
 
-        for sub in forecast[: amount + 1]:
+        for sub in forecast[1 : amount + 1]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]))
 
             if forecast_type == "hourly":
@@ -237,9 +237,7 @@ class Weather(SlashbotCog):
             )
             humidity_string = f"{sub['humidity']}%"
 
-            forecast_string = (
-                f"{desc_string:^30s}\nTemperature: {temp_string:^30s}\nHumidity: {humidity_string:^30s}\nWind: {wind_string:^30s}"
-            )
+            forecast_string = f"{desc_string:^30s}\nTemperature: {temp_string:^30s}\nHumidity: {humidity_string:^30s}\nWind: {wind_string:^30s}"
 
             embed.add_field(name=date_string, value=forecast_string, inline=False)
 
