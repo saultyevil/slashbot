@@ -81,7 +81,7 @@ class Users(SlashbotCog):
                         return inter.edit_original_message(
                             content=f"{value} is not a valid country code, which should be 2 characters e.g. GB, US."
                         )
-                    value = "gb" if value == "uk" else value  # convert uk to gb, else value
+                    # value = "gb" if value == "uk" else value  # convert uk to gb, else value
                     user.country_code = value.upper()
                 case "Bad word":
                     word = session.query(BadWord).filter(BadWord.word == value).first()

@@ -58,7 +58,10 @@ class Weather(SlashbotCog):
         """
         super().__init__()
         self.bot = bot
-        self.geolocator = GoogleV3(api_key=App.config("GOOGLE_API_KEY"))
+        self.geolocator = GoogleV3(
+            api_key=App.config("GOOGLE_API_KEY"),
+            domain="maps.google.co.uk",
+        )
 
         self.markov_sentences = (
             generate_sentences_for_seed_words(
@@ -126,7 +129,7 @@ class Weather(SlashbotCog):
             The location, as from the API, and the weather requested as a dict
             of the key provided in extract_type.
         """
-        location = self.geolocator.geocode(location)
+        location = self.geolocator.geocode(location, region="GB")
 
         if location is None:
             raise LocationNotFoundException(f"{location} not found in Geocoding API")
