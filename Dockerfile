@@ -13,5 +13,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 RUN apt update && apt install -y git
 
+RUN git config --global --add safe.directory /bot
+
 # COPY . .
 CMD ["python", "run.py"]
