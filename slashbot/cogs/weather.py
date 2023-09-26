@@ -232,10 +232,10 @@ class Weather(SlashbotCog):
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} "
                 + f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
-            # humidity_string = f"{sub['humidity']}%"
+            humidity_string = f"{sub['humidity']}%"
 
             forecast_string = (
-                f"• {desc_string:^30s}\n• {temp_string:^30s}\n• {wind_string:^30s}"  # \n• {humidity_string:^30s}"
+                f"{desc_string:^30s}\n{temp_string:^30s}\n{humidity_string:^30s}\n{wind_string:^30s}"
             )
 
             embed.add_field(name=date_string, value=forecast_string, inline=False)
