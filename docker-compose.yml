@@ -13,6 +13,6 @@ services:
       - MONSTER_TOKEN
       - GOOGLE_API_KEY
       - TZ=Europe/London
-    env_file: docker-env.env
     volumes:
       - .:/bot
+      - ~/.ssh:/home/user/.ssh:ro
