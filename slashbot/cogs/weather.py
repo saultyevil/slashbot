@@ -228,7 +228,7 @@ class Weather(SlashbotCog):
                 temp_string = f"{sub['temp']:.0f} °{temp_unit}"
             else:
                 date_string = f"{date.strftime(r'%a %d %b %Y')}"
-                temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
+                temp_string = f"{sub['temp']['min']:.0f} - {sub['temp']['max']:.0f} °{temp_unit}"
 
             desc_string = f"{sub['weather'][0]['description'].capitalize()}"
             wind_string = (
@@ -237,7 +237,7 @@ class Weather(SlashbotCog):
             )
             humidity_string = f"{sub['humidity']}%"
 
-            forecast_string = f"{desc_string:^30s}\nTemperature: {temp_string:^30s}\nHumidity: {humidity_string:^30s}\nWind: {wind_string:^30s}"
+            forecast_string = f"{desc_string:^30s} / {temp_string:^30s} / {humidity_string:^30s} / {wind_string:^30s}"
 
             embed.add_field(name=date_string, value=forecast_string, inline=False)
 
