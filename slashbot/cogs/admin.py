@@ -203,7 +203,7 @@ class Admin(SlashbotCog):
 
         repo.remotes.origin.pull()
 
-        self.restart_bot(
+        await self.restart_bot(
             inter,
             disable_markov,
             state_size,
