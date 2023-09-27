@@ -197,12 +197,13 @@ class Admin(SlashbotCog):
                 branch = repo.branches[branch]
                 branch.checkout()
                 logger.info("Switched to branch %s", branch)
-            except git.exc.GitCommandError as e:
-                logger.exception("Failed to switch branch during update: %s", e)
+            except git.exc.GitCommandError as exc:
+                logger.exception("Failed to switch branch during update: %s", exc)
                 return await inter.response.send_message(f"Failed to checkout {branch} during update", ephemeral=True)
 
         repo.remotes.origin.pull()
 
+        await inter.response.send_message("Bot updated and restarting...")
         await self.restart_bot(
             inter,
             disable_markov,
