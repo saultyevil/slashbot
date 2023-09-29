@@ -203,7 +203,6 @@ class Admin(SlashbotCog):
 
         repo.remotes.origin.pull()
 
-        await inter.response.send_message("Bot updated and restarting...")
         await self.restart_bot(
             inter,
             disable_markov,
