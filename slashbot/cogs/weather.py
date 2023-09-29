@@ -214,7 +214,7 @@ class Weather(SlashbotCog):
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
         if units == "metric":
-            temp_unit, wind_unit, wind_factor = "C", "km/h", 3.6
+            temp_unit, wind_unit, wind_factor = "C", "kph", 3.6
         else:
             temp_unit, wind_unit, wind_factor = "F", "mph", 1
 
@@ -237,7 +237,7 @@ class Weather(SlashbotCog):
             )
             humidity_string = f"{sub['humidity']}%"
 
-            forecast_string = f"{desc_string:^30s} / {temp_string:^30s} / {humidity_string:^30s} / {wind_string:^30s}"
+            forecast_string = f"{desc_string:^30s} | {temp_string:^30s} | {humidity_string:^30s} | {wind_string:^30s}"
 
             embed.add_field(name=date_string, value=forecast_string, inline=False)
 
@@ -290,8 +290,9 @@ class Weather(SlashbotCog):
         forecast = weather["daily"][0]
         weather = weather["current"]
 
+        # TODO this should be put into a method/function
         if units == "metric":
-            temp_unit, wind_unit, wind_factor = "C", "km/h", 3.6
+            temp_unit, wind_unit, wind_factor = "C", "kph", 3.6
         else:
             temp_unit, wind_unit, wind_factor = "F", "mph", 1
 
