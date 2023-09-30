@@ -77,17 +77,17 @@ class Weather(SlashbotCog):
 
     @staticmethod
     def __get_weather_icon_url(icon_code: str) -> str:
-        """_summary_
+        """Get a URL to a weather icon from OpenWeatherMap.
 
         Parameters
         ----------
         icon_code : str
-            _description_
+            The icon code
 
         Returns
         -------
         str
-            _description_
+            The URL top the icon.
         """
         return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
@@ -255,7 +255,7 @@ class Weather(SlashbotCog):
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} "
                 + f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
-            humidity_string = f"({sub['humidity']}% rel. humidity)"
+            humidity_string = f"({sub['humidity']}% RH)"
 
             embed.add_field(
                 name=date_string,
