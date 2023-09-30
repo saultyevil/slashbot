@@ -185,9 +185,6 @@ class Weather(SlashbotCog):
 
         return address, weather_return
 
-
-
-
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -258,11 +255,13 @@ class Weather(SlashbotCog):
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} "
                 + f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
-            humidity_string = f"{sub['humidity']}%"
+            humidity_string = f"({sub['humidity']}% rel. humidity)"
 
-            forecast_string = f"{desc_string:^30s}\n{temp_string:^30s} | {humidity_string:^30s} | {wind_string:^30s}"
-
-            embed.add_field(name=date_string, value=forecast_string, inline=False)
+            embed.add_field(
+                name=date_string,
+                value=f"{desc_string:^30s}\n{temp_string} {humidity_string:^30s}\n{wind_string:^30s}",
+                inline=False,
+            )
 
         embed.set_footer(text=f"{self.get_generated_sentence('forecast')}")
         embed.set_thumbnail(self.__get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
