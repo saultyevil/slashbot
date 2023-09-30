@@ -92,6 +92,30 @@ class Weather(SlashbotCog):
         return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
     @staticmethod
+    def _get_unit_strings(units: str):
+        """Get unit strings for a unit system.
+
+        Parameters
+        ----------
+        units : str
+            The unit system.
+
+        Raises
+        ------
+        ValueError
+            Raised when an unknown unit system is passed
+        """
+        if units not in ["metric", "imperial"]:
+            raise ValueError(f"Unknown weather units {units}")
+
+        if units == "metric":
+            temp_unit, wind_unit, wind_factor = "C", "kph", 3.6
+        else:
+            temp_unit, wind_unit, wind_factor = "F", "mph", 1
+
+        return temp_unit, wind_unit, wind_factor
+
+    @staticmethod
     def get_address_from_raw(raw: dict) -> str:
         """Convert a Google API address components into an address.
 
@@ -161,6 +185,9 @@ class Weather(SlashbotCog):
 
         return address, weather_return
 
+
+
+
     # Commands -----------------------------------------------------------------
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -213,13 +240,9 @@ class Weather(SlashbotCog):
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
-        if units == "metric":
-            temp_unit, wind_unit, wind_factor = "C", "kph", 3.6
-        else:
-            temp_unit, wind_unit, wind_factor = "F", "mph", 1
+        temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
-
         for sub in forecast[1 : amount + 1]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]))
 
@@ -228,7 +251,7 @@ class Weather(SlashbotCog):
                 temp_string = f"{sub['temp']:.0f} °{temp_unit}"
             else:
                 date_string = f"{date.strftime(r'%a %d %b %Y')}"
-                temp_string = f"{sub['temp']['min']:.0f} - {sub['temp']['max']:.0f} °{temp_unit}"
+                temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
 
             desc_string = f"{sub['weather'][0]['description'].capitalize()}"
             wind_string = (
@@ -237,7 +260,7 @@ class Weather(SlashbotCog):
             )
             humidity_string = f"{sub['humidity']}%"
 
-            forecast_string = f"{desc_string:^30s} | {temp_string:^30s} | {humidity_string:^30s} | {wind_string:^30s}"
+            forecast_string = f"{desc_string:^30s}\n{temp_string:^30s} | {humidity_string:^30s} | {wind_string:^30s}"
 
             embed.add_field(name=date_string, value=forecast_string, inline=False)
 
@@ -289,15 +312,9 @@ class Weather(SlashbotCog):
 
         forecast = weather["daily"][0]
         weather = weather["current"]
-
-        # TODO this should be put into a method/function
-        if units == "metric":
-            temp_unit, wind_unit, wind_factor = "C", "kph", 3.6
-        else:
-            temp_unit, wind_unit, wind_factor = "F", "mph", 1
+        temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
-
         embed.add_field(name="Description", value=weather["weather"][0]["description"].capitalize(), inline=False)
         embed.add_field(
             name="Current temperature",
