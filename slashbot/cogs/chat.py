@@ -11,6 +11,7 @@ import logging
 import traceback
 from collections import defaultdict
 from types import coroutine
+import copy
 
 import disnake
 import openai
@@ -151,9 +152,12 @@ class Chat(SlashbotCog):
         str
             The message returned by ChatGPT.
         """
+        history_copy = copy.deepcopy(self.chat_history[history_id])
+        history_copy.append({"role": "user", "content": prompt})
+
         response = await openai.ChatCompletion.acreate(
             model=self.chat_model[history_id],
-            messages=self.chat_history[history_id],
+            messages=history_copy,
             temperature=self.model_temperature,
             max_tokens=self.output_tokens,
         )
