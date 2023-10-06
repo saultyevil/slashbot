@@ -44,13 +44,13 @@ class ImageGen(SlashbotCog):
             If the process has finished, the URL to the finished process is
             returned. Otherwise an empty string is returned.
         """
-        payload = '{\n    "process_id" :  "%s"\n}' % process_id  # pylint: disable=C0209
         headers = {
-            "x-api-key": App.config("MONSTER_API_KEY"),
-            "Authorization": App.config("MONSTER_TOKEN"),
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
         }
         response = requests.request(
-            "POST", "https://api.monsterapi.ai/apis/task-status", headers=headers, data=payload, timeout=5
+            "POST", f"https://api.monsterapi.ai/v1/status/{process_id}", headers=headers, timeout=5
         )
 
         response_data = json.loads(response.text)
@@ -82,25 +82,20 @@ class ImageGen(SlashbotCog):
         str
             The process ID if successful, or an empty string if unsuccessful.
         """
-        payload = json.dumps(
-            {
-                "model": "txt2img",
-                "data": {
-                    "prompt": prompt,
-                    "samples": 1,
-                    "steps": steps,
-                    "aspect_ratio": aspect_ratio,
-                },
-            }
-        )
+        payload = {
+            "prompt": prompt,
+            "samples": 1,
+            "steps": steps,
+            "aspect_ratio": aspect_ratio,
+        }
         headers = {
-            "x-api-key": App.config("MONSTER_API_KEY"),
-            "Authorization": App.config("MONSTER_TOKEN"),
-            "Content-Type": "application/json",
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
         }
         response = requests.request(
             "POST",
-            "https://api.monsterapi.ai/apis/add-task",
+            "https://api.monsterapi.ai/v1/generate/txt2img",
             headers=headers,
             data=payload,
             timeout=5,
