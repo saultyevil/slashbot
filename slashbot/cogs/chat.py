@@ -135,7 +135,7 @@ class Chat(SlashbotCog):
 
         logger.debug("Max model tokens set to %d", self.max_tokens_allowed)
 
-    async def __api_response(self, history_id: int | str) -> str:
+    async def __api_response(self, history_id: int | str, prompt: str) -> str:
         """Get a message from ChatGPT using the ChatCompletion API.
 
         Parameters
@@ -143,6 +143,8 @@ class Chat(SlashbotCog):
         history_id : int | str
             The ID to store chat history context to. Usually the guild or user
             id.
+        prompt : str
+            The prompt to pass to the AI model.
 
         Returns
         -------
@@ -157,16 +159,9 @@ class Chat(SlashbotCog):
         )
 
         message = response["choices"][0]["message"]["content"]
-        self.chat_history[history_id].append({"role": "assistant", "content": message})
         self.chat_tokens[history_id] = int(response["usage"]["total_tokens"])
-
-        # channel = await self.bot.fetch_channel(history_id)
-        # logger.debug(
-        #     "%s is currently at %d tokens with %d messages",
-        #     history_id,
-        #     self.chat_tokens[history_id],
-        #     len(self.chat_history[history_id][1:]),
-        # )
+        self.chat_history[history_id].append({"role": "user", "content": prompt})
+        self.chat_history[history_id].append({"role": "assistant", "content": message})
 
         return message
 
@@ -257,12 +252,10 @@ class Chat(SlashbotCog):
         str
             The generated response to the given prompt.
         """
-
         await self.__reduce_chat_history(history_id)
-        self.chat_history[history_id].append({"role": "user", "content": prompt})
 
         try:
-            return await self.__api_response(history_id)
+            return await self.__api_response(history_id, prompt)
         except openai.error.RateLimitError as exc:
             logger.exception(
                 "OpenAI API failed with exception:\n%s",
