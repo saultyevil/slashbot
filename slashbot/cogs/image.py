@@ -17,6 +17,12 @@ from slashbot.custom_cog import SlashbotCog
 MAX_ELAPSED_TIME = 300
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
+HEADER = {
+    "accept": "application/json",
+    "content-type": "application/json",
+    "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
+}
+
 
 class ImageGen(SlashbotCog):
     """Cog for text to image generation using Monster API.
@@ -46,15 +52,13 @@ class ImageGen(SlashbotCog):
         """
         headers = {
             "accept": "application/json",
-            "content-type": "application/json",
             "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
         }
         response = requests.request(
-            "POST", f"https://api.monsterapi.ai/v1/status/{process_id}", headers=headers, timeout=5
+            "GET", f"https://api.monsterapi.ai/v1/status/{process_id}", headers=headers, timeout=5
         )
 
         response_data = json.loads(response.text)
-        response_data = response_data["response_data"]
         response_status = response_data.get("status", None)
 
         if response_status == "COMPLETED":
@@ -82,22 +86,22 @@ class ImageGen(SlashbotCog):
         str
             The process ID if successful, or an empty string if unsuccessful.
         """
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
+        }
         payload = {
             "prompt": prompt,
             "samples": 1,
             "steps": steps,
             "aspect_ratio": aspect_ratio,
         }
-        headers = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
-        }
         response = requests.request(
             "POST",
             "https://api.monsterapi.ai/v1/generate/txt2img",
             headers=headers,
-            data=payload,
+            json=payload,
             timeout=5,
         )
 

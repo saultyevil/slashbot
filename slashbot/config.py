@@ -51,7 +51,6 @@ class App:
         "OWM_API_KEY": os.getenv("OWM_API_KEY"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         "MONSTER_API_KEY": os.getenv("MONSTER_API_KEY"),
-        "MONSTER_TOKEN": os.getenv("MONSTER_TOKEN"),
         # File locations
         "MARKOV_CHAIN_FILE": None,
         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
