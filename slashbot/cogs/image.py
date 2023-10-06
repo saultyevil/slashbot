@@ -110,11 +110,10 @@ class ImageGen(SlashbotCog):
 
         return process_id
 
-    async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction):
-        """Remove CustomCog before cog interaction."""
-        pass
+    # async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction):
+    #     """Remove CustomCog before cog interaction."""
 
-    @commands.cooldown(rate=1, per=300, type=commands.BucketType.user)
+    @commands.cooldown(rate=App.config("COOLDOWN_RATE"), per=App.config("COOLDOWN_STANDARD"), type=commands.BucketType.user)
     @commands.slash_command(description="Generate an image from a text prompt", dm_permission=False)
     async def text_to_image(
         self,
