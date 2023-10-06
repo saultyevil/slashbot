@@ -153,7 +153,10 @@ class Admin(SlashbotCog):
             arguments.append(f"--state-size={state_size}")
         logger.info("Restarting with new process with arguments %s", arguments)
 
-        await inter.response.send_message("Restarting the bot...", ephemeral=True)
+        if inter.response.type == disnake.InteractionResponseType.deferred_channel_message:
+            await inter.edit_original_message("Restarting the bot...")
+        else:
+            await inter.response.send_message("Restarting the bot...", ephemeral=True)
 
         os.execv(sys.executable, ["python"] + arguments)
 
@@ -190,6 +193,8 @@ class Admin(SlashbotCog):
         if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
+        await inter.response.defer(ephemeral=True)
+
         repo = git.Repo(".", search_parent_directories=True)
 
         if repo.active_branch != branch:
@@ -197,13 +202,13 @@ class Admin(SlashbotCog):
                 branch = repo.branches[branch]
                 branch.checkout()
                 logger.info("Switched to branch %s", branch)
-            except git.exc.GitCommandError as e:
-                logger.exception("Failed to switch branch during update: %s", e)
+            except git.exc.GitCommandError as exc:
+                logger.exception("Failed to switch branch during update: %s", exc)
                 return await inter.response.send_message(f"Failed to checkout {branch} during update", ephemeral=True)
 
         repo.remotes.origin.pull()
 
-        self.restart_bot(
+        await self.restart_bot(
             inter,
             disable_markov,
             state_size,
