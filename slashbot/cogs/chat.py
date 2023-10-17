@@ -305,7 +305,9 @@ class Chat(SlashbotCog):
         if bot_mentioned or message_in_dm:
             history_id = self.history_id(message)
             async with message.channel.typing():
-                response = await self.__get_api_response(history_id, str(message.clean_content))
+                response = await self.__get_api_response(
+                    history_id, str(message.clean_content).replace(f"@{self.bot.user.name}", "")
+                )
                 await self.send_response_to_channel(response, message, message_in_dm)
 
     # Commands -----------------------------------------------------------------
