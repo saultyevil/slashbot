@@ -24,6 +24,10 @@ from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
+SECONDS_IN_DAY = 86400
+SECONDS_IN_HOUR = 3600
+SECONDS_IN_MINUTE = 60
+
 
 def get_reminders_for_user(inter: disnake.ApplicationCommandInteraction, _: str) -> List[str]:
     """Get the reminders for a user.
@@ -86,6 +90,43 @@ class Reminders(SlashbotCog):
         self.bot.add_function_to_cleanup(None, close_session, (self.session,))
 
     # Private methods ----------------------------------------------------------
+
+    @staticmethod
+    def __get_reminder_time(time_format: str, when: str, now: datetime.datetime) -> datetime.datetime:
+        """Return a datetime in the future, for a given format and time.
+
+        Parameters
+        ----------
+        format : str
+            The time format chosen.
+        when : str
+            A string to say when to set the reminder for.
+        now : datetime.datetime
+            A datetime.datetime object representing now.
+
+        Returns
+        -------
+        datetime.datetime
+            A date time object for the reminder in the future.
+        """
+        if time_format == "time-string":
+            # settings makes BST -> British Summer Time instead of Bangladesh, but
+            # it does some odd things. If you do something like 21:30 UTC+6, it will
+            # convert that date to the bot's local timezone. For an input of 21:30
+            # UTC+6 when the bot's timezone is UTC+1, future = 16:30 UTC + 1
+            future = dateparser.parse(when, settings={"TIMEZONE": "Europe/London"})
+        else:
+            if time_format == "days":
+                seconds = when * SECONDS_IN_DAY
+            elif time_format == "hours":
+                seconds = when * SECONDS_IN_HOUR
+            elif time_format == "minutes":
+                seconds = when * SECONDS_IN_MINUTE
+            else:  # basically default to seconds, I guess
+                seconds = when
+            future = now + datetime.timedelta(seconds=int(seconds))
+
+        return future
 
     async def __replace_mentions_in_sentence(self, sentence: str) -> Union[List[str], str]:
         """Replace mentions from a post with the user name.
@@ -159,7 +200,14 @@ class Reminders(SlashbotCog):
     async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
         inter: disnake.ApplicationCommandInteraction,
-        when: str = commands.Param(description="When you want to be reminded, UTC timezones are preferred."),
+        time_format: str = commands.Param(
+            name="format",
+            description="The format for setting reminder times",
+            choices=["time-string", "days", "hours", "minutes", "seconds"],
+        ),
+        when: str = commands.Param(
+            description="When you want to be reminded. The current UK time zones is used by default."
+        ),
         reminder: str = commands.Param(description="What you want to be reminded about."),
     ) -> coroutine:
         """Set a reminder.
@@ -175,19 +223,21 @@ class Reminders(SlashbotCog):
         """
         if len(reminder) > 1024:
             return await inter.response.send_message(
-                "That is too long of a reminder. 1024 characters is the max.",
+                "Reminders cannot be longer than 1024 characters.",
                 ephemeral=True,
             )
 
-        # now we need to figure out the time for when the reminder is supposed
-        # to happen
-        now = datetime.datetime.now(tz=self.timezone)
+        if time_format != "time-string":
+            try:
+                when = float(when)
+            except ValueError:
+                return await inter.response.send_message(
+                    f"Can't convert '{when}' into a number",
+                    ephemeral=True,
+                )
 
-        # settings makes BST -> British Summer Time instead of Bangladesh, but
-        # it does some odd things. If you do something like 21:30 UTC+6, it will
-        # convert that date to the bot's local timezone. For an input of 21:30
-        # UTC+6 when the bot's timezone is UTC+1, future = 16:30 UTC + 1
-        future = dateparser.parse(when, settings={"TIMEZONE": "Europe/London"})
+        now = datetime.datetime.now(tz=self.timezone)
+        future = self.__get_reminder_time(time_format, when, now)
 
         if not future:
             logger.debug("future is None type for %s", when)
