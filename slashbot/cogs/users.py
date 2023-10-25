@@ -6,6 +6,7 @@
 import logging
 import re
 from types import coroutine
+from typing import List
 
 import disnake
 from disnake.ext import commands
@@ -32,13 +33,16 @@ USER_OPTIONS = [
 ]
 
 
-def press(inter: disnake.ApplicationCommandInteraction, _: str):
+def press(inter: disnake.ApplicationCommandInteraction, _: str) -> List[str]:
     """Auto complete options for set_info.
 
     This is currently set up only for the "Twitter URL" option.
     """
     if inter.filled_options["thing"] == "Twitter URL":
-        return "Press to continue..."
+        return [
+            "Select to continue...",
+        ]
+    return []
 
 
 class Users(SlashbotCog):
@@ -111,11 +115,12 @@ class Users(SlashbotCog):
                     user.bad_word = value  # TODO, this should be an ID to a bad word instead
                 case "Twitter URL":
                     user.twitter_url_opt_in = not user.twitter_url_opt_in
+                    session.commit()
                     self.opt_in_twitter_users = get_twitter_opt_in()
                     if user.twitter_url_opt_in:
-                        await inter.edit_original_message("You have opted in to change your Twitter URLs.")
+                        return await inter.edit_original_message("You have opted in to change your Twitter URLs.")
                     else:
-                        await inter.edit_original_message("You have opted out to change your Twitter URLs.")
+                        return await inter.edit_original_message("You have opted out to change your Twitter URLs.")
                 case _:
                     logger.error("Disnake somehow allowed an unknown choice %s", thing)
                     return await inter.edit_original_message(content="An error has occurred with Disnake :-(")
@@ -131,19 +136,14 @@ class Users(SlashbotCog):
         inter: disnake.ApplicationCommandInteraction,
         thing: str = commands.Param(description="The thing to query the value of.", choices=USER_OPTIONS),
     ) -> coroutine:
-        """_summary_
+        """Print a user set value to an ephemeral chat.
 
         Parameters
         ----------
-        inter : _type_
-            _description_
+        inter : disnake.ApplicationCommandInteraction
+            The disnake interaction.
         thing : str, optional
-            _description_
-
-        Returns
-        -------
-        coroutine
-            _description_
+            The thing to show saved values for.
         """
         await inter.response.defer(ephemeral=True)
 
@@ -157,6 +157,11 @@ class Users(SlashbotCog):
                     value = user.country_code
                 case "Bad word":
                     value = user.bad_word
+                case "Twitter URL":
+                    if user.twitter_url_opt_in:
+                        value = "enabled"
+                    else:
+                        value = "disabled"
                 case _:
                     logger.error("Disnake somehow allowed an unknown choice %s", thing)
                     return deferred_error_message(inter, "An error has occurred with Disnake :-(")
@@ -175,7 +180,7 @@ class Users(SlashbotCog):
         url_pattern = r"https?://(?:www\.)?twitter\.com/([a-zA-Z0-9_]+)"
         matches = re.finditer(url_pattern, message.content)
 
-        if not matches or message.author not in self.opt_in_twitter_users:
+        if not matches or message.author.id not in self.opt_in_twitter_users:
             return
 
         await message.edit(suppress_embeds=True)
