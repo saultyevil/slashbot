@@ -88,7 +88,7 @@ class Users(SlashbotCog):
                 logger.error(
                     "Disnake somehow passed something which isn't a str for value: %s (%s)", value, type(value)
                 )
-                return inter.edit_original_message(content="An error has occured with Disnake :-(")
+                return await inter.edit_original_message(content="An error has occured with Disnake :-(")
 
             value = value.lower()
 
@@ -97,7 +97,7 @@ class Users(SlashbotCog):
                     user.city = value.capitalize()
                 case "Country code":
                     if len(value) != 2:
-                        return inter.edit_original_message(
+                        return await inter.edit_original_message(
                             content=f"{value} is not a valid country code, which should be 2 characters e.g. GB, US."
                         )
                     # value = "gb" if value == "uk" else value  # convert uk to gb, else value
@@ -105,7 +105,7 @@ class Users(SlashbotCog):
                 case "Bad word":
                     word = session.query(BadWord).filter(BadWord.word == value).first()
                     if not word:
-                        return inter.edit_original_message(
+                        return await inter.edit_original_message(
                             content=f"There is no bad word {value} in the bad word database."
                         )
                     user.bad_word = value  # TODO, this should be an ID to a bad word instead
@@ -118,7 +118,7 @@ class Users(SlashbotCog):
                         await inter.edit_original_message("You have opted out to change your Twitter URLs.")
                 case _:
                     logger.error("Disnake somehow allowed an unknown choice %s", thing)
-                    return inter.edit_original_message(content="An error has occurred with Disnake :-(")
+                    return await inter.edit_original_message(content="An error has occurred with Disnake :-(")
 
             session.commit()
 
