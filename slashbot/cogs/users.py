@@ -177,13 +177,13 @@ class Users(SlashbotCog):
         message : disnake.Message
             A message potentially containing a twitter link.
         """
-        url_pattern = r"https?://(?:www\.)?twitter\.com/([a-zA-Z0-9_]+)"
-        matches = re.finditer(url_pattern, message.content)
+        url_pattern = r"https://twitter\.com/[^/\s]+/status/\d+"
+        matches = list(re.finditer(url_pattern, message.content))
 
         if not matches or message.author.id not in self.opt_in_twitter_users:
             return
 
         await message.edit(suppress_embeds=True)
         for match in matches:
-            await message.channel.send(f"{match.string.replace('twitter', 'fxtwitter')}")
+            await message.channel.send(f"{match.group(0).replace('twitter', 'fxtwitter')}")
         await message.channel.send("*(You can opt in or out of this with /set_info)*")
