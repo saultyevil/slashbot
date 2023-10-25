@@ -6,9 +6,18 @@
 import json
 import logging
 import pathlib
+from typing import List
 
 import disnake
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    create_engine,
+)
 from sqlalchemy.orm import DeclarativeBase, Session, relationship
 
 from slashbot.config import App
@@ -32,6 +41,7 @@ class User(Base):
     city = Column(Integer, nullable=True)
     country_code = Column(String(2), nullable=True)
     bad_word = Column(String(32), nullable=True)
+    twitter_url_opt_in = Column(Boolean(), default=False)
 
     bank_account = relationship("BankAccount")
     reminders = relationship("Reminder")
@@ -330,3 +340,18 @@ def get_user_location(user_id: str | int, user_name: str) -> str | None:
         if not user.city:
             return None
         return f"{user.city.capitalize()}, {user.country_code.upper() if user.country_code else ''}"
+
+
+def get_twitter_opt_in() -> List[disnake.User]:
+    """Returns a list of users who are opted out from having their tweets
+    converted to fxtwitter.
+
+    Returns
+    -------
+    List[disnake.User]
+        The list of users.
+    """
+    with Session(connect_to_database_engine()) as session:
+        users = session.query(User).filter(User.twitter_url_opt_in == True).all()
+
+    return [user.user_id for user in users]

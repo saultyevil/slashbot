@@ -4,6 +4,7 @@
 """Commands for remembering user info."""
 
 import logging
+import re
 from types import coroutine
 
 import disnake
@@ -12,7 +13,12 @@ from sqlalchemy.orm import Session
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import BadWord, connect_to_database_engine, get_user
+from slashbot.db import (
+    BadWord,
+    connect_to_database_engine,
+    get_twitter_opt_in,
+    get_user,
+)
 from slashbot.error import deferred_error_message
 from slashbot.util import convert_string_to_lower
 
@@ -22,7 +28,17 @@ USER_OPTIONS = [
     "City",
     "Country code",
     "Bad word",
+    "Twitter URL",
 ]
+
+
+def press(inter: disnake.ApplicationCommandInteraction, _: str):
+    """Auto complete options for set_info.
+
+    This is currently set up only for the "Twitter URL" option.
+    """
+    if inter.filled_options["thing"] == "Twitter URL":
+        return "Press to continue..."
 
 
 class Users(SlashbotCog):
@@ -38,6 +54,7 @@ class Users(SlashbotCog):
         """
         super().__init__()
         self.bot = bot
+        self.opt_in_twitter_users = get_twitter_opt_in()
 
     # Commands -----------------------------------------------------------------
 
@@ -47,7 +64,9 @@ class Users(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         thing: str = commands.Param(description="The thing to be remembered.", choices=USER_OPTIONS),
-        value: str = commands.Param(description="What to be remembered.", converter=convert_string_to_lower),
+        value: str = commands.Param(
+            description="What to be remembered.", autocomplete=press, converter=convert_string_to_lower
+        ),
     ) -> coroutine:
         """Set some user variables for a user.
 
@@ -90,9 +109,15 @@ class Users(SlashbotCog):
                             content=f"There is no bad word {value} in the bad word database."
                         )
                     user.bad_word = value  # TODO, this should be an ID to a bad word instead
+                case "Twitter URL":
+                    user.twitter_url_opt_in = not user.twitter_url_opt_in
+                    if user.twitter_url_opt_in:
+                        return inter.edit_original_message("You have opted in to change your Twitter URLs.")
+                    else:
+                        return inter.edit_original_message("You have opted out to change your Twitter URLs.")
                 case _:
                     logger.error("Disnake somehow allowed an unknown choice %s", thing)
-                    return inter.edit_original_message(content="An error has occured with Disnake :-(")
+                    return inter.edit_original_message(content="An error has occurred with Disnake :-(")
 
             session.commit()
 
@@ -136,3 +161,23 @@ class Users(SlashbotCog):
                     return deferred_error_message(inter, "An error has occurred with Disnake :-(")
 
         return await inter.edit_original_message(content=f"{thing.capitalize()} is set to '{value}'.")
+
+    @commands.Cog.listener("on_message")
+    async def change_to_fxtwitter(self, message: disnake.Message):
+        """Send a new message containing an fxtwitter link.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            A message potentially containing a twitter link.
+        """
+        url_pattern = r"https?://(?:www\.)?twitter\.com/([a-zA-Z0-9_]+)"
+        matches = re.finditer(url_pattern, message.content)
+
+        if not matches or message.author not in self.opt_in_twitter_users:
+            return
+
+        await message.edit(suppress_embeds=True)
+        for match in matches:
+            await message.channel.send(f"{match.string.replace('twitter', 'fxtwitter')}")
+        await message.channel.send("*(You can opt in or out of this with /set_info)*")
