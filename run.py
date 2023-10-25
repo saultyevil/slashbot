@@ -7,7 +7,6 @@ this bot is to sometimes annoy Gareth with its useful information.
 
 import argparse
 import logging
-import re
 import time
 import traceback
 from typing import Coroutine
@@ -16,12 +15,9 @@ import disnake
 from disnake.ext import commands
 
 import slashbot.cogs.admin
-
-# import slashbot.cogs.archive
+import slashbot.cogs.bully
 import slashbot.cogs.chat
 import slashbot.cogs.image
-
-# import slashbot.cogs.content
 import slashbot.cogs.info
 import slashbot.cogs.remind
 import slashbot.cogs.scheduled_posts
@@ -29,6 +25,7 @@ import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
 import slashbot.cogs.weather
+
 from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_bot import SlashbotInterationBot
@@ -78,10 +75,9 @@ bot = SlashbotInterationBot(
 markov.MARKOV_MODEL = markov.load_markov_model(f"data/chain-{args.state_size}.pickle", args.state_size)
 
 for cog in [
+    slashbot.cogs.bully.Bully(bot),
     slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME")),
-    # slashbot.cogs.archive.Archive(bot),
     slashbot.cogs.chat.Chat(bot),
-    # slashbot.cogs.content.Content(bot),
     slashbot.cogs.image.ImageGen(bot),
     slashbot.cogs.info.Info(bot),
     slashbot.cogs.remind.Reminders(bot),

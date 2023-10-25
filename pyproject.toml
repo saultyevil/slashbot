@@ -23,6 +23,7 @@ tiktoken = "^0.4.0"
 watchdog = "^3.0.0"
 geopy = "^2.3.0"
 gitpython = "^3.1.37"
+pyspellchecker = "^0.7.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
