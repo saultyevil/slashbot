@@ -113,9 +113,9 @@ class Users(SlashbotCog):
                     user.twitter_url_opt_in = not user.twitter_url_opt_in
                     self.opt_in_twitter_users = get_twitter_opt_in()
                     if user.twitter_url_opt_in:
-                        inter.edit_original_message("You have opted in to change your Twitter URLs.")
+                        await inter.edit_original_message("You have opted in to change your Twitter URLs.")
                     else:
-                        inter.edit_original_message("You have opted out to change your Twitter URLs.")
+                        await inter.edit_original_message("You have opted out to change your Twitter URLs.")
                 case _:
                     logger.error("Disnake somehow allowed an unknown choice %s", thing)
                     return inter.edit_original_message(content="An error has occurred with Disnake :-(")
