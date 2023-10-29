@@ -302,7 +302,10 @@ class Weather(SlashbotCog):
 
         try:
             location, weather_return = self.get_weather_for_location(
-                user_location, units, ("current", "daily", "alerts")
+                # user_location, units, ("current", "daily", "alerts")
+                user_location,
+                units,
+                ("current", "alerts"),
             )
         except (LocationNotFoundException, GeocodeException):
             return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
@@ -311,7 +314,7 @@ class Weather(SlashbotCog):
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
-        daily_forecast = weather_return["daily"][0]
+        # daily_forecast = weather_return["daily"][0]
         weather_alert = weather_return.get("alerts")[0] if "alerts" in weather_return else None
         current_weather = weather_return["current"]
         temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
@@ -321,14 +324,17 @@ class Weather(SlashbotCog):
             name="Description", value=current_weather["weather"][0]["description"].capitalize(), inline=False
         )
         if weather_alert:
+            now = datetime.datetime.now()
             alert_start = datetime.datetime.fromtimestamp(weather_alert["start"])
             alert_end = datetime.datetime.fromtimestamp(weather_alert["end"])
-            embed.add_field(
-                name="Weather Alert",
-                value=f"{weather_alert['event']} from {alert_start.strftime(r'%H:%m')} to "
-                + f"{alert_end.strftime(r'%H:%m')} ({weather_alert['sender_name']})",
-                inline=False,
-            )
+            if alert_start < now < alert_end:
+                embed.add_field(
+                    name="Weather Alert",
+                    value=f"{weather_alert['event']} from {alert_start.strftime(r'%H:%m')} to "
+                    + f"{alert_end.strftime(r'%H:%m')} ({weather_alert['sender_name']})",
+                    inline=False,
+                )
+
         embed.add_field(
             name="Temperature",
             value=f"{current_weather['temp']:.0f} °{temp_unit}",
@@ -347,7 +353,7 @@ class Weather(SlashbotCog):
             inline=False,
         )
 
-        # embed.set_footer(text=f"{self.get_generated_sentence('weather')}")
+        embed.set_footer(text=f"{self.get_generated_sentence('weather')}")
         embed.set_thumbnail(self.__get_weather_icon_url(current_weather["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
