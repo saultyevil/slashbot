@@ -301,7 +301,9 @@ class Weather(SlashbotCog):
                 )
 
         try:
-            location, weather = self.get_weather_for_location(user_location, units, ("current", "daily"))
+            location, weather_return = self.get_weather_for_location(
+                user_location, units, ("current", "daily", "alerts")
+            )
         except (LocationNotFoundException, GeocodeException):
             return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
         except OneCallException:
@@ -309,33 +311,43 @@ class Weather(SlashbotCog):
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
-        forecast = weather["daily"][0]
-        weather = weather["current"]
+        daily_forecast = weather_return["daily"][0]
+        weather_alert = weather_return.get("alerts")[0] if "alerts" in weather_return else None
+        current_weather = weather_return["current"]
         temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
-        embed.add_field(name="Description", value=weather["weather"][0]["description"].capitalize(), inline=False)
         embed.add_field(
-            name="Current temperature",
-            value=f"{weather['temp']:.0f} °{temp_unit}",
-            inline=False,
+            name="Description", value=current_weather["weather"][0]["description"].capitalize(), inline=False
         )
+        if weather_alert:
+            alert_start = datetime.datetime.fromtimestamp(weather_alert["start"])
+            alert_end = datetime.datetime.fromtimestamp(weather_alert["end"])
+            embed.add_field(
+                name="Weather Alert",
+                value=f"{weather_alert['event']} from {alert_start.strftime(r'%H:%m')} to "
+                + f"{alert_end.strftime(r'%H:%m')} ({weather_alert['sender_name']})",
+                inline=False,
+            )
         embed.add_field(
-            name="Min / max temperature",
-            value=f"{forecast['temp']['min']:.0f} / {forecast['temp']['max']:.0f} °{temp_unit}",
-            inline=False,
+            name="Temperature",
+            value=f"{current_weather['temp']:.0f} °{temp_unit}",
+            inline=True,
         )
-        embed.add_field(name="Humidity", value=f"{weather['humidity']}%", inline=False)
+        # embed.add_field(
+        #     name="Temperature",
+        #     value=f"{daily_forecast['temp']['min']:.0f} - {daily_forecast['temp']['max']:.0f} °{temp_unit}",
+        #     inline=False,
+        # )
+        embed.add_field(name="Humidity", value=f"{current_weather['humidity']}%", inline=False)
         embed.add_field(
-            name="Wind speed", value=f"{float(weather['wind_speed']) * wind_factor:.0f} {wind_unit}", inline=False
-        )
-        embed.add_field(
-            name="Wind direction",
-            value=f"{weather['wind_deg']:.0f}° ({convert_radial_to_cardinal_direction(weather['wind_deg'])})",
+            name="Wind",
+            value=f"{float(current_weather['wind_speed']) * wind_factor:.0f} {wind_unit} @ "
+            + f"{current_weather['wind_deg']:.0f}° ({convert_radial_to_cardinal_direction(current_weather['wind_deg'])})",
             inline=False,
         )
 
-        embed.set_footer(text=f"{self.get_generated_sentence('weather')}")
-        embed.set_thumbnail(self.__get_weather_icon_url(weather["weather"][0]["icon"]))
+        # embed.set_footer(text=f"{self.get_generated_sentence('weather')}")
+        embed.set_thumbnail(self.__get_weather_icon_url(current_weather["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
