@@ -229,7 +229,7 @@ class Weather(SlashbotCog):
                 )
 
         try:
-            location, forecast = self.get_weather_for_location(user_location, units, forecast_type)
+            location, forecast = self.get_weather_for_location(user_location, units, (forecast_type, "alerts"))
         except (LocationNotFoundException, GeocodeException):
             return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
         except OneCallException:
@@ -237,11 +237,14 @@ class Weather(SlashbotCog):
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
+        weather_alerts = forecast.get("alerts", [])
         temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         for sub in forecast[1 : amount + 1]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]))
+            for alert in weather_alerts:
+                alert
 
             if forecast_type == "hourly":
                 date_string = f"{date.strftime(r'%I:%M %p')}"
@@ -252,7 +255,7 @@ class Weather(SlashbotCog):
 
             desc_string = f"{sub['weather'][0]['description'].capitalize()}"
             wind_string = (
-                f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} "
+                f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} @ {sub['wind_deg']}° "
                 + f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
             humidity_string = f"({sub['humidity']}% RH)"
@@ -330,11 +333,10 @@ class Weather(SlashbotCog):
             if alert_start < now < alert_end:
                 embed.add_field(
                     name="Weather Alert",
-                    value=f"{weather_alert['event']} from {alert_start.strftime(r'%H:%m')} to "
+                    value=f"{weather_alert['event']}\n{alert_start.strftime(r'%H:%m')} to "
                     + f"{alert_end.strftime(r'%H:%m')} ({weather_alert['sender_name']})",
                     inline=False,
                 )
-
         embed.add_field(
             name="Temperature",
             value=f"{current_weather['temp']:.0f} °{temp_unit}",
