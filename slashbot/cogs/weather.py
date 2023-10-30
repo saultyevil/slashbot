@@ -189,7 +189,7 @@ class Weather(SlashbotCog):
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forecast", description="get the weather forecast")
-    async def forecast(  # pylint: disable=too-many-locals
+    async def forecast(  # pylint: disable=too-many-locals, too-many-arguments
         self,
         inter: disnake.ApplicationCommandInteraction,
         user_location: str = commands.Param(
@@ -340,7 +340,7 @@ class Weather(SlashbotCog):
             inline=True,
         )
         # embed.add_field(
-        #     name="Temperature",
+        #     name="Temperature Min/Max",
         #     value=f"{daily_forecast['temp']['min']:.0f} - {daily_forecast['temp']['max']:.0f} °{temp_unit}",
         #     inline=False,
         # )
