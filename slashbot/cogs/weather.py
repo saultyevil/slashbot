@@ -229,7 +229,7 @@ class Weather(SlashbotCog):
                 )
 
         try:
-            location, forecast = self.get_weather_for_location(user_location, units, (forecast_type, "alerts"))
+            location, forecast = self.get_weather_for_location(user_location, units, forecast_type)
         except (LocationNotFoundException, GeocodeException):
             return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
         except OneCallException:
@@ -237,14 +237,11 @@ class Weather(SlashbotCog):
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
-        weather_alerts = forecast.get("alerts", [])
         temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         for sub in forecast[1 : amount + 1]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]))
-            for alert in weather_alerts:
-                alert
 
             if forecast_type == "hourly":
                 date_string = f"{date.strftime(r'%I:%M %p')}"
