@@ -1,13 +1,8 @@
-docker-env.env
-data/reminders.json
-data/users.json
-data/bank.json
-data/*.pickle
-data/*.bak
 *.db
 log/
-data/images
-data/tweets.csv
+data/*.json
+data/chains/*.pickle
+data/chains/*.bak
 scratch/
 
 # IDE specific directories

@@ -18,7 +18,7 @@
     },
     {
       "title": "ed-bin",
-      "files": ["data/bin.png"],
+      "files": ["data/images/bin.png"],
       "channels": [237647756049514498],
       "users": [151378138612367360],
       "day": 1,
@@ -40,7 +40,7 @@
     },
     {
       "title": "jack-bin",
-      "files": ["data/bin.jpg"],
+      "files": ["data/images/bin.jpg"],
       "channels": [237647756049514498],
       "users": [121310675132743680],
       "day": 3,
@@ -62,7 +62,7 @@
     },
     {
       "title": "friday-night",
-      "files": ["data/its_friday.gif", "data/friday_night.png", "data/videos/weekend.mp4"],
+      "files": ["data/images/its_friday.gif", "data/images/friday_night.png", "data/videos/weekend.mp4"],
       "channels": [237647756049514498, 710120383235227670],
       "users": [],
       "day": 4,

@@ -25,11 +25,9 @@ import slashbot.cogs.spam
 import slashbot.cogs.users
 import slashbot.cogs.videos
 import slashbot.cogs.weather
-
 from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_bot import SlashbotInterationBot
-from slashbot.db import migrate_old_json_to_db
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -91,18 +89,6 @@ for cog in [
 
 
 # Bot events ---------------------------------------------------------------
-
-
-@bot.event
-async def on_connect() -> None:
-    """_summary_
-
-    Returns
-    -------
-    _type_
-        _description_
-    """
-    await migrate_old_json_to_db(bot)
 
 
 @bot.event

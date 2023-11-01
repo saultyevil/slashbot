@@ -54,8 +54,8 @@ class App:
         # File locations
         "MARKOV_CHAIN_FILE": None,
         "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
-        "BAD_WORDS_FILE": Path("data/badwords.txt"),
-        "GOD_WORDS_FILE": Path("data/godwords.txt"),
+        "BAD_WORDS_FILE": Path("data/text/badwords.txt"),
+        "GOD_WORDS_FILE": Path("data/test/godwords.txt"),
         "SCHEDULED_POST_FILE": Path("data/posts.json"),
         "RANDOM_MEDIA_DIRECTORY": Path("data/random"),
         # Configuration

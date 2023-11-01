@@ -10,7 +10,6 @@ services:
       - WOLFRAM_API_KEY
       - OPENAI_API_KEY
       - MONSTER_API_KEY
-      - MONSTER_TOKEN
       - GOOGLE_API_KEY
       - TZ=Europe/London
     volumes:

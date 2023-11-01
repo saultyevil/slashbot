@@ -233,6 +233,6 @@ class Admin(SlashbotCog):
         await inter.response.send_message(f"Loading chain: {chain_name}", ephemeral=True)
 
         state_size = int(re.findall(r"\d+", chain_name)[0])
-        markov.MARKOV_MODEL = markov.load_markov_model(f"data/{chain_name}", state_size)
+        markov.MARKOV_MODEL = markov.load_markov_model(f"data/chains/{chain_name}", state_size)
 
         await inter.followup.send(f"{chain_name} has successfully loaded.", ephemeral=True)
