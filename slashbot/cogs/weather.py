@@ -331,14 +331,13 @@ class Weather(SlashbotCog):
                 alert_end = datetime.datetime.fromtimestamp(alert["end"])
                 if alert_start < now < alert_end:
                     alert_strings.append(
-                        f"{alert['event']}\n{alert_start.strftime(r'%H:%m')} to "
-                        + f"{alert_end.strftime(r'%H:%m')} ({alert['sender_name']})",
+                        f"{alert['event']}: {alert_start.strftime(r'%H:%m')} to {alert_end.strftime(r'%H:%m')} ",
                     )
-                embed.add_field(
-                    name="Weather Alert",
-                    value="\n".join(alert_strings),
-                    inline=False,
-                )
+            embed.add_field(
+                name="Weather Alert" if len(alert_strings) == 0 else "Weather Alerts",
+                value="\n".join(alert_strings),
+                inline=False,
+            )
         embed.add_field(
             name="Temperature",
             value=f"{current_weather['temp']:.0f} °{temp_unit}",
