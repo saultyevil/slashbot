@@ -315,7 +315,7 @@ class Weather(SlashbotCog):
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
         # daily_forecast = weather_return["daily"][0]
-        weather_alert = weather_return.get("alerts")[0] if "alerts" in weather_return else None
+        weather_alerts = weather_return.get("alerts") if "alerts" in weather_return else None
         current_weather = weather_return["current"]
         temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
 
@@ -323,15 +323,20 @@ class Weather(SlashbotCog):
         embed.add_field(
             name="Description", value=current_weather["weather"][0]["description"].capitalize(), inline=False
         )
-        if weather_alert:
+        if weather_alerts:
             now = datetime.datetime.now()
-            alert_start = datetime.datetime.fromtimestamp(weather_alert["start"])
-            alert_end = datetime.datetime.fromtimestamp(weather_alert["end"])
-            if alert_start < now < alert_end:
+            alert_strings = []
+            for alert in weather_alerts:
+                alert_start = datetime.datetime.fromtimestamp(alert["start"])
+                alert_end = datetime.datetime.fromtimestamp(alert["end"])
+                if alert_start < now < alert_end:
+                    alert_strings.append(
+                        f"{alert['event']}\n{alert_start.strftime(r'%H:%m')} to "
+                        + f"{alert_end.strftime(r'%H:%m')} ({alert['sender_name']})",
+                    )
                 embed.add_field(
                     name="Weather Alert",
-                    value=f"{weather_alert['event']}\n{alert_start.strftime(r'%H:%m')} to "
-                    + f"{alert_end.strftime(r'%H:%m')} ({weather_alert['sender_name']})",
+                    value="\n".join(alert_strings),
                     inline=False,
                 )
         embed.add_field(
