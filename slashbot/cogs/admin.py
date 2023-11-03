@@ -23,7 +23,7 @@ COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 AVAILABLE_CHAINS = (
-    "chain-0.pickle",
+    # "chain-0.pickle",
     "chain-1.pickle",
     "chain-2.pickle",
     "chain-3.pickle",
