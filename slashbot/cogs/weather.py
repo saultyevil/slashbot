@@ -333,11 +333,12 @@ class Weather(SlashbotCog):
                     alert_strings.append(
                         f"{alert['event']}: {alert_start.strftime(r'%H:%m')} to {alert_end.strftime(r'%H:%m')} ",
                     )
-            embed.add_field(
-                name="Weather Alert" if len(alert_strings) == 0 else "Weather Alerts",
-                value="\n".join(alert_strings),
-                inline=False,
-            )
+            if alert_strings:
+                embed.add_field(
+                    name="Weather Alert" if len(alert_strings) == 0 else "Weather Alerts",
+                    value="\n".join(alert_strings),
+                    inline=False,
+                )
         embed.add_field(
             name="Temperature",
             value=f"{current_weather['temp']:.0f} °{temp_unit}",
