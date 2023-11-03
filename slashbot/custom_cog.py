@@ -38,7 +38,7 @@ class SlashbotCog(commands.Cog):
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id != App.config("NO_COOLDOWN_SERVERS"):
+        if inter.guild and inter.guild.id in App.config("COOLDOWN_SERVERS"):
             return inter.application_command.reset_cooldown(inter)
 
         if inter.author.id in App.config("NO_COOLDOWN_USERS"):

@@ -3,8 +3,12 @@
         "RATE": 3,
         "STANDARD": 60,
         "EXTENDED": 3600,
-        "NO_COOLDOWN_USERS": [],
-        "NO_COOLDOWN_SERVERS": []
+        "NO_COOLDOWN_USERS": [
+            151378138612367360
+        ],
+        "COOLDOWN_SERVERS": [
+            237647756049514498
+        ]
     },
     "DISCORD": {
         "MAX_CHARS": 1950
