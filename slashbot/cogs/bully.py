@@ -34,7 +34,7 @@ class Bully(SlashbotCog):
         self.spelling_summary.start()  # pylint: disable=no-member
 
     @commands.Cog.listener("on_message")
-    async def check_spelling(self, message: disnake.Message):
+    async def check_for_incorrect_spelling(self, message: disnake.Message):
         """Check a message for an incorrect spelling.
 
         At the moment, this will only run in the Bumpaper server.
@@ -44,10 +44,7 @@ class Bully(SlashbotCog):
         message : disnake.Message
             The message to check.
         """
-        if (
-            message.guild.id not in [App.config("ID_SERVER_BUMPAPER"), App.config("ID_SERVER_FREEDOM")]
-            or message.author.id == self.bot.user.id
-        ):
+        if message.guild.id not in App.config("SPELLCHECK_SERVERS") or message.author.id == self.bot.user.id:
             return
 
         self.incorrect_spellings[f"{message.author.display_name}+{message.channel.id}"] += self.spellchecker.unknown(

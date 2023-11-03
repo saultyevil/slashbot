@@ -9,7 +9,7 @@ am in, here there are some hardcoded IDs and specifc features.
 slashbot can be deployed using docker and docker-compose,
 
 ```bash
-$ docker-compose up -d --build
+docker-compose up -d --build
 ```
 
 You will need the environment variables listed in the next section in a file
@@ -23,8 +23,13 @@ error messages and is faster. Requirements for development are in
 
 The following environment variables are required,
 
-```
-export BOT_TOKEN="XXXXXXXXXXXXXXXXXXXX"       # the discord bot token
-export OWM_KEY="XXXXXXXXXXXXXXXXXXXX"         # an open weather map api key
-export WOLFRAM_ID="XXXXXXXXXXXXXXXXXXXX"      # a wolfram alpha api key
+```output
+SLASHBOT_CONFIG               # Path to config file
+SLASHBOT_TOKEN                # Token for the bot
+SLASHBOT_DEVELOPMENT_TOKEN    # Optional token for development
+GOOGLE_API_KEY                # API key for Google, used for Geolocating
+WOLFRAM_API_KEY               # Wolfram API key
+OWM_API_KEY                   # OpenWeatherMap API key
+OPENAI_API_KEY                # OpenAI ChatGPT API key for chat
+MONSTER_API_KEY               # Monster AI key for AI image generation
 ```

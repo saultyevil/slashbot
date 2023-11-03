@@ -38,10 +38,13 @@ class Admin(SlashbotCog):
     when changes have been made.
     """
 
-    def __init__(self, bot: commands.InteractionBot, logfile_path: Path | str):
+    def __init__(
+        self,
+        bot: commands.InteractionBot,
+    ):
         super().__init__()
         self.bot = bot
-        self.logfile_path = Path(logfile_path)
+        self.logfile_path = Path(App.config("LOGFILE_NAME"))
 
     # Commands -----------------------------------------------------------------
 

@@ -11,6 +11,7 @@ import time
 import traceback
 from typing import Coroutine
 
+import os
 import disnake
 from disnake.ext import commands
 
@@ -70,11 +71,13 @@ bot = SlashbotInterationBot(
     intents=intents,
 )
 
-markov.MARKOV_MODEL = markov.load_markov_model(f"data/chain-{args.state_size}.pickle", args.state_size)
+markov.MARKOV_MODEL = markov.load_markov_model(f"data/chains/chain-{args.state_size}.pickle", args.state_size)
+
+# TODO: load Cogs depending on if an API key exists
 
 for cog in [
     slashbot.cogs.bully.Bully(bot),
-    slashbot.cogs.admin.Admin(bot, App.config("LOGFILE_NAME")),
+    slashbot.cogs.admin.Admin(bot),
     slashbot.cogs.chat.Chat(bot),
     slashbot.cogs.image.ImageGen(bot),
     slashbot.cogs.info.Info(bot),
@@ -106,8 +109,8 @@ async def on_ready() -> None:
     else:
         logger.info("Bot reconnected")
 
-    user = await bot.fetch_user(App.config("ID_BOT"))
-    App.set("BOT_USER_OBJECT", user)
+    # user = await bot.fetch_user(App.config("ID_BOT"))
+    # App.set("BOT_USER_OBJECT", user)
 
 
 @bot.event
@@ -132,6 +135,6 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
 # This finally runs the bot
 
 if args.development:
-    bot.run(App.config("BOT_DEVELOPMENT_TOKEN"))
+    bot.run(os.getenv("SLASHBOT_DEVELOPMENT_TOKEN"))
 else:
-    bot.run(App.config("BOT_TOKEN"))
+    bot.run(os.getenv("SLASHBOT_TOKEN"))
