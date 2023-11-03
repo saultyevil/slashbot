@@ -299,7 +299,7 @@ class Chat(SlashbotCog):
             return
 
         # only respond when mentioned or in DM
-        bot_mentioned = App.config("BOT_USER_OBJECT") in message.mentions
+        bot_mentioned = self.bot.user in message.mentions
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:

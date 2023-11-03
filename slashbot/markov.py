@@ -92,7 +92,6 @@ def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.
         with open(chain_location, "rb") as file_in:
             try:
                 model.chain = pickle.load(file_in)
-                App.set("MARKOV_CHAIN_FILE", chain_location)
                 logger.info("Model %s has been loaded", str(chain_location))
             except EOFError:
                 shutil.copy2(str(chain_location) + ".bak", chain_location)

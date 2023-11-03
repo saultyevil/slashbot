@@ -3,11 +3,57 @@
 
 """Global configuration class."""
 
+import json
 import logging
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
+
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
+SLASH_CONFIG = None
+
+
+def load_config():
+    global SLASH_CONFIG
+    with open(os.getenv("SLASHBOT_CONFIG"), "r", encoding="utf-8") as file_in:
+        SLASH_CONFIG = json.load(file_in)
+
+
+load_config()
+
+
+def setup_logging():
+    """Setup up the logger and log file."""
+
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
+    logger = logging.getLogger(App.config("LOGGER_NAME"))
+    logger.addHandler(console_handler)
+
+    if Path(App.config("LOGFILE_NAME")).parent.exists():
+        file_handler = RotatingFileHandler(
+            filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
+        )
+        file_handler.setFormatter(
+            logging.Formatter(
+                "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
+            )
+        )
+        logger.addHandler(file_handler)
+
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    logger.info("Loaded config file %s", os.getenv("SLASHBOT_CONFIG"))
+
+
+class FileWatcher(FileSystemEventHandler):
+    def on_modified(self, event):
+        if event.event_type == "modified" and event.src_path == os.getenv("SLASHBOT_CONFIG"):
+            # TODO: this triggers twice on file modify...
+            App._set_config_values()
 
 
 class App:
@@ -18,83 +64,52 @@ class App:
     """
 
     # __conf is a dictionary of configuration parameters
-    __conf = {
-        "BOT_TOKEN": os.getenv("BOT_TOKEN"),
-        "BOT_DEVELOPMENT_TOKEN": os.getenv("BOT_DEVELOPMENT_TOKEN"),
-        # cooldown parameters
-        "COOLDOWN_RATE": 3,
-        "COOLDOWN_STANDARD": 60,
-        "COOLDOWN_ONE_HOUR": 3600,
-        "HOURS_IN_WEEK": 168,
-        # general discord things
-        "MAX_CHARS": 1990,
-        "LOGGER_NAME": "slashbot",
-        "LOGFILE_NAME": Path("log/slashbot.log"),
-        # Define users, roles and channels
-        "ID_BOT": 815234903251091456,
-        "ID_USER_ADAM": 261097001301704704,
-        "ID_USER_ZADETH": 737239706214858783,
-        "ID_USER_LIME": 121310675132743680,
-        "ID_USER_SAULTYEVIL": 151378138612367360,
-        "ID_USER_HYPNOTIZED": 176726054256377867,
-        "ID_USER_JAMIE": 284782689226063874,
-        "ID_SERVER_ADULT_CHILDREN": 237647756049514498,
-        "ID_SERVER_FREEDOM": 815237689775357992,
-        "ID_SERVER_BUMPAPER": 710120382144839691,
-        "ID_CHANNEL_IDIOTS": 237647756049514498,
-        "ID_CHANNEL_SPAM": 627234669791805450,
-        "ID_CHANNEL_ENGORGED": 710120383235227670,
-        "ID_ROLE_TOP_GAY": 237651499541331969,
-        # API keys
-        "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
-        "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
-        "OWM_API_KEY": os.getenv("OWM_API_KEY"),
-        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "MONSTER_API_KEY": os.getenv("MONSTER_API_KEY"),
-        # File locations
-        "MARKOV_CHAIN_FILE": None,
-        "DATABASE_LOCATION": Path("data/slashbot.sqlite.db"),
-        "BAD_WORDS_FILE": Path("data/badwords.txt"),
-        "GOD_WORDS_FILE": Path("data/godwords.txt"),
-        "SCHEDULED_POST_FILE": Path("data/posts.json"),
-        "RANDOM_MEDIA_DIRECTORY": Path("data/random"),
-        # Configuration
-        # "CONTENT_BANK_STARTING_BALANCE": 3,
-        "PREGEN_MARKOV_SENTENCES_AMOUNT": 5,
-        "PREGEN_REGENERATE_LIMIT": 1,
-        "ENABLE_PREGEN_SENTENCES": True,
-        # "TWEET_FILE": Path("data/tweets.csv"),
-        # Setters
-        "BOT_USER_OBJECT": None,
-    }
+    _config = {}
 
-    __conf["SLASH_SERVERS"] = (
-        __conf["ID_SERVER_ADULT_CHILDREN"],
-        __conf["ID_SERVER_FREEDOM"],
-        __conf["ID_SERVER_BUMPAPER"],
-    )
+    # Private methods ----------------------------------------------------------
 
-    __conf["NO_COOL_DOWN_USERS"] = [__conf["ID_USER_SAULTYEVIL"]]
+    @classmethod
+    def _set_config_values(cls):
+        """Set the values of the config from the config file.
 
-    # __setters is a tuple of parameters which can be set
-    __setters = ("BOT_USER_OBJECT", "MARKOV_CHAIN_FILE")
-
-    # Special methods ----------------------------------------------------------
-
-    def __getitem__(self, name: str) -> Any:
-        """Get an item from __conf using square bracket indexing.
-
-        Parameters
-        ---------
-        name: str
-            The name of the item to get.
-
-        Returns
-        -------
-        value: Any
-            The value of item.
+        The purpose of this script is to populate the __conf class attribute.
         """
-        return App.__conf[name]
+        load_config()
+        _config = {
+            # cooldown parameters
+            "COOLDOWN_RATE": int(SLASH_CONFIG["COOLDOWN"]["RATE"]),
+            "COOLDOWN_STANDARD": int(SLASH_CONFIG["COOLDOWN"]["STANDARD"]),
+            "COOLDOWN_EXTENDED": int(SLASH_CONFIG["COOLDOWN"]["EXTENDED"]),
+            "COOLDOWN_SERVERS": SLASH_CONFIG["COOLDOWN"]["COOLDOWN_SERVERS"],
+            "NO_COOLDOWN_USERS": SLASH_CONFIG["COOLDOWN"]["NO_COOLDOWN_USERS"],
+            # general things
+            "MAX_CHARS": SLASH_CONFIG["DISCORD"]["MAX_CHARS"],
+            "LOGGER_NAME": SLASH_CONFIG["LOGFILE"]["LOG_NAME"],
+            "LOGFILE_NAME": SLASH_CONFIG["LOGFILE"]["LOG_LOCATION"],
+            "DEVELOPMENT_SERVERS": SLASH_CONFIG["DISCORD"]["DEVELOPMENT_SERVERS"],
+            # Define users, roles and channels
+            "ID_USER_SAULTYEVIL": 151378138612367360,
+            # API keys
+            "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
+            "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
+            "OWM_API_KEY": os.getenv("OWM_API_KEY"),
+            "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+            "MONSTER_API_KEY": os.getenv("MONSTER_API_KEY"),
+            # File locations
+            "DATABASE_LOCATION": Path(SLASH_CONFIG["FILES"]["DATABASE"]),
+            "BAD_WORDS_FILE": Path(SLASH_CONFIG["FILES"]["BAD_WORDS"]),
+            "GOD_WORDS_FILE": Path(SLASH_CONFIG["FILES"]["GOD_WORDS"]),
+            "SCHEDULED_POST_FILE": Path(SLASH_CONFIG["FILES"]["SCHEDULED_POSTS"]),
+            "RANDOM_MEDIA_DIRECTORY": Path(SLASH_CONFIG["FILES"]["RANDOM_MEDIA_DIRECTORY"]),
+            # Markov Chain configuration
+            "ENABLE_MARKOV_TRAINING": bool(SLASH_CONFIG["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
+            "ENABLE_PREGEN_SENTENCES": bool(SLASH_CONFIG["MARKOV"]["ENABLE_PREGEN_SENTENCES"]),
+            "PREGEN_MARKOV_SENTENCES_AMOUNT": int(SLASH_CONFIG["MARKOV"]["NUM_PREGEN_SENTENCES"]),
+            "PREGEN_REGENERATE_LIMIT": int(SLASH_CONFIG["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
+            # Cog settings
+            "SPELLCHECK_SERVERS": [],
+        }
+        cls._config = _config
 
     # Public methods -----------------------------------------------------------
 
@@ -107,50 +122,12 @@ class App:
         name: str
             The name of the parameter to get the value for.
         """
-        return App.__conf[name]
-
-    @staticmethod
-    def set(name: str, value: Any) -> None:
-        """Set the value of a configuration parameter.
-
-        Parameters
-        ----------
-        name: str
-            The name of the parameter to set a value for.
-        value: Any
-            The new value of the parameter.
-        """
-        if name in App.__setters:
-            App.__conf[name] = value
-        else:
-            raise NameError(f"Name {name} not accepted in set() method")
+        return App._config[name]
 
 
-# Set up logger ----------------------------------------------------------------
+App._set_config_values()
+setup_logging()
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
-
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
-logger.addHandler(console_handler)
-
-if App.config("LOGFILE_NAME").parent.exists():
-    file_handler = RotatingFileHandler(
-        filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
-    )
-    file_handler.setFormatter(
-        logging.Formatter("[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S")
-    )
-    logger.addHandler(file_handler)
-
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
-
-# Set up logger for disnake ----------------------------------------------------
-
-if Path("log/").exists():
-    disnake_handler = logging.FileHandler(filename="log/disnake.log", encoding="utf-8", mode="w")
-    disnake_handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
-    logger_disnake = logging.getLogger("disnake")
-    logger_disnake.setLevel(logging.DEBUG)
-    logger_disnake.addHandler(disnake_handler)
+observer = Observer()
+observer.schedule(FileWatcher(), path=Path(os.getenv("SLASHBOT_CONFIG")).parent)
+observer.start()

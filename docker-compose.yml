@@ -5,12 +5,12 @@ services:
     container_name: slashbot
     restart: unless-stopped
     environment:
-      - BOT_TOKEN
+      - SLASHBOT_CONFIG=config.json
+      - SLASHBOT_TOKEN
       - OWM_API_KEY
       - WOLFRAM_API_KEY
       - OPENAI_API_KEY
       - MONSTER_API_KEY
-      - MONSTER_TOKEN
       - GOOGLE_API_KEY
       - TZ=Europe/London
     volumes:
