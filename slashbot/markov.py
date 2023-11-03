@@ -14,7 +14,7 @@ from typing import Coroutine, Dict, List
 
 import disnake
 
-from slashbot import markovify
+import markovify
 from slashbot.config import App
 from slashbot.error import deferred_error_message
 

@@ -44,9 +44,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--state-size",
-    default=0,
+    default=2,
     help="The state size of the Markov model to use",
-    choices=[0, 1, 2, 3, 4],
+    choices=[1, 2, 3, 4],
     type=int,
 )
 args = parser.parse_args()

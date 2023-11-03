@@ -1,7 +1,7 @@
 
 [tool.poetry]
 name = "slashbot"
-version = "3.2.1"
+version = "4.0.0"
 description = ""
 authors = ["Edward J. Parkinson"]
 readme = "README.md"
