@@ -86,7 +86,7 @@ class App:
             "MAX_CHARS": SLASH_CONFIG["DISCORD"]["MAX_CHARS"],
             "LOGGER_NAME": SLASH_CONFIG["LOGFILE"]["LOG_NAME"],
             "LOGFILE_NAME": SLASH_CONFIG["LOGFILE"]["LOG_LOCATION"],
-            "DEVELOPMENT_SERVERS": [],
+            "DEVELOPMENT_SERVERS": SLASH_CONFIG["DISCORD"]["DEVELOPMENT_SERVERS"],
             # Define users, roles and channels
             "ID_USER_SAULTYEVIL": 151378138612367360,
             # API keys

@@ -11,7 +11,12 @@
         ]
     },
     "DISCORD": {
-        "MAX_CHARS": 1950
+        "MAX_CHARS": 1950,
+        "DEVELOPMENT_SERVERS": [
+            237647756049514498,
+            815237689775357992,
+            710120382144839691
+        ]
     },
     "FILES": {
         "DATABASE": "data/slashbot.sqlite.db",
