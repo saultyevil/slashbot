@@ -20,5 +20,4 @@ RUN mkdir -p /home/user/.ssh
 RUN chown -R user:user /home/user/.ssh
 USER user
 
-# COPY . .
-CMD ["python", "run.py"]
+CMD ["./entrypoint.sh"]

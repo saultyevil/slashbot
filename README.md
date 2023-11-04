@@ -9,7 +9,13 @@ am in, here there are some hardcoded IDs and specifc features.
 slashbot can be deployed using docker and docker-compose,
 
 ```bash
-docker-compose up -d --build
+docker compose up
+```
+
+For development,
+
+```bash
+docker compose -f docker-compose.develop.yml up
 ```
 
 You will need the environment variables listed in the next section in a file
