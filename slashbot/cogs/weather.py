@@ -72,7 +72,7 @@ class Weather(SlashbotCog):
             - create markov sentences
         """
         self.markov_sentences = (
-            await generate_sentences_for_seed_words(
+            generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["weather", "forecast"],
                 App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
@@ -80,6 +80,7 @@ class Weather(SlashbotCog):
             if self.bot.markov_gen_on
             else {"weather": [], "forecast": []}
         )
+        logger.info("Generated sentences for %s", self.__cog_name__)
 
     # Private ------------------------------------------------------------------
 

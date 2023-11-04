@@ -87,7 +87,7 @@ class Reminders(SlashbotCog):
             - create markov sentences
         """
         self.markov_sentences = (
-            await generate_sentences_for_seed_words(
+            generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["reminder"],
                 App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
@@ -95,6 +95,7 @@ class Reminders(SlashbotCog):
             if self.bot.markov_gen_on
             else {"reminder": []}
         )
+        logger.info("Generated sentences for %s", self.__cog_name__)
 
     # Private methods ----------------------------------------------------------
 

@@ -28,7 +28,7 @@ from slashbot.db import (  # populate_word_tables_with_new_words,
     User,
     connect_to_database_engine,
 )
-from slashbot.markov import generate_sentence  # update_markov_chain_for_model
+from slashbot.markov import async_generate_sentence  # update_markov_chain_for_model
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -151,7 +151,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             A seed word (or words) to generate a message from.
         """
         await inter.response.defer()
-        return await inter.edit_original_message(content=await generate_sentence(markov.MARKOV_MODEL, words))
+        return await inter.edit_original_message(content=await async_generate_sentence(markov.MARKOV_MODEL, words))
 
     # @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     # @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /chat")

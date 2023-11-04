@@ -50,7 +50,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
             - create markov sentences
         """
         self.markov_sentences = (
-            await generate_sentences_for_seed_words(
+            generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["wolfram"],
                 App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
@@ -58,6 +58,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
             if self.bot.markov_gen_on
             else {"wolfram": []}
         )
+        logger.info("Generated sentences for %s", self.__cog_name__)
 
     # Commands -----------------------------------------------------------------
 

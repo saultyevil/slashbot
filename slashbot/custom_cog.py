@@ -11,8 +11,8 @@ from disnake.ext import commands, tasks
 from slashbot.config import App
 from slashbot.markov import (
     MARKOV_MODEL,
-    generate_list_of_sentences_with_seed_word,
-    generate_sentence,
+    async_generate_list_of_sentences_with_seed_word,
+    async_generate_sentence,
 )
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -46,18 +46,16 @@ class SlashbotCog(commands.Cog):
 
     # Tasks --------------------------------------------------------------------
 
-    @tasks.loop(seconds=5)
+    @tasks.loop(seconds=30)
     async def regenerate_markov_sentences(self) -> None:
         """Re-generate the markov sentences with a given seed word."""
-        if not self.bot.markov_gen_on:
-            return
-        if len(self.markov_sentences) == 0:
+        if not self.bot.markov_gen_on or not self.markov_sentences:
             return
 
-        for seed_word, sentences in self.markov_sentences.items():
-            if len(sentences) < App.config("PREGEN_REGENERATE_LIMIT"):
-                logger.debug("Regenerating sentences for seed word %s", seed_word)
-                self.markov_sentences[seed_word] = await generate_list_of_sentences_with_seed_word(
+        for seed_word, seed_sentences in self.markov_sentences.items():
+            if len(seed_sentences) <= App.config("PREGEN_REGENERATE_LIMIT"):
+                # logger.debug("Regenerating sentences for seed word %s", seed_word)
+                self.markov_sentences[seed_word] = await async_generate_list_of_sentences_with_seed_word(
                     MARKOV_MODEL, seed_word, App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
                 )
 
@@ -87,11 +85,11 @@ class SlashbotCog(commands.Cog):
         if seed_word not in self.markov_sentences:
             if self.bot.markov_gen_on:
                 logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
-            return await generate_sentence(MARKOV_MODEL, seed_word)
+            return await async_generate_sentence(MARKOV_MODEL, seed_word)
 
         try:
             return self.markov_sentences[seed_word].pop()
         except IndexError:
             if self.bot.markov_gen_on:
                 logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
-            return await generate_sentence(MARKOV_MODEL, seed_word)
+            return await async_generate_sentence(MARKOV_MODEL, seed_word)

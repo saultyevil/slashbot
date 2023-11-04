@@ -41,17 +41,18 @@ class Videos(SlashbotCog):
             - create markov sentences
         """
         self.markov_sentences = (
-            await generate_sentences_for_seed_words(
+            generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 [
                     "admin",
                     "admin abuse",
                 ],
-                0,  # these only happen once in a while, so dont need a big bank of them
+                1,  # these only happen once in a while, so dont need a big bank of them
             )
             if self.bot.markov_gen_on
             else {"admin": [], "admin abuse": []}
         )
+        logger.info("Generated sentences for %s", self.__cog_name__)
 
     # Commands -----------------------------------------------------------------
 

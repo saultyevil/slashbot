@@ -45,8 +45,8 @@ logger.info("Initializing Slashbot...")
 start = time.time()
 
 if args.development:
-    logger.debug("Disabling automatic markov generation for development mode")
-    # args.disable_auto_markov = False
+    # logger.debug("Disabling automatic markov generation for development mode")
+    args.disable_auto_markov = False
 
 # Load the markov model first --------------------------------------------------
 
