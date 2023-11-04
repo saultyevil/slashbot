@@ -41,6 +41,14 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         self.bot = bot
         self.attempts = attempts
         self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
+        self.markov_sentences = ()
+
+    async def cog_load(self):
+        """Initialise the cog.
+
+        Currently this does:
+            - create markov sentences
+        """
         self.markov_sentences = (
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
@@ -50,6 +58,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
             if self.bot.markov_gen_on
             else {"wolfram": []}
         )
+        logger.info("Generated sentences for %s", self.__cog_name__)
 
     # Commands -----------------------------------------------------------------
 
@@ -88,7 +97,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.defer()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
-        embed.set_footer(text=f"{self.get_generated_sentence('wolfram')}")
+        embed.set_footer(text=f"{await self.get_generated_sentence('wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
         )

@@ -32,7 +32,14 @@ class Videos(SlashbotCog):
         """
         super().__init__()
         self.bot = bot
+        self.markov_sentences = ()
 
+    async def cog_load(self):
+        """Initialise the cog.
+
+        Currently this does:
+            - create markov sentences
+        """
         self.markov_sentences = (
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
@@ -45,6 +52,7 @@ class Videos(SlashbotCog):
             if self.bot.markov_gen_on
             else {"admin": [], "admin abuse": []}
         )
+        logger.info("Generated sentences for %s", self.__cog_name__)
 
     # Commands -----------------------------------------------------------------
 
@@ -61,7 +69,7 @@ class Videos(SlashbotCog):
         await inter.response.defer()
         seed = random.choice(["admin", "admin abuse"])
         return await inter.edit_original_message(
-            content=f"{self.get_generated_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+            content=f"{await self.get_generated_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)

@@ -264,3 +264,69 @@ def generate_sentences_for_seed_words(
         The generated dictionary.
     """
     return {seed_word: generate_list_of_sentences_with_seed_word(model, seed_word, amount) for seed_word in seed_words}
+
+
+async def async_generate_sentence(model: markovify.Text = None, seed_word: str = None, attempts: int = 5) -> str:
+    """Generate a sentence using a markov chain.
+
+    Parameters
+    ----------
+    model : markovify.Text
+        The model to generate the sentence from, by default None
+    seed_word : str, optional
+        A seed word to include in the sentence, by default None
+    attempts : int, optional
+        The number of attempts to generate a sentence with a seed word, by
+        default 5
+
+    Returns
+    -------
+    str
+        The generated sentence
+    """
+    return generate_sentence(model, seed_word, attempts)
+
+
+async def async_generate_list_of_sentences_with_seed_word(
+    model: markovify.Text, seed_word: str, amount: int
+) -> List[str]:
+    """Generates a list of markov generated sentences for a specific key word.
+
+    Parameters
+    ----------
+    model : markovify.Text
+        The markov model to use to generate sentences.
+    seed_word : str
+        The seed word to use.
+    amount : int, optional
+        The number of sentences to generate.
+
+    Returns
+    -------
+    List[str]
+        The generated sentences.
+    """
+    return generate_list_of_sentences_with_seed_word(model, seed_word, amount)
+
+
+async def async_generate_sentences_for_seed_words(
+    model: markovify.Text, seed_words: List[str], amount: int
+) -> Dict[str, List[str]]:
+    """Create a dictionary containing markov generated sentences, where the keys
+    are seed words and the values are a list of sentences.
+
+    Parameters
+    ----------
+    model : markovify.Text
+        The markov sentence to use.
+    seed_words : List[str]
+        A list of seed words to generate sentences for.
+    amount : int
+        The number of sentences to generate for each seed word.
+
+    Returns
+    -------
+    Dict[List[str]]
+        The generated dictionary.
+    """
+    return await async_generate_sentences_for_seed_words(model, seed_words, amount)

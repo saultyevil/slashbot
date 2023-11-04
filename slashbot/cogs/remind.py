@@ -77,6 +77,15 @@ class Reminders(SlashbotCog):
 
         self.session = sessionmaker(connect_to_database_engine())()
 
+        self.markov_sentences = ()
+        self.bot.add_function_to_cleanup(None, close_session, (self.session,))
+
+    async def cog_load(self):
+        """Initialise the cog.
+
+        Currently this does:
+            - create markov sentences
+        """
         self.markov_sentences = (
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
@@ -86,8 +95,7 @@ class Reminders(SlashbotCog):
             if self.bot.markov_gen_on
             else {"reminder": []}
         )
-
-        self.bot.add_function_to_cleanup(None, close_session, (self.session,))
+        logger.info("Generated sentences for %s", self.__cog_name__)
 
     # Private methods ----------------------------------------------------------
 
@@ -175,7 +183,7 @@ class Reminders(SlashbotCog):
                     continue
 
                 embed = disnake.Embed(title=reminder.reminder, color=disnake.Color.default())
-                embed.set_footer(text=f"{self.get_generated_sentence('reminder')}")
+                embed.set_footer(text=f"{await self.get_generated_sentence('reminder')}")
                 embed.set_thumbnail(url=user.avatar.url)
 
                 channel = await self.bot.fetch_channel(reminder.channel)
