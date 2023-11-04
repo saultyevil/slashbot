@@ -18,14 +18,11 @@ For development,
 docker compose -f docker-compose.develop.yml up
 ```
 
-You will need the environment variables listed in the next section in a file
-named `docker-env.env`.
-
 ## Requirements
 
 Python 3.10 or above is required. I use Python 3.11 because it has nicer
-error messages and is faster. Requirements for development are in
-`requirements-dev.txt` with requirements for running it in `requirements.txt`.
+error messages and is faster. Python requirements are in `requirements.txt`
+or can be installed with Poetry.
 
 The following environment variables are required,
 
