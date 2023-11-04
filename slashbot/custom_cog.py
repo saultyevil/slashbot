@@ -57,7 +57,7 @@ class SlashbotCog(commands.Cog):
         for seed_word, sentences in self.markov_sentences.items():
             if len(sentences) < App.config("PREGEN_REGENERATE_LIMIT"):
                 logger.debug("Regenerating sentences for seed word %s", seed_word)
-                self.markov_sentences[seed_word] = generate_list_of_sentences_with_seed_word(
+                self.markov_sentences[seed_word] = await generate_list_of_sentences_with_seed_word(
                     MARKOV_MODEL, seed_word, App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
                 )
 
@@ -68,7 +68,7 @@ class SlashbotCog(commands.Cog):
 
     # Functions ----------------------------------------------------------------
 
-    def get_generated_sentence(self, seed_word: str) -> str:
+    async def get_generated_sentence(self, seed_word: str) -> str:
         """Retrieve a pre-generated sentence from storage.
 
         If a sentence for a seed word doesn't exist, then a sentence is created
@@ -87,11 +87,11 @@ class SlashbotCog(commands.Cog):
         if seed_word not in self.markov_sentences:
             if self.bot.markov_gen_on:
                 logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
-            return generate_sentence(MARKOV_MODEL, seed_word)
+            return await generate_sentence(MARKOV_MODEL, seed_word)
 
         try:
             return self.markov_sentences[seed_word].pop()
         except IndexError:
             if self.bot.markov_gen_on:
                 logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
-            return generate_sentence(MARKOV_MODEL, seed_word)
+            return await generate_sentence(MARKOV_MODEL, seed_word)

@@ -63,8 +63,16 @@ class Weather(SlashbotCog):
             domain="maps.google.co.uk",
         )
 
+        self.markov_sentences = ()
+
+    async def cog_load(self):
+        """Initialise the cog.
+
+        Currently this does:
+            - create markov sentences
+        """
         self.markov_sentences = (
-            generate_sentences_for_seed_words(
+            await generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["weather", "forecast"],
                 App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
@@ -263,7 +271,7 @@ class Weather(SlashbotCog):
                 inline=False,
             )
 
-        embed.set_footer(text=f"{self.get_generated_sentence('forecast')}")
+        embed.set_footer(text=f"{await self.get_generated_sentence('forecast')}")
         embed.set_thumbnail(self.__get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
@@ -357,7 +365,7 @@ class Weather(SlashbotCog):
             inline=False,
         )
 
-        embed.set_footer(text=f"{self.get_generated_sentence('weather')}")
+        embed.set_footer(text=f"{await self.get_generated_sentence('weather')}")
         embed.set_thumbnail(self.__get_weather_icon_url(current_weather["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
