@@ -187,3 +187,14 @@ class Users(SlashbotCog):
         for match in matches:
             await message.channel.send(f"{match.group(0).replace('twitter', 'fxtwitter')}")
         await message.channel.send("*(You can opt in or out of this with /set_info)*")
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(Users(bot))

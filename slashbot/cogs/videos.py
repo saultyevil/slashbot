@@ -118,3 +118,14 @@ class Videos(SlashbotCog):
         """
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(Videos(bot))

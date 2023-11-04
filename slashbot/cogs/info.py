@@ -127,3 +127,14 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
                 embed.add_field(name=f"Result {n_sol}", value=result, inline=False)
 
         return await inter.edit_original_message(embed=embed)
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(Info(bot))

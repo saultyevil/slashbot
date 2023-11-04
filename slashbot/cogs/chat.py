@@ -544,3 +544,14 @@ class JsonFileWatcher(FileSystemEventHandler):
 observer = Observer()
 observer.schedule(JsonFileWatcher(), "data/prompts", recursive=True)
 observer.start()
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(Chat(bot))

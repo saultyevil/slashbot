@@ -15,17 +15,6 @@ import os
 import disnake
 from disnake.ext import commands
 
-import slashbot.cogs.admin
-import slashbot.cogs.bully
-import slashbot.cogs.chat
-import slashbot.cogs.image
-import slashbot.cogs.info
-import slashbot.cogs.remind
-import slashbot.cogs.scheduled_posts
-import slashbot.cogs.spam
-import slashbot.cogs.users
-import slashbot.cogs.videos
-import slashbot.cogs.weather
 from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_bot import SlashbotInterationBot
@@ -59,7 +48,11 @@ if args.development:
     logger.debug("Disabling automatic markov generation for development mode")
     args.disable_auto_markov = False
 
-# Set up the bot and cogs --------------------------------------------------
+# Load the markov model first --------------------------------------------------
+
+markov.MARKOV_MODEL = markov.load_markov_model(f"data/chains/chain-{args.state_size}.pickle", args.state_size)
+
+# Set up the bot and cogs ------------------------------------------------------
 
 intents = disnake.Intents.default()
 intents.message_content = True
@@ -69,29 +62,12 @@ intents.members = True
 bot = SlashbotInterationBot(
     markov_gen_on=args.disable_auto_markov,
     intents=intents,
+    reload=True if args.development else False,
 )
 
-markov.MARKOV_MODEL = markov.load_markov_model(f"data/chains/chain-{args.state_size}.pickle", args.state_size)
+bot.load_extensions("slashbot/cogs")
 
-# TODO: load Cogs depending on if an API key exists
-
-for cog in [
-    slashbot.cogs.bully.Bully(bot),
-    slashbot.cogs.admin.Admin(bot),
-    slashbot.cogs.chat.Chat(bot),
-    slashbot.cogs.image.ImageGen(bot),
-    slashbot.cogs.info.Info(bot),
-    slashbot.cogs.remind.Reminders(bot),
-    slashbot.cogs.scheduled_posts.ScheduledPosts(bot),
-    slashbot.cogs.spam.Spam(bot),
-    slashbot.cogs.users.Users(bot),
-    slashbot.cogs.videos.Videos(bot),
-    slashbot.cogs.weather.Weather(bot),
-]:
-    bot.add_cog(cog)
-
-
-# Bot events ---------------------------------------------------------------
+# Bot events -------------------------------------------------------------------
 
 
 @bot.event
@@ -108,9 +84,6 @@ async def on_ready() -> None:
         logger.info("Started in %.2f seconds", time.time() - start)
     else:
         logger.info("Bot reconnected")
-
-    # user = await bot.fetch_user(App.config("ID_BOT"))
-    # App.set("BOT_USER_OBJECT", user)
 
 
 @bot.event

@@ -188,3 +188,14 @@ class ScheduledPosts(SlashbotCog):
         file.filename = f"SPOILER_{file.filename}"
         channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
         await channel.send(file=file)
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(ScheduledPosts(bot))

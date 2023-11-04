@@ -1,4 +1,12 @@
 {
+    "COGS": {
+        "SPELLCHECK": {
+            "ENABLED": true,
+            "SERVERS": [
+                710120382144839691
+            ]
+        }
+    },
     "COOLDOWN": {
         "RATE": 3,
         "STANDARD": 60,

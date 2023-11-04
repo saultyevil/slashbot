@@ -239,3 +239,14 @@ class Admin(SlashbotCog):
         markov.MARKOV_MODEL = markov.load_markov_model(f"data/chains/{chain_name}", state_size)
 
         await inter.followup.send(f"{chain_name} has successfully loaded.", ephemeral=True)
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(Admin(bot))

@@ -381,3 +381,14 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
     #         App.config("MARKOV_CHAIN_FILE"),
     #     )
     #     self.markov_training_sample.clear()
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(Spam(bot))

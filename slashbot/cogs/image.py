@@ -24,7 +24,7 @@ HEADER = {
 }
 
 
-class ImageGen(SlashbotCog):
+class ImageAI(SlashbotCog):
     """Cog for text to image generation using Monster API.
 
     Possibly in the future, we'll use OpenAI instead.
@@ -113,7 +113,9 @@ class ImageGen(SlashbotCog):
     # async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction):
     #     """Remove CustomCog before cog interaction."""
 
-    @commands.cooldown(rate=App.config("COOLDOWN_RATE"), per=App.config("COOLDOWN_STANDARD"), type=commands.BucketType.user)
+    @commands.cooldown(
+        rate=App.config("COOLDOWN_RATE"), per=App.config("COOLDOWN_STANDARD"), type=commands.BucketType.user
+    )
     @commands.slash_command(description="Generate an image from a text prompt", dm_permission=False)
     async def text_to_image(
         self,
@@ -177,3 +179,14 @@ class ImageGen(SlashbotCog):
             await next_interaction.send(f'{inter.author.name}\'s request ({process_id}) for "{prompt}" timed out.')
         else:
             await next_interaction.send(f'{inter.author.name}\'s request for "{prompt}" {url}')
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(ImageAI(bot))

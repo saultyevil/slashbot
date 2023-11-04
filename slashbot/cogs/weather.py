@@ -361,3 +361,14 @@ class Weather(SlashbotCog):
         embed.set_thumbnail(self.__get_weather_icon_url(current_weather["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
+
+
+def setup(bot: commands.InteractionBot):
+    """Setup entry function for load_extensions().
+
+    Parameters
+    ----------
+    bot : commands.InteractionBot
+        The bot to pass to the cog.
+    """
+    bot.add_cog(Weather(bot))

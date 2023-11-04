@@ -107,7 +107,8 @@ class App:
             "PREGEN_MARKOV_SENTENCES_AMOUNT": int(SLASH_CONFIG["MARKOV"]["NUM_PREGEN_SENTENCES"]),
             "PREGEN_REGENERATE_LIMIT": int(SLASH_CONFIG["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
             # Cog settings
-            "SPELLCHECK_SERVERS": [],
+            "SPELLCHECK_ENABLED": bool(SLASH_CONFIG["COGS"]["SPELLCHECK"]["ENABLED"]),
+            "SPELLCHECK_SERVERS": SLASH_CONFIG["COGS"]["SPELLCHECK"]["SERVERS"],
         }
         cls._config = _config
 
