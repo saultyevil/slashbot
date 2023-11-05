@@ -231,8 +231,8 @@ class Weather(SlashbotCog):
         await inter.response.defer()
 
         if not user_location:
-            user_location = get_user_location(inter.author.id, inter.author.name)
-            if not user_location:
+            user_location = get_user_location(inter.author)
+            if user_location is None:
                 return await deferred_error_message(
                     inter, "You need to either specify a city, or set your city and/or country using /set_info."
                 )
@@ -303,8 +303,8 @@ class Weather(SlashbotCog):
         await inter.response.defer()
 
         if not user_location:
-            user_location = get_user_location(inter.author.id, inter.author.name)
-            if not user_location:
+            user_location = get_user_location(inter.author)
+            if user_location is None:
                 return await deferred_error_message(
                     inter, "You need to specify a city, or set your city and/or country using /set_info."
                 )

@@ -10,16 +10,10 @@ from typing import List
 
 import disnake
 from disnake.ext import commands
-from sqlalchemy.orm import Session
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import (
-    BadWord,
-    load_database,
-    get_twitter_convert_users,
-    get_user,
-)
+from slashbot.db import get_twitter_convert_users, get_user, update_user
 from slashbot.error import deferred_error_message
 from slashbot.util import convert_string_to_lower
 
@@ -85,47 +79,37 @@ class Users(SlashbotCog):
         """
         await inter.response.defer(ephemeral=True)
 
-        with Session(load_database()) as session:
-            user = get_user(session, inter.author.id, inter.author.name)
+        if not isinstance(value, str):
+            logger.error("Disnake somehow passed something which isn't a str for value: %s (%s)", value, type(value))
+            return await inter.edit_original_message(content="An error has occured with Disnake :-(")
 
-            if not isinstance(value, str):
-                logger.error(
-                    "Disnake somehow passed something which isn't a str for value: %s (%s)", value, type(value)
-                )
-                return await inter.edit_original_message(content="An error has occured with Disnake :-(")
+        value = value.lower()
+        user = get_user(inter.author)
 
-            value = value.lower()
+        match thing:
+            case "City":
+                user["city"] = value.capitalize()
+            case "Country code":
+                if len(value) != 2:
+                    return await inter.edit_original_message(
+                        content=f"{value} is not a valid country code, which should be 2 characters e.g. GB, US."
+                    )
+                # value = "gb" if value == "uk" else value  # convert uk to gb, else value
+                user["country_code"] = value.upper()
+            case "Bad word":
+                # TODO: we should check that the bad word exists in the list of bad words
+                user["bad_word"] = value
+            case "Twitter URL":
+                user["convert_twitter_url"] = not user["convert_twitter_url"]
+                self.opt_in_twitter_users = get_twitter_convert_users()
+                if user["convert_twitter_url"]:
+                    return await inter.edit_original_message("You have opted in to change your Twitter URLs.")
+                return await inter.edit_original_message("You have opted out to change your Twitter URLs.")
+            case _:
+                logger.error("Disnake somehow allowed an unknown choice %s", thing)
+                return await inter.edit_original_message(content="An error has occurred with Disnake :-(")
 
-            match thing:
-                case "City":
-                    user.city = value.capitalize()
-                case "Country code":
-                    if len(value) != 2:
-                        return await inter.edit_original_message(
-                            content=f"{value} is not a valid country code, which should be 2 characters e.g. GB, US."
-                        )
-                    # value = "gb" if value == "uk" else value  # convert uk to gb, else value
-                    user.country_code = value.upper()
-                case "Bad word":
-                    word = session.query(BadWord).filter(BadWord.word == value).first()
-                    if not word:
-                        return await inter.edit_original_message(
-                            content=f"There is no bad word {value} in the bad word database."
-                        )
-                    user.bad_word = value  # TODO, this should be an ID to a bad word instead
-                case "Twitter URL":
-                    user.twitter_url_opt_in = not user.twitter_url_opt_in
-                    session.commit()
-                    self.opt_in_twitter_users = get_twitter_convert_users()
-                    if user.twitter_url_opt_in:
-                        return await inter.edit_original_message("You have opted in to change your Twitter URLs.")
-                    else:
-                        return await inter.edit_original_message("You have opted out to change your Twitter URLs.")
-                case _:
-                    logger.error("Disnake somehow allowed an unknown choice %s", thing)
-                    return await inter.edit_original_message(content="An error has occurred with Disnake :-(")
-
-            session.commit()
+        update_user(inter.author.id, user)
 
         return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to '{value}'.")
 
@@ -147,24 +131,23 @@ class Users(SlashbotCog):
         """
         await inter.response.defer(ephemeral=True)
 
-        with Session(load_database()) as session:
-            user = get_user(session, inter.author.id, inter.author.name)
+        user = get_user(inter.author)
 
-            match thing:
-                case "City":
-                    value = user.city
-                case "Country code":
-                    value = user.country_code
-                case "Bad word":
-                    value = user.bad_word
-                case "Twitter URL":
-                    if user.twitter_url_opt_in:
-                        value = "enabled"
-                    else:
-                        value = "disabled"
-                case _:
-                    logger.error("Disnake somehow allowed an unknown choice %s", thing)
-                    return deferred_error_message(inter, "An error has occurred with Disnake :-(")
+        match thing:
+            case "City":
+                value = user["city"]
+            case "Country code":
+                value = user["country_code"]
+            case "Bad word":
+                value = user["bad_word"]
+            case "Twitter URL":
+                if user["convert_twitter_url"]:
+                    value = "enabled"
+                else:
+                    value = "disabled"
+            case _:
+                logger.error("Disnake somehow allowed an unknown choice %s", thing)
+                return deferred_error_message(inter, "An error has occurred with Disnake :-(")
 
         return await inter.edit_original_message(content=f"{thing.capitalize()} is set to '{value}'.")
 
