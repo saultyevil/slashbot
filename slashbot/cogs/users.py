@@ -16,8 +16,8 @@ from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import (
     BadWord,
-    connect_to_database_engine,
-    get_twitter_opt_in,
+    load_database,
+    get_twitter_convert_users,
     get_user,
 )
 from slashbot.error import deferred_error_message
@@ -58,7 +58,7 @@ class Users(SlashbotCog):
         """
         super().__init__()
         self.bot = bot
-        self.opt_in_twitter_users = get_twitter_opt_in()
+        self.opt_in_twitter_users = get_twitter_convert_users()
 
     # Commands -----------------------------------------------------------------
 
@@ -85,7 +85,7 @@ class Users(SlashbotCog):
         """
         await inter.response.defer(ephemeral=True)
 
-        with Session(connect_to_database_engine()) as session:
+        with Session(load_database()) as session:
             user = get_user(session, inter.author.id, inter.author.name)
 
             if not isinstance(value, str):
@@ -116,7 +116,7 @@ class Users(SlashbotCog):
                 case "Twitter URL":
                     user.twitter_url_opt_in = not user.twitter_url_opt_in
                     session.commit()
-                    self.opt_in_twitter_users = get_twitter_opt_in()
+                    self.opt_in_twitter_users = get_twitter_convert_users()
                     if user.twitter_url_opt_in:
                         return await inter.edit_original_message("You have opted in to change your Twitter URLs.")
                     else:
@@ -147,7 +147,7 @@ class Users(SlashbotCog):
         """
         await inter.response.defer(ephemeral=True)
 
-        with Session(connect_to_database_engine()) as session:
+        with Session(load_database()) as session:
             user = get_user(session, inter.author.id, inter.author.name)
 
             match thing:

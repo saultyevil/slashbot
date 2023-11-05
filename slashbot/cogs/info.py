@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import BadWord, connect_to_database_engine
+from slashbot.db import BadWord, load_database
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -105,7 +105,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         results = self.wolfram_api.query(question)
 
         if not results["@success"]:
-            with Session(connect_to_database_engine()) as session:
+            with Session(load_database()) as session:
                 bad_word = random.choice(session.query(BadWord).all()).word
             embed.add_field(
                 name=f"{question}",

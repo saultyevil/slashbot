@@ -26,7 +26,7 @@ from slashbot.db import (  # populate_word_tables_with_new_words,
     BadWord,
     OracleWord,
     User,
-    connect_to_database_engine,
+    load_database,
 )
 from slashbot.markov import async_generate_sentence  # update_markov_chain_for_model
 
@@ -94,7 +94,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        with Session(connect_to_database_engine()) as session:
+        with Session(load_database()) as session:
             bad_word = random.choice(session.query(BadWord).all()).word
 
             users_to_mention = []
@@ -192,7 +192,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        with Session(connect_to_database_engine()) as session:
+        with Session(load_database()) as session:
             oracle_words = [word.word for word in session.query(OracleWord).all()]
 
         await inter.response.send_message(f"{' '.join(random.sample(oracle_words, random.randint(5, 25)))}")

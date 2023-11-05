@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import Reminder as ReminderDB
-from slashbot.db import connect_to_database_engine
+from slashbot.db import load_database
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -48,7 +48,7 @@ def get_reminders_for_user(inter: disnake.ApplicationCommandInteraction, _: str)
     str
         _description_
     """
-    with Session(connect_to_database_engine()) as session:
+    with Session(load_database()) as session:
         reminders = session.query(ReminderDB).filter(ReminderDB.user_id == inter.author.id)
 
     return [reminder.reminder for reminder in reminders]
@@ -75,7 +75,7 @@ class Reminders(SlashbotCog):
 
         self.check_reminders.start()  # pylint: disable=no-member
 
-        self.session = sessionmaker(connect_to_database_engine())()
+        self.session = sessionmaker(load_database())()
 
         self.markov_sentences = ()
         self.bot.add_function_to_cleanup(None, close_session, (self.session,))
