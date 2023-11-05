@@ -37,12 +37,13 @@ class ScheduledPosts(SlashbotCog):
         super().__init__()
         self.bot = bot
 
-        self.random_channels = None
+        self.random_channels = App.config("RANDOM_POST_CHANNELS")
         self.scheduled_posts = None
         self.get_scheduled_posts()
         self.random_media_files = [
             file for file in Path(App.config("RANDOM_MEDIA_DIRECTORY")).rglob("*") if not file.is_dir()
         ]
+        logger.info("Random post channels: %s", self.random_channels)
         logger.info("%d random media files found", len(self.random_media_files))
 
         self.post_scheduled_post_loop.start()  # pylint: disable=no-member
@@ -85,11 +86,10 @@ class ScheduledPosts(SlashbotCog):
 
     def get_scheduled_posts(self):
         """Read in the scheduled posts Json file."""
-        with open(App.config("SCHEDULED_POST_FILE"), "r") as file_in:
+        with open(App.config("SCHEDULED_POST_FILE"), "r", encoding="utf-8") as file_in:
             posts_json = json.load(file_in)
 
-        self.random_channels = posts_json["random"]["channels"]
-        self.scheduled_posts = posts_json["scheduled"]
+        self.scheduled_posts = posts_json["SCHEDULED_POSTS"]
 
         # Before we return from this function, we should first check to make
         # sure each post has the correct fields in the correct format

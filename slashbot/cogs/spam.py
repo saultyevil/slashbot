@@ -16,22 +16,23 @@ from typing import Any, Union
 import disnake
 import requests
 import rule34 as r34
-from disnake.ext import commands, tasks
-from sqlalchemy.orm import Session
+from disnake.ext import commands
 
 from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import (  # populate_word_tables_with_new_words,
-    BadWord,
-    OracleWord,
-    User,
-    connect_to_database_engine,
-)
+from slashbot.db import get_users
+
 from slashbot.markov import async_generate_sentence  # update_markov_chain_for_model
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
+
+with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+    BAD_WORDS = file_in.readlines()
+
+with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+    GOD_WORDS = file_in.readlines()
 
 
 class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -94,20 +95,18 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        with Session(connect_to_database_engine()) as session:
-            bad_word = random.choice(session.query(BadWord).all()).word
+        bad_word = random.choice(BAD_WORDS).strip()
 
-            users_to_mention = []
-            for user in session.query(User):
-                if user.bad_word == bad_word:
-                    users_to_mention.append(inter.guild.get_member(user.user_id).mention)
+        users_to_mention = [
+            inter.guild.get_member(user_id).mention
+            for user_id, user_settings in get_users().items()
+            if user_settings["bad_word"] == bad_word
+        ]
 
         if users_to_mention:
-            return await inter.response.send_message(
-                f"Here's one for ya, {', '.join(users_to_mention)} ... {bad_word}!"
-            )
-
-        await inter.response.send_message(f"{bad_word.capitalize()}.")
+            await inter.response.send_message(f"Here's one for ya, {', '.join(users_to_mention)} ... {bad_word}!")
+        else:
+            await inter.response.send_message(f"{bad_word.capitalize()}.")
 
     @commands.slash_command(
         name="evil_wii",
@@ -192,10 +191,9 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        with Session(connect_to_database_engine()) as session:
-            oracle_words = [word.word for word in session.query(OracleWord).all()]
-
-        await inter.response.send_message(f"{' '.join(random.sample(oracle_words, random.randint(5, 25)))}")
+        await inter.response.send_message(
+            f"{' '.join([word.strip() for word in random.sample(GOD_WORDS, random.randint(5, 25))])}"
+        )
 
     @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="rule34", description="search for a naughty image")

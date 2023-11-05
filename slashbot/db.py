@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""This module contains functions for modifying the slashbot database."""
+"""This module contains functions for accessing and modifying the slashbot
+database.
+
+The functions in here are basically just wrappers around a dictionary and JSON.
+The database is saved to disk as a JSON. This should be performant enough, as
+the database will likely remain small.
+"""
 
 import json
 import logging
@@ -9,349 +15,278 @@ import pathlib
 from typing import List
 
 import disnake
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    create_engine,
-)
-from sqlalchemy.orm import DeclarativeBase, Session, relationship
-
 from slashbot.config import App
-
-# Models -----------------------------------------------------------------------
-
-
-class Base(DeclarativeBase):
-    """Base class for ORM definition."""
-
-
-class User(Base):
-    """User ORM class."""
-
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, unique=True, index=True)
-    user_name = Column(String(64), unique=True)
-
-    city = Column(Integer, nullable=True)
-    country_code = Column(String(2), nullable=True)
-    bad_word = Column(String(32), nullable=True)
-    twitter_url_opt_in = Column(Boolean(), default=False)
-
-    bank_account = relationship("BankAccount")
-    reminders = relationship("Reminder")
-
-
-class BadWord(Base):
-    """Bad word storage."""
-
-    __tablename__ = "bad_words"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    word = Column(String(32), unique=True)
-
-
-class BankAccount(Base):
-    """Bank ORM class."""
-
-    __tablename__ = "bank_accounts"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), unique=True)
-
-    balance = Column(Integer)
-    status = Column(String)
-
-    user = relationship("User", back_populates="bank_account")
-
-
-class OracleWord(Base):
-    """Oracle word storage."""
-
-    __tablename__ = "oracle_words"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    word = Column(String, unique=True)
-
-
-class Reminder(Base):
-    """Reminder ORM class."""
-
-    __tablename__ = "reminders"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"))
-
-    channel = Column(String)
-    tagged_users = Column(String, nullable=True)
-    date = Column(DateTime)
-    reminder = Column(String(1024))
-    tagged_users = Column(String(1024), nullable=True)
-
-    user = relationship("User", back_populates="reminders")
-
-
-class Image(Base):
-    """Image database ORM class."""
-
-    __tablename__ = "images"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    image_url = Column(String(256), index=True)
-
-
-class Tweet(Base):
-    """Tweet database ORM class."""
-
-    __tablename__ = "tweets"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-
-    user = Column(String(64), index=True)
-    date = Column(DateTime(), index=True)
-    tweet = Column(String(280), nullable=True)
-    image_url = Column(String(256))
-    tweet_url = Column(String(256))
-
-
-# Functions --------------------------------------------------------------------
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-def connect_to_database_engine(location: str = None):
-    """Create a database engine.
+# Database functions -----------------------------------------------------------
 
-    Creates an Engine object which is used to create a database session.
+
+def create_empty_database(location: str) -> None:
+    """Create an empty database
+
+    The keys and their types are in the database are:
+        - USERS: dict
+        - REMINDERS: list
 
     Parameters
     ----------
     location : str
-        The location of the SQLite database to load, default is None where the
-        value is then taken from App.config.
+        The file location to save the database.
+    """
+    with open(location, "w", encoding="utf-8") as file_out:
+        json.dump({"USERS": {}, "REMINDERS": []}, file_out)
+
+
+def check_database_exists(location: str) -> None:
+    """Check if a database exists at the given location, and create one it not.
+
+    Parameters
+    ----------
+    location : str
+        The file location to check.
+    """
+    location = pathlib.Path(location)
+    if not location.exists():
+        create_empty_database(location)
+
+
+def load_database(location: str = None) -> dict:
+    """Load a database.
+
+    If no location is provided, the location defined in the config file will be
+    used.
+
+    Parameters
+    ----------
+    location : str, optional
+        The file location of the database, by default None where the value from
+        the config file will be used.
+
+    Returns
+    -------
+    dict
+        The database as a dict.
     """
     if not location:
         location = App.config("DATABASE_LOCATION")
 
-    engine = create_engine(f"sqlite:///{location}")
-    Base.metadata.create_all(bind=engine)
+    check_database_exists(location)
 
-    return engine
+    with open(location, "r", encoding="utf-8") as file_in:
+        database = json.load(file_in)
 
-
-async def migrate_old_json_to_db(client: disnake.Client) -> None:
-    """Migrate data stuck in a JSON backup to the database.
-
-    This is typically run each time the bot is started up, as the JSON files
-    should be unchanging. If a user is already in the database, then whatever
-    is in the JSON is ignored.
-
-    Parameters
-    ----------
-    client : disnake.Client
-        A Disnake Client instance of the bot.
-    """
-    with Session(connect_to_database_engine()) as session:
-        if (path := pathlib.Path("data/users.json")).exists():
-            with open(path, "r", encoding="utf-8") as file_in:
-                user_json = json.load(file_in)
-            for user_id, items in user_json.items():
-                query = session.query(User).filter(User.user_id == int(user_id))
-                if query.count() != 0:
-                    continue
-                user = await client.fetch_user(int(user_id))
-                if user is None:
-                    logger.error("Unable to find a user with id %d", int(user_id))
-                    continue
-                session.add(
-                    User(
-                        user_id=int(user_id),
-                        user_name=user.name,
-                        city=items.get("location", None),
-                        country_code=items.get("country", None),
-                        bad_word=items.get("badword", None),
-                    )
-                )
-
-        # reminders.json and bank.json would go here, but I think there's
-        # usually nothing worthwhile migrating over to an empty database.
-
-        session.commit()
+    return database
 
 
-def create_new_user(session: Session, user_id: int, user_name: str) -> User:
-    """Create a new user row.
+def save_database(database: dict, location: str = None) -> dict:
+    """Dump the provided database to disk.
 
-    Creates a new user row, populating only the user ID and user name. The
-    new row is returned.
+    The database is not modified by this function.
+
+    If no location is provided, the location defined in the config fill will be
+    used.
 
     Parameters
     ----------
-    session : Session
-        A session to the slashbot database.
-    user_id : int
-        The Discord user ID for the new entry.
-    user_name : str
-        The Discord user name for the new entry.
+    database : dict
+        The database to dump to disk.
+    location : str, optional
+        The file location of the database, by default None where the value from
+        the config file will be used.
 
     Returns
     -------
-    User :
-        The newly created User entry.
+    dict
+        The database written to disk.
     """
-    session.add(
-        new_user := User(
-            user_id=user_id,
-            user_name=user_name,
-        )
-    )
-    session.commit()
+    if not location:
+        location = App.config("DATABASE_LOCATION")
 
-    # refresh to return the user instead of having to query again
-    session.refresh(new_user)
+    with open(location, "w", encoding="utf-8") as file_out:
+        json.dump(database, file_out)
 
-    return new_user
+    return database
 
 
-def get_user(session: Session, user_id: int, user_name: str) -> User:
+def create_new_user(user: disnake.User | disnake.Member) -> dict:
+    """Creates an empty user in the database.
+
+    Adds a user to the USERS key. All fields other than the user_name are either
+    unpopulated or given a default value.
+
+    The database is dumped to disk when the new user is added.
+
+    Parameters
+    ----------
+    user : disnake.User | disnake.Member
+        The disnake user to add.
+
+    Returns
+    -------
+    dict
+        _description_
+    """
+    new_user = {
+        "user_name": user.name,
+        "city": "",
+        "country_code": "",
+        "bad_word": "",
+        "convert_twitter_url": False,
+    }
+
+    database = load_database()
+    database["USERS"][str(user.id)] = new_user
+    save_database(database)
+
+    return database
+
+
+# User functions ---------------------------------------------------------------
+
+
+def get_users() -> dict:
+    """Get all the users in the database.
+
+    Returns
+    -------
+    dict
+        A dict of users. The keys of the dict are user ids.
+    """
+    database = load_database()
+    return database["USERS"]
+
+
+def get_user(user: disnake.User | disnake.Member) -> dict:
     """Get a user from the database.
 
-    If the user does not exist, a new entry is created for the user.
+    If the user does not exist, it is created first with empty/default values.
 
     Parameters
     ----------
-    session : Session
-        A session for the slashbot database.
+    user : disnake.User | disnake.Member
+        The Disnake class for the user to get.
+
+    Returns
+    -------
+    dict
+        The information set by the user.
+    """
+    database = load_database()
+
+    if str(user.id) not in database["USERS"]:
+        database = create_new_user(user)
+
+    return database["USERS"][str(user.id)]
+
+
+def get_user_location(user: disnake.User | disnake.Member) -> None | str:
+    """Get the location set by a user.
+
+    Parameters
+    ----------
+    user : disnake.User | disnake.Member
+        The Disnake class for the user to get.
+
+    Returns
+    -------
+    None | str
+        If no location is set None. Otherwise a string 'city, county_code'.
+    """
+    user = get_user(user)
+    if not user["city"]:
+        return None
+
+    return f"{user['city'].capitalize()}{', ' + user['country_code'].upper() if user['country_code'] else ''}"
+
+
+def get_twitter_convert_users() -> List[int]:
+    """Return a list of Discord user IDs where `convert_twitter_url` == True.
+
+    Returns
+    -------
+    List[int]
+        The list of user IDs where `convert_twitter_url` = True.
+    """
+    database = load_database()
+    return [
+        user_id for user_id, user_settings in database["USERS"].items() if user_settings["convert_twitter_url"] is True
+    ]
+
+
+# TODO: make this a user to be more consistent
+def update_user(user_id: int, updated_fields: dict) -> None:
+    """Update a user in the database.
+
+    This function will update the entire dict for a user, instead of an
+    individual field.
+
+    Parameters
+    ----------
     user_id : int
         The Discord ID of the user.
-    user_name : str
-        The Discord name of the user.
+    updated_fields : dict
+        A dict containing all the fields with the updated field.
+    """
+    database = load_database()
+    users = database["USERS"]
+    users[str(user_id)] = updated_fields
+    save_database(database)
+
+
+# Reminder functions -----------------------------------------------------------
+
+
+def get_all_reminders() -> List[dict]:
+    """Get all the remidners in a database.
 
     Returns
     -------
-    User
-        The user database entry.
+    List[dict]
+        A list of all the reminders.
     """
-    user = session.query(User).filter(User.user_id == int(user_id)).first()
-    if not user:
-        user = create_new_user(session, int(user_id), user_name)
-
-    return user
+    database = load_database()
+    return database["REMINDERS"]
 
 
-def populate_word_tables_with_new_words() -> None:
-    """Populate the bad word and oracle world tables in the database."""
-
-    with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
-        words = file_in.read().splitlines()
-    with Session(connect_to_database_engine()) as session:
-        for word in words:
-            query = session.query(BadWord).filter(BadWord.word == word)
-            if query.count() == 0:
-                session.add(BadWord(word=word))
-        session.commit()
-
-    with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
-        words = file_in.read().splitlines()
-    with Session(connect_to_database_engine()) as session:
-        for word in words:
-            query = session.query(OracleWord).filter(OracleWord.word == word)
-            if query.count() == 0:
-                session.add(OracleWord(word=word))
-        session.commit()
-
-
-def create_new_bank_account(session: Session, user_id: int) -> BankAccount:
-    """Create a new back account row.
+def get_all_reminders_for_user(user_id: int) -> List[dict]:
+    """Get all reminders set for a given user.
 
     Parameters
     ----------
-    session : Session
-        A session for the slashbot database.
     user_id : int
-        The Discord ID of the user.
+        The Discord ID for the user to get reminders for.
 
     Returns
     -------
-    BankAccount
-        The newly created BankAccount entry.
+    List[dict]
+        A list of the reminders for this user.
     """
-
-    session.add(
-        new_account := BankAccount(
-            user_id=user_id,
-            balance=App.config("CONTENT_BANK_STARTING_BALANCE"),
-            status="Newfag",
-        )
-    )
-    session.commit()
-
-    # refresh to return the user instead of having to query again
-    session.refresh(new_account)
-
-    return new_account
+    return filter(lambda r: r["user_id"] == user_id, get_all_reminders())
 
 
-def get_bank_account(session: Session, user_id: int) -> BankAccount:
-    """Get a bank account from the database.
+def add_reminder(reminder: dict) -> None:
+    """Add a reminder to the database.
 
     Parameters
     ----------
-    session : Session
-        A session for the slashbot database.
-    user_id : int
-        The Discord ID of the user.
-
-    Returns
-    -------
-    BankAccount
-        The BankAccount database entry.
+    reminder : dict
+        The reminder dict to add.
     """
-    account = session.query(BankAccount).filter(BankAccount.user_id == user_id).first()
-    if not account:
-        account = create_new_bank_account(session, user_id)
-
-    return account
+    database = load_database()
+    database["REMINDERS"].append(reminder)
+    save_database(database)
 
 
-def get_user_location(user_id: str | int, user_name: str) -> str | None:
-    """Return the stored location set by a user.
+def remove_reminder(index: int) -> None:
+    """Remove a reminder from the database.
 
     Parameters
     ----------
-    user_id : str
-        The user id of the user
-    user_name : str
-        The username of the user
-
-    Returns
-    -------
-    str | None
-        The location in format city, country. If the user has no location set,
-        None is returned instead.
+    index : int
+        The index of the reminder in the REMINDERS list.
     """
-
-    with Session(connect_to_database_engine()) as session:
-        user = get_user(session, user_id, user_name)
-        if not user.city:
-            return None
-        return f"{user.city.capitalize()}, {user.country_code.upper() if user.country_code else ''}"
-
-
-def get_twitter_opt_in() -> List[disnake.User]:
-    """Returns a list of users who are opted out from having their tweets
-    converted to fxtwitter.
-
-    Returns
-    -------
-    List[disnake.User]
-        The list of users.
-    """
-    with Session(connect_to_database_engine()) as session:
-        users = session.query(User).filter(User.twitter_url_opt_in == True).all()
-
-    return [user.user_id for user in users]
+    database = load_database()
+    database["REMINDERS"].pop(index)
+    save_database(database)

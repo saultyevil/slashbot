@@ -3,7 +3,6 @@ services:
   bot:
     build: .
     container_name: slashbot
-    restart: unless-stopped
     environment:
       - DEVELOPMENT_MODE=true
       - SLASHBOT_CONFIG=config.json

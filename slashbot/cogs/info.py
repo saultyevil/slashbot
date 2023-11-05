@@ -10,11 +10,9 @@ from types import coroutine
 import disnake
 import wolframalpha
 from disnake.ext import commands
-from sqlalchemy.orm import Session
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import BadWord, connect_to_database_engine
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -58,7 +56,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
             if self.bot.markov_gen_on
             else {"wolfram": []}
         )
-        logger.info("Generated sentences for %s", self.__cog_name__)
+        logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Commands -----------------------------------------------------------------
 
@@ -105,11 +103,11 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         results = self.wolfram_api.query(question)
 
         if not results["@success"]:
-            with Session(connect_to_database_engine()) as session:
-                bad_word = random.choice(session.query(BadWord).all()).word
+            with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+                bad_word = random.choice(file_in.readlines())
             embed.add_field(
                 name=f"{question}",
-                value=f"You {bad_word}, you asked a question Stephen Wolfram couldn't answer.",
+                value=f"You {bad_word.strip()}, you asked a question Stephen Wolfram couldn't answer.",
                 inline=False,
             )
             return await inter.edit_original_message(embed=embed)
