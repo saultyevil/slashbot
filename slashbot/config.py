@@ -53,7 +53,7 @@ class FileWatcher(FileSystemEventHandler):
     def on_modified(self, event):
         if event.event_type == "modified" and event.src_path == os.getenv("SLASHBOT_CONFIG"):
             # TODO: this triggers twice on file modify...
-            App._set_config_values()
+            App.set_config_values()
 
 
 class App:
@@ -69,7 +69,7 @@ class App:
     # Private methods ----------------------------------------------------------
 
     @classmethod
-    def _set_config_values(cls):
+    def set_config_values(cls):
         """Set the values of the config from the config file.
 
         The purpose of this script is to populate the __conf class attribute.
@@ -89,6 +89,7 @@ class App:
             "DEVELOPMENT_SERVERS": SLASH_CONFIG["DISCORD"]["DEVELOPMENT_SERVERS"],
             # Define users, roles and channels
             "ID_USER_SAULTYEVIL": 151378138612367360,
+            "ID_CHANNEL_IDIOTS": 237647756049514498,
             # API keys
             "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
             "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
@@ -109,6 +110,7 @@ class App:
             # Cog settings
             "SPELLCHECK_ENABLED": bool(SLASH_CONFIG["COGS"]["SPELLCHECK"]["ENABLED"]),
             "SPELLCHECK_SERVERS": SLASH_CONFIG["COGS"]["SPELLCHECK"]["SERVERS"],
+            "RANDOM_POST_CHANNELS": SLASH_CONFIG["COGS"]["SCHEDULED_POSTS"]["RANDOM_POST_CHANNELS"],
         }
         cls._config = _config
 
@@ -126,7 +128,7 @@ class App:
         return App._config[name]
 
 
-App._set_config_values()
+App.set_config_values()
 setup_logging()
 
 observer = Observer()

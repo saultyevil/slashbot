@@ -5,6 +5,11 @@
             "SERVERS": [
                 710120382144839691
             ]
+        },
+        "SCHEDULED_POSTS": {
+            "RANDOM_POST_CHANNELS": [
+                237647756049514498
+            ]
         }
     },
     "COOLDOWN": {
