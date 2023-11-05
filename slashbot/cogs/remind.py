@@ -52,7 +52,7 @@ class Reminders(SlashbotCog):
             if self.bot.markov_gen_on
             else {"reminder": []}
         )
-        logger.info("Generated sentences for %s", self.__cog_name__)
+        logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Private methods ----------------------------------------------------------
 
