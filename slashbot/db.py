@@ -17,30 +17,35 @@ from typing import List
 import disnake
 from slashbot.config import App
 
-# Functions --------------------------------------------------------------------
-
 logger = logging.getLogger(App.config("LOGGER_NAME"))
 
 
-def create_empty_database(location: str):
-    """_summary_
+# Database functions -----------------------------------------------------------
+
+
+def create_empty_database(location: str) -> None:
+    """Create an empty database
+
+    The keys and their types are in the database are:
+        - USERS: dict
+        - REMINDERS: list
 
     Parameters
     ----------
     location : str
-        _description_
+        The file location to save the database.
     """
     with open(location, "w", encoding="utf-8") as file_out:
         json.dump({"USERS": {}, "REMINDERS": []}, file_out)
 
 
-def check_database_exists(location: str):
-    """_summary_
+def check_database_exists(location: str) -> None:
+    """Check if a database exists at the given location, and create one it not.
 
     Parameters
     ----------
     location : str
-        _description_
+        The file location to check.
     """
     location = pathlib.Path(location)
     if not location.exists():
@@ -48,17 +53,21 @@ def check_database_exists(location: str):
 
 
 def load_database(location: str = None) -> dict:
-    """_summary_
+    """Load a database.
+
+    If no location is provided, the location defined in the config file will be
+    used.
 
     Parameters
     ----------
     location : str, optional
-        _description_, by default None
+        The file location of the database, by default None where the value from
+        the config file will be used.
 
     Returns
     -------
     dict
-        _description_
+        The database as a dict.
     """
     if not location:
         location = App.config("DATABASE_LOCATION")
@@ -71,15 +80,26 @@ def load_database(location: str = None) -> dict:
     return database
 
 
-def save_database(database: dict, location: str = None):
-    """_summary_
+def save_database(database: dict, location: str = None) -> dict:
+    """Dump the provided database to disk.
+
+    The database is not modified by this function.
+
+    If no location is provided, the location defined in the config fill will be
+    used.
 
     Parameters
     ----------
     database : dict
-        _description_
+        The database to dump to disk.
     location : str, optional
-        _description_, by default None
+        The file location of the database, by default None where the value from
+        the config file will be used.
+
+    Returns
+    -------
+    dict
+        The database written to disk.
     """
     if not location:
         location = App.config("DATABASE_LOCATION")
@@ -91,12 +111,17 @@ def save_database(database: dict, location: str = None):
 
 
 def create_new_user(user: disnake.User | disnake.Member) -> dict:
-    """_summary_
+    """Creates an empty user in the database.
+
+    Adds a user to the USERS key. All fields other than the user_name are either
+    unpopulated or given a default value.
+
+    The database is dumped to disk when the new user is added.
 
     Parameters
     ----------
     user : disnake.User | disnake.Member
-        _description_
+        The disnake user to add.
 
     Returns
     -------
@@ -110,6 +135,7 @@ def create_new_user(user: disnake.User | disnake.Member) -> dict:
         "bad_word": "",
         "convert_twitter_url": False,
     }
+
     database = load_database()
     database["USERS"][str(user.id)] = new_user
     database = save_database(database)
@@ -117,86 +143,35 @@ def create_new_user(user: disnake.User | disnake.Member) -> dict:
     return database
 
 
+# User functions ---------------------------------------------------------------
+
+
 def get_users() -> dict:
-    """_summary_
+    """Get all the users in the database.
 
     Returns
     -------
     dict
-        _description_
+        A dict of users. The keys of the dict are user ids.
     """
     database = load_database()
     return database["USERS"]
 
 
-def get_all_reminders() -> List[dict]:
-    """_summary_
-
-    Returns
-    -------
-    List[dict]
-        _description_
-    """
-    database = load_database()
-    return database["REMINDERS"]
-
-
-def get_all_reminders_for_user(user_id: int) -> List[dict]:
-    """_summary_
-
-    Parameters
-    ----------
-    user_id : int
-        _description_
-
-    Returns
-    -------
-    List[dict]
-        _description_
-    """
-    return filter(lambda r: r["user_id"] == user_id, get_all_reminders())
-
-
-def add_reminder(reminder: dict) -> None:
-    """_summary_
-
-    Parameters
-    ----------
-    reminder : dict
-        _description_
-    """
-    database = load_database()
-    reminders = database["REMINDERS"]
-    reminders.append(reminder)
-    database = save_database(database)
-
-
-def remove_reminder(index: int) -> None:
-    """_summary_
-
-    Parameters
-    ----------
-    index : int
-        _description_
-    """
-    database = load_database()
-    reminders = database["REMINDERS"]
-    reminders.pop(index)
-    database = save_database(database)
-
-
 def get_user(user: disnake.User | disnake.Member) -> dict:
-    """_summary_
+    """Get a user from the database.
+
+    If the user does not exist, it is created first with empty/default values.
 
     Parameters
     ----------
-    user_id : int
-        _description_
+    user : disnake.User | disnake.Member
+        The Disnake class for the user to get.
 
     Returns
     -------
     dict
-        _description_
+        The information set by the user.
     """
     database = load_database()
 
@@ -206,18 +181,18 @@ def get_user(user: disnake.User | disnake.Member) -> dict:
     return database["USERS"][str(user.id)]
 
 
-def get_user_location(user: disnake.User | disnake.Member) -> str:
-    """_summary_
+def get_user_location(user: disnake.User | disnake.Member) -> None | str:
+    """Get the location set by a user.
 
     Parameters
     ----------
     user : disnake.User | disnake.Member
-        _description_
+        The Disnake class for the user to get.
 
     Returns
     -------
-    str
-        _description_
+    None | str
+        If no location is set None. Otherwise a string 'city, county_code'.
     """
     user = get_user(user)
     if not user["city"]:
@@ -227,17 +202,12 @@ def get_user_location(user: disnake.User | disnake.Member) -> str:
 
 
 def get_twitter_convert_users() -> List[int]:
-    """_summary_
-
-    Parameters
-    ----------
-    database : dict
-        _description_
+    """Return a list of Discord user IDs where `convert_twitter_url` == True.
 
     Returns
     -------
     List[int]
-        _description_
+        The list of user IDs where `convert_twitter_url` = True.
     """
     database = load_database()
     return [
@@ -245,17 +215,78 @@ def get_twitter_convert_users() -> List[int]:
     ]
 
 
-def update_user(user_id: int, update: dict) -> None:
-    """_summary_
+# TODO: make this a user to be more consistent
+def update_user(user_id: int, updated_fields: dict) -> None:
+    """Update a user in the database.
+
+    This function will update the entire dict for a user, instead of an
+    individual field.
 
     Parameters
     ----------
     user_id : int
-        _description_
-    update : dict
-        _description_
+        The Discord ID of the user.
+    updated_fields : dict
+        A dict containing all the fields with the updated field.
     """
     database = load_database()
     users = database["USERS"]
-    users[str(user_id)] = update
+    users[str(user_id)] = updated_fields
     database = save_database(database)
+
+
+# Reminder functions -----------------------------------------------------------
+
+
+def get_all_reminders() -> List[dict]:
+    """Get all the remidners in a database.
+
+    Returns
+    -------
+    List[dict]
+        A list of all the reminders.
+    """
+    database = load_database()
+    return database["REMINDERS"]
+
+
+def get_all_reminders_for_user(user_id: int) -> List[dict]:
+    """Get all reminders set for a given user.
+
+    Parameters
+    ----------
+    user_id : int
+        The Discord ID for the user to get reminders for.
+
+    Returns
+    -------
+    List[dict]
+        A list of the reminders for this user.
+    """
+    return filter(lambda r: r["user_id"] == user_id, get_all_reminders())
+
+
+def add_reminder(reminder: dict) -> None:
+    """Add a reminder to the database.
+
+    Parameters
+    ----------
+    reminder : dict
+        The reminder dict to add.
+    """
+    database = load_database()
+    database["REMINDERS"].append(reminder)
+    save_database(database)
+
+
+def remove_reminder(index: int) -> None:
+    """Remove a reminder from the database.
+
+    Parameters
+    ----------
+    index : int
+        The index of the reminder in the REMINDERS list.
+    """
+    database = load_database()
+    database["REMINDERS"].pop(index)
+    save_database(database)
