@@ -138,7 +138,7 @@ def create_new_user(user: disnake.User | disnake.Member) -> dict:
 
     database = load_database()
     database["USERS"][str(user.id)] = new_user
-    database = save_database(database)
+    save_database(database)
 
     return database
 
@@ -232,7 +232,7 @@ def update_user(user_id: int, updated_fields: dict) -> None:
     database = load_database()
     users = database["USERS"]
     users[str(user_id)] = updated_fields
-    database = save_database(database)
+    save_database(database)
 
 
 # Reminder functions -----------------------------------------------------------
