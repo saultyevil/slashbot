@@ -135,8 +135,10 @@ class ScheduledPosts(SlashbotCog):
             )
             await asyncio.sleep(sleep_for)
 
-            markov_sentence = await self.get_generated_sentence(post["seed_word"]).replace(
-                post["seed_word"], f"**{post['seed_word']}**"
+            markov_sentence = await self.get_generated_sentence(post["seed_word"])
+            markov_sentence = markov_sentence.replace(
+                post["seed_word"],
+                f"**{post['seed_word']}**",
             )
 
             message = ""
