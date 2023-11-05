@@ -1,11 +1,11 @@
 
 [tool.poetry]
 name = "slashbot"
-version = "4.0.0"
+version = "4.1.2"
 description = ""
 authors = ["Edward J. Parkinson"]
 readme = "README.md"
-packages = [{include = "slashbot"}]
+packages = [{ include = "slashbot" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -43,15 +43,7 @@ max-attributes = 15
 max-locals = 20
 
 [tool.pylint.format]
-good-names = [
-    "i",
-    "j",
-    "k"
-]
+good-names = ["i", "j", "k"]
 
 [tool.pylint.messages_control]
-disable = [
-    "import-error",
-    "wrong-import-position",
-    "line-too-long",
-]
+disable = ["import-error", "wrong-import-position", "line-too-long"]
