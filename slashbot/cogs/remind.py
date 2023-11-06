@@ -16,7 +16,12 @@ from prettytable import PrettyTable
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import get_all_reminders, get_all_reminders_for_user, remove_reminder, add_reminder
+from slashbot.db import (
+    add_reminder,
+    get_all_reminders,
+    get_all_reminders_for_user,
+    remove_reminder,
+)
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.config("LOGGER_NAME"))
@@ -122,7 +127,7 @@ class Reminders(SlashbotCog):
 
     # Tasks --------------------------------------------------------------------
 
-    @tasks.loop(seconds=30)
+    @tasks.loop(seconds=1)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
         # now = datetime.datetime.now(tz=self.timezone)
