@@ -6,7 +6,7 @@
 import asyncio
 import datetime
 import logging
-import string
+import re
 from collections import defaultdict
 
 import disnake
@@ -34,6 +34,30 @@ class Spelling(SlashbotCog):
         if App.get_config("SPELLCHECK_ENABLED"):
             self.spelling_summary.start()  # pylint: disable=no-member
 
+    @staticmethod
+    def _cleanup_message(text: str) -> str:
+        """Remove certain parts of a string, so spell checking is cleaner.
+
+        Parameters
+        ----------
+        text : str
+            The string to clean up.
+
+        Returns
+        -------
+        str
+            The cleaned up string.
+        """
+        # remove discord mentions
+        clean_text = re.sub(r"@(\w+|\d+)", "", text)
+        # remove code wrappings, so we don't get any code
+        clean_text = re.sub(r"`[^`]+`", "", clean_text)
+        clean_text = re.sub(r"```[^`]+```", "", clean_text, flags=re.DOTALL)
+        # remove numbers and non-word characters
+        clean_text = re.sub(r"[0-9]+|\W+|<[^>]+>", " ", clean_text)
+
+        return clean_text
+
     @commands.Cog.listener("on_message")
     async def check_for_incorrect_spelling(self, message: disnake.Message):
         """Check a message for an incorrect spelling.
@@ -47,13 +71,17 @@ class Spelling(SlashbotCog):
         """
         if not message.guild or message.author.bot:
             return
-        if message.guild.id not in App.get_config("SPELLCHECK_SERVERS"):
+        guild_key = str(message.guild.id)
+        if guild_key not in App.get_config("SPELLCHECK_SERVERS"):
             return
-        if message.author.id not in App.config("SPELLCHECK_SERVERS")[message.guild.id]:
+        if message.author.id not in App.get_config("SPELLCHECK_SERVERS")[guild_key]:
             return
 
+        content_to_check = self._cleanup_message(message.content)
+        logger.info("%s", content_to_check)
+
         self.incorrect_spellings[f"{message.author.display_name}+{message.channel.id}"] += self.spellchecker.unknown(
-            message.clean_content.split(),
+            content_to_check.split(),
         )
 
     @tasks.loop(seconds=5)
@@ -80,8 +108,6 @@ class Spelling(SlashbotCog):
         )
         await asyncio.sleep(sleep_time)
 
-        remove_punctuation = str.maketrans("", "", string.punctuation)
-
         for key, values in self.incorrect_spellings.items():
             mistakes = sorted(set(values))  # remove duplicates with a set
             if len(mistakes) == 0:  # this shouldn't happen
@@ -92,14 +118,10 @@ class Spelling(SlashbotCog):
             corrections = [
                 correction if (correction := self.spellchecker.correction(mistake)) is not None else "unknown"
                 for mistake in mistakes
-                if correction.translate(remove_punctuation) != mistake.translate(remove_punctuation)
-            ]
-            message = [
-                f"- {mistake.capitalize()} -> {correction.capitalize()}\n"
-                for mistake, correction in zip(mistakes, corrections)
             ]
             await channel.send(
-                f"{user_name} made spelling mistakes today:\n" + "".join(message),
+                f"**{user_name.capitalize()}** made {len(corrections)} spelling mistakes: "
+                + ", ".join([f"{mistake} *{correction}*" for mistake, correction in zip(mistakes, corrections)]),
             )
 
         self.incorrect_spellings.clear()
