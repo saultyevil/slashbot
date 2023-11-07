@@ -156,7 +156,7 @@ class ImageAI(SlashbotCog):
             return await inter.edit_original_message("There was an error when submitting your request.")
 
         self.running_tasks[inter.author.id] = process_id
-        logger.info("text2image: Request %s for user %s (%d)", process_id, inter.author.name, inter.author.id)
+        logger.info("text2image: Request %s for user %s (%d)", process_id, inter.author.display_name, inter.author.id)
         await inter.edit_original_message(content=f"Request submitted: {process_id}")
 
         start = time.time()
@@ -176,9 +176,9 @@ class ImageAI(SlashbotCog):
 
         if elapsed_time >= MAX_ELAPSED_TIME:
             logger.error("text2image: timed out %s", process_id)
-            await next_interaction.send(f'{inter.author.name}\'s request ({process_id}) for "{prompt}" timed out.')
+            await next_interaction.send(f'Your request ({process_id}) for "{prompt}" timed out.', ephemeral=True)
         else:
-            await next_interaction.send(f'{inter.author.name}\'s request for "{prompt}" {url}')
+            await next_interaction.send(f'{inter.author.display_name}\'s request for "{prompt}" {url}')
 
 
 def setup(bot: commands.InteractionBot):
