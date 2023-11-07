@@ -3,6 +3,7 @@
 
 """Global configuration class."""
 
+import copy
 import json
 import logging
 import os
@@ -51,9 +52,18 @@ def setup_logging():
 
 class FileWatcher(FileSystemEventHandler):
     def on_modified(self, event):
+        # TODO: this triggers twice on file modify...
         if event.event_type == "modified" and event.src_path == os.getenv("SLASHBOT_CONFIG"):
-            # TODO: this triggers twice on file modify...
-            App.set_config_values()
+            original_config = copy.copy(App._config)
+            new_config = App.set_config_values()
+            modified_keys = {
+                key for key in original_config if key in new_config and original_config[key] != new_config[key]
+            }
+            if modified_keys:
+                logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+                logger.info("App config updated:")
+                for key in modified_keys:
+                    logger.info("  %s: %s -> %s", key, original_config[key], new_config[key])
 
 
 class App:
@@ -113,6 +123,8 @@ class App:
             "RANDOM_POST_CHANNELS": SLASH_CONFIG["COGS"]["SCHEDULED_POSTS"]["RANDOM_POST_CHANNELS"],
         }
         cls._config = _config
+
+        return cls._config
 
     # Public methods -----------------------------------------------------------
 
