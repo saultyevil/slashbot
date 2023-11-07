@@ -278,10 +278,17 @@ class Reminders(SlashbotCog):
         reminders = get_all_reminders_for_user(inter.author.id)
         if not reminders:
             return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
-        reminders = [
-            (datetime.datetime.fromisoformat(reminder["date"]).strftime(r"%H:%M %d %B %Y (UTC)"), reminder["reminder"])
-            for reminder in reminders
-        ]
+        print(reminders)
+        reminders = sorted(
+            [(datetime.datetime.fromisoformat(reminder["date"]), reminder["reminder"]) for reminder in reminders],
+            key=lambda entry: entry[0],
+        )
+
+        print(reminders)
+
+        reminders = [(entry[0].strftime(r"%H:%M %d %B %Y (UTC)"), entry[1]) for entry in reminders]
+
+        # .strftime(r"%H:%M %d %B %Y (UTC)")
 
         table = PrettyTable()
         table.align = "r"
@@ -289,7 +296,7 @@ class Reminders(SlashbotCog):
         table._max_width = {"When": 25, "What": 75}  # pylint: disable=protected-access
         table.add_rows(reminders)
         message = f"You have {len(reminders)} reminders set.\n```"
-        message += table.get_string(sortby="When") + "```"
+        message += table.get_string() + "```"
         message += f"Current UTC time: {datetime.datetime.utcnow().strftime(r'%H:%M %d %B %Y')}"
 
         return await inter.response.send_message(message, ephemeral=True)
