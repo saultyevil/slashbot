@@ -49,7 +49,7 @@ class Spelling(SlashbotCog):
             The cleaned up string.
         """
         # remove discord mentions
-        clean_text = re.sub(r"@(\w+|\d+)", "", text)
+        clean_text = re.sub(r"@(\w+|\d+)", "", text.lower())
         # remove code wrappings, so we don't get any code
         clean_text = re.sub(r"`[^`]+`", "", clean_text)
         clean_text = re.sub(r"```[^`]+```", "", clean_text, flags=re.DOTALL)
@@ -121,7 +121,13 @@ class Spelling(SlashbotCog):
             ]
             await channel.send(
                 f"**{user_name.capitalize()}** made {len(corrections)} spelling mistakes: "
-                + ", ".join([f"{mistake} *{correction}*" for mistake, correction in zip(mistakes, corrections)]),
+                + ", ".join(
+                    [
+                        f"{mistake} *{correction}*"
+                        for mistake, correction in zip(mistakes, corrections)
+                        if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake
+                    ]
+                ),
             )
 
         self.incorrect_spellings.clear()
