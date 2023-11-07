@@ -18,7 +18,7 @@ import markovify
 from slashbot.config import App
 from slashbot.error import deferred_error_message
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 MARKOV_MODEL = None
 
 
@@ -98,6 +98,8 @@ def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.
                 model = load_markov_model(chain_location, state_size)  # the recursion might be a bit spicy here
     else:
         raise IOError(f"No chain at {chain_location}")
+
+    App.set_config("CURRENT_MARKOV_CHAIN", chain_location)
 
     return model
 

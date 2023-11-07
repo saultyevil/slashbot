@@ -10,6 +10,11 @@
                     151378138612367360
                 ]
             }
+        },
+        "SCHEDULED_POSTS": {
+            "RANDOM_POST_CHANNELS": [
+                237647756049514498
+            ]
         }
     },
     "COOLDOWN": {
@@ -32,7 +37,7 @@
         ]
     },
     "FILES": {
-        "DATABASE": "data/slashbot.sqlite.db",
+        "DATABASE": "data/slashbot.db.json",
         "BAD_WORDS": "data/text/badwords.txt",
         "GOD_WORDS": "data/text/godwords.txt",
         "SCHEDULED_POSTS": "data/scheduled_posts.json",

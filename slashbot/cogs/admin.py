@@ -20,7 +20,7 @@ from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 
 COOLDOWN_USER = commands.BucketType.user
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 AVAILABLE_CHAINS = (
     # "chain-0.pickle",
@@ -44,17 +44,17 @@ class Admin(SlashbotCog):
     ):
         super().__init__()
         self.bot = bot
-        self.logfile_path = Path(App.config("LOGFILE_NAME"))
+        self.logfile_path = Path(App.get_config("LOGFILE_NAME"))
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="version", description="Print the current version number of the bot")
     async def print_version(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Print the current version number of the bot."""
         await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="logfile", description="get the tail of the logfile")
     async def print_logfile(
         self,
@@ -102,7 +102,7 @@ class Admin(SlashbotCog):
             except IndexError:
                 break
 
-            if num_chars > App.config("MAX_CHARS"):
+            if num_chars > App.get_config("MAX_CHARS"):
                 break
             tail.append(log_lines[-i])
 
@@ -111,7 +111,7 @@ class Admin(SlashbotCog):
     @commands.slash_command(name="ip", description="get the external ip address for the bot")
     async def print_ip_address(self, inter: disnake.ApplicationCommandInteraction):
         """Get the external IP of the bot."""
-        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
         try:
@@ -146,7 +146,7 @@ class Admin(SlashbotCog):
         state_size : int
             The state size of the Markov Chain to load.
         """
-        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
         arguments = ["run.py"]
@@ -193,7 +193,7 @@ class Admin(SlashbotCog):
         state_size : int
             The state size of the Markov Chain to load.
         """
-        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
         await inter.response.defer(ephemeral=True)
@@ -230,7 +230,7 @@ class Admin(SlashbotCog):
         chain_name : str, optional
             The name of the chain to use.
         """
-        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
 
         await inter.response.send_message(f"Loading chain: {chain_name}", ephemeral=True)

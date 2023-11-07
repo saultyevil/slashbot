@@ -13,56 +13,23 @@ import dateparser
 import disnake
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
-from sqlalchemy.orm import Session, sessionmaker
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import Reminder as ReminderDB
-from slashbot.db import connect_to_database_engine
+from slashbot.db import (
+    add_reminder,
+    get_all_reminders,
+    get_all_reminders_for_user,
+    remove_reminder,
+)
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 SECONDS_IN_DAY = 86400
 SECONDS_IN_HOUR = 3600
 SECONDS_IN_MINUTE = 60
-
-
-def get_reminders_for_user(inter: disnake.ApplicationCommandInteraction, _: str) -> List[str]:
-    """Get the reminders for a user.
-
-    TODO, bit of a performance issue here as whenever the user inputs another
-          character, this function will re-run and query the database again
-          which involves creating a session and running a list comprehension
-
-    Parameters
-    ----------
-    inter : disnake.ApplicationCommandInteraction
-        _description_
-    _ : str
-        _description_
-
-    Returns
-    -------
-    str
-        _description_
-    """
-    with Session(connect_to_database_engine()) as session:
-        reminders = session.query(ReminderDB).filter(ReminderDB.user_id == inter.author.id)
-
-    return [reminder.reminder for reminder in reminders]
-
-
-async def close_session(session: Session):
-    """Close a database session.
-
-    Parameters
-    ----------
-    session : Session
-        The session to close.
-    """
-    session.close()
 
 
 class Reminders(SlashbotCog):
@@ -72,13 +39,8 @@ class Reminders(SlashbotCog):
         super().__init__()
         self.bot = bot
         self.timezone = datetime.datetime.utcnow().astimezone().tzinfo
-
         self.check_reminders.start()  # pylint: disable=no-member
-
-        self.session = sessionmaker(connect_to_database_engine())()
-
         self.markov_sentences = ()
-        self.bot.add_function_to_cleanup(None, close_session, (self.session,))
 
     async def cog_load(self):
         """Initialise the cog.
@@ -90,12 +52,12 @@ class Reminders(SlashbotCog):
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["reminder"],
-                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
             if self.bot.markov_gen_on
             else {"reminder": []}
         )
-        logger.info("Generated sentences for %s", self.__cog_name__)
+        logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Private methods ----------------------------------------------------------
 
@@ -161,7 +123,7 @@ class Reminders(SlashbotCog):
             user = await self.bot.fetch_user(user_id)
             sentence = sentence.replace(f"<{mention_pattern}{user_id}>", f"@{user.name}")
 
-        return ",".join(user_ids), sentence
+        return user_ids, sentence
 
     # Tasks --------------------------------------------------------------------
 
@@ -170,40 +132,39 @@ class Reminders(SlashbotCog):
         """Check if any reminders need to be sent wherever needed."""
         # now = datetime.datetime.now(tz=self.timezone)
         now = datetime.datetime.now(tz=datetime.UTC)
-        reminders = self.session.query(ReminderDB)
-        if reminders.count() == 0:
+        reminders = get_all_reminders()
+        if len(reminders) == 0:
             return
 
-        for reminder in reminders:
-            date = reminder.date.replace(tzinfo=datetime.UTC)
+        for index, reminder in enumerate(reminders):
+            date = datetime.datetime.fromisoformat(reminder["date"]).replace(tzinfo=datetime.UTC)
 
             if date <= now:
-                user = await self.bot.fetch_user(reminder.user_id)
-                if not user:
+                reminder_user = await self.bot.fetch_user(reminder["user_id"])
+                if not reminder_user:
                     continue
 
-                embed = disnake.Embed(title=reminder.reminder, color=disnake.Color.default())
+                embed = disnake.Embed(title=reminder["reminder"], color=disnake.Color.default())
                 embed.set_footer(text=f"{await self.get_generated_sentence('reminder')}")
-                embed.set_thumbnail(url=user.avatar.url)
+                embed.set_thumbnail(url=reminder_user.avatar.url)
 
-                channel = await self.bot.fetch_channel(reminder.channel)
-                message = f"{user.mention}"
+                channel = await self.bot.fetch_channel(reminder["channel"])
+                message = f"{reminder_user.mention}"
 
-                if reminder.tagged_users:
-                    for user_id in reminder.tagged_users.split(","):
-                        if user_id == str(reminder.user_id):
+                if reminder["tagged_users"]:
+                    for user_id in reminder["tagged_users"]:
+                        if user_id == str(reminder["user_id"]):
                             continue
-                        user = await self.bot.fetch_user(int(user_id))
-                        if user and user.mention not in message:
-                            message += f" {user.mention}"
+                        user_to_tag = await self.bot.fetch_user(int(user_id))
+                        if user_to_tag and user_to_tag.mention not in message:
+                            message += f" {user_to_tag.mention}"
 
-                self.session.delete(reminder)
-                self.session.commit()
+                remove_reminder(index)
                 await channel.send(message, embed=embed)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_reminder", description="set a reminder for later")
     async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
@@ -264,26 +225,25 @@ class Reminders(SlashbotCog):
         # this is a bit of a hack, because the tagged users is a CSV string....
         tagged_users, reminder = await self.__replace_mentions_in_sentence(reminder)
 
-        self.session.add(
-            ReminderDB(
-                user_id=inter.author.id,
-                channel=inter.channel.id,
-                date=future.astimezone(datetime.UTC),
-                reminder=reminder,
-                tagged_users=tagged_users if tagged_users else None,
-            )
+        add_reminder(
+            {
+                "user_id": inter.author.id,
+                "channel": inter.channel.id,
+                "date": future.astimezone(datetime.UTC).isoformat(),
+                "reminder": reminder,
+                "tagged_users": tagged_users if tagged_users else None,
+            }
         )
-        self.session.commit()
 
         return await inter.response.send_message(f"Reminder set for {date_string}.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forget_reminder", description="forget a reminder")
     async def forget_reminder(
         self,
         inter: disnake.ApplicationCommandInteraction,
         reminder: str = commands.Param(
-            autocomplete=get_reminders_for_user, description="The reminder you want to forget."
+            autocomplete=get_all_reminders_for_user, description="The reminder you want to forget."
         ),
     ) -> coroutine:
         """Clear a reminder or all of a user's reminders.
@@ -295,17 +255,17 @@ class Reminders(SlashbotCog):
         reminder: str
             The reminder to forget
         """
-        reminder = self.session.query(ReminderDB).filter(ReminderDB.reminder == reminder).first()
+        reminder = filter(lambda r: r == reminder, get_all_reminders_for_user(inter.author.id))
         if not reminder:
-            return await inter.response.send_message("There is no reminder with that ID.", ephemeral=True)
-        if reminder.user_id != inter.author.id:
-            return await inter.response.send_message("This isn't your reminder to remove.", ephemeral=True)
-        self.session.delete(reminder)
-        self.session.commit()
+            return await inter.response.send_message("This reminder doesn't exist, somehow.", ephemeral=True)
+
+        all_reminders = get_all_reminders()
+        index = all_reminders.index(reminder)
+        remove_reminder(index)
 
         return await inter.response.send_message("Reminder removed.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_reminders", description="view your reminders")
     async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Show the reminders set for a user.
@@ -315,20 +275,28 @@ class Reminders(SlashbotCog):
         inter: disnake.ApplicationCommandInteraction
             The interaction object for the command.
         """
-        reminders = self.session.query(ReminderDB).filter(ReminderDB.user_id == inter.author.id)
-        if reminders.count() == 0:
+        reminders = get_all_reminders_for_user(inter.author.id)
+        if not reminders:
             return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
-        reminders = [
-            (reminder.id, reminder.date.strftime(r"%H:%M %d %B %Y (UTC)"), reminder.reminder) for reminder in reminders
-        ]
+        print(reminders)
+        reminders = sorted(
+            [(datetime.datetime.fromisoformat(reminder["date"]), reminder["reminder"]) for reminder in reminders],
+            key=lambda entry: entry[0],
+        )
+
+        print(reminders)
+
+        reminders = [(entry[0].strftime(r"%H:%M %d %B %Y (UTC)"), entry[1]) for entry in reminders]
+
+        # .strftime(r"%H:%M %d %B %Y (UTC)")
 
         table = PrettyTable()
         table.align = "r"
-        table.field_names = ["ID", "When", "What"]
-        table._max_width = {"ID": 3, "When": 25, "What": 75}  # pylint: disable=protected-access
+        table.field_names = ["When", "What"]
+        table._max_width = {"When": 25, "What": 75}  # pylint: disable=protected-access
         table.add_rows(reminders)
         message = f"You have {len(reminders)} reminders set.\n```"
-        message += table.get_string(sortby="ID") + "```"
+        message += table.get_string() + "```"
         message += f"Current UTC time: {datetime.datetime.utcnow().strftime(r'%H:%M %d %B %Y')}"
 
         return await inter.response.send_message(message, ephemeral=True)

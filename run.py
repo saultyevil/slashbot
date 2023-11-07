@@ -7,11 +7,11 @@ this bot is to sometimes annoy Gareth with its useful information.
 
 import argparse
 import logging
+import os
 import time
 import traceback
 from typing import Coroutine
 
-import os
 import disnake
 from disnake.ext import commands
 
@@ -40,7 +40,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 logger.info("Initializing Slashbot...")
 start = time.time()
 

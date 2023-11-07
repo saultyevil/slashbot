@@ -1,11 +1,11 @@
 
 [tool.poetry]
 name = "slashbot"
-version = "4.0.0"
+version = "4.1.2"
 description = ""
 authors = ["Edward J. Parkinson"]
 readme = "README.md"
-packages = [{include = "slashbot"}]
+packages = [{ include = "slashbot" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -17,7 +17,6 @@ wolframalpha = "5.0.0"
 disnake = "2.8.1"
 pyowm = "3.3.0"
 requests = "2.28.1"
-sqlalchemy = "2.0.16"
 dateparser = "^1.1.8"
 tiktoken = "^0.4.0"
 watchdog = "^3.0.0"
@@ -30,6 +29,7 @@ black = "^23.3.0"
 ipython = "^8.13.2"
 pre-commit = "^3.3.3"
 isort = "^5.12.0"
+sqlalchemy = "^2.0.23"
 
 [tool.black]
 line-length = 120
@@ -43,15 +43,7 @@ max-attributes = 15
 max-locals = 20
 
 [tool.pylint.format]
-good-names = [
-    "i",
-    "j",
-    "k"
-]
+good-names = ["i", "j", "k"]
 
 [tool.pylint.messages_control]
-disable = [
-    "import-error",
-    "wrong-import-position",
-    "line-too-long",
-]
+disable = ["import-error", "wrong-import-position", "line-too-long"]
