@@ -14,17 +14,6 @@ from typing import Any
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-SLASH_CONFIG = None
-
-
-def load_config():
-    global SLASH_CONFIG
-    with open(os.getenv("SLASHBOT_CONFIG"), "r", encoding="utf-8") as file_in:
-        SLASH_CONFIG = json.load(file_in)
-
-
-load_config()
-
 
 def setup_logging():
     """Setup up the logger and log file."""
@@ -84,7 +73,9 @@ class App:
 
         The purpose of this script is to populate the __conf class attribute.
         """
-        load_config()
+        with open(os.getenv("SLASHBOT_CONFIG"), "r", encoding="utf-8") as file_in:
+            SLASH_CONFIG = json.load(file_in)
+        CURRENT_CHAIN = cls._config.get("CURRENT_MARKOV_CHAIN", None)
         _config = {
             # cooldown parameters
             "COOLDOWN_RATE": int(SLASH_CONFIG["COOLDOWN"]["RATE"]),
@@ -114,7 +105,7 @@ class App:
             "RANDOM_MEDIA_DIRECTORY": Path(SLASH_CONFIG["FILES"]["RANDOM_MEDIA_DIRECTORY"]),
             # Markov Chain configuration
             "ENABLE_MARKOV_TRAINING": bool(SLASH_CONFIG["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
-            "CURRENT_MARKOV_CHAIN": None,
+            "CURRENT_MARKOV_CHAIN": CURRENT_CHAIN,
             "PREGEN_MARKOV_SENTENCES_AMOUNT": int(SLASH_CONFIG["MARKOV"]["NUM_PREGEN_SENTENCES"]),
             "PREGEN_REGENERATE_LIMIT": int(SLASH_CONFIG["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
             # Cog settings
