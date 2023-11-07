@@ -30,8 +30,7 @@ class Spelling(SlashbotCog):
         self.bot = bot
         self.incorrect_spellings = defaultdict(list)
         self.spellchecker = SpellChecker()
-        if App.get_config("SPELLCHECK_ENABLED"):
-            self.spelling_summary.start()  # pylint: disable=no-member
+        self.spelling_summary.start()  # pylint: disable=no-member
 
     @commands.Cog.listener("on_message")
     async def check_for_incorrect_spelling(self, message: disnake.Message):
@@ -44,6 +43,8 @@ class Spelling(SlashbotCog):
         message : disnake.Message
             The message to check.
         """
+        if not App.get_config("SPELLCHECK_ENABLED"):
+            return
         if not message.guild:
             return
         if message.author.id == self.bot.user.id:
@@ -62,6 +63,8 @@ class Spelling(SlashbotCog):
         The summary will be in a single message. This will run everyday at 5pm.
         """
         await self.bot.wait_until_ready()
+        if not App.get_config("SPELLCHECK_ENABLED"):
+            return
 
         now = datetime.datetime.now()
         target_time = datetime.time(hour=17, minute=0, second=0)
