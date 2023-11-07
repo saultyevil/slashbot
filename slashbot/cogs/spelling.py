@@ -6,11 +6,11 @@
 import asyncio
 import datetime
 import logging
+import string
 from collections import defaultdict
 
 import disnake
-from disnake.ext import tasks
-from disnake.ext import commands
+from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
 
 from slashbot.config import App
@@ -45,11 +45,11 @@ class Spelling(SlashbotCog):
         message : disnake.Message
             The message to check.
         """
-        if not message.guild:
-            return
-        if message.author.id == self.bot.user.id:
+        if not message.guild or message.author.bot:
             return
         if message.guild.id not in App.config("SPELLCHECK_SERVERS"):
+            return
+        if message.author.id not in App.config("SPELLCHECK_SERVERS")[message.guild.id]:
             return
 
         self.incorrect_spellings[f"{message.author.display_name}+{message.channel.id}"] += self.spellchecker.unknown(
@@ -80,6 +80,8 @@ class Spelling(SlashbotCog):
         )
         await asyncio.sleep(sleep_time)
 
+        remove_punctuation = str.maketrans("", "", string.punctuation)
+
         for key, values in self.incorrect_spellings.items():
             mistakes = sorted(set(values))  # remove duplicates with a set
             if len(mistakes) == 0:  # this shouldn't happen
@@ -90,6 +92,7 @@ class Spelling(SlashbotCog):
             corrections = [
                 correction if (correction := self.spellchecker.correction(mistake)) is not None else "unknown"
                 for mistake in mistakes
+                if correction.translate(remove_punctuation) != mistake.translate(remove_punctuation)
             ]
             message = [
                 f"- {mistake.capitalize()} -> {correction.capitalize()}\n"
