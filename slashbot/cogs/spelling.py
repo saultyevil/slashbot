@@ -77,11 +77,8 @@ class Spelling(SlashbotCog):
         if message.author.id not in App.get_config("SPELLCHECK_SERVERS")[guild_key]:
             return
 
-        content_to_check = self._cleanup_message(message.content)
-        logger.info("%s", content_to_check)
-
         self.incorrect_spellings[f"{message.author.display_name}+{message.channel.id}"] += self.spellchecker.unknown(
-            content_to_check.split(),
+            self._cleanup_message(message.content).split(),
         )
 
     @tasks.loop(seconds=5)
