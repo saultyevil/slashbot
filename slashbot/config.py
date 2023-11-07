@@ -30,12 +30,12 @@ def setup_logging():
 
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
-    logger = logging.getLogger(App.config("LOGGER_NAME"))
+    logger = logging.getLogger(App.get_config("LOGGER_NAME"))
     logger.addHandler(console_handler)
 
-    if Path(App.config("LOGFILE_NAME")).parent.exists():
+    if Path(App.get_config("LOGFILE_NAME")).parent.exists():
         file_handler = RotatingFileHandler(
-            filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
+            filename=App.get_config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
         )
         file_handler.setFormatter(
             logging.Formatter(
@@ -104,7 +104,7 @@ class App:
             "RANDOM_MEDIA_DIRECTORY": Path(SLASH_CONFIG["FILES"]["RANDOM_MEDIA_DIRECTORY"]),
             # Markov Chain configuration
             "ENABLE_MARKOV_TRAINING": bool(SLASH_CONFIG["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
-            # "ENABLE_PREGEN_SENTENCES": bool(SLASH_CONFIG["MARKOV"]["ENABLE_PREGEN_SENTENCES"]),
+            "CURRENT_MARKOV_CHAIN": None,
             "PREGEN_MARKOV_SENTENCES_AMOUNT": int(SLASH_CONFIG["MARKOV"]["NUM_PREGEN_SENTENCES"]),
             "PREGEN_REGENERATE_LIMIT": int(SLASH_CONFIG["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
             # Cog settings
@@ -117,15 +117,33 @@ class App:
     # Public methods -----------------------------------------------------------
 
     @staticmethod
-    def config(name: str) -> Any:
+    def get_config(name: str) -> Any:
         """Get a configuration parameter.
 
         Parameters
         ----------
         name: str
             The name of the parameter to get the value for.
+
+        Returns
+        -------
+        Any
+            The value of the parameter requested.
         """
         return App._config[name]
+
+    @staticmethod
+    def set_config(name: str, value: str) -> None:
+        """Set a configuration parameter.
+
+        Parameters
+        ----------
+        name : str
+            The name of the parameter to set.
+        value : str
+            The value of the parameter.
+        """
+        App._config[name] = value
 
 
 App.set_config_values()

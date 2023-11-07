@@ -24,7 +24,7 @@ from slashbot.db import (
 )
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 SECONDS_IN_DAY = 86400
@@ -52,7 +52,7 @@ class Reminders(SlashbotCog):
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["reminder"],
-                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
             if self.bot.markov_gen_on
             else {"reminder": []}
@@ -164,7 +164,7 @@ class Reminders(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_reminder", description="set a reminder for later")
     async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
@@ -237,7 +237,7 @@ class Reminders(SlashbotCog):
 
         return await inter.response.send_message(f"Reminder set for {date_string}.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forget_reminder", description="forget a reminder")
     async def forget_reminder(
         self,
@@ -265,7 +265,7 @@ class Reminders(SlashbotCog):
 
         return await inter.response.send_message("Reminder removed.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_reminders", description="view your reminders")
     async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Show the reminders set for a user.

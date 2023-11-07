@@ -9,15 +9,14 @@ import logging
 from collections import defaultdict
 
 import disnake
-from disnake.ext import tasks
-from disnake.ext import commands
+from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 
 COOLDOWN_USER = commands.BucketType.user
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 class Spelling(SlashbotCog):
@@ -31,7 +30,7 @@ class Spelling(SlashbotCog):
         self.bot = bot
         self.incorrect_spellings = defaultdict(list)
         self.spellchecker = SpellChecker()
-        if App.config("SPELLCHECK_ENABLED"):
+        if App.get_config("SPELLCHECK_ENABLED"):
             self.spelling_summary.start()  # pylint: disable=no-member
 
     @commands.Cog.listener("on_message")
@@ -49,7 +48,7 @@ class Spelling(SlashbotCog):
             return
         if message.author.id == self.bot.user.id:
             return
-        if message.guild.id not in App.config("SPELLCHECK_SERVERS"):
+        if message.guild.id not in App.get_config("SPELLCHECK_SERVERS"):
             return
 
         self.incorrect_spellings[f"{message.author.display_name}+{message.channel.id}"] += self.spellchecker.unknown(

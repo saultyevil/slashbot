@@ -19,7 +19,7 @@ from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.util import calculate_sleep_time
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
@@ -37,11 +37,11 @@ class ScheduledPosts(SlashbotCog):
         super().__init__()
         self.bot = bot
 
-        self.random_channels = App.config("RANDOM_POST_CHANNELS")
+        self.random_channels = App.get_config("RANDOM_POST_CHANNELS")
         self.scheduled_posts = None
         self.get_scheduled_posts()
         self.random_media_files = [
-            file for file in Path(App.config("RANDOM_MEDIA_DIRECTORY")).rglob("*") if not file.is_dir()
+            file for file in Path(App.get_config("RANDOM_MEDIA_DIRECTORY")).rglob("*") if not file.is_dir()
         ]
         logger.info("Random post channels: %s", self.random_channels)
         logger.info("%d random media files found", len(self.random_media_files))
@@ -64,12 +64,12 @@ class ScheduledPosts(SlashbotCog):
                 self.parent = parent
 
             def on_modified(self, event):
-                if event.src_path == str(App.config("SCHEDULED_POST_FILE").absolute()):
+                if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
                     self.parent.get_scheduled_posts()
                     self.parent.post_scheduled_post_loop.restart()
 
         observer = Observer()
-        observer.schedule(MyHandler(self), path=str(App.config("SCHEDULED_POST_FILE").parent.absolute()))
+        observer.schedule(MyHandler(self), path=str(App.get_config("SCHEDULED_POST_FILE").parent.absolute()))
         observer.start()
 
     def __calculate_time_until_post(self):
@@ -86,7 +86,7 @@ class ScheduledPosts(SlashbotCog):
 
     def get_scheduled_posts(self):
         """Read in the scheduled posts Json file."""
-        with open(App.config("SCHEDULED_POST_FILE"), "r", encoding="utf-8") as file_in:
+        with open(App.get_config("SCHEDULED_POST_FILE"), "r", encoding="utf-8") as file_in:
             posts_json = json.load(file_in)
 
         self.scheduled_posts = posts_json["SCHEDULED_POSTS"]
@@ -102,7 +102,9 @@ class ScheduledPosts(SlashbotCog):
             assert hasattr(post["users"], "__iter__"), f"{post['title']} has non-iterable users"
             assert hasattr(post["channels"], "__iter__"), f"{post['title']} has non-iterable channels"
 
-        logger.info("%d scheduled posts loaded from %s", len(self.scheduled_posts), App.config("SCHEDULED_POST_FILE"))
+        logger.info(
+            "%d scheduled posts loaded from %s", len(self.scheduled_posts), App.get_config("SCHEDULED_POST_FILE")
+        )
         self.__order_scheduled_posts_by_soonest()
 
     # Task ---------------------------------------------------------------------
@@ -188,7 +190,7 @@ class ScheduledPosts(SlashbotCog):
 
         file = disnake.File("data/images/evil_wii.png")
         file.filename = f"SPOILER_{file.filename}"
-        channel = await self.bot.fetch_channel(App.config("ID_CHANNEL_IDIOTS"))
+        channel = await self.bot.fetch_channel(App.get_config("ID_CHANNEL_IDIOTS"))
         await channel.send(file=file)
 
 

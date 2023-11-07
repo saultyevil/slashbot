@@ -15,12 +15,12 @@ from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog
 
 MAX_ELAPSED_TIME = 300
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 HEADER = {
     "accept": "application/json",
     "content-type": "application/json",
-    "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
+    "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
 }
 
 
@@ -52,7 +52,7 @@ class ImageAI(SlashbotCog):
         """
         headers = {
             "accept": "application/json",
-            "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
+            "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
         }
         response = requests.request(
             "GET", f"https://api.monsterapi.ai/v1/status/{process_id}", headers=headers, timeout=5
@@ -89,7 +89,7 @@ class ImageAI(SlashbotCog):
         headers = {
             "accept": "application/json",
             "content-type": "application/json",
-            "authorization": f"Bearer {App.config('MONSTER_API_KEY')}",
+            "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
         }
         payload = {
             "prompt": prompt,
@@ -114,7 +114,7 @@ class ImageAI(SlashbotCog):
     #     """Remove CustomCog before cog interaction."""
 
     @commands.cooldown(
-        rate=App.config("COOLDOWN_RATE"), per=App.config("COOLDOWN_STANDARD"), type=commands.BucketType.user
+        rate=App.get_config("COOLDOWN_RATE"), per=App.get_config("COOLDOWN_STANDARD"), type=commands.BucketType.user
     )
     @commands.slash_command(description="Generate an image from a text prompt", dm_permission=False)
     async def text_to_image(

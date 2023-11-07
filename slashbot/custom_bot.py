@@ -12,7 +12,7 @@ from disnake.ext import commands
 
 from slashbot.config import App
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 class SlashbotInterationBot(commands.InteractionBot):

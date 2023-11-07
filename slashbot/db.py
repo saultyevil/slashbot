@@ -15,9 +15,10 @@ import pathlib
 from typing import List
 
 import disnake
+
 from slashbot.config import App
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 # Database functions -----------------------------------------------------------
@@ -70,7 +71,7 @@ def load_database(location: str = None) -> dict:
         The database as a dict.
     """
     if not location:
-        location = App.config("DATABASE_LOCATION")
+        location = App.get_config("DATABASE_LOCATION")
 
     check_database_exists(location)
 
@@ -102,7 +103,7 @@ def save_database(database: dict, location: str = None) -> dict:
         The database written to disk.
     """
     if not location:
-        location = App.config("DATABASE_LOCATION")
+        location = App.get_config("DATABASE_LOCATION")
 
     with open(location, "w", encoding="utf-8") as file_out:
         json.dump(database, file_out)

@@ -15,7 +15,7 @@ from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
@@ -38,7 +38,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         super().__init__()
         self.bot = bot
         self.attempts = attempts
-        self.wolfram_api = wolframalpha.Client(App.config("WOLFRAM_API_KEY"))
+        self.wolfram_api = wolframalpha.Client(App.get_config("WOLFRAM_API_KEY"))
         self.markov_sentences = ()
 
     async def cog_load(self):
@@ -51,7 +51,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["wolfram"],
-                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
             if self.bot.markov_gen_on
             else {"wolfram": []}
@@ -60,7 +60,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="die_roll", description="roll a dice")
     async def die_roll(
         self,
@@ -76,7 +76,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         """
         return await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")
     async def wolfram(
         self,
@@ -103,7 +103,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         results = self.wolfram_api.query(question)
 
         if not results["@success"]:
-            with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+            with open(App.get_config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
                 bad_word = random.choice(file_in.readlines())
             embed.add_field(
                 name=f"{question}",

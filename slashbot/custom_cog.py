@@ -15,7 +15,7 @@ from slashbot.markov import (
     async_generate_sentence,
 )
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 class SlashbotCog(commands.Cog):
@@ -38,10 +38,10 @@ class SlashbotCog(commands.Cog):
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        if inter.guild and inter.guild.id not in App.config("COOLDOWN_SERVERS"):
+        if inter.guild and inter.guild.id not in App.get_config("COOLDOWN_SERVERS"):
             return inter.application_command.reset_cooldown(inter)
 
-        if inter.author.id in App.config("NO_COOLDOWN_USERS"):
+        if inter.author.id in App.get_config("NO_COOLDOWN_USERS"):
             return inter.application_command.reset_cooldown(inter)
 
     # Tasks --------------------------------------------------------------------
@@ -53,10 +53,10 @@ class SlashbotCog(commands.Cog):
             return
 
         for seed_word, seed_sentences in self.markov_sentences.items():
-            if len(seed_sentences) <= App.config("PREGEN_REGENERATE_LIMIT"):
+            if len(seed_sentences) <= App.get_config("PREGEN_REGENERATE_LIMIT"):
                 # logger.debug("Regenerating sentences for seed word %s", seed_word)
                 self.markov_sentences[seed_word] = await async_generate_list_of_sentences_with_seed_word(
-                    MARKOV_MODEL, seed_word, App.config("PREGEN_MARKOV_SENTENCES_AMOUNT")
+                    MARKOV_MODEL, seed_word, App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT")
                 )
 
     @regenerate_markov_sentences.before_loop
