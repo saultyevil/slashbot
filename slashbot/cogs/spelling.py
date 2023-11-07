@@ -6,6 +6,7 @@
 import asyncio
 import datetime
 import logging
+import re
 from collections import defaultdict
 
 import disnake
@@ -32,6 +33,30 @@ class Spelling(SlashbotCog):
         self.spellchecker = SpellChecker()
         self.spelling_summary.start()  # pylint: disable=no-member
 
+    @staticmethod
+    def _cleanup_message(text: str) -> str:
+        """Remove certain parts of a string, so spell checking is cleaner.
+
+        Parameters
+        ----------
+        text : str
+            The string to clean up.
+
+        Returns
+        -------
+        str
+            The cleaned up string.
+        """
+        # remove discord mentions
+        clean_text = re.sub(r"@(\w+|\d+)", "", text.lower())
+        # remove code wrappings, so we don't get any code
+        clean_text = re.sub(r"`[^`]+`", "", clean_text)
+        clean_text = re.sub(r"```[^`]+```", "", clean_text, flags=re.DOTALL)
+        # remove numbers and non-word characters
+        clean_text = re.sub(r"[0-9]+|\W+|<[^>]+>", " ", clean_text)
+
+        return clean_text
+
     @commands.Cog.listener("on_message")
     async def check_for_incorrect_spelling(self, message: disnake.Message):
         """Check a message for an incorrect spelling.
@@ -45,15 +70,16 @@ class Spelling(SlashbotCog):
         """
         if not App.get_config("SPELLCHECK_ENABLED"):
             return
-        if not message.guild:
+        if not message.guild or message.author.bot:
             return
-        if message.author.id == self.bot.user.id:
+        guild_key = str(message.guild.id)
+        if guild_key not in App.get_config("SPELLCHECK_SERVERS"):
             return
-        if message.guild.id not in App.get_config("SPELLCHECK_SERVERS"):
+        if message.author.id not in App.get_config("SPELLCHECK_SERVERS")[guild_key]:
             return
 
         self.incorrect_spellings[f"{message.author.display_name}+{message.channel.id}"] += self.spellchecker.unknown(
-            message.clean_content.split(),
+            self._cleanup_message(message.content).split(),
         )
 
     @tasks.loop(seconds=5)
@@ -93,12 +119,15 @@ class Spelling(SlashbotCog):
                 correction if (correction := self.spellchecker.correction(mistake)) is not None else "unknown"
                 for mistake in mistakes
             ]
-            message = [
-                f"- {mistake.capitalize()} -> {correction.capitalize()}\n"
-                for mistake, correction in zip(mistakes, corrections)
-            ]
             await channel.send(
-                f"{user_name} made spelling mistakes today:\n" + "".join(message),
+                f"**{user_name.capitalize()}** made {len(corrections)} spelling mistakes: "
+                + ", ".join(
+                    [
+                        f"{mistake} *{correction}*"
+                        for mistake, correction in zip(mistakes, corrections)
+                        if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake
+                    ]
+                ),
             )
 
         self.incorrect_spellings.clear()
