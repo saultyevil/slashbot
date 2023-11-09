@@ -16,10 +16,15 @@ from prettytable import PrettyTable
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.db import get_all_reminders, get_all_reminders_for_user, remove_reminder, add_reminder
+from slashbot.db import (
+    add_reminder,
+    get_all_reminders,
+    get_all_reminders_for_user,
+    remove_reminder,
+)
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 SECONDS_IN_DAY = 86400
@@ -47,7 +52,7 @@ class Reminders(SlashbotCog):
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["reminder"],
-                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
             if self.bot.markov_gen_on
             else {"reminder": []}
@@ -122,7 +127,7 @@ class Reminders(SlashbotCog):
 
     # Tasks --------------------------------------------------------------------
 
-    @tasks.loop(seconds=30)
+    @tasks.loop(seconds=1)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
         # now = datetime.datetime.now(tz=self.timezone)
@@ -159,7 +164,7 @@ class Reminders(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_reminder", description="set a reminder for later")
     async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
@@ -232,7 +237,7 @@ class Reminders(SlashbotCog):
 
         return await inter.response.send_message(f"Reminder set for {date_string}.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forget_reminder", description="forget a reminder")
     async def forget_reminder(
         self,
@@ -260,7 +265,7 @@ class Reminders(SlashbotCog):
 
         return await inter.response.send_message("Reminder removed.", ephemeral=True)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_reminders", description="view your reminders")
     async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Show the reminders set for a user.
@@ -273,10 +278,17 @@ class Reminders(SlashbotCog):
         reminders = get_all_reminders_for_user(inter.author.id)
         if not reminders:
             return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
-        reminders = [
-            (datetime.datetime.fromisoformat(reminder["date"]).strftime(r"%H:%M %d %B %Y (UTC)"), reminder["reminder"])
-            for reminder in reminders
-        ]
+        print(reminders)
+        reminders = sorted(
+            [(datetime.datetime.fromisoformat(reminder["date"]), reminder["reminder"]) for reminder in reminders],
+            key=lambda entry: entry[0],
+        )
+
+        print(reminders)
+
+        reminders = [(entry[0].strftime(r"%H:%M %d %B %Y (UTC)"), entry[1]) for entry in reminders]
+
+        # .strftime(r"%H:%M %d %B %Y (UTC)")
 
         table = PrettyTable()
         table.align = "r"
@@ -284,7 +296,7 @@ class Reminders(SlashbotCog):
         table._max_width = {"When": 25, "What": 75}  # pylint: disable=protected-access
         table.add_rows(reminders)
         message = f"You have {len(reminders)} reminders set.\n```"
-        message += table.get_string(sortby="When") + "```"
+        message += table.get_string() + "```"
         message += f"Current UTC time: {datetime.datetime.utcnow().strftime(r'%H:%M %d %B %Y')}"
 
         return await inter.response.send_message(message, ephemeral=True)

@@ -14,7 +14,7 @@ import disnake
 
 from slashbot.config import App
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 async def send_cooldown_message(

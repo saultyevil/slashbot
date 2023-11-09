@@ -17,7 +17,7 @@ from slashbot.db import get_twitter_convert_users, get_user, update_user
 from slashbot.error import deferred_error_message
 from slashbot.util import convert_string_to_lower
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 USER_OPTIONS = [
     "City",
@@ -56,7 +56,7 @@ class Users(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_info", description="set info to remember about you")
     async def set_info(
         self,
@@ -113,7 +113,7 @@ class Users(SlashbotCog):
 
         return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to '{value}'.")
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_info", description="view info you set to remember")
     async def query_info(
         self,

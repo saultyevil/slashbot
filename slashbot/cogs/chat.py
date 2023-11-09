@@ -6,12 +6,12 @@ The purpose of this cog is to enable the bot to communicate with the OpenAI API
 and to generate responses to prompts given.
 """
 
+import copy
 import json
 import logging
 import traceback
 from collections import defaultdict
 from types import coroutine
-import copy
 
 import disnake
 import openai
@@ -31,8 +31,8 @@ from slashbot.util import (
     split_text_into_chunks,
 )
 
-openai.api_key = App.config("OPENAI_API_KEY")
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+openai.api_key = App.get_config("OPENAI_API_KEY")
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
 DEFAULT_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/split.json")["prompt"]
@@ -312,7 +312,7 @@ class Chat(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Clear history context for where the interaction was called from.
@@ -329,7 +329,7 @@ class Chat(SlashbotCog):
             ephemeral=True,
         )
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_chat_prompt", description="Set the AI conversation prompt from a list of choices")
     async def select_prompt(
         self,
@@ -367,7 +367,7 @@ class Chat(SlashbotCog):
 
         self.chat_tokens[history_id] = TOKEN_COUNT_UNSET
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
         name="set_custom_chat_prompt", description="Change the AI conversation prompt to one you write"
     )
@@ -399,7 +399,7 @@ class Chat(SlashbotCog):
 
         self.chat_tokens[history_id] = len(tiktoken.encoding_for_model(self.chat_model[history_id]).encode(message))
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_chat_tokens", description="Set the max token length for AI conversation output")
     async def set_output_tokens(
         self, inter: disnake.ApplicationCommandInteraction, num_tokens: int = commands.Param(gt=256, lt=2048)
@@ -419,7 +419,7 @@ class Chat(SlashbotCog):
             f"Max output tokens set to {num_tokens} with a token total of {self.max_tokens_allowed}.", ephemeral=True
         )
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection")
     async def save_prompt(
         self,
@@ -455,7 +455,7 @@ class Chat(SlashbotCog):
 
         await inter.edit_original_message(content=f"Your prompt {name} has been saved.")
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_ai_info", description="Print information about the current AI conversation")
     async def echo_info(self, inter: disnake.ApplicationCommandInteraction):
         """Print the system prompt to the screen.
@@ -487,7 +487,7 @@ class Chat(SlashbotCog):
 
         await inter.edit_original_message(content=response)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
         name="set_chat_model", description="Change the current AI conversation model for a set of choices"
     )
@@ -505,7 +505,7 @@ class Chat(SlashbotCog):
         model_name : str
             The name of the model to use.
         """
-        if inter.author.id != App.config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You do not have permission to use this command.", ephemeral=True)
 
         # not really required, as the user should only be able to select from a set of choices

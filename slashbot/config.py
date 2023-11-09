@@ -3,6 +3,7 @@
 
 """Global configuration class."""
 
+import copy
 import json
 import logging
 import os
@@ -13,29 +14,18 @@ from typing import Any
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-SLASH_CONFIG = None
-
-
-def load_config():
-    global SLASH_CONFIG
-    with open(os.getenv("SLASHBOT_CONFIG"), "r", encoding="utf-8") as file_in:
-        SLASH_CONFIG = json.load(file_in)
-
-
-load_config()
-
 
 def setup_logging():
     """Setup up the logger and log file."""
 
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
-    logger = logging.getLogger(App.config("LOGGER_NAME"))
+    logger = logging.getLogger(App.get_config("LOGGER_NAME"))
     logger.addHandler(console_handler)
 
-    if Path(App.config("LOGFILE_NAME")).parent.exists():
+    if Path(App.get_config("LOGFILE_NAME")).parent.exists():
         file_handler = RotatingFileHandler(
-            filename=App.config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
+            filename=App.get_config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
         )
         file_handler.setFormatter(
             logging.Formatter(
@@ -51,9 +41,18 @@ def setup_logging():
 
 class FileWatcher(FileSystemEventHandler):
     def on_modified(self, event):
+        # TODO: this triggers twice on file modify...
         if event.event_type == "modified" and event.src_path == os.getenv("SLASHBOT_CONFIG"):
-            # TODO: this triggers twice on file modify...
-            App.set_config_values()
+            original_config = copy.copy(App._config)
+            new_config = App.set_config_values()
+            modified_keys = {
+                key for key in original_config if key in new_config and original_config[key] != new_config[key]
+            }
+            if modified_keys:
+                logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+                logger.info("App config updated:")
+                for key in modified_keys:
+                    logger.info("  %s: %s -> %s", key, original_config[key], new_config[key])
 
 
 class App:
@@ -74,7 +73,9 @@ class App:
 
         The purpose of this script is to populate the __conf class attribute.
         """
-        load_config()
+        with open(os.getenv("SLASHBOT_CONFIG"), "r", encoding="utf-8") as file_in:
+            SLASH_CONFIG = json.load(file_in)
+        CURRENT_CHAIN = cls._config.get("CURRENT_MARKOV_CHAIN", None)
         _config = {
             # cooldown parameters
             "COOLDOWN_RATE": int(SLASH_CONFIG["COOLDOWN"]["RATE"]),
@@ -104,7 +105,7 @@ class App:
             "RANDOM_MEDIA_DIRECTORY": Path(SLASH_CONFIG["FILES"]["RANDOM_MEDIA_DIRECTORY"]),
             # Markov Chain configuration
             "ENABLE_MARKOV_TRAINING": bool(SLASH_CONFIG["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
-            # "ENABLE_PREGEN_SENTENCES": bool(SLASH_CONFIG["MARKOV"]["ENABLE_PREGEN_SENTENCES"]),
+            "CURRENT_MARKOV_CHAIN": CURRENT_CHAIN,
             "PREGEN_MARKOV_SENTENCES_AMOUNT": int(SLASH_CONFIG["MARKOV"]["NUM_PREGEN_SENTENCES"]),
             "PREGEN_REGENERATE_LIMIT": int(SLASH_CONFIG["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
             # Cog settings
@@ -114,18 +115,38 @@ class App:
         }
         cls._config = _config
 
+        return cls._config
+
     # Public methods -----------------------------------------------------------
 
     @staticmethod
-    def config(name: str) -> Any:
+    def get_config(name: str) -> Any:
         """Get a configuration parameter.
 
         Parameters
         ----------
         name: str
             The name of the parameter to get the value for.
+
+        Returns
+        -------
+        Any
+            The value of the parameter requested.
         """
         return App._config[name]
+
+    @staticmethod
+    def set_config(name: str, value: str) -> None:
+        """Set a configuration parameter.
+
+        Parameters
+        ----------
+        name : str
+            The name of the parameter to set.
+        value : str
+            The value of the parameter.
+        """
+        App._config[name] = value
 
 
 App.set_config_values()

@@ -5,7 +5,7 @@ services:
     container_name: slashbot
     restart: unless-stopped
     environment:
-      - SLASHBOT_CONFIG=config.json
+      - SLASHBOT_CONFIG=/bot/config.json
       - SLASHBOT_TOKEN
       - OWM_API_KEY
       - WOLFRAM_API_KEY

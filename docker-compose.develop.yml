@@ -5,7 +5,7 @@ services:
     container_name: slashbot
     environment:
       - DEVELOPMENT_MODE=true
-      - SLASHBOT_CONFIG=config.json
+      - SLASHBOT_CONFIG=/bot/config.json
       - SLASHBOT_DEVELOPMENT_TOKEN
       - OWM_API_KEY
       - WOLFRAM_API_KEY

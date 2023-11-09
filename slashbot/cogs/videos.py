@@ -15,7 +15,7 @@ from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
@@ -56,7 +56,7 @@ class Videos(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="admin_abuse", description="admin abuse!!! you're the worst admin ever!!!")
     async def admin_abuse(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of someone shouting admin abuse.
@@ -72,7 +72,7 @@ class Videos(SlashbotCog):
             content=f"{await self.get_generated_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="goodbye", description="goodbye")
     async def goodbye(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko saying goodbye.
@@ -85,7 +85,7 @@ class Videos(SlashbotCog):
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
 
-    @commands.cooldown(1, App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(1, App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="good_morning", description="good morning people")
     async def good_morning(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a video of Marko saying good morning people.
@@ -114,7 +114,7 @@ class Videos(SlashbotCog):
 
         return await inter.edit_original_message(file=disnake.File(video))
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="haha", description="haha very funny")
     async def laugh(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a clip of Marko laughing.

@@ -21,13 +21,13 @@ from slashbot.error import deferred_error_message
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 from slashbot.util import convert_radial_to_cardinal_direction
 
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 COOLDOWN_USER = commands.BucketType.user
 WEATHER_UNITS = ["metric", "imperial"]
 FORECAST_TYPES = ["hourly", "daily"]
-API_KEY = App.config("OWM_API_KEY")
+API_KEY = App.get_config("OWM_API_KEY")
 
 
 class GeocodeException(Exception):
@@ -59,7 +59,7 @@ class Weather(SlashbotCog):
         super().__init__()
         self.bot = bot
         self.geolocator = GoogleV3(
-            api_key=App.config("GOOGLE_API_KEY"),
+            api_key=App.get_config("GOOGLE_API_KEY"),
             domain="maps.google.co.uk",
         )
 
@@ -75,7 +75,7 @@ class Weather(SlashbotCog):
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["weather", "forecast"],
-                App.config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
             if self.bot.markov_gen_on
             else {"weather": [], "forecast": []}
@@ -196,7 +196,7 @@ class Weather(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forecast", description="get the weather forecast")
     async def forecast(  # pylint: disable=too-many-locals, too-many-arguments
         self,
@@ -279,7 +279,7 @@ class Weather(SlashbotCog):
 
         return await inter.edit_original_message(embed=embed)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="weather", description="get the current weather")
     async def weather(
         self,

@@ -16,22 +16,21 @@ from typing import Any, Union
 import disnake
 import requests
 import rule34 as r34
-from disnake.ext import commands
+from disnake.ext import commands, tasks
 
 from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import get_users
+from slashbot.markov import async_generate_sentence, update_markov_chain_for_model
 
-from slashbot.markov import async_generate_sentence  # update_markov_chain_for_model
-
-logger = logging.getLogger(App.config("LOGGER_NAME"))
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
-with open(App.config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+with open(App.get_config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
     BAD_WORDS = file_in.readlines()
 
-with open(App.config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+with open(App.get_config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
     GOD_WORDS = file_in.readlines()
 
 
@@ -55,15 +54,14 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         super().__init__()
         self.bot = bot
         self.attempts = attempts
-        # self.markov_training_sample = {}
+        self.markov_training_sample = {}
         self.rule34_api = r34.Rule34()
 
         self.user_cooldown = defaultdict(lambda: {"time": 0.0, "count": 0})  # tracks last unix time someone used it
         self.cooldown_duration = 30  # seconds
         self.cooldown_rate = 3
 
-        # self.automatic_chain_update_enabled = False
-        # self.markov_chain_update_loop.start()  # pylint: disable=no-member
+        self.markov_chain_update_loop.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)
@@ -79,13 +77,13 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         #         None,
         #         markov.MARKOV_MODEL,
         #         self.markov_training_sample.values(),
-        #         App.config("MARKOV_CHAIN_FILE"),
+        #         App.config("CURRENT_MARKOV_CHAIN"),
         #     ),
         # )
 
     # Slash commands -----------------------------------------------------------
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="bad_word", description="send a naughty word")
     async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a bad word to the chat.
@@ -127,7 +125,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
         await inter.response.send_message(content=message, file=file)
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
         name="sentence",
         description="artificial intelligence, powered by markov chain sentence generation",
@@ -152,36 +150,39 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         await inter.response.defer()
         return await inter.edit_original_message(content=await async_generate_sentence(markov.MARKOV_MODEL, words))
 
-    # @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    # @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /chat")
-    # async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction):
-    #     """Update the Markov chain model.
-    #
-    #     If there is no inter, e.g. not called from a command, then this function
-    #     behaves a bit differently -- mostly that it does not respond to any
-    #     interactions.
-    #
-    #     The markov chain is updated at the end. The chain is updated by
-    #     combining a newly generated chain with the current chain.
-    #
-    #     Parameters
-    #     ----------
-    #     inter: disnake.ApplicationCommandInteraction
-    #         The interaction to possibly remove the cooldown from.
-    #     """
-    #     await inter.response.defer(ephemeral=True)
-    #
-    #     await update_markov_chain_for_model(
-    #         inter,
-    #         markov.MARKOV_MODEL,
-    #         list(self.markov_training_sample.values()),
-    #         App.config("MARKOV_CHAIN_FILE"),
-    #     )
-    #     self.markov_training_sample.clear()
-    #
-    #     await inter.edit_original_message("Markov chain has been updated.")
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /chat")
+    async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction):
+        """Update the Markov chain model.
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+        If there is no inter, e.g. not called from a command, then this function
+        behaves a bit differently -- mostly that it does not respond to any
+        interactions.
+
+        The markov chain is updated at the end. The chain is updated by
+        combining a newly generated chain with the current chain.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        """
+        if not App.get_config("ENABLE_MARKOV_TRAINING"):
+            await inter.response.send_message("Updating the Markov Chain has been disabled.")
+        else:
+            await inter.response.defer(ephemeral=True)
+
+        await update_markov_chain_for_model(
+            inter,
+            markov.MARKOV_MODEL,
+            list(self.markov_training_sample.values()),
+            App.get_config("CURRENT_MARKOV_CHAIN"),
+        )
+        self.markov_training_sample.clear()
+
+        await inter.edit_original_message("Markov chain has been updated.")
+
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="oracle", description="a message from god")
     async def oracle(self, inter: disnake.ApplicationCommandInteraction):
         """Send a Terry Davis inspired "God message" to the chat.
@@ -195,7 +196,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             f"{' '.join([word.strip() for word in random.sample(GOD_WORDS, random.randint(5, 25))])}"
         )
 
-    @commands.cooldown(App.config("COOLDOWN_RATE"), App.config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="rule34", description="search for a naughty image")
     async def rule34(
         self,
@@ -258,42 +259,42 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         if content in ["same", "man", "sad", "fr?"]:
             await message.channel.send(f"{message.content}")
 
-    # @commands.Cog.listener("on_message")
-    # async def add_message_to_markov_training_sample(self, message: disnake.Message) -> None:
-    #     """Record messages for the Markov chain to learn.
-    #
-    #     Parameters
-    #     ----------
-    #     message: disnake.Message
-    #         The message to record.
-    #     """
-    #     if not self.automatic_chain_update_enabled:
-    #         return
-    #     if message.author.bot:
-    #         return
-    #     self.markov_training_sample[message.id] = message.clean_content
-    #
-    # @commands.Cog.listener("on_raw_message_delete")
-    # async def removed_message_from_markov_training_sample(self, payload: disnake.RawMessageDeleteEvent) -> None:
-    #     """Remove a deleted message from the Markov training sentences.
-    #
-    #     Parameters
-    #     ----------
-    #     payload: disnake.RawMessageDeleteEvent
-    #         The payload containing the message.
-    #     """
-    #     if not self.automatic_chain_update_enabled:
-    #         return
-    #
-    #     message = payload.cached_message
-    #
-    #     # if the message isn't cached, for some reason, we can fetch the channel
-    #     # and the message from the channel
-    #     if message is None:
-    #         channel = await self.bot.fetch_channel(payload.channel_id)
-    #         message = await channel.fetch_message(payload.message_id)
-    #
-    #     self.markov_training_sample.pop(message.id, None)
+    @commands.Cog.listener("on_message")
+    async def add_message_to_markov_training_sample(self, message: disnake.Message) -> None:
+        """Record messages for the Markov chain to learn.
+
+        Parameters
+        ----------
+        message: disnake.Message
+            The message to record.
+        """
+        if not App.get_config("ENABLE_MARKOV_TRAINING"):
+            return
+        if message.author.bot:
+            return
+        self.markov_training_sample[message.id] = message.clean_content
+
+    @commands.Cog.listener("on_raw_message_delete")
+    async def removed_message_from_markov_training_sample(self, payload: disnake.RawMessageDeleteEvent) -> None:
+        """Remove a deleted message from the Markov training sentences.
+
+        Parameters
+        ----------
+        payload: disnake.RawMessageDeleteEvent
+            The payload containing the message.
+        """
+        if not App.get_config("ENABLE_MARKOV_TRAINING"):
+            return
+
+        message = payload.cached_message
+
+        # if the message isn't cached, for some reason, we can fetch the channel
+        # and the message from the channel
+        if message is None:
+            channel = await self.bot.fetch_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+
+        self.markov_training_sample.pop(message.id, None)
 
     # Utility functions --------------------------------------------------------
 
@@ -369,16 +370,18 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
     # Scheduled tasks ----------------------------------------------------------
 
-    # @tasks.loop(hours=6)
-    # async def markov_chain_update_loop(self):
-    #     """Get the bot to update the chain every 6 hours."""
-    #     await update_markov_chain_for_model(
-    #         None,
-    #         markov.MARKOV_MODEL,
-    #         list(self.markov_training_sample.values()),
-    #         App.config("MARKOV_CHAIN_FILE"),
-    #     )
-    #     self.markov_training_sample.clear()
+    @tasks.loop(hours=6)
+    async def markov_chain_update_loop(self):
+        """Get the bot to update the chain every 6 hours."""
+        if not App.get_config("ENABLE_MARKOV_TRAINING"):
+            return
+        await update_markov_chain_for_model(
+            None,
+            markov.MARKOV_MODEL,
+            list(self.markov_training_sample.values()),
+            App.get_config("CURRENT_MARKOV_CHAIN"),
+        )
+        self.markov_training_sample.clear()
 
 
 def setup(bot: commands.InteractionBot):
