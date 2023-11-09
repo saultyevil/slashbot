@@ -272,7 +272,9 @@ class Weather(SlashbotCog):
                 inline=False,
             )
 
-        embed.set_footer(text=f"{await self.get_generated_sentence('forecast')}")
+        embed.set_footer(
+            text=f"{await self.get_generated_sentence('forecast')}\n*(You can set your location using /set_info)*"
+        )
         embed.set_thumbnail(self.__get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
@@ -366,7 +368,9 @@ class Weather(SlashbotCog):
             inline=False,
         )
 
-        embed.set_footer(text=f"{await self.get_generated_sentence('weather')}")
+        embed.set_footer(
+            text=f"{await self.get_generated_sentence('weather')}\n*(You can set your location using /set_info)*"
+        )
         embed.set_thumbnail(self.__get_weather_icon_url(current_weather["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
