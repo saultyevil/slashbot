@@ -4,7 +4,6 @@
 """This cog contains commands and tasks to bully people."""
 
 # TODO: command to add words to dictionary
-# TODO: track number of words, to put out a %-age words spelt wrong
 
 import asyncio
 import datetime
@@ -32,7 +31,7 @@ class Spelling(SlashbotCog):
     def __init__(self, bot: commands.InteractionBot):
         super().__init__()
         self.bot = bot
-        self.incorrect_spellings = defaultdict(list)
+        self.incorrect_spellings = defaultdict(lambda: {"word_count": 0, "unknown_words": []})
         self.spellchecker = SpellChecker()
         self.spelling_summary.start()  # pylint: disable=no-member
 
@@ -81,9 +80,12 @@ class Spelling(SlashbotCog):
         if message.author.id not in App.get_config("SPELLCHECK_SERVERS")[guild_key]:
             return
 
-        self.incorrect_spellings[f"{message.author.display_name}+{message.channel.id}"] += self.spellchecker.unknown(
-            self._cleanup_message(message.content).split(),
-        )
+        words = self._cleanup_message(message.content)
+        unknown_words = self.spellchecker.unknown(words.split())
+        key = f"{message.author.display_name}+{message.channel.id}"
+
+        self.incorrect_spellings[key]["word_count"] += len(words.split())
+        self.incorrect_spellings[key]["unknown_words"] += unknown_words
 
     @tasks.loop(seconds=5)
     async def spelling_summary(self):
@@ -111,10 +113,12 @@ class Spelling(SlashbotCog):
         )
         await asyncio.sleep(sleep_time)
 
-        for key, values in self.incorrect_spellings.items():
-            mistakes = sorted(set(values))  # remove duplicates with a set
+        for key, value in self.incorrect_spellings.items():
+            mistakes = sorted(set(value["unknown_words"]))  # remove duplicates with a set
             if len(mistakes) == 0:  # this shouldn't happen
                 continue
+            word_count = int(value["word_count"])
+            percent_wrong = float(len(mistakes)) / float(word_count) * 100.0
 
             user_name, channel_id = key.split("+")
             channel = await self.bot.fetch_channel(channel_id)
@@ -122,15 +126,16 @@ class Spelling(SlashbotCog):
                 correction if (correction := self.spellchecker.correction(mistake)) is not None else "unknown"
                 for mistake in mistakes
             ]
+            actual_mistakes = [
+                f"{correction} ({mistake})"
+                for mistake, correction in zip(mistakes, corrections)
+                if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake
+            ]
+
             await channel.send(
-                f"**{user_name.capitalize()}** made {len(corrections)} spelling mistakes: "
-                + ", ".join(
-                    [
-                        f"{mistake} *{correction}*"
-                        for mistake, correction in zip(mistakes, corrections)
-                        if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake
-                    ]
-                ),
+                f"**{user_name.capitalize()}** made {len(actual_mistakes)} spelling mistakes, which is "
+                + f"{percent_wrong:.1f}% of the words they sent. They spelt the following words incorrectly:  "
+                + ", ".join(actual_mistakes),
             )
 
         self.incorrect_spellings.clear()
