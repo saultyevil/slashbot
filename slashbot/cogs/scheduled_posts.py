@@ -66,7 +66,8 @@ class ScheduledPosts(SlashbotCog):
             def on_modified(self, event):
                 if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
                     self.parent.get_scheduled_posts()
-                    self.parent.post_scheduled_post_loop.restart()
+                    self.parent.post_scheduled_post_loop.stop()
+                    self.parent.post_scheduled_post_loop.start()
 
         observer = Observer()
         observer.schedule(MyHandler(self), path=str(App.get_config("SCHEDULED_POST_FILE").parent.absolute()))
@@ -157,6 +158,24 @@ class ScheduledPosts(SlashbotCog):
                     )
                 else:
                     await channel.send(f"{message} {markov_sentence}", file=disnake.File(post["files"][0]))
+
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="random_image", description="send a random image")
+    async def random_image(self, inter: disnake.ApplicationCommandInteraction):
+        """Post a random image.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The command interaction.
+        """
+        if len(self.random_media_files) == 0:
+            await inter.response.send_message("Something bad has happened, there are no images loaded.", ephemeral=True)
+
+        await inter.response.send_message(
+            content=f"{self.get_generated_sentence('random')}",
+            file=disnake.File(random.choice(self.random_media_files)),
+        )
 
     @tasks.loop(minutes=1)
     async def post_random_media_file_loop(self):
