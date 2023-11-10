@@ -173,7 +173,7 @@ class ScheduledPosts(SlashbotCog):
             await inter.response.send_message("Something bad has happened, there are no images loaded.", ephemeral=True)
 
         await inter.response.send_message(
-            content=f"{self.get_generated_sentence('random')}",
+            content=f"{await self.get_generated_sentence('random')}",
             file=disnake.File(random.choice(self.random_media_files)),
         )
 
