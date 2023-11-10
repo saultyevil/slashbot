@@ -32,7 +32,7 @@ class Spelling(SlashbotCog):
         super().__init__()
         self.bot = bot
         self.incorrect_spellings = defaultdict(lambda: {"word_count": 0, "unknown_words": []})
-        self.spellchecker = SpellChecker()
+        self.spellchecker = SpellChecker(case_sensitive=False)
         self.spelling_summary.start()  # pylint: disable=no-member
 
     @staticmethod
