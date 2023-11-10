@@ -3,6 +3,9 @@
 
 """This cog contains commands and tasks to bully people."""
 
+# TODO: command to add words to dictionary
+# TODO: track number of words, to put out a %-age words spelt wrong
+
 import asyncio
 import datetime
 import logging
