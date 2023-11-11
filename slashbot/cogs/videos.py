@@ -69,7 +69,7 @@ class Videos(SlashbotCog):
         await inter.response.defer()
         seed = random.choice(["admin", "admin abuse"])
         return await inter.edit_original_message(
-            content=f"{await self.get_generated_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+            content=f"{await self.get_markov_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)

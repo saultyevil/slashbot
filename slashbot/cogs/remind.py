@@ -145,7 +145,7 @@ class Reminders(SlashbotCog):
                     continue
 
                 embed = disnake.Embed(title=reminder["reminder"], color=disnake.Color.default())
-                embed.set_footer(text=f"{await self.get_generated_sentence('reminder')}")
+                embed.set_footer(text=f"{await self.get_markov_sentence('reminder')}")
                 embed.set_thumbnail(url=reminder_user.avatar.url)
 
                 channel = await self.bot.fetch_channel(reminder["channel"])

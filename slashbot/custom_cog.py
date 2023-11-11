@@ -66,7 +66,7 @@ class SlashbotCog(commands.Cog):
 
     # Functions ----------------------------------------------------------------
 
-    async def get_generated_sentence(self, seed_word: str) -> str:
+    async def get_markov_sentence(self, seed_word: str) -> str:
         """Retrieve a pre-generated sentence from storage.
 
         If a sentence for a seed word doesn't exist, then a sentence is created

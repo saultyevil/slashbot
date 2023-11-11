@@ -140,7 +140,7 @@ class ScheduledPosts(SlashbotCog):
             )
             await asyncio.sleep(sleep_for)
 
-            markov_sentence = await self.get_generated_sentence(post["seed_word"])
+            markov_sentence = await self.get_markov_sentence(post["seed_word"])
             markov_sentence = markov_sentence.replace(
                 post["seed_word"],
                 f"**{post['seed_word']}**",
@@ -176,7 +176,7 @@ class ScheduledPosts(SlashbotCog):
 
         await inter.response.defer()
         await inter.edit_original_message(
-            content=f"{await self.get_generated_sentence('random')}",
+            content=f"{await self.get_markov_sentence('random')}",
             file=disnake.File(random.choice(self.random_media_files)),
         )
 
