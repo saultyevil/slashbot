@@ -24,7 +24,7 @@ HEADER = {
 }
 
 
-class ImageAI(SlashbotCog):
+class ImageGeneration(SlashbotCog):
     """Cog for text to image generation using Monster API.
 
     Possibly in the future, we'll use OpenAI instead.
@@ -189,4 +189,4 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    bot.add_cog(ImageAI(bot))
+    bot.add_cog(ImageGeneration(bot))

@@ -27,12 +27,6 @@ from slashbot.markov import async_generate_sentence, update_markov_chain_for_mod
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
-with open(App.get_config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
-    BAD_WORDS = file_in.readlines()
-
-with open(App.get_config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
-    GOD_WORDS = file_in.readlines()
-
 
 class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """A collection of commands to spam the chat with."""
@@ -58,16 +52,13 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.rule34_api = r34.Rule34()
 
         self.user_cooldown = defaultdict(lambda: {"time": 0.0, "count": 0})  # tracks last unix time someone used it
-        self.cooldown_duration = 30  # seconds
-        self.cooldown_rate = 3
+        self.cooldown_duration = App.get_config("COOLDOWN_STANDARD")
+        self.cooldown_rate = App.get_config("COOLDOWN_RATE")
 
         self.markov_chain_update_loop.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)
-
-        # This will populate the bad word and oracle tables with new words
-        # populate_word_tables_with_new_words()
 
         # this forces a markov chain update when the bot exits, e.g. ctrl+c
         # self.bot.add_function_to_cleanup(
@@ -93,7 +84,10 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
-        bad_word = random.choice(BAD_WORDS).strip()
+        with open(App.get_config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+            bad_words = file_in.readlines()
+
+        bad_word = random.choice(bad_words).strip()
 
         users_to_mention = [
             inter.guild.get_member(user_id).mention
@@ -151,7 +145,10 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         return await inter.edit_original_message(content=await async_generate_sentence(markov.MARKOV_MODEL, words))
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /chat")
+    @commands.slash_command(
+        name="update_markov_chain",
+        description="force update the markov chain for /sentence",
+    )
     async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction):
         """Update the Markov chain model.
 
@@ -192,8 +189,11 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
         """
+        with open(App.get_config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+            oracle_words = file_in.readlines()
+
         await inter.response.send_message(
-            f"{' '.join([word.strip() for word in random.sample(GOD_WORDS, random.randint(5, 25))])}"
+            f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}"
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -275,7 +275,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.markov_training_sample[message.id] = message.clean_content
 
     @commands.Cog.listener("on_raw_message_delete")
-    async def removed_message_from_markov_training_sample(self, payload: disnake.RawMessageDeleteEvent) -> None:
+    async def remove_message_from_markov_training_sample(self, payload: disnake.RawMessageDeleteEvent) -> None:
         """Remove a deleted message from the Markov training sentences.
 
         Parameters

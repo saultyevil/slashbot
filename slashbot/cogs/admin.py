@@ -22,16 +22,8 @@ from slashbot.custom_cog import SlashbotCog
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
-AVAILABLE_CHAINS = (
-    # "chain-0.pickle",
-    "chain-1.pickle",
-    "chain-2.pickle",
-    "chain-3.pickle",
-    "chain-4.pickle",
-)
 
-
-class Admin(SlashbotCog):
+class AdminTools(SlashbotCog):
     """Admin commands and tools for Slashbot.
 
     The most useful command is to look at the logfile, or to restart the bot
@@ -221,7 +213,9 @@ class Admin(SlashbotCog):
     async def set_markov_chain(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        chain_name: str = commands.Param(choices=AVAILABLE_CHAINS, description="The name of the Markov chain to use."),
+        chain_name: str = commands.Param(
+            choices=sorted(Path("data/chains").glob("*.pickle")), description="The name of the Markov chain to use."
+        ),
     ):
         """Switch the current Markov chain.
 
@@ -249,4 +243,4 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    bot.add_cog(Admin(bot))
+    bot.add_cog(AdminTools(bot))

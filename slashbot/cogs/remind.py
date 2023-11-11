@@ -62,7 +62,7 @@ class Reminders(SlashbotCog):
     # Private methods ----------------------------------------------------------
 
     @staticmethod
-    def __get_reminder_time(time_format: str, when: str, now: datetime.datetime) -> datetime.datetime:
+    def convert_time_to_datetime(time_format: str, when: str, now: datetime.datetime) -> datetime.datetime:
         """Return a datetime in the future, for a given format and time.
 
         Parameters
@@ -98,7 +98,7 @@ class Reminders(SlashbotCog):
 
         return future
 
-    async def __replace_mentions_in_sentence(self, sentence: str) -> Union[List[str], str]:
+    async def replace_mentions_with_user_name(self, sentence: str) -> Union[List[str], str]:
         """Replace mentions from a post with the user name.
 
         Parameters
@@ -206,7 +206,7 @@ class Reminders(SlashbotCog):
                 )
 
         now = datetime.datetime.now(tz=self.timezone)
-        future = self.__get_reminder_time(time_format, when, now)
+        future = self.convert_time_to_datetime(time_format, when, now)
 
         if not future:
             logger.debug("future is None type for %s", when)
@@ -223,7 +223,7 @@ class Reminders(SlashbotCog):
             return await inter.response.send_message(f"{date_string} is in the past.", ephemeral=True)
 
         # this is a bit of a hack, because the tagged users is a CSV string....
-        tagged_users, reminder = await self.__replace_mentions_in_sentence(reminder)
+        tagged_users, reminder = await self.replace_mentions_with_user_name(reminder)
 
         add_reminder(
             {

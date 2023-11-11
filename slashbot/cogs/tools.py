@@ -19,7 +19,7 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
+class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -144,4 +144,4 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    bot.add_cog(Info(bot))
+    bot.add_cog(UtilityTools(bot))

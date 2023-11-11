@@ -50,39 +50,21 @@ class ScheduledPosts(SlashbotCog):
         self.post_random_media_file_loop.start()  # pylint: disable=no-member
         self.post_evil_wii_loop.start()  # pylint: disable=no-member
 
-        self.watch_thread = threading.Thread(target=self.__update_posts_on_modify)
+        self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
 
     # Private methods ----------------------------------------------------------
 
-    def __update_posts_on_modify(self):
-        """Reload the posts on file modify."""
-
-        class MyHandler(FileSystemEventHandler):
-            def __init__(self, parent):
-                super().__init__()
-                self.parent = parent
-
-            def on_modified(self, event):
-                if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
-                    self.parent.get_scheduled_posts()
-                    self.parent.post_scheduled_post_loop.cancel()
-                    self.parent.post_scheduled_post_loop.start()
-
-        observer = Observer()
-        observer.schedule(MyHandler(self), path=str(App.get_config("SCHEDULED_POST_FILE").parent.absolute()))
-        observer.start()
-
-    def __calculate_time_until_post(self):
+    def calculate_time_until_post(self):
         """Calculates how long until a post is to be posted."""
         for post in self.scheduled_posts:
             post["time_until_post"] = calculate_sleep_time(post["day"], post["hour"], post["minute"])
 
-    def __order_scheduled_posts_by_soonest(self):
+    def order_scheduled_posts_by_soonest(self):
         """Orders self.scheduled_posts to where the first entry is the video
         which is scheduled to be sent the soonest.
         """
-        self.__calculate_time_until_post()
+        self.calculate_time_until_post()
         self.scheduled_posts.sort(key=lambda x: x["time_until_post"])
 
     def get_scheduled_posts(self):
@@ -106,7 +88,27 @@ class ScheduledPosts(SlashbotCog):
         logger.info(
             "%d scheduled posts loaded from %s", len(self.scheduled_posts), App.get_config("SCHEDULED_POST_FILE")
         )
-        self.__order_scheduled_posts_by_soonest()
+        self.order_scheduled_posts_by_soonest()
+
+    def update_posts_on_modify(self):
+        """Reload the posts on file modify."""
+
+        class PostWatcher(FileSystemEventHandler):
+            """File watcher to watch for changes to scheduled posts file."""
+
+            def __init__(self, parent):
+                super().__init__()
+                self.parent = parent
+
+            def on_modified(self, event):
+                if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
+                    self.parent.get_scheduled_posts()
+                    self.parent.post_scheduled_post_loop.cancel()
+                    self.parent.post_scheduled_post_loop.start()
+
+        observer = Observer()
+        observer.schedule(PostWatcher(self), path=str(App.get_config("SCHEDULED_POST_FILE").parent.absolute()))
+        observer.start()
 
     # Task ---------------------------------------------------------------------
 
@@ -122,7 +124,7 @@ class ScheduledPosts(SlashbotCog):
         again in 10 seconds.
         """
         await self.bot.wait_until_ready()
-        self.__order_scheduled_posts_by_soonest()
+        self.order_scheduled_posts_by_soonest()
 
         for post in self.scheduled_posts:
             # we first should update sleep_for, as the original value calculated

@@ -38,14 +38,14 @@ COOLDOWN_USER = commands.BucketType.user
 DEFAULT_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/split.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 TOKEN_COUNT_UNSET = -1
-PROMPT_CHOICES = create_prompt_dict()
 
-# this is global so you can use it as a choice in interactions
+# this is all global so you can use it as a choice in interactions
+PROMPT_CHOICES = create_prompt_dict()
 AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4")
 DEFAULT_MODEL = AVAILABLE_MODELS[0]
 
 
-class Chat(SlashbotCog):
+class ChatBot(SlashbotCog):
     """AI chat features powered by OpenAI."""
 
     token_model = "cl100k_base"
@@ -60,8 +60,7 @@ class Chat(SlashbotCog):
         self.trim_faction = 0.5
         self.max_chat_history = 20
         self.default_system_token_count = len(tiktoken.encoding_for_model(DEFAULT_MODEL).encode(DEFAULT_SYSTEM_MESSAGE))
-
-        self.__set_max_allowed_tokens(DEFAULT_MODEL)
+        self.set_max_allowed_tokens(DEFAULT_MODEL)
 
         self.chat_tokens = defaultdict(lambda: self.default_system_token_count)
         self.chat_history = defaultdict(lambda: [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}])
@@ -70,7 +69,7 @@ class Chat(SlashbotCog):
     # Static -------------------------------------------------------------------
 
     @staticmethod
-    def history_id(obj: disnake.Message | disnake.ApplicationCommandInteraction) -> str | int:
+    def get_history_id(obj: disnake.Message | disnake.ApplicationCommandInteraction) -> str | int:
         """Determine the history ID to use given the origin of the message.
 
         Historically, this used to return different values for text channels and
@@ -110,7 +109,7 @@ class Chat(SlashbotCog):
 
     # Private methods ----------------------------------------------------------
 
-    def __reset_chat_history(self, history_id: str | int):
+    def reset_chat_history(self, history_id: str | int):
         """Clear chat history and reset the token counter.
 
         Parameters
@@ -121,7 +120,7 @@ class Chat(SlashbotCog):
         self.chat_tokens[history_id] = self.default_system_token_count
         self.chat_history[history_id] = [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}]
 
-    def __set_max_allowed_tokens(self, model_name: str):
+    def set_max_allowed_tokens(self, model_name: str):
         """Set the max allowed tokens.
 
         Parameters
@@ -136,7 +135,7 @@ class Chat(SlashbotCog):
 
         logger.debug("Max model tokens set to %d", self.max_tokens_allowed)
 
-    async def __api_response(self, history_id: int | str, prompt: str) -> str:
+    async def get_chat_response(self, history_id: int | str, prompt: str) -> str:
         """Get a message from ChatGPT using the ChatCompletion API.
 
         Parameters
@@ -169,7 +168,7 @@ class Chat(SlashbotCog):
 
         return message
 
-    async def __reduce_chat_history(self, history_id: int | str) -> None:
+    async def reduce_chat_history(self, history_id: int | str) -> None:
         """Remove messages from a chat history.
 
         Removes a fraction of the messages from the chat history if the number
@@ -190,17 +189,17 @@ class Chat(SlashbotCog):
         # max token count
         if token_count > self.max_tokens_allowed:
             num_remove = min(int(self.trim_faction * num_messages), num_messages)  # * 2 to delete prompt + message
-            for i in range(1, num_remove + 1):
+            for _ in range(1, num_remove + 1):
                 self.chat_history[history_id].pop(1)
             self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
-            # logger.info("%d messages removed from %s due to token limit", num_remove, history_id)
+            logger.debug("%d messages removed from %s due to token limit", num_remove, history_id)
 
         # max history count -- remove the oldest message and response
         if num_messages > self.max_chat_history:
-            for i in range(1, 3):  # remove two elements to get prompt + response
+            for _ in range(1, 3):  # remove two elements to get prompt + response
                 self.chat_history[history_id].pop(1)
             self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
-            # logger.info("%d messages removed from %s due to message limit", 2, history_id)
+            logger.debug("%d messages removed from %s due to message limit", 2, history_id)
 
     @staticmethod
     async def is_slash_interaction_highlight(message: disnake.Message) -> bool:
@@ -234,7 +233,7 @@ class Chat(SlashbotCog):
         # if old_message is an interaction response, this will return true
         return isinstance(old_message.interaction, disnake.InteractionReference)
 
-    async def __get_api_response(self, history_id: int | str, prompt: str) -> str:
+    async def respond_to_prompt(self, history_id: int | str, prompt: str) -> str:
         """Process a prompt and get a response.
 
         This function is the main steering function for getting a response from
@@ -256,10 +255,10 @@ class Chat(SlashbotCog):
         str
             The generated response to the given prompt.
         """
-        await self.__reduce_chat_history(history_id)
+        await self.reduce_chat_history(history_id)
 
         try:
-            return await self.__api_response(history_id, prompt)
+            return await self.get_chat_response(history_id, prompt)
         except openai.error.RateLimitError as exc:
             logger.exception(
                 "OpenAI API failed with exception:\n%s",
@@ -303,9 +302,9 @@ class Chat(SlashbotCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
-            history_id = self.history_id(message)
+            history_id = self.get_history_id(message)
             async with message.channel.typing():
-                response = await self.__get_api_response(
+                response = await self.respond_to_prompt(
                     history_id, str(message.clean_content).replace(f"@{self.bot.user.name}", "")
                 )
                 await self.send_response_to_channel(response, message, message_in_dm)
@@ -322,7 +321,7 @@ class Chat(SlashbotCog):
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
         """
-        self.__reset_chat_history(self.history_id(inter))
+        self.reset_chat_history(self.get_history_id(inter))
 
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{DEFAULT_SYSTEM_MESSAGE}",
@@ -357,7 +356,7 @@ class Chat(SlashbotCog):
                 ephemeral=True,
             )
 
-        history_id = self.history_id(inter)
+        history_id = self.get_history_id(inter)
         self.chat_history[history_id] = [{"role": "system", "content": prompt}]
 
         await inter.response.send_message(
@@ -389,7 +388,7 @@ class Chat(SlashbotCog):
         message : str
             The new system prompt to set.
         """
-        history_id = self.history_id(inter)
+        history_id = self.get_history_id(inter)
         self.chat_history[history_id] = [{"role": "system", "content": message}]
 
         await inter.response.send_message(
@@ -443,7 +442,7 @@ class Chat(SlashbotCog):
 
         await inter.response.defer(ephemeral=True)
 
-        num_tokens = len(tiktoken.encoding_for_model(self.chat_model[self.history_id(inter)]).encode(prompt))
+        num_tokens = len(tiktoken.encoding_for_model(self.chat_model[self.get_history_id(inter)]).encode(prompt))
         if num_tokens > 256:
             return await inter.edit_original_message(content="The prompt should not exceed 256 tokens.")
 
@@ -466,7 +465,7 @@ class Chat(SlashbotCog):
             The slash command interaction.
         """
         await inter.response.defer(ephemeral=True)
-        history_id = self.history_id(inter)
+        history_id = self.get_history_id(inter)
 
         response = ""
 
@@ -516,14 +515,14 @@ class Chat(SlashbotCog):
 
         await inter.response.defer(ephemeral=True)
 
-        self.chat_model[self.history_id(inter)] = model_name
-        self.__reset_chat_history(self.history_id(inter))
-        self.__set_max_allowed_tokens(self.chat_model[self.history_id(inter)])
+        self.chat_model[self.get_history_id(inter)] = model_name
+        self.reset_chat_history(self.get_history_id(inter))
+        self.set_max_allowed_tokens(self.chat_model[self.get_history_id(inter)])
 
         await inter.edit_original_message(content=f"Chat model has been switched to {model_name}")
 
 
-class JsonFileWatcher(FileSystemEventHandler):
+class PromptFileWatcher(FileSystemEventHandler):
     """FileSystemEventHandler specifically for JSON files in the data/prompts
     directory."""
 
@@ -532,7 +531,7 @@ class JsonFileWatcher(FileSystemEventHandler):
 
         if event.is_directory:
             return
-        if event.event_type == "created" or event.event_type == "modified":
+        if event.event_type in ["created", "modified"]:
             if event.src_path.endswith(".json"):
                 prompt = read_in_prompt_json(event.src_path)
                 PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
@@ -542,7 +541,7 @@ class JsonFileWatcher(FileSystemEventHandler):
 
 
 observer = Observer()
-observer.schedule(JsonFileWatcher(), "data/prompts", recursive=True)
+observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
 observer.start()
 
 
@@ -554,4 +553,4 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    bot.add_cog(Chat(bot))
+    bot.add_cog(ChatBot(bot))

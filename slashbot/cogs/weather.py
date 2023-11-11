@@ -85,7 +85,7 @@ class Weather(SlashbotCog):
     # Private ------------------------------------------------------------------
 
     @staticmethod
-    def __get_weather_icon_url(icon_code: str) -> str:
+    def get_weater_icon_url(icon_code: str) -> str:
         """Get a URL to a weather icon from OpenWeatherMap.
 
         Parameters
@@ -101,7 +101,7 @@ class Weather(SlashbotCog):
         return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
     @staticmethod
-    def _get_unit_strings(units: str):
+    def get_unit_strings(units: str):
         """Get unit strings for a unit system.
 
         Parameters
@@ -246,7 +246,7 @@ class Weather(SlashbotCog):
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
-        temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
+        temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         for sub in forecast[1 : amount + 1]:
@@ -275,7 +275,7 @@ class Weather(SlashbotCog):
         embed.set_footer(
             text=f"{await self.get_generated_sentence('forecast')}\n(You can set your location using /set_info)"
         )
-        embed.set_thumbnail(self.__get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
+        embed.set_thumbnail(self.get_weater_icon_url(forecast[0]["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
 
@@ -328,7 +328,7 @@ class Weather(SlashbotCog):
         # daily_forecast = weather_return["daily"][0]
         weather_alerts = weather_return.get("alerts") if "alerts" in weather_return else None
         current_weather = weather_return["current"]
-        temp_unit, wind_unit, wind_factor = self._get_unit_strings(units)
+        temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.add_field(
@@ -355,11 +355,6 @@ class Weather(SlashbotCog):
             value=f"{current_weather['temp']:.0f} °{temp_unit}",
             inline=True,
         )
-        # embed.add_field(
-        #     name="Temperature Min/Max",
-        #     value=f"{daily_forecast['temp']['min']:.0f} - {daily_forecast['temp']['max']:.0f} °{temp_unit}",
-        #     inline=False,
-        # )
         embed.add_field(name="Humidity", value=f"{current_weather['humidity']}%", inline=False)
         embed.add_field(
             name="Wind",
@@ -371,7 +366,7 @@ class Weather(SlashbotCog):
         embed.set_footer(
             text=f"{await self.get_generated_sentence('weather')}\n(You can set your location using /set_info)"
         )
-        embed.set_thumbnail(self.__get_weather_icon_url(current_weather["weather"][0]["icon"]))
+        embed.set_thumbnail(self.get_weater_icon_url(current_weather["weather"][0]["icon"]))
 
         return await inter.edit_original_message(embed=embed)
 

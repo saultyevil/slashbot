@@ -36,7 +36,7 @@ class Spelling(SlashbotCog):
         self.spelling_summary.start()  # pylint: disable=no-member
 
     @staticmethod
-    def _cleanup_message(text: str) -> str:
+    def cleanup_message(text: str) -> str:
         """Remove certain parts of a string, so spell checking is cleaner.
 
         Parameters
@@ -80,7 +80,7 @@ class Spelling(SlashbotCog):
         if message.author.id not in App.get_config("SPELLCHECK_SERVERS")[guild_key]:
             return
 
-        words = self._cleanup_message(message.content)
+        words = self.cleanup_message(message.content)
         unknown_words = self.spellchecker.unknown(words.split())
         key = f"{message.author.display_name}+{message.channel.id}"
 
