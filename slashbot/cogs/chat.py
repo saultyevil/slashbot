@@ -51,8 +51,7 @@ class ChatBot(SlashbotCog):
     token_model = "cl100k_base"
 
     def __init__(self, bot: SlashbotInterationBot):
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
 
         self.output_tokens = 768
         self.model_temperature = 0.7

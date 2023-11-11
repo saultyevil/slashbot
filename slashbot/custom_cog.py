@@ -9,10 +9,12 @@ import disnake
 from disnake.ext import commands, tasks
 
 from slashbot.config import App
+from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.markov import (
     MARKOV_MODEL,
     async_generate_list_of_sentences_with_seed_word,
     async_generate_sentence,
+    generate_sentence,
 )
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
@@ -21,8 +23,9 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 class SlashbotCog(commands.Cog):
     """A custom cog class which modifies cooldown behavior."""
 
-    def __init__(self):
+    def __init__(self, bot: SlashbotInterationBot):
         super().__init__()
+        self.bot = bot
         self.markov_sentences = {}
         self.regenerate_markov_sentences.start()  # pylint: disable=no-member
 
@@ -66,7 +69,35 @@ class SlashbotCog(commands.Cog):
 
     # Functions ----------------------------------------------------------------
 
-    async def get_markov_sentence(self, seed_word: str) -> str:
+    def get_markov_sentence(self, seed_word: str) -> str:
+        """Retrieve a pre-generated sentence from storage.
+
+        If a sentence for a seed word doesn't exist, then a sentence is created
+        on-the-fly instead.
+
+        Parameters
+        ----------
+        seed_word : str
+            The seed word for the sentence.
+
+        Returns
+        -------
+        str
+            The generated sentence.
+        """
+        if seed_word not in self.markov_sentences:
+            if self.bot.markov_gen_on:
+                logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
+            return generate_sentence(MARKOV_MODEL, seed_word)
+
+        try:
+            return self.markov_sentences[seed_word].pop()
+        except IndexError:
+            if self.bot.markov_gen_on:
+                logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
+            return generate_sentence(MARKOV_MODEL, seed_word)
+
+    async def async_get_markov_sentence(self, seed_word: str) -> str:
         """Retrieve a pre-generated sentence from storage.
 
         If a sentence for a seed word doesn't exist, then a sentence is created

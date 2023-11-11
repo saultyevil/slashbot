@@ -29,8 +29,7 @@ class Spelling(SlashbotCog):
     """
 
     def __init__(self, bot: commands.InteractionBot):
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.incorrect_spellings = defaultdict(lambda: {"word_count": 0, "unknown_words": []})
         self.spellchecker = SpellChecker(case_sensitive=False)
         self.spelling_summary.start()  # pylint: disable=no-member

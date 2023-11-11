@@ -31,8 +31,7 @@ class ImageGeneration(SlashbotCog):
     """
 
     def __init__(self, bot: SlashbotInterationBot):
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.running_tasks = {}
 
     @staticmethod

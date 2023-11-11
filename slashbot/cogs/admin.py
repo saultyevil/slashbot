@@ -34,8 +34,7 @@ class AdminTools(SlashbotCog):
         self,
         bot: commands.InteractionBot,
     ):
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.logfile_path = Path(App.get_config("LOGFILE_NAME"))
 
     # Commands -----------------------------------------------------------------
@@ -214,7 +213,8 @@ class AdminTools(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         chain_name: str = commands.Param(
-            choices=sorted(Path("data/chains").glob("*.pickle")), description="The name of the Markov chain to use."
+            choices=sorted([str(p) for p in Path("data/chains").glob("*.pickle")]),
+            description="The name of the Markov chain to use.",
         ),
     ):
         """Switch the current Markov chain.

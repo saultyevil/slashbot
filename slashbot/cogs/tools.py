@@ -35,8 +35,7 @@ class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         attempts: int
             The number of attempts to try and generate a sentence for.
         """
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.attempts = attempts
         self.wolfram_api = wolframalpha.Client(App.get_config("WOLFRAM_API_KEY"))
         self.markov_sentences = ()
@@ -95,7 +94,7 @@ class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.defer()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
-        embed.set_footer(text=f"{await self.get_markov_sentence('wolfram')}")
+        embed.set_footer(text=f"{await self.async_get_markov_sentence('wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
         )

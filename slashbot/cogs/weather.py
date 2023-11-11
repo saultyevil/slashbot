@@ -56,8 +56,7 @@ class Weather(SlashbotCog):
         bot: commands.InteractionBot
             The bot object.
         """
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.geolocator = GoogleV3(
             api_key=App.get_config("GOOGLE_API_KEY"),
             domain="maps.google.co.uk",
@@ -273,7 +272,7 @@ class Weather(SlashbotCog):
             )
 
         embed.set_footer(
-            text=f"{await self.get_markov_sentence('forecast')}\n(You can set your location using /set_info)"
+            text=f"{await self.async_get_markov_sentence('forecast')}\n(You can set your location using /set_info)"
         )
         embed.set_thumbnail(self.get_weater_icon_url(forecast[0]["weather"][0]["icon"]))
 
@@ -364,7 +363,7 @@ class Weather(SlashbotCog):
         )
 
         embed.set_footer(
-            text=f"{await self.get_markov_sentence('weather')}\n(You can set your location using /set_info)"
+            text=f"{await self.async_get_markov_sentence('weather')}\n(You can set your location using /set_info)"
         )
         embed.set_thumbnail(self.get_weater_icon_url(current_weather["weather"][0]["icon"]))
 

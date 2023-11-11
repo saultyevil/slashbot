@@ -45,8 +45,8 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         attempts: int
             The number of attempts to generate a markov sentence.
         """
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
+
         self.attempts = attempts
         self.markov_training_sample = {}
         self.rule34_api = r34.Rule34()

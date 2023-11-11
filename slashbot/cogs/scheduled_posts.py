@@ -34,8 +34,7 @@ class ScheduledPosts(SlashbotCog):
 
     def __init__(self, bot: commands.bot):
         """init function"""
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
 
         self.random_channels = App.get_config("RANDOM_POST_CHANNELS")
         self.scheduled_posts = None
@@ -140,7 +139,7 @@ class ScheduledPosts(SlashbotCog):
             )
             await asyncio.sleep(sleep_for)
 
-            markov_sentence = await self.get_markov_sentence(post["seed_word"])
+            markov_sentence = await self.async_get_markov_sentence(post["seed_word"])
             markov_sentence = markov_sentence.replace(
                 post["seed_word"],
                 f"**{post['seed_word']}**",
@@ -176,7 +175,7 @@ class ScheduledPosts(SlashbotCog):
 
         await inter.response.defer()
         await inter.edit_original_message(
-            content=f"{await self.get_markov_sentence('random')}",
+            content=f"{await self.async_get_markov_sentence('random')}",
             file=disnake.File(random.choice(self.random_media_files)),
         )
 

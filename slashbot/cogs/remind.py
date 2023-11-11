@@ -36,8 +36,7 @@ class Reminders(SlashbotCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot):
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.timezone = datetime.datetime.utcnow().astimezone().tzinfo
         self.check_reminders.start()  # pylint: disable=no-member
         self.markov_sentences = ()
@@ -145,7 +144,7 @@ class Reminders(SlashbotCog):
                     continue
 
                 embed = disnake.Embed(title=reminder["reminder"], color=disnake.Color.default())
-                embed.set_footer(text=f"{await self.get_markov_sentence('reminder')}")
+                embed.set_footer(text=f"{await self.async_get_markov_sentence('reminder')}")
                 embed.set_thumbnail(url=reminder_user.avatar.url)
 
                 channel = await self.bot.fetch_channel(reminder["channel"])

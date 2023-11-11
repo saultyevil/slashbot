@@ -50,8 +50,7 @@ class Users(SlashbotCog):
         bot: commands.InteractionBot
             The bot object.
         """
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.opt_in_twitter_users = get_twitter_convert_users()
 
     # Commands -----------------------------------------------------------------

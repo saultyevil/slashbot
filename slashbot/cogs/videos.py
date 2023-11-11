@@ -30,8 +30,7 @@ class Videos(SlashbotCog):
         bot: commands.InteractionBot
             The bot object.
         """
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.markov_sentences = ()
 
     async def cog_load(self):
@@ -69,7 +68,7 @@ class Videos(SlashbotCog):
         await inter.response.defer()
         seed = random.choice(["admin", "admin abuse"])
         return await inter.edit_original_message(
-            content=f"{await self.get_markov_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+            content=f"{await self.async_get_markov_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
