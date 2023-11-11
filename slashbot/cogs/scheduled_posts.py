@@ -66,7 +66,7 @@ class ScheduledPosts(SlashbotCog):
             def on_modified(self, event):
                 if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
                     self.parent.get_scheduled_posts()
-                    self.parent.post_scheduled_post_loop.stop()
+                    self.parent.post_scheduled_post_loop.cancel()
                     self.parent.post_scheduled_post_loop.start()
 
         observer = Observer()
