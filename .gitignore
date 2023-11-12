@@ -4,6 +4,7 @@ data/*.json
 data/chains/*.pickle
 data/chains/*.bak
 scratch/
+data/*.txt
 
 # IDE specific directories
 
