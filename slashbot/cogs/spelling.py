@@ -10,6 +10,7 @@ import datetime
 import logging
 import re
 from collections import defaultdict
+from typing import List
 
 import disnake
 from disnake.ext import commands, tasks
@@ -33,6 +34,87 @@ class Spelling(SlashbotCog):
         self.incorrect_spellings = defaultdict(lambda: {"word_count": 0, "unknown_words": []})
         self.spellchecker = SpellChecker(case_sensitive=False)
         self.spelling_summary.start()  # pylint: disable=no-member
+        self.custom_words = self.get_custom_words()
+
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(
+        name="add_word_to_dict",
+        description="Add a word to the custom dictionary for the spelling summary",
+        guild_ids=[int(guild_id) for guild_id in App.get_config("SPELLCHECK_SERVERS").keys()],
+    )
+    async def add_word_to_dict(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        word: str = commands.Param(
+            name="word", description="The word to add to the dictionary", min_length=2, max_length=64
+        ),
+    ):
+        """Add a word to the custom dictionary.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interaction to respond to.
+        word : str
+            The word to add to the dictionary.
+        """
+        word_lower = word.lower()
+        if word_lower in self.custom_words:
+            return await inter.response.send_message(f"The word '{word}' is already in the dictionary.", ephemeral=True)
+        self.custom_words.append(word_lower)
+        with open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "w", encoding="utf-8") as file_out:
+            file_out.write("\n".join(self.custom_words))
+
+        await inter.response.send_message(f"Added '{word_lower}' to dictionary.", ephemeral=True)
+
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(
+        name="remove_word_from_dict",
+        description="Remove a word from the custom dictionary for the spelling summary",
+        guild_ids=[int(guild_id) for guild_id in App.get_config("SPELLCHECK_SERVERS").keys()],
+    )
+    async def remove_word_from_dict(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        word: str = commands.Param(
+            name="word", description="The word to remove from the dictionary", min_length=2, max_length=64
+        ),
+    ):
+        """Add a word to the custom dictionary.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interaction to respond to.
+        word : str
+            The word to add to the dictionary.
+        """
+        word_lower = word.lower()
+        if word_lower not in self.custom_words:
+            return await inter.response.send_message(f"The word '{word}' is not in the dictionary.", ephemeral=True)
+        self.custom_words.remove(word_lower)
+        with open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "w", encoding="utf-8") as file_out:
+            file_out.write("\n".join(self.custom_words))
+
+        await inter.response.send_message(f"Removed '{word_lower}' from dictionary.", ephemeral=True)
+
+    @staticmethod
+    def get_custom_words() -> List[str]:
+        """Get a list of custom dictionary words.
+
+        These are checked in addition to the unknown words in spellchecker.
+
+        Returns
+        -------
+        List[str]
+            The list of words in the custom dictionary.
+        """
+        try:
+            with open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "r", encoding="utf-8") as file_in:
+                return list(set([line.strip() for line in file_in.readlines()]))
+        except IOError:
+            logger.error("No dictionary found at %s", App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"))
+            return []
 
     @staticmethod
     def cleanup_message(text: str) -> str:
@@ -81,6 +163,7 @@ class Spelling(SlashbotCog):
 
         words = self.cleanup_message(message.content)
         unknown_words = self.spellchecker.unknown(words.split())
+        unknown_words = list(filter(lambda w: w not in self.custom_words, unknown_words))
         key = f"{message.author.display_name}+{message.channel.id}"
 
         self.incorrect_spellings[key]["word_count"] += len(words.split())
