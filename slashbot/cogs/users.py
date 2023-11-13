@@ -83,32 +83,32 @@ class Users(SlashbotCog):
             return await inter.edit_original_message(content="An error has occured with Disnake :-(")
 
         value = value.lower()
-        user = get_user(inter.author)
+        user_fields = get_user(inter.author)
 
         match thing:
             case "City":
-                user["city"] = value.capitalize()
+                user_fields["city"] = value.capitalize()
             case "Country code":
                 if len(value) != 2:
                     return await inter.edit_original_message(
                         content=f"{value} is not a valid country code, which should be 2 characters e.g. GB, US."
                     )
-                # value = "gb" if value == "uk" else value  # convert uk to gb, else value
-                user["country_code"] = value.upper()
+                user_fields["country_code"] = value.upper()
             case "Bad word":
                 # TODO: we should check that the bad word exists in the list of bad words
-                user["bad_word"] = value
+                user_fields["bad_word"] = value
             case "Twitter URL":
-                user["convert_twitter_url"] = not user["convert_twitter_url"]
-                self.opt_in_twitter_users = get_twitter_convert_users()
-                if user["convert_twitter_url"]:
-                    return await inter.edit_original_message("You have opted in to change your Twitter URLs.")
-                return await inter.edit_original_message("You have opted out to change your Twitter URLs.")
+                user_fields["convert_twitter_url"] = not user_fields["convert_twitter_url"]
+                if user_fields["convert_twitter_url"]:
+                    value = "enabled"
+                else:
+                    value = "disabled"
             case _:
                 logger.error("Disnake somehow allowed an unknown choice %s", thing)
                 return await inter.edit_original_message(content="An error has occurred with Disnake :-(")
 
-        update_user(inter.author.id, user)
+        update_user(inter.author, user_fields)
+        self.opt_in_twitter_users = get_twitter_convert_users()
 
         return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to '{value}'.")
 
@@ -167,8 +167,9 @@ class Users(SlashbotCog):
 
         await message.edit(suppress_embeds=True)
         for match in matches:
-            await message.channel.send(f"{match.group(0).replace('twitter', 'fxtwitter')}")
-        await message.channel.send("*(You can opt in or out of this with /set_info)*")
+            await message.channel.send(
+                f"(Opt in, or out, of Twitter URL conversion with /set_info)\n{match.group(0).replace('twitter', 'fxtwitter')}"
+            )
 
 
 def setup(bot: commands.InteractionBot):
