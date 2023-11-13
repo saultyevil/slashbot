@@ -41,7 +41,7 @@ TOKEN_COUNT_UNSET = -1
 
 # this is all global so you can use it as a choice in interactions
 PROMPT_CHOICES = create_prompt_dict()
-AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4")
+AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4", "gpt-4-1106-preview")
 DEFAULT_MODEL = AVAILABLE_MODELS[0]
 
 
