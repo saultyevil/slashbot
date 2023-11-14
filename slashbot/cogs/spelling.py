@@ -3,10 +3,7 @@
 
 """This cog contains commands and tasks to bully people."""
 
-# TODO: command to add words to dictionary
-
 import asyncio
-import datetime
 import logging
 import re
 from collections import defaultdict
@@ -18,6 +15,7 @@ from spellchecker import SpellChecker
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
+from slashbot.util import calculate_seconds_until
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
@@ -179,13 +177,7 @@ class Spelling(SlashbotCog):
         if not App.get_config("SPELLCHECK_ENABLED"):
             return
 
-        now = datetime.datetime.now()
-        target_time = datetime.time(hour=17, minute=0, second=0)
-        target_datetime = datetime.datetime.combine(now, target_time)
-        if now >= target_datetime:
-            target_datetime += datetime.timedelta(days=1)
-        time_to_target = target_datetime - now
-        sleep_time = time_to_target.total_seconds()
+        sleep_time = calculate_seconds_until(-1, 17, 0, 1)
 
         logger.info(
             "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",

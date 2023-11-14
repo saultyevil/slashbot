@@ -17,7 +17,7 @@ from watchdog.observers import Observer
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.util import calculate_sleep_time
+from slashbot.util import calculate_seconds_until
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -57,7 +57,9 @@ class ScheduledPosts(SlashbotCog):
     def calculate_time_until_post(self):
         """Calculates how long until a post is to be posted."""
         for post in self.scheduled_posts:
-            post["time_until_post"] = calculate_sleep_time(post["day"], post["hour"], post["minute"])
+            post["time_until_post"] = calculate_seconds_until(
+                int(post["day"]), int(post["hour"]), int(post["minute"]), 7
+            )
 
     def order_scheduled_posts_by_soonest(self):
         """Orders self.scheduled_posts to where the first entry is the video
@@ -129,7 +131,7 @@ class ScheduledPosts(SlashbotCog):
             # we first should update sleep_for, as the original value calculated
             # when read in is no longer valid as it is a static, and not
             # dynamic, value
-            sleep_for = calculate_sleep_time(post["day"], post["hour"], post["minute"])
+            sleep_for = calculate_seconds_until(int(post["day"]), int(post["hour"]), int(post["minute"]), 7)
             logger.info(
                 "Waiting %d seconds/%d minutes/%.1f hours until posting %s",
                 sleep_for,

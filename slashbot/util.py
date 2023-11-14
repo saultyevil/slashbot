@@ -210,72 +210,82 @@ def create_prompt_dict() -> dict:
     }
 
 
-def add_week_to_datetime(
-    time: datetime.datetime, days: float, hour: int, minute: int, second: int
+def add_days_to_datetime(
+    now: datetime.datetime, original_date: datetime.datetime, days_to_add: float
 ) -> datetime.datetime:
     """Add a week to a datetime object.
 
     Parameters
     ----------
-    time: datetime.datetime
+    now: datetime.datetime:
+        The current datetime.
+    original_date: datetime.datetime
         The datetime to calculate from.
-    days: float
+    days_to_add: float
         The number of additional days to sleep for
-    hour: int
-        The scheduled hour
-    minute: int
-        The scheduled minute
-    second: int
-        The scheduled second
 
     Returns
     -------
     A datetime object a week after the given one.
     """
-    next_date = time + datetime.timedelta(days=days)
-    when = datetime.datetime(
-        year=next_date.year,
-        month=next_date.month,
-        day=next_date.day,
-        hour=hour,
-        minute=minute,
-        second=second,
+    if days_to_add < 0:
+        raise ValueError("Invalid value for days_to_add, cannot be < 0")
+    if not isinstance(original_date, datetime.datetime):
+        raise ValueError("Need to pass time as a datetime.datetime")
+
+    time_delta = original_date + datetime.timedelta(days=days_to_add)
+    next_date = datetime.datetime(
+        year=time_delta.year,
+        month=time_delta.month,
+        day=time_delta.day,
+        hour=original_date.hour,
+        minute=original_date.minute,
+        second=original_date.second,
     )
-    next_date = when - time
+    sleep_for_seconds = (next_date - now).total_seconds()
 
-    return next_date.days * 86400 + next_date.seconds
+    return sleep_for_seconds
 
 
-def calculate_sleep_time(day: int, hour: int, minute: int) -> int:
-    """Calculate the time to sleep until the next specified week day.
+def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int) -> int:
+    """Calculate how long to sleep till a hour:minute time for a given weekday.
+
+    If the requested moment is time is beyond the current time, the number of
+    days provided in frequency are added.
 
     Parameters
     ----------
-    day: int
-        The day of the week to wake up, i.e. calender.MONDAY
-    hour: int
-        The hour to wake up.
-    minute: int
-        The minute to wake up.
+    weekday : int
+        An integer representing the weekday, where Monday is 0.
+    hour : int
+        The hour for the requested time.
+    minute : int
+        The minute for the requested time.
+    frequency : Frequency
+        The frequency at which to repeat this.
 
     Returns
     -------
-    sleep: int
-        The time to sleep in seconds.
+    int
+        The time to sleep for in seconds.
     """
-    now = datetime.datetime.now()
-    next_date = now + datetime.timedelta(days=(day - now.weekday()) % 7)
-    when = datetime.datetime(
-        year=next_date.year,
-        month=next_date.month,
-        day=next_date.day,
-        hour=hour,
-        minute=minute,
-        second=0,
-    )
-    next_date = when - now
-    sleep = next_date.days * 86400 + next_date.seconds
-    if sleep < 0:
-        sleep = add_week_to_datetime(when, 7, hour, minute, 0)
+    if frequency < 0:
+        raise ValueError("Invalid value for frequency, cannot be < 0")
+    if not isinstance(weekday, int) or weekday > 6:
+        raise ValueError("Invalid value for weekday: 0 <= weekday <= 6 and must be int")
 
-    return sleep
+    now = datetime.datetime.now()
+
+    if weekday < 0:
+        weekday = now.weekday()
+
+    day_delta = now + datetime.timedelta(days=(weekday - now.weekday()) % 7)
+    next_date = datetime.datetime(
+        year=day_delta.year, month=day_delta.month, day=day_delta.day, hour=hour, minute=minute, second=0
+    )
+    sleep_for_seconds = (next_date - now).total_seconds()
+
+    if sleep_for_seconds <= 0:
+        sleep_for_seconds = add_days_to_datetime(now, next_date, frequency)
+
+    return sleep_for_seconds
