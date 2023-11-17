@@ -256,7 +256,7 @@ class Reminders(SlashbotCog):
         return await inter.response.send_message(f"Reminder set for {date_string}.", ephemeral=True)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="forget_reminder", description="forget a reminder", guild_ids=[815237689775357992])
+    @commands.slash_command(name="forget_reminder", description="forget a reminder")
     async def forget_reminder(
         self,
         inter: disnake.ApplicationCommandInteraction,
