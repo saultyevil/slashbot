@@ -35,7 +35,7 @@ openai.api_key = App.get_config("OPENAI_API_KEY")
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
-DEFAULT_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/split.json")["prompt"]
+DEFAULT_SYSTEM_MESSAGE = read_in_prompt_json("data/prompts/prompt-discord.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 TOKEN_COUNT_UNSET = -1
 
