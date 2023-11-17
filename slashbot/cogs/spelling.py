@@ -202,13 +202,13 @@ class Spelling(SlashbotCog):
 
         sleep_time = calculate_seconds_until(-1, 17, 0, 1)
 
-        # logger.info(
-        #     "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",
-        #     sleep_time,
-        #     sleep_time // 60,
-        #     sleep_time / 3600,
-        # )
-        # await asyncio.sleep(sleep_time)
+        logger.info(
+            "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",
+            sleep_time,
+            sleep_time // 60,
+            sleep_time / 3600,
+        )
+        await asyncio.sleep(sleep_time)
 
         # first loop over the guild stuff
         for guild_id, user_spellings in self.incorrect_spellings.items():
