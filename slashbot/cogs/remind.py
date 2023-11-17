@@ -32,6 +32,25 @@ SECONDS_IN_HOUR = 3600
 SECONDS_IN_MINUTE = 60
 
 
+def get_reminders_autocomplete(inter: disnake.ApplicationCommandInteraction, _: str) -> str:
+    """Interface to get reminders for /forget_reminder autocomplete.
+
+    Parameters
+    ----------
+    inter : disnake.ApplicationCommandInteraction
+        The interaction this is ued with.
+    _ : str
+        The user input, which is unused.
+
+    Returns
+    -------
+    List[str]
+        A list of reminders
+    """
+    reminders = get_all_reminders_for_user(inter.author.id)
+    return [f"{reminder['date']}: {reminder['reminder']}" for reminder in reminders]
+
+
 class Reminders(SlashbotCog):
     """Commands to set up reminders."""
 
@@ -238,12 +257,13 @@ class Reminders(SlashbotCog):
         return await inter.response.send_message(f"Reminder set for {date_string}.", ephemeral=True)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="forget_reminder", description="forget a reminder")
+    @commands.slash_command(name="forget_reminder", description="forget a reminder", guild_ids=[815237689775357992])
     async def forget_reminder(
         self,
         inter: disnake.ApplicationCommandInteraction,
         reminder: str = commands.Param(
-            autocomplete=get_all_reminders_for_user, description="The reminder you want to forget."
+            autocomplete=get_reminders_autocomplete,
+            description="The reminder you want to forget.",
         ),
     ) -> coroutine:
         """Clear a reminder or all of a user's reminders.
@@ -255,12 +275,19 @@ class Reminders(SlashbotCog):
         reminder: str
             The reminder to forget
         """
-        reminder = filter(lambda r: r == reminder, get_all_reminders_for_user(inter.author.id))
-        if not reminder:
+        specific_reminder = list(
+            filter(lambda r: f"{r['date']}: {r['reminder']}" == reminder, get_all_reminders_for_user(inter.author.id))
+        )
+        if not specific_reminder:
             return await inter.response.send_message("This reminder doesn't exist, somehow.", ephemeral=True)
 
+        try:
+            specific_reminder = specific_reminder[0]
+        except IndexError:
+            return await inter.response.send_message("Something went wrong with finding your reminder.", ephemeral=True)
+
         all_reminders = get_all_reminders()
-        index = all_reminders.index(reminder)
+        index = all_reminders.index(specific_reminder)
         remove_reminder(index)
 
         return await inter.response.send_message("Reminder removed.", ephemeral=True)
@@ -278,17 +305,12 @@ class Reminders(SlashbotCog):
         reminders = get_all_reminders_for_user(inter.author.id)
         if not reminders:
             return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
-        print(reminders)
         reminders = sorted(
             [(datetime.datetime.fromisoformat(reminder["date"]), reminder["reminder"]) for reminder in reminders],
             key=lambda entry: entry[0],
         )
 
-        print(reminders)
-
         reminders = [(entry[0].strftime(r"%H:%M %d %B %Y (UTC)"), entry[1]) for entry in reminders]
-
-        # .strftime(r"%H:%M %d %B %Y (UTC)")
 
         table = PrettyTable()
         table.align = "r"
