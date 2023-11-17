@@ -8,7 +8,7 @@ import json
 import logging
 import pathlib
 import re
-from typing import Any
+from typing import Any, List
 
 import disnake
 
@@ -71,6 +71,39 @@ def split_text_into_chunks(text: str, chunk_length: int) -> list:
             current_chunk = ""
 
     return chunks
+
+
+def join_list_max_chars(words: List[str], max_chars: int) -> str:
+    """Join a list of words into a comma-separated list.
+
+    Parameters
+    ----------
+    words : List[str]
+        A list of words to join together
+    max_chars : int
+        The maximum length the output string can be
+
+    Returns
+    -------
+    str
+        The joined words with "..." at the end if max_chars is hit
+    """
+    result = ""
+    current_length = 0
+
+    for word in words:
+        if current_length + len(word) > max_chars - 3:
+            if result:
+                result += "..."
+            break
+        result += word + ", "
+        current_length += len(word)
+
+    # Remove the trailing ", " if there's anything in the result
+    if result.endswith(", "):
+        result = result[:-2]
+
+    return result
 
 
 def convert_string_to_lower(_inter: disnake.ApplicationCommandInteraction, variable: Any) -> Any:
