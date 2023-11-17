@@ -19,7 +19,7 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
+class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -35,8 +35,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         attempts: int
             The number of attempts to try and generate a sentence for.
         """
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.attempts = attempts
         self.wolfram_api = wolframalpha.Client(App.get_config("WOLFRAM_API_KEY"))
         self.markov_sentences = ()
@@ -95,7 +94,7 @@ class Info(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.defer()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
-        embed.set_footer(text=f"{await self.get_generated_sentence('wolfram')}")
+        embed.set_footer(text=f"{await self.async_get_markov_sentence('wolfram')}")
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
         )
@@ -144,4 +143,4 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    bot.add_cog(Info(bot))
+    bot.add_cog(UtilityTools(bot))

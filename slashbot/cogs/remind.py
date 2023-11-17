@@ -55,8 +55,7 @@ class Reminders(SlashbotCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot):
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
         self.timezone = datetime.datetime.utcnow().astimezone().tzinfo
         self.check_reminders.start()  # pylint: disable=no-member
         self.markov_sentences = ()
@@ -81,7 +80,7 @@ class Reminders(SlashbotCog):
     # Private methods ----------------------------------------------------------
 
     @staticmethod
-    def __get_reminder_time(time_format: str, when: str, now: datetime.datetime) -> datetime.datetime:
+    def convert_time_to_datetime(time_format: str, when: str, now: datetime.datetime) -> datetime.datetime:
         """Return a datetime in the future, for a given format and time.
 
         Parameters
@@ -117,7 +116,7 @@ class Reminders(SlashbotCog):
 
         return future
 
-    async def __replace_mentions_in_sentence(self, sentence: str) -> Union[List[str], str]:
+    async def replace_mentions_with_user_name(self, sentence: str) -> Union[List[str], str]:
         """Replace mentions from a post with the user name.
 
         Parameters
@@ -164,7 +163,7 @@ class Reminders(SlashbotCog):
                     continue
 
                 embed = disnake.Embed(title=reminder["reminder"], color=disnake.Color.default())
-                embed.set_footer(text=f"{await self.get_generated_sentence('reminder')}")
+                embed.set_footer(text=f"{await self.async_get_markov_sentence('reminder')}")
                 embed.set_thumbnail(url=reminder_user.avatar.url)
 
                 channel = await self.bot.fetch_channel(reminder["channel"])
@@ -225,7 +224,7 @@ class Reminders(SlashbotCog):
                 )
 
         now = datetime.datetime.now(tz=self.timezone)
-        future = self.__get_reminder_time(time_format, when, now)
+        future = self.convert_time_to_datetime(time_format, when, now)
 
         if not future:
             logger.debug("future is None type for %s", when)
@@ -242,7 +241,7 @@ class Reminders(SlashbotCog):
             return await inter.response.send_message(f"{date_string} is in the past.", ephemeral=True)
 
         # this is a bit of a hack, because the tagged users is a CSV string....
-        tagged_users, reminder = await self.__replace_mentions_in_sentence(reminder)
+        tagged_users, reminder = await self.replace_mentions_with_user_name(reminder)
 
         add_reminder(
             {

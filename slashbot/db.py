@@ -212,12 +212,14 @@ def get_twitter_convert_users() -> List[int]:
     """
     database = load_database()
     return [
-        user_id for user_id, user_settings in database["USERS"].items() if user_settings["convert_twitter_url"] is True
+        int(user_id)
+        for user_id, user_settings in database["USERS"].items()
+        if user_settings["convert_twitter_url"] == True  # pylint: disable=C0121
     ]
 
 
 # TODO: make this a user to be more consistent
-def update_user(user_id: int, updated_fields: dict) -> None:
+def update_user(user: disnake.Member | disnake.User, updated_fields: dict) -> None:
     """Update a user in the database.
 
     This function will update the entire dict for a user, instead of an
@@ -225,14 +227,14 @@ def update_user(user_id: int, updated_fields: dict) -> None:
 
     Parameters
     ----------
-    user_id : int
-        The Discord ID of the user.
+    user : disnake.Member | disnake.User
+        The user to update.
     updated_fields : dict
         A dict containing all the fields with the updated field.
     """
     database = load_database()
     users = database["USERS"]
-    users[str(user_id)] = updated_fields
+    users[str(user.id)] = updated_fields
     save_database(database)
 
 

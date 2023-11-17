@@ -17,7 +17,7 @@ from watchdog.observers import Observer
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.util import calculate_sleep_time
+from slashbot.util import calculate_seconds_until
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -34,8 +34,7 @@ class ScheduledPosts(SlashbotCog):
 
     def __init__(self, bot: commands.bot):
         """init function"""
-        super().__init__()
-        self.bot = bot
+        super().__init__(bot)
 
         self.random_channels = App.get_config("RANDOM_POST_CHANNELS")
         self.scheduled_posts = None
@@ -50,38 +49,23 @@ class ScheduledPosts(SlashbotCog):
         self.post_random_media_file_loop.start()  # pylint: disable=no-member
         self.post_evil_wii_loop.start()  # pylint: disable=no-member
 
-        self.watch_thread = threading.Thread(target=self.__update_posts_on_modify)
+        self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
 
     # Private methods ----------------------------------------------------------
 
-    def __update_posts_on_modify(self):
-        """Reload the posts on file modify."""
-
-        class MyHandler(FileSystemEventHandler):
-            def __init__(self, parent):
-                super().__init__()
-                self.parent = parent
-
-            def on_modified(self, event):
-                if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
-                    self.parent.get_scheduled_posts()
-                    self.parent.post_scheduled_post_loop.restart()
-
-        observer = Observer()
-        observer.schedule(MyHandler(self), path=str(App.get_config("SCHEDULED_POST_FILE").parent.absolute()))
-        observer.start()
-
-    def __calculate_time_until_post(self):
+    def calculate_time_until_post(self):
         """Calculates how long until a post is to be posted."""
         for post in self.scheduled_posts:
-            post["time_until_post"] = calculate_sleep_time(post["day"], post["hour"], post["minute"])
+            post["time_until_post"] = calculate_seconds_until(
+                int(post["day"]), int(post["hour"]), int(post["minute"]), 7
+            )
 
-    def __order_scheduled_posts_by_soonest(self):
+    def order_scheduled_posts_by_soonest(self):
         """Orders self.scheduled_posts to where the first entry is the video
         which is scheduled to be sent the soonest.
         """
-        self.__calculate_time_until_post()
+        self.calculate_time_until_post()
         self.scheduled_posts.sort(key=lambda x: x["time_until_post"])
 
     def get_scheduled_posts(self):
@@ -105,7 +89,27 @@ class ScheduledPosts(SlashbotCog):
         logger.info(
             "%d scheduled posts loaded from %s", len(self.scheduled_posts), App.get_config("SCHEDULED_POST_FILE")
         )
-        self.__order_scheduled_posts_by_soonest()
+        self.order_scheduled_posts_by_soonest()
+
+    def update_posts_on_modify(self):
+        """Reload the posts on file modify."""
+
+        class PostWatcher(FileSystemEventHandler):
+            """File watcher to watch for changes to scheduled posts file."""
+
+            def __init__(self, parent):
+                super().__init__()
+                self.parent = parent
+
+            def on_modified(self, event):
+                if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
+                    self.parent.get_scheduled_posts()
+                    self.parent.post_scheduled_post_loop.cancel()
+                    self.parent.post_scheduled_post_loop.start()
+
+        observer = Observer()
+        observer.schedule(PostWatcher(self), path=str(App.get_config("SCHEDULED_POST_FILE").parent.absolute()))
+        observer.start()
 
     # Task ---------------------------------------------------------------------
 
@@ -121,13 +125,13 @@ class ScheduledPosts(SlashbotCog):
         again in 10 seconds.
         """
         await self.bot.wait_until_ready()
-        self.__order_scheduled_posts_by_soonest()
+        self.order_scheduled_posts_by_soonest()
 
         for post in self.scheduled_posts:
             # we first should update sleep_for, as the original value calculated
             # when read in is no longer valid as it is a static, and not
             # dynamic, value
-            sleep_for = calculate_sleep_time(post["day"], post["hour"], post["minute"])
+            sleep_for = calculate_seconds_until(int(post["day"]), int(post["hour"]), int(post["minute"]), 7)
             logger.info(
                 "Waiting %d seconds/%d minutes/%.1f hours until posting %s",
                 sleep_for,
@@ -137,7 +141,7 @@ class ScheduledPosts(SlashbotCog):
             )
             await asyncio.sleep(sleep_for)
 
-            markov_sentence = await self.get_generated_sentence(post["seed_word"])
+            markov_sentence = await self.async_get_markov_sentence(post["seed_word"])
             markov_sentence = markov_sentence.replace(
                 post["seed_word"],
                 f"**{post['seed_word']}**",
@@ -157,6 +161,25 @@ class ScheduledPosts(SlashbotCog):
                     )
                 else:
                     await channel.send(f"{message} {markov_sentence}", file=disnake.File(post["files"][0]))
+
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="random_image", description="send a random image")
+    async def random_image(self, inter: disnake.ApplicationCommandInteraction):
+        """Post a random image.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The command interaction.
+        """
+        if len(self.random_media_files) == 0:
+            await inter.response.send_message("Something bad has happened, there are no images loaded.", ephemeral=True)
+
+        await inter.response.defer()
+        await inter.edit_original_message(
+            content=f"{await self.async_get_markov_sentence('random')}",
+            file=disnake.File(random.choice(self.random_media_files)),
+        )
 
     @tasks.loop(minutes=1)
     async def post_random_media_file_loop(self):
