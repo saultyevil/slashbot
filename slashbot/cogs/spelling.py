@@ -16,7 +16,7 @@ from spellchecker import SpellChecker
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
-from slashbot.util import calculate_seconds_until
+from slashbot.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
@@ -187,8 +187,8 @@ class Spelling(SlashbotCog):
         unknown_words = self.spellchecker.unknown(words.split())
         unknown_words = list(filter(lambda w: w not in self.custom_words, unknown_words))
 
-        self.incorrect_spellings[guild_key][message.author.display_name]["word_count"] += len(words.split())
-        self.incorrect_spellings[guild_key][message.author.display_name]["unknown_words"] += unknown_words
+        self.incorrect_spellings[guild_key][str(message.author.id)]["word_count"] += len(words.split())
+        self.incorrect_spellings[guild_key][str(message.author.id)]["unknown_words"] += unknown_words
 
     @tasks.loop(seconds=5)
     async def spelling_summary(self):
@@ -202,26 +202,26 @@ class Spelling(SlashbotCog):
 
         sleep_time = calculate_seconds_until(-1, 17, 0, 1)
 
-        logger.info(
-            "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",
-            sleep_time,
-            sleep_time // 60,
-            sleep_time / 3600,
-        )
-        await asyncio.sleep(sleep_time)
+        # logger.info(
+        #     "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",
+        #     sleep_time,
+        #     sleep_time // 60,
+        #     sleep_time / 3600,
+        # )
+        # await asyncio.sleep(sleep_time)
 
         # first loop over the guild stuff
         for guild_id, user_spellings in self.incorrect_spellings.items():
             # next we'll loop over each user in that guild
-            guild_string = f"### Spelling summary\n{await self.async_get_markov_sentence('spelling')}?\n"
-            for user_name, user_data in user_spellings.items():
+            embeds = []
+            for user_id, user_data in user_spellings.items():
                 mistakes = sorted(set(user_data["unknown_words"]))
                 if len(mistakes) == 0:
                     continue
                 word_count = int(user_data["word_count"])  # let's be safe, I guess.
                 percent_wrong = float(len(mistakes) / float(word_count)) * 100.0
                 corrections = [
-                    correction if (correction := self.spellchecker.correction(mistake)) is not None else "???"
+                    correction if (correction := self.spellchecker.correction(mistake)) is not None else ""
                     for mistake in mistakes
                 ]
                 actual_mistakes = [
@@ -229,14 +229,24 @@ class Spelling(SlashbotCog):
                     for mistake, correction in zip(mistakes, corrections)
                     if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake  # this re.sub removes all punctuation
                 ]
-                guild_string += (
-                    f"**{user_name.capitalize()}**: {len(mistakes)} mistakes out of {word_count} words ({percent_wrong:.1f}%)\n"
-                    + ", ".join(actual_mistakes)
-                    + "\n\n"
+                mistake_string = join_list_max_chars(actual_mistakes, 4096)
+
+                user = await self.bot.fetch_user(int(user_id))
+                embed = disnake.Embed(
+                    title=f"{user.display_name.capitalize()}'s spelling summary", description=mistake_string
                 )
+                embed.add_field(name="Total words", value=f"{word_count}", inline=True)
+                embed.add_field(name="Mistakes", value=f"{len(mistakes)}", inline=True)
+                embed.add_field(name="Percent wrong", value=f"{percent_wrong:.1f}%", inline=True)
+
+                embed.set_thumbnail(url=user.avatar.url)
+                embed.set_footer(text=f"{await self.async_get_markov_sentence('spelling')}")
+
+                embeds.append(embed)
 
             channel = await self.bot.fetch_channel(App.get_config("SPELLCHECK_SERVERS")[str(guild_id)]["CHANNEL"])
-            await channel.send(guild_string)
+            for embed in embeds:
+                await channel.send(embed=embed)
 
         self.incorrect_spellings.clear()
 
