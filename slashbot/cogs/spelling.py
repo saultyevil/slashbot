@@ -15,6 +15,7 @@ from spellchecker import SpellChecker
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
+from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 from slashbot.util import calculate_seconds_until
 
 COOLDOWN_USER = commands.BucketType.user
@@ -29,10 +30,33 @@ class Spelling(SlashbotCog):
 
     def __init__(self, bot: commands.InteractionBot):
         super().__init__(bot)
-        self.incorrect_spellings = defaultdict(lambda: {"word_count": 0, "unknown_words": []})
+        self.incorrect_spellings = defaultdict(
+            lambda: defaultdict(
+                lambda: {"word_count": 0, "unknown_words": []}
+            ),  # incorrect_spellings[guild_id][user_id]
+        )
         self.spellchecker = SpellChecker(case_sensitive=False)
         self.spelling_summary.start()  # pylint: disable=no-member
         self.custom_words = self.get_custom_words()
+
+        self.markov_sentences = ()
+
+    async def cog_load(self):
+        """Initialise the cog.
+
+        Currently this does:
+            - create markov sentences
+        """
+        self.markov_sentences = (
+            generate_sentences_for_seed_words(
+                MARKOV_MODEL,
+                ["spelling"],
+                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+            )
+            if self.bot.markov_gen_on
+            else {"spelling": []}
+        )
+        logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
@@ -156,16 +180,15 @@ class Spelling(SlashbotCog):
         guild_key = str(message.guild.id)
         if guild_key not in App.get_config("SPELLCHECK_SERVERS"):
             return
-        if message.author.id not in App.get_config("SPELLCHECK_SERVERS")[guild_key]:
+        if message.author.id not in App.get_config("SPELLCHECK_SERVERS")[guild_key]["USERS"]:
             return
 
         words = self.cleanup_message(message.content)
         unknown_words = self.spellchecker.unknown(words.split())
         unknown_words = list(filter(lambda w: w not in self.custom_words, unknown_words))
-        key = f"{message.author.display_name}+{message.channel.id}"
 
-        self.incorrect_spellings[key]["word_count"] += len(words.split())
-        self.incorrect_spellings[key]["unknown_words"] += unknown_words
+        self.incorrect_spellings[guild_key][message.author.display_name]["word_count"] += len(words.split())
+        self.incorrect_spellings[guild_key][message.author.display_name]["unknown_words"] += unknown_words
 
     @tasks.loop(seconds=5)
     async def spelling_summary(self):
@@ -187,30 +210,33 @@ class Spelling(SlashbotCog):
         )
         await asyncio.sleep(sleep_time)
 
-        for key, value in self.incorrect_spellings.items():
-            mistakes = sorted(set(value["unknown_words"]))  # remove duplicates with a set
-            if len(mistakes) == 0:  # this shouldn't happen
-                continue
-            word_count = int(value["word_count"])
-            percent_wrong = float(len(mistakes)) / float(word_count) * 100.0
+        # first loop over the guild stuff
+        for guild_id, user_spellings in self.incorrect_spellings.items():
+            # next we'll loop over each user in that guild
+            guild_string = f"### Spelling summary\n{await self.async_get_markov_sentence('spelling')}?\n"
+            for user_name, user_data in user_spellings.items():
+                mistakes = sorted(set(user_data["unknown_words"]))
+                if len(mistakes) == 0:
+                    continue
+                word_count = int(user_data["word_count"])  # let's be safe, I guess.
+                percent_wrong = float(len(mistakes) / float(word_count)) * 100.0
+                corrections = [
+                    correction if (correction := self.spellchecker.correction(mistake)) is not None else "???"
+                    for mistake in mistakes
+                ]
+                actual_mistakes = [
+                    f"{correction} [{mistake}]"
+                    for mistake, correction in zip(mistakes, corrections)
+                    if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake  # this re.sub removes all punctuation
+                ]
+                guild_string += (
+                    f"**{user_name.capitalize()}**: {len(mistakes)} mistakes out of {word_count} words ({percent_wrong:.1f}%)\n"
+                    + ", ".join(actual_mistakes)
+                    + "\n\n"
+                )
 
-            user_name, channel_id = key.split("+")
-            channel = await self.bot.fetch_channel(channel_id)
-            corrections = [
-                correction if (correction := self.spellchecker.correction(mistake)) is not None else "unknown"
-                for mistake in mistakes
-            ]
-            actual_mistakes = [
-                f"{correction} ({mistake})"
-                for mistake, correction in zip(mistakes, corrections)
-                if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake
-            ]
-
-            await channel.send(
-                f"**{user_name.capitalize()}** made {len(actual_mistakes)} spelling mistakes, which is "
-                + f"{percent_wrong:.1f}% of the words they sent. They spelt the following words incorrectly:  "
-                + ", ".join(actual_mistakes),
-            )
+            channel = await self.bot.fetch_channel(App.get_config("SPELLCHECK_SERVERS")[str(guild_id)]["CHANNEL"])
+            await channel.send(guild_string)
 
         self.incorrect_spellings.clear()
 
