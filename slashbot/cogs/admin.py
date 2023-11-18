@@ -185,7 +185,10 @@ class AdminTools(SlashbotCog):
             The state size of the Markov Chain to load.
         """
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
-            return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            return await inter.response.send_message(
+                "You don't have permission to use this command.",
+                ephemeral=True,
+            )
 
         await inter.response.defer(ephemeral=True)
 
@@ -197,10 +200,18 @@ class AdminTools(SlashbotCog):
                 branch.checkout()
                 logger.info("Switched to branch %s", branch)
             except git.exc.GitCommandError as exc:
-                logger.exception("Failed to switch branch during update: %s", exc)
-                return await inter.response.send_message(f"Failed to checkout {branch} during update", ephemeral=True)
+                logger.exception("Failed to switch branch: %s", exc)
+                return await inter.edit_original_message(
+                    content=f"Failed to checkout {branch}  due to {exc}",
+                )
 
-        repo.remotes.origin.pull()
+        try:
+            repo.remotes.origin.pull()
+        except git.exc.GitCommandError as exc:
+            logger.exception("Failed to pull changes: %s", exc)
+            return await inter.edit_original_message(
+                content=f"Failed to pull updated changes due to {exc}",
+            )
 
         await self.restart_bot(
             inter,
