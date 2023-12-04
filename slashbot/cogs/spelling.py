@@ -157,6 +157,8 @@ class Spelling(SlashbotCog):
         # remove code wrappings, so we don't get any code
         clean_text = re.sub(r"`[^`]+`", "", clean_text)
         clean_text = re.sub(r"```[^`]+```", "", clean_text, flags=re.DOTALL)
+        # remove apostrophes first
+        clean_text = re.sub(r"'", "", clean_text)
         # remove numbers and non-word characters
         clean_text = re.sub(r"[0-9]+|\W+|<[^>]+>", " ", clean_text)
 
@@ -183,11 +185,11 @@ class Spelling(SlashbotCog):
         if message.author.id not in App.get_config("SPELLCHECK_SERVERS")[guild_key]["USERS"]:
             return
 
-        words = self.cleanup_message(message.content)
-        unknown_words = self.spellchecker.unknown(words.split())
+        cleaned_content = self.cleanup_message(message.content)
+        unknown_words = self.spellchecker.unknown(cleaned_content.split())
         unknown_words = list(filter(lambda w: w not in self.custom_words, unknown_words))
 
-        self.incorrect_spellings[guild_key][str(message.author.id)]["word_count"] += len(words.split())
+        self.incorrect_spellings[guild_key][str(message.author.id)]["word_count"] += len(message.content.split())
         self.incorrect_spellings[guild_key][str(message.author.id)]["unknown_words"] += unknown_words
 
     @tasks.loop(seconds=5)
