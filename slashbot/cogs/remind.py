@@ -148,11 +148,10 @@ class Reminders(SlashbotCog):
     @tasks.loop(seconds=1)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
-        # now = datetime.datetime.now(tz=self.timezone)
-        now = datetime.datetime.now(tz=datetime.UTC)
         reminders = get_all_reminders()
         if len(reminders) == 0:
             return
+        now = datetime.datetime.now(tz=datetime.UTC)
 
         for index, reminder in enumerate(reminders):
             date = datetime.datetime.fromisoformat(reminder["date"]).replace(tzinfo=datetime.UTC)
@@ -305,7 +304,10 @@ class Reminders(SlashbotCog):
         if not reminders:
             return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
         reminders = sorted(
-            [(datetime.datetime.fromisoformat(reminder["date"]), reminder["reminder"]) for reminder in reminders],
+            [
+                (datetime.datetime.fromisoformat(reminder["date"]).astimezone(datetime.UTC), reminder["reminder"])
+                for reminder in reminders
+            ],
             key=lambda entry: entry[0],
         )
 
