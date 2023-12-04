@@ -47,6 +47,9 @@ start = time.time()
 if args.development:
     # logger.debug("Disabling automatic markov generation for development mode")
     args.disable_auto_markov = False
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
 
 # Load the markov model first --------------------------------------------------
 
