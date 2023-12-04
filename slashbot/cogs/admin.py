@@ -23,6 +23,28 @@ COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
+def convert_level_to_int(choice: str) -> int:
+    """Convert a text choice for logging level into the respective integer.
+
+    Parameters
+    ----------
+    choice : str
+        The choice string.
+
+    Returns
+    -------
+    int
+        The integer for the choice.
+    """
+    choice = choice.lower()
+    if choice == "debug":
+        return logging.DEBUG
+    elif choice == "info":
+        return logging.INFO
+    else:
+        return logging.WARNING
+
+
 class AdminTools(SlashbotCog):
     """Admin commands and tools for Slashbot.
 
@@ -218,6 +240,28 @@ class AdminTools(SlashbotCog):
             disable_markov,
             state_size,
         )
+
+    @commands.slash_command(name="set_logging_level", description="Set the verbosity level for /logfile")
+    async def set_logging_level(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        level: int = commands.Param(
+            choices=["Debug", "Info", "Error"],
+            converter=convert_level_to_int,
+            description="What to show in the log output",
+        ),
+    ):
+        """Set the logging level for the logfile.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The command interaction.
+        level : int, optional
+            The logging level to set.
+        """
+        logger.setLevel(level)
+        await inter.response.send_message(f"Logging level set to {level.lower()}")
 
     @commands.slash_command(name="set_markov_chain", description="Set a new Markov chain")
     async def set_markov_chain(

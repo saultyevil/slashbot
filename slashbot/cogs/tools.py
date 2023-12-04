@@ -55,7 +55,7 @@ class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
             if self.bot.markov_gen_on
             else {"wolfram": []}
         )
-        logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
+        logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Commands -----------------------------------------------------------------
 

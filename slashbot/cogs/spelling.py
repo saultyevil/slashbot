@@ -56,7 +56,7 @@ class Spelling(SlashbotCog):
             if self.bot.markov_gen_on
             else {"spelling": []}
         )
-        logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
+        logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(

@@ -155,7 +155,7 @@ class ImageGeneration(SlashbotCog):
             return await inter.edit_original_message("There was an error when submitting your request.")
 
         self.running_tasks[inter.author.id] = process_id
-        logger.info("text2image: Request %s for user %s (%d)", process_id, inter.author.display_name, inter.author.id)
+        logger.debug("text2image: Request %s for user %s (%d)", process_id, inter.author.display_name, inter.author.id)
         await inter.edit_original_message(content=f"Request submitted: {process_id}")
 
         start = time.time()
