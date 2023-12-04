@@ -159,8 +159,10 @@ class Spelling(SlashbotCog):
         clean_text = re.sub(r"```[^`]+```", "", clean_text, flags=re.DOTALL)
         # remove apostrophes first
         clean_text = re.sub(r"'", "", clean_text)
-        # remove numbers and non-word characters
-        clean_text = re.sub(r"[0-9]+|\W+|<[^>]+>", " ", clean_text)
+        # remove numbers and non-word characters (excluding hyphens in words)
+        clean_text = re.sub(r"[0-9]+|(?<!\w)-(?!\w)|[^\w\s-]|<[^>]+>", " ", clean_text)
+        # replace multiple spaces with a single space
+        clean_text = re.sub(r"\s+", " ", clean_text)
 
         return clean_text
 
@@ -186,6 +188,10 @@ class Spelling(SlashbotCog):
             return
 
         cleaned_content = self.cleanup_message(message.content)
+        logger.debug(
+            "Cleaned message content: %s",
+            cleaned_content,
+        )
         unknown_words = self.spellchecker.unknown(cleaned_content.split())
         unknown_words = list(filter(lambda w: w not in self.custom_words, unknown_words))
 
