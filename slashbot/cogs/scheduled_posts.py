@@ -45,12 +45,19 @@ class ScheduledPosts(SlashbotCog):
         logger.info("Random post channels: %s", self.random_channels)
         logger.info("%d random media files found", len(self.random_media_files))
 
-        self.post_scheduled_post_loop.start()  # pylint: disable=no-member
+        self.post_loop.start()  # pylint: disable=no-member
         self.post_random_media_file_loop.start()  # pylint: disable=no-member
         self.post_evil_wii_loop.start()  # pylint: disable=no-member
 
         self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
+
+    # Cog methods --------------------------------------------------------------
+
+    def cog_unload(self) -> None:
+        self.post_loop.cancel()  # pylint: disable=no-member
+        self.post_random_media_file_loop.cancel()  # pylint: disable=no-member
+        self.post_evil_wii_loop.cancel()  # pylint: disable=no-member
 
     # Private methods ----------------------------------------------------------
 
@@ -97,15 +104,21 @@ class ScheduledPosts(SlashbotCog):
         class PostWatcher(FileSystemEventHandler):
             """File watcher to watch for changes to scheduled posts file."""
 
-            def __init__(self, parent):
+            def __init__(self, parent: ScheduledPosts):
                 super().__init__()
                 self.parent = parent
 
             def on_modified(self, event):
                 if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
                     self.parent.get_scheduled_posts()
-                    self.parent.post_scheduled_post_loop.cancel()
-                    self.parent.post_scheduled_post_loop.start()
+                    # If the loop is running, we'll restart the task otherwise
+                    # start the task. The post should *never* not be running,
+                    # but better safe than sorry as it can sometimes raise an
+                    # exception and stop
+                    if self.parent.post_loop.is_running():
+                        self.parent.post_loop.restart()
+                    else:
+                        self.parent.post_loop.start()
 
         observer = Observer()
         observer.schedule(PostWatcher(self), path=str(App.get_config("SCHEDULED_POST_FILE").parent.absolute()))
@@ -114,7 +127,7 @@ class ScheduledPosts(SlashbotCog):
     # Task ---------------------------------------------------------------------
 
     @tasks.loop(seconds=1)
-    async def post_scheduled_post_loop(self) -> None:
+    async def post_loop(self) -> None:
         """Task to loop over the scheduled posts.
 
         Iterates over all the scheduled posts. For each post, the bot will
@@ -124,7 +137,6 @@ class ScheduledPosts(SlashbotCog):
         Once all messages have been sent, the task will be complete and start
         again in 10 seconds.
         """
-        await self.bot.wait_until_ready()
         self.order_scheduled_posts_by_soonest()
 
         for post in self.scheduled_posts:
@@ -161,6 +173,11 @@ class ScheduledPosts(SlashbotCog):
                     )
                 else:
                     await channel.send(f"{message} {markov_sentence}", file=disnake.File(post["files"][0]))
+
+    @post_loop.before_loop
+    async def wait(self):
+        """Wait for bot to be ready."""
+        await self.bot.wait_until_ready()
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="random_image", description="send a random image")
