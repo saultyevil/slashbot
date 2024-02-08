@@ -291,8 +291,12 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         # if the message isn't cached, for some reason, we can fetch the channel
         # and the message from the channel
         if message is None:
-            channel = await self.bot.fetch_channel(payload.channel_id)
-            message = await channel.fetch_message(payload.message_id)
+            channel = await self.bot.fetch_channel(int(payload.channel_id))
+            try:
+                message = await channel.fetch_message(int(payload.message_id))
+            except disnake.NotFound:
+                logger.error("Unable to fetch message %d", payload.message_id)
+                return
 
         self.markov_training_sample.pop(message.id, None)
 
