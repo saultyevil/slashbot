@@ -114,7 +114,7 @@ class Weather(SlashbotCog):
         ValueError
             Raised when an unknown unit system is passed
         """
-        if units not in ["metric", "imperial"]:
+        if units not in WEATHER_UNITS:
             raise ValueError(f"Unknown weather units {units}")
 
         if units == "metric":
