@@ -295,7 +295,7 @@ class Weather(SlashbotCog):
             name="location", description="The city to get weather for, default is your saved location.", default=None
         ),
         units: str = commands.Param(
-            description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
+            description="The units to return weather readings in.", default="mixed", choices=WEATHER_UNITS
         ),
     ) -> coroutine:
         """Get the weather for a location.
