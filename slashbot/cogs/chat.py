@@ -11,6 +11,7 @@ import json
 import logging
 import traceback
 from collections import defaultdict
+from math import ceil
 from types import coroutine
 
 import disnake
@@ -57,7 +58,7 @@ class ChatBot(SlashbotCog):
         self.model_temperature = 0.7
         self.max_tokens_allowed = int(TOKEN_COUNT_UNSET)
         self.trim_faction = 0.5
-        self.max_chat_history = 20
+        # self.max_chat_history = 20
         self.default_system_token_count = len(tiktoken.encoding_for_model(DEFAULT_MODEL).encode(DEFAULT_SYSTEM_MESSAGE))
         self.set_max_allowed_tokens(DEFAULT_MODEL)
 
@@ -182,23 +183,29 @@ class ChatBot(SlashbotCog):
         token_count = int(self.chat_tokens[history_id])
         num_messages = len(self.chat_history[history_id][1:])
 
-        if num_messages == 0:
+        if num_messages == 0 or token_count == TOKEN_COUNT_UNSET:
             return
+
+        logger.debug(
+            "Token count for %s is %d (%d messages) and %d is allowed",
+            history_id,
+            token_count,
+            num_messages,
+            self.max_tokens_allowed,
+        )
 
         # max token count
         if token_count > self.max_tokens_allowed:
-            num_remove = min(int(self.trim_faction * num_messages), num_messages)  # * 2 to delete prompt + message
-            for _ in range(1, num_remove + 1):
+            num_remove = ceil(self.trim_faction * num_messages)  # * 2 to remove prompt and response
+            for _ in range(num_remove):
                 self.chat_history[history_id].pop(1)
             self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
-            logger.debug("%d messages removed from %s due to token limit", num_remove, history_id)
-
-        # max history count -- remove the oldest message and response
-        if num_messages > self.max_chat_history:
-            for _ in range(1, 3):  # remove two elements to get prompt + response
-                self.chat_history[history_id].pop(1)
-            self.chat_tokens[history_id] = int(TOKEN_COUNT_UNSET)
-            logger.debug("%d messages removed from %s due to message limit", 2, history_id)
+            logger.debug(
+                "%d messages removed from %s due to token limit. There are now %d messages",
+                num_remove,
+                history_id,
+                len(self.chat_history[history_id][1:]),
+            )
 
     @staticmethod
     async def is_slash_interaction_highlight(message: disnake.Message) -> bool:
