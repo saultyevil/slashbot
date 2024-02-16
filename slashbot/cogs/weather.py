@@ -25,7 +25,8 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 COOLDOWN_USER = commands.BucketType.user
-WEATHER_UNITS = ["metric", "imperial"]
+WEATHER_UNITS = ["mixed", "metric", "imperial"]
+WEATHER_UNITS = ["mixed", "metric", "imperial"]
 FORECAST_TYPES = ["hourly", "daily"]
 API_KEY = App.get_config("OWM_API_KEY")
 
@@ -67,7 +68,7 @@ class Weather(SlashbotCog):
     async def cog_load(self):
         """Initialise the cog.
 
-        Currently this does:
+        Currently, this does:
             - create markov sentences
         """
         self.markov_sentences = (
@@ -113,11 +114,13 @@ class Weather(SlashbotCog):
         ValueError
             Raised when an unknown unit system is passed
         """
-        if units not in ["metric", "imperial"]:
+        if units not in WEATHER_UNITS:
             raise ValueError(f"Unknown weather units {units}")
 
         if units == "metric":
             temp_unit, wind_unit, wind_factor = "C", "kph", 3.6
+        elif units == "mixed":
+            temp_unit, wind_unit, wind_factor = "C", "mph", 2.237
         else:
             temp_unit, wind_unit, wind_factor = "F", "mph", 1
 
@@ -175,8 +178,13 @@ class Weather(SlashbotCog):
             address = str(location)
         address += f"\n({lat}, {lon})"
 
+        if units == "mixed":
+            api_units = "metric"
+        else:
+            api_units = units
+
         one_call_request = requests.get(
-            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={units}&exclude=minutely&appid={API_KEY}",
+            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={API_KEY}",
             timeout=5,
         )
 
@@ -207,7 +215,7 @@ class Weather(SlashbotCog):
             description="The type of forecast to return.", default="daily", choices=FORECAST_TYPES
         ),
         units: str = commands.Param(
-            description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
+            description="The units to return weather readings in.", default="mixed", choices=WEATHER_UNITS
         ),
         amount: int = commands.Param(description="The number of results to return.", default=4, gt=0, lt=7),
     ) -> coroutine:
@@ -287,7 +295,7 @@ class Weather(SlashbotCog):
             name="location", description="The city to get weather for, default is your saved location.", default=None
         ),
         units: str = commands.Param(
-            description="The units to return weather readings in.", default="metric", choices=WEATHER_UNITS
+            description="The units to return weather readings in.", default="mixed", choices=WEATHER_UNITS
         ),
     ) -> coroutine:
         """Get the weather for a location.
