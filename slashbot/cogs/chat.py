@@ -266,11 +266,7 @@ class ChatBot(SlashbotCog):
 
         try:
             return await self.get_chat_response(history_id, prompt)
-        except openai.error.RateLimitError as exc:
-            logger.exception(
-                "OpenAI API failed with exception:\n%s",
-                "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
-            )
+        except openai.error.RateLimitError:
             if chat_length > 1:
                 self.chat_history[history_id].pop()
             return "Uh oh, I've hit my rate limit :-(!"
