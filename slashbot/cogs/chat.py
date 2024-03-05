@@ -42,14 +42,12 @@ TOKEN_COUNT_UNSET = -1
 
 # this is all global so you can use it as a choice in interactions
 PROMPT_CHOICES = create_prompt_dict()
-AVAILABLE_MODELS = ("gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-4", "gpt-4-1106-preview")
+AVAILABLE_MODELS = ("gpt-3.5-turbo",)
 DEFAULT_MODEL = AVAILABLE_MODELS[0]
 
 
 class ChatBot(SlashbotCog):
     """AI chat features powered by OpenAI."""
-
-    token_model = "cl100k_base"
 
     def __init__(self, bot: SlashbotInterationBot):
         super().__init__(bot)
@@ -58,13 +56,13 @@ class ChatBot(SlashbotCog):
         self.model_temperature = 0.7
         self.max_tokens_allowed = int(TOKEN_COUNT_UNSET)
         self.trim_faction = 0.5
-        # self.max_chat_history = 20
         self.default_system_token_count = len(tiktoken.encoding_for_model(DEFAULT_MODEL).encode(DEFAULT_SYSTEM_MESSAGE))
         self.set_max_allowed_tokens(DEFAULT_MODEL)
 
         self.chat_tokens = defaultdict(lambda: self.default_system_token_count)
         self.chat_history = defaultdict(lambda: [{"role": "system", "content": DEFAULT_SYSTEM_MESSAGE}])
         self.chat_model = defaultdict(lambda: DEFAULT_MODEL)
+        self.channel_messages = defaultdict(lambda: {"tokens": 0, "messages": []})
 
     # Static -------------------------------------------------------------------
 
@@ -87,14 +85,14 @@ class ChatBot(SlashbotCog):
         return obj.channel.id
 
     @staticmethod
-    async def send_response_to_channel(response: str, message: disnake.Message, in_dm: bool):
+    async def send_response_to_channel(response: str, obj: disnake.Message | disnake.ApplicationCommandInteraction, in_dm: bool):
         """Send a response to the provided message channel and author.
 
         Parameters
         ----------
         response : str
             The response to send to chat.
-        message : disnake.Message
+        message : disnake.Message | disnake.ApplicationCommandInteraction
             The message to respond to.
         in_dm : bool
             Boolean to indicate if DM channel.
@@ -102,12 +100,10 @@ class ChatBot(SlashbotCog):
         if len(response) > MAX_MESSAGE_LENGTH:
             response_chunks = split_text_into_chunks(response, MAX_MESSAGE_LENGTH)
             for i, response_chunk in enumerate(response_chunks):
-                mention_user = message.author.mention if not in_dm else ""
-                await message.channel.send(f"{mention_user if i == 0 else ''} {response_chunk}")
+                mention_user = obj.author.mention if not in_dm else ""
+                await obj.channel.send(f"{mention_user if i == 0 else ''} {response_chunk}")
         else:
-            await message.channel.send(f"{message.author.mention if not in_dm else ''} {response}")
-
-    # Private methods ----------------------------------------------------------
+            await obj.channel.send(f"{obj.author.mention if not in_dm else ''} {response}")
 
     def reset_chat_history(self, history_id: str | int):
         """Clear chat history and reset the token counter.
@@ -129,9 +125,9 @@ class ChatBot(SlashbotCog):
             The name of the model.
         """
         if model_name != "gpt-3.5-turbo":
-            self.max_tokens_allowed = 8000
+            self.max_tokens_allowed = 5000
         else:
-            self.max_tokens_allowed = 4000
+            self.max_tokens_allowed = 15000
 
         logger.debug("Max model tokens set to %d", self.max_tokens_allowed)
 
@@ -298,6 +294,9 @@ class ChatBot(SlashbotCog):
         if message.author.bot:
             return
 
+        history_id = self.get_history_id(message)
+        self.append_channel_message(history_id, message.clean_content)
+
         # Don't respond to replies, or mentions, which have a reference to a
         # slash command response or interaction
         if await self.is_slash_interaction_highlight(message):
@@ -308,7 +307,6 @@ class ChatBot(SlashbotCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
-            history_id = self.get_history_id(message)
             async with message.channel.typing():
                 response = await self.respond_to_prompt(
                     history_id, str(message.clean_content).replace(f"@{self.bot.user.name}", "")
@@ -316,6 +314,63 @@ class ChatBot(SlashbotCog):
                 await self.send_response_to_channel(response, message, message_in_dm)
 
     # Commands -----------------------------------------------------------------
+
+    def append_channel_message(self, history_id: int, message: str) -> None:
+        """_summary_
+
+        Parameters
+        ----------
+        history_id : int
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        # increment number of tokens of latest message
+        num_tokens = len(tiktoken.encoding_for_model(self.chat_model).encode(message))
+        self.channel_messages[history_id]["tokens"] += num_tokens
+        self.channel_messages[history_id]["messages"].append({"tokens": num_tokens, "message": message})
+
+        # if over the limit, remove messages until under the limit
+        while self.channel_messages[history_id]["tokens"] > self.max_tokens_allowed:
+            self.channel_messages[history_id]["tokens"] -= self.channel_messages[history_id]["messages"][0]["tokens"]
+            self.channel_messages[history_id]["messages"].pop(0)
+
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="chat_summary", description="Get a summary of the previous conversation", dm_permission=False)
+    async def chat_summary(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """_summary_
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            _description_
+
+        Returns
+        -------
+        coroutine
+            _description_
+        """
+        history_id = self.get_history_id(inter)
+        messages = [entry["message"] for entry in self.channel_messages[history_id]["messages"]]
+        long_message = "Please create a summary of the following chat history\n".join(messages)
+
+        prompt = [
+            {"role": "system", "content": self.chat_history[history_id][0]["content"]},
+            {"role": "user", "content": long_message}
+        ]
+
+        response = await openai.ChatCompletion.acreate(
+            model=self.chat_model[history_id],
+            messages=prompt,
+            temperature=self.model_temperature,
+            max_tokens=self.output_tokens,
+        )
+
+        message = response["choices"][0]["message"]["content"]
+        await self.send_response_to_channel(message, inter, False)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="reset_chat_history", description="Reset the AI conversation history")
