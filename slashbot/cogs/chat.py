@@ -85,7 +85,9 @@ class ChatBot(SlashbotCog):
         return obj.channel.id
 
     @staticmethod
-    async def send_response_to_channel(response: str, obj: disnake.Message | disnake.ApplicationCommandInteraction, in_dm: bool):
+    async def send_response_to_channel(
+        response: str, obj: disnake.Message | disnake.ApplicationCommandInteraction, in_dm: bool
+    ):
         """Send a response to the provided message channel and author.
 
         Parameters
@@ -329,7 +331,7 @@ class ChatBot(SlashbotCog):
             _description_
         """
         # increment number of tokens of latest message
-        num_tokens = len(tiktoken.encoding_for_model(self.chat_model).encode(message))
+        num_tokens = len(tiktoken.encoding_for_model(self.chat_model[history_id]).encode(message))
         self.channel_messages[history_id]["tokens"] += num_tokens
         self.channel_messages[history_id]["messages"].append({"tokens": num_tokens, "message": message})
 
@@ -339,7 +341,9 @@ class ChatBot(SlashbotCog):
             self.channel_messages[history_id]["messages"].pop(0)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="chat_summary", description="Get a summary of the previous conversation", dm_permission=False)
+    @commands.slash_command(
+        name="chat_summary", description="Get a summary of the previous conversation", dm_permission=False
+    )
     async def chat_summary(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """_summary_
 
@@ -353,14 +357,19 @@ class ChatBot(SlashbotCog):
         coroutine
             _description_
         """
+        await inter.response.defer(ephemeral=True)
         history_id = self.get_history_id(inter)
         messages = [entry["message"] for entry in self.channel_messages[history_id]["messages"]]
-        long_message = "Please create a summary of the following chat history\n".join(messages)
+        long_message = "Please create a summary of the following chat history\n" + "\n".join(messages)
+
+        logger.debug("long message %s", long_message)
 
         prompt = [
             {"role": "system", "content": self.chat_history[history_id][0]["content"]},
-            {"role": "user", "content": long_message}
+            {"role": "user", "content": long_message},
         ]
+
+        logger.debug("prompt %s", prompt)
 
         response = await openai.ChatCompletion.acreate(
             model=self.chat_model[history_id],
@@ -371,6 +380,7 @@ class ChatBot(SlashbotCog):
 
         message = response["choices"][0]["message"]["content"]
         await self.send_response_to_channel(message, inter, False)
+        await inter.edit_original_message("Done!")
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="reset_chat_history", description="Reset the AI conversation history")
