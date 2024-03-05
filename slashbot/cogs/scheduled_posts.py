@@ -167,12 +167,14 @@ class ScheduledPosts(SlashbotCog):
 
             for channel in post["channels"]:
                 channel = await self.bot.fetch_channel(channel)
-                if len(post["files"]) > 1:
+                # Check in this case, just to be safe as I don't want
+                # disnake.File to complain if it gets nothing
+                if len(post["files"]) > 0:
                     await channel.send(
                         f"{message} {markov_sentence}", files=[disnake.File(file) for file in post["files"]]
                     )
                 else:
-                    await channel.send(f"{message} {markov_sentence}", file=disnake.File(post["files"][0]))
+                    await channel.send(f"{message} {markov_sentence}")
 
     @post_loop.before_loop
     async def wait(self):

@@ -258,25 +258,25 @@ class ChatBot(SlashbotCog):
             The generated response to the given prompt.
         """
         await self.reduce_chat_history(history_id)
+        chat_length = len(self.chat_history[history_id])
 
         try:
             return await self.get_chat_response(history_id, prompt)
-        except openai.error.RateLimitError as exc:
-            logger.exception(
-                "OpenAI API failed with exception:\n%s",
-                "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
-            )
-            self.chat_history[history_id].pop()
-            return "Uh oh! I've hit my rate limit :-(!"
+        except openai.error.RateLimitError:
+            if chat_length > 1:
+                self.chat_history[history_id].pop()
+            return "Uh oh, I've hit my rate limit :-(!"
         except openai.error.ServiceUnavailableError:
-            self.chat_history[history_id].pop()
+            if chat_length > 1:
+                self.chat_history[history_id].pop()
             return "Uh oh, my services are currently unavailable!"
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.exception(
                 "OpenAI API failed with exception:\n%s",
                 "".join(traceback.format_exception(type(exc), exc, exc.__traceback__)),
             )
-            self.chat_history[history_id].pop()
+            if chat_length > 1:
+                self.chat_history[history_id].pop()
             return str(exc)
 
     # Listeners ----------------------------------------------------------------
