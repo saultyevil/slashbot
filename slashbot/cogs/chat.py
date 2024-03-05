@@ -342,9 +342,9 @@ class ChatBot(SlashbotCog):
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
-        name="chat_summary", description="Get a summary of the previous conversation", dm_permission=False
+        name="summarise_chat_history", description="Get a summary of the previous conversation", dm_permission=False
     )
-    async def chat_summary(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    async def summarise_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """_summary_
 
         Parameters
@@ -360,7 +360,7 @@ class ChatBot(SlashbotCog):
         await inter.response.defer(ephemeral=True)
         history_id = self.get_history_id(inter)
         messages = [entry["message"] for entry in self.channel_messages[history_id]["messages"]]
-        long_message = "Please create a summary of the following chat history\n" + "\n".join(messages)
+        long_message = "Please create a summary of the following chat history:\n" + "\n".join(messages)
 
         logger.debug("long message %s", long_message)
 
