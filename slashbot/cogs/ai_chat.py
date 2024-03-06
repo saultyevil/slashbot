@@ -408,7 +408,14 @@ class ArtificialChat(SlashbotCog):
             {"role": "system", "content": App.get_config("AI_SUMMARY_PROMPT")},
             {"role": "user", "content": user_prompt},
         ]
-        summary_message, _ = await self.get_api_response(DEFAULT_GPT_MODEL, summary_prompt)
+        summary_message, token_count = await self.get_api_response(DEFAULT_GPT_MODEL, summary_prompt)
+
+        # add summary to the prompt history too. not sure if we need to do this...
+        self.channel_histories[history_id]["prompts"]["messages"] += summary_prompt + [
+            {"role": "assistant", "content": summary_message}
+        ]
+        self.channel_histories[history_id]["prompts"]["tokens"] += token_count
+
         await self.send_response_to_channel(summary_message, inter, True)
         await inter.edit_original_message(content="...")
 
