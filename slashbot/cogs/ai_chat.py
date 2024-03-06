@@ -544,7 +544,7 @@ class ArtificialChat(SlashbotCog):
         history_id = self.get_history_id(inter)
 
         prompt_name = "Unknown"
-        prompt = self.chat_history[history_id][0].get("content", None)
+        prompt = self.channel_histories[history_id]["prompts"]["messages"][0].get("content", None)
         for name, text in PROMPT_CHOICES.items():
             if prompt == text:
                 prompt_name = name
