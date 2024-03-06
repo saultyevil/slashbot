@@ -158,6 +158,31 @@ class ArtificialChat(SlashbotCog):
         # if old_message is an interaction response, this will return true
         return isinstance(old_message.interaction, disnake.InteractionReference)
 
+    @staticmethod
+    async def get_api_response(model: str, messages: list) -> str:
+        """_summary_
+
+        Parameters
+        ----------
+        model : str
+            _description_
+        messages : list
+            _description_
+
+        Returns
+        -------
+        str
+            _description_
+        """
+        response = await openai.ChatCompletion.acreate(
+            messages=messages,
+            model=model,
+            temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
+            max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
+        )
+
+        return response["choices"][0]["message"]["content"], response["usage"]["total_tokens"]
+
     def reset_prompt_history(self, history_id: str | int):
         """Clear chat history and reset the token counter.
 
@@ -184,31 +209,9 @@ class ArtificialChat(SlashbotCog):
         else:
             self.max_tokens = 1500
 
-    async def get_api_response(model: str, messages: list) -> str:
-        """_summary_
-
-        Parameters
-        ----------
-        model : str
-            _description_
-        messages : list
-            _description_
-
-        Returns
-        -------
-        str
-            _description_
-        """
-        response = await openai.ChatCompletion.acreate(
-            messages=messages,
-            model=model,
-            temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
-            max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
-        )
-
-        return response["choices"][0]["message"]["content"], response["usage"]["total_tokens"]
-
-    async def thing(self, message_reference: disnake.MessageReference, messages: list) -> list:
+    async def get_messages_from_reference_point(
+        self, message_reference: disnake.MessageReference, messages: list
+    ) -> list:
         """_summary_
 
         Parameters
@@ -267,7 +270,7 @@ class ArtificialChat(SlashbotCog):
 
         # if the response is a reply, let's find that message and present that as the last
         if message.reference:
-            prompt_messages = await self.thing(message.reference, prompt_messages)
+            prompt_messages = await self.get_messages_from_reference_point(message.reference, prompt_messages)
 
         # append the latest prompt from a user
         prompt_messages.append({"role": "user", "content": clean_message})
