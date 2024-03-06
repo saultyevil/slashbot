@@ -14,7 +14,7 @@ from slashbot.markov import (
     MARKOV_MODEL,
     async_generate_list_of_sentences_with_seed_word,
     async_generate_sentence,
-    generate_sentence,
+    generate_markov_sentence,
 )
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
@@ -88,14 +88,14 @@ class SlashbotCog(commands.Cog):
         if seed_word not in self.markov_sentences:
             if self.bot.markov_gen_on:
                 logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
-            return generate_sentence(MARKOV_MODEL, seed_word)
+            return generate_markov_sentence(MARKOV_MODEL, seed_word)
 
         try:
             return self.markov_sentences[seed_word].pop()
         except IndexError:
             if self.bot.markov_gen_on:
                 logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
-            return generate_sentence(MARKOV_MODEL, seed_word)
+            return generate_markov_sentence(MARKOV_MODEL, seed_word)
 
     async def async_get_markov_sentence(self, seed_word: str) -> str:
         """Retrieve a pre-generated sentence from storage.

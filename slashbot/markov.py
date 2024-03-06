@@ -104,7 +104,7 @@ def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.
     return model
 
 
-def generate_sentence(model: markovify.Text = None, seed_word: str = None, attempts: int = 5) -> str:
+def generate_markov_sentence(model: markovify.Text = None, seed_word: str = None, attempts: int = 5) -> str:
     """Generate a sentence using a markov chain.
 
     Parameters
@@ -242,7 +242,7 @@ def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: 
     List[str]
         The generated sentences.
     """
-    return [generate_sentence(model, seed_word) for _ in range(amount)]
+    return [generate_markov_sentence(model, seed_word) for _ in range(amount)]
 
 
 def generate_sentences_for_seed_words(
@@ -286,7 +286,7 @@ async def async_generate_sentence(model: markovify.Text = None, seed_word: str =
     str
         The generated sentence
     """
-    return generate_sentence(model, seed_word, attempts)
+    return generate_markov_sentence(model, seed_word, attempts)
 
 
 async def async_generate_list_of_sentences_with_seed_word(

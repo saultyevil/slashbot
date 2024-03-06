@@ -24,6 +24,12 @@
             "RANDOM_POST_CHANNELS": [
                 237647756049514498
             ]
+        },
+        "AI_CHAT": {
+            "SUMMARY_PROMPT": "Generate a detailed summary of the conversation, highlighting key points, sentiments, and notable exchanges to provide a comprehensive overview of the interaction.",
+            "MAX_OUTPUT_TOKENS": 2048,
+            "MODEL_TEMPERATURE": 0.7,
+            "DEFAULT_MODEL": "gpt-3.5-turbo"
         }
     },
     "COOLDOWN": {

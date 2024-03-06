@@ -24,7 +24,7 @@ HEADER = {
 }
 
 
-class ImageGeneration(SlashbotCog):
+class ArtificialImages(SlashbotCog):
     """Cog for text to image generation using Monster API.
 
     Possibly in the future, we'll use OpenAI instead.
@@ -109,9 +109,6 @@ class ImageGeneration(SlashbotCog):
 
         return process_id
 
-    # async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction):
-    #     """Remove CustomCog before cog interaction."""
-
     @commands.cooldown(
         rate=App.get_config("COOLDOWN_RATE"), per=App.get_config("COOLDOWN_STANDARD"), type=commands.BucketType.user
     )
@@ -188,4 +185,7 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    bot.add_cog(ImageGeneration(bot))
+    if App.get_config("MONSTER_API_KEY"):
+        bot.add_cog(ArtificialImages(bot))
+    else:
+        logger.error("No API key found for `ArtificialImage` cog so not loading")
