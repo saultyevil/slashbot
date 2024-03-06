@@ -330,7 +330,7 @@ class ArtificialChat(SlashbotCog):
             _description_
         """
         # increment number of tokens of latest message
-        num_tokens = len(tiktoken.encoding_for_model(self.chat_model).encode(message))
+        num_tokens = self.get_token_count_for_string(DEFAULT_GPT_MODEL, message)
         self.channel_histories[history_id]["history"]["tokens"] += num_tokens
         self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
 
@@ -377,9 +377,15 @@ class ArtificialChat(SlashbotCog):
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
-        name="chat_summary", description="Get a summary of the previous conversation", dm_permission=False
+        name="summarise_chat_history", description="Get a summary of the previous conversation", dm_permission=False
     )
-    async def chat_summary(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    async def summarise_chat_history(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        amount: int = commands.Param(
+            default=0, name="amount", description="The last X amount of messages to summarise"
+        ),
+    ) -> coroutine:
         """_summary_
 
         Parameters
@@ -392,18 +398,18 @@ class ArtificialChat(SlashbotCog):
         coroutine
             _description_
         """
+        await inter.response.defer(ephemeral=True)
         history_id = self.get_history_id(inter)
         user_prompt = "Summarize the main points for the following chat log:\n" + "\n".join(
-            [e["message"] for e in self.channel_histories[history_id]["history"]["messages"]]
+            [e["message"] for e in self.channel_histories[history_id]["history"]["messages"][-amount:]]
         )
         summary_prompt = [
             {"role": "system", "content": App.get_config("AI_SUMMARY_PROMPT")},
             {"role": "user", "content": user_prompt},
         ]
-        summary_message, _ = await self.get_api_response(
-            self.channel_histories[history_id]["prompts"]["model"], summary_prompt
-        )
+        summary_message, _ = await self.get_api_response(DEFAULT_GPT_MODEL, summary_prompt)
         await self.send_response_to_channel(summary_message, inter, True)
+        await inter.edit_original_message(content="...")
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="reset_chat_history", description="Reset the AI conversation history")
