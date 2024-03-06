@@ -9,9 +9,7 @@ and to generate responses to prompts given.
 import copy
 import json
 import logging
-import traceback
 from collections import defaultdict
-from math import ceil
 from types import coroutine
 
 import disnake
