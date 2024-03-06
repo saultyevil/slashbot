@@ -317,23 +317,23 @@ class ArtificialChat(SlashbotCog):
             len(self.channel_histories[history_id]["prompts"]["messages"][1:]),
         )
 
-    def record_channel_history(self, history_id: int, message: str) -> None:
+    def record_channel_history(self, history_id: int, user: str, message: str) -> None:
         """_summary_
 
         Parameters
         ----------
         history_id : int
             _description_
-
-        Returns
-        -------
-        _type_
+        user : str
+            _description_
+        message : str
             _description_
         """
-        # increment number of tokens of latest message
+        message = f"{user}: {message}"
         num_tokens = self.get_token_count_for_string(DEFAULT_GPT_MODEL, message)
-        self.channel_histories[history_id]["history"]["tokens"] += num_tokens
         self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
+        # increment number of tokens of latest message
+        self.channel_histories[history_id]["history"]["tokens"] += num_tokens
 
         # if over the limit, remove messages until under the limit
         while self.channel_histories[history_id]["history"]["tokens"] > self.max_tokens:
@@ -354,7 +354,7 @@ class ArtificialChat(SlashbotCog):
             The message to process for mentions.
         """
         history_id = self.get_history_id(message)
-        self.record_channel_history(history_id, message.clean_content)
+        self.record_channel_history(history_id, message.author.name, message.clean_content)
 
         # ignore other bot messages and itself
         if message.author.bot:
