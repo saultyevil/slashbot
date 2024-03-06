@@ -44,6 +44,7 @@ PROMPT_CHOICES = create_prompt_dict()
 AVAILABLE_MODELS = ("gpt-3.5-turbo",)  # Remove GPT-4, as it was too expensive
 DEFAULT_GPT_MODEL = AVAILABLE_MODELS[0]
 DEFAULT_SYSTEM_TOKEN_COUNT = len(tiktoken.encoding_for_model(DEFAULT_GPT_MODEL).encode(DEFAULT_SYSTEM_PROMPT))
+SUMMARY_START = "Summary of"
 
 
 class ArtificialChat(SlashbotCog):
@@ -52,11 +53,12 @@ class ArtificialChat(SlashbotCog):
     def __init__(self, bot: SlashbotInterationBot):
         super().__init__(bot)
 
-        self.max_tokens = TOKEN_COUNT_UNSET
-        self.set_max_allowed_tokens(DEFAULT_GPT_MODEL)
+        self.token_window_size = TOKEN_COUNT_UNSET
+        self.set_token_window_size(DEFAULT_GPT_MODEL)
+        # todo: this data structure should be a class
         self.channel_histories = defaultdict(
             lambda: {
-                "history": {"tokens": 0, "messages": []},
+                "history": {"tokens": 0, "messages": [], "last_summary": ""},
                 "prompts": {
                     "model": DEFAULT_GPT_MODEL,
                     "tokens": DEFAULT_SYSTEM_TOKEN_COUNT,
@@ -196,7 +198,7 @@ class ArtificialChat(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(model, current_prompt)
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
 
-    def set_max_allowed_tokens(self, model_name: str):
+    def set_token_window_size(self, model_name: str):
         """Set the max allowed tokens.
 
         Parameters
@@ -205,9 +207,9 @@ class ArtificialChat(SlashbotCog):
             The name of the model.
         """
         if model_name != "gpt-3.5-turbo":
-            self.max_tokens = 4096
+            self.token_window_size = 1000  # smaller because gpt-4 is expensive!
         else:
-            self.max_tokens = 15000
+            self.token_window_size = 10000
 
     async def get_messages_from_reference_point(
         self, message_reference: disnake.MessageReference, messages: list
@@ -303,7 +305,7 @@ class ArtificialChat(SlashbotCog):
             The chat history ID. Usually the guild or user id.
         """
         removed_count = 0
-        while self.channel_histories[history_id]["prompts"]["tokens"] > self.max_tokens:
+        while self.channel_histories[history_id]["prompts"]["tokens"] > self.token_window_size:
             message = self.channel_histories[history_id]["prompts"]["messages"][1]
             self.channel_histories[history_id]["prompts"]["tokens"] -= self.get_token_count_for_string(
                 self.channel_histories[history_id]["prompts"]["model"], message
@@ -335,8 +337,20 @@ class ArtificialChat(SlashbotCog):
         # increment number of tokens of latest message
         self.channel_histories[history_id]["history"]["tokens"] += num_tokens
 
+        # remove last summary if set
+        summary_removed = False
+        for i, message in enumerate(self.channel_histories[history_id]["history"]["messages"]):
+            if message["message"] == self.channel_histories[history_id]["history"]["last_summary"]:
+                self.channel_histories[history_id]["history"]["tokens"] -= message["tokens"]
+                self.channel_histories[history_id]["history"]["messages"].pop(i)
+                summary_removed = True
+        if summary_removed:
+            self.channel_histories[history_id]["history"]["last_summary"] = ""
+
+        logger.debug("%d history: %s", history_id, self.channel_histories[history_id]["history"])
+
         # if over the limit, remove messages until under the limit
-        while self.channel_histories[history_id]["history"]["tokens"] > self.max_tokens:
+        while self.channel_histories[history_id]["history"]["tokens"] > self.token_window_size:
             self.channel_histories[history_id]["history"]["tokens"] -= self.channel_messages[history_id]["history"][
                 "messages"
             ][0]["tokens"]
@@ -354,7 +368,10 @@ class ArtificialChat(SlashbotCog):
             The message to process for mentions.
         """
         history_id = self.get_history_id(message)
-        self.record_channel_history(history_id, message.author.name, message.clean_content)
+
+        # don't record bot interactions
+        if message.type != disnake.MessageType.application_command:
+            self.record_channel_history(history_id, message.author.name, message.clean_content)
 
         # ignore other bot messages and itself
         if message.author.bot:
@@ -399,11 +416,14 @@ class ArtificialChat(SlashbotCog):
         coroutine
             _description_
         """
-        await inter.response.defer(ephemeral=True)
         history_id = self.get_history_id(inter)
-        user_prompt = "Summarize the main points for the following chat log:\n" + "\n".join(
-            [e["message"] for e in self.channel_histories[history_id]["history"]["messages"][-amount:]]
-        )
+        if self.channel_histories[history_id]["history"]["tokens"] == 0:
+            return inter.response.send_message("There are no messages to summarise.", ephemeral=True)
+
+        await inter.response.defer(ephemeral=True)
+
+        messages = [e["message"] for e in self.channel_histories[history_id]["history"]["messages"][-amount:]]
+        user_prompt = "Summarise the following conversation between multiple users.\n\n" + "\n".join(messages)
         summary_prompt = [
             {"role": "system", "content": App.get_config("AI_SUMMARY_PROMPT")},
             {"role": "user", "content": user_prompt},
@@ -415,6 +435,7 @@ class ArtificialChat(SlashbotCog):
             {"role": "assistant", "content": summary_message}
         ]
         self.channel_histories[history_id]["prompts"]["tokens"] += token_count
+        self.channel_histories[history_id]["history"]["last_summary"] = f"{self.bot.user.name}: {summary_message}"
 
         await self.send_response_to_channel(summary_message, inter, True)
         await inter.edit_original_message(content="...")
