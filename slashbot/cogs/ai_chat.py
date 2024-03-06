@@ -207,7 +207,7 @@ class ArtificialChat(SlashbotCog):
         if model_name != "gpt-3.5-turbo":
             self.max_tokens = 4096
         else:
-            self.max_tokens = 1500
+            self.max_tokens = 15000
 
     async def get_messages_from_reference_point(
         self, message_reference: disnake.MessageReference, messages: list
