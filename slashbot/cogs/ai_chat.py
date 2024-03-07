@@ -401,7 +401,7 @@ class ArtificialChat(SlashbotCog):
         """
         history_id = self.get_history_id(inter)
         if self.channel_histories[history_id]["history"]["tokens"] == 0:
-            return inter.response.send_message("There are no messages to summarise.", ephemeral=True)
+            return await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
 
         await inter.response.defer(ephemeral=True)
 
