@@ -53,8 +53,6 @@ class ArtificialChat(SlashbotCog):
     def __init__(self, bot: SlashbotInterationBot):
         super().__init__(bot)
 
-        self.token_window_size = TOKEN_COUNT_UNSET
-        self.set_token_window_size(DEFAULT_GPT_MODEL)
         # todo: this data structure should be a class
         self.channel_histories = defaultdict(
             lambda: {
@@ -198,19 +196,6 @@ class ArtificialChat(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(model, current_prompt)
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
 
-    def set_token_window_size(self, model_name: str):
-        """Set the max allowed tokens.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model.
-        """
-        if model_name != "gpt-3.5-turbo":
-            self.token_window_size = 1000  # smaller because gpt-4 is expensive!
-        else:
-            self.token_window_size = 10000
-
     async def get_messages_from_reference_point(
         self, message_reference: disnake.MessageReference, messages: list
     ) -> list:
@@ -305,7 +290,7 @@ class ArtificialChat(SlashbotCog):
             The chat history ID. Usually the guild or user id.
         """
         removed_count = 0
-        while self.channel_histories[history_id]["prompts"]["tokens"] > self.token_window_size:
+        while self.channel_histories[history_id]["prompts"]["tokens"] > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
             message = self.channel_histories[history_id]["prompts"]["messages"][1]
             self.channel_histories[history_id]["prompts"]["tokens"] -= self.get_token_count_for_string(
                 self.channel_histories[history_id]["prompts"]["model"], message
@@ -350,7 +335,7 @@ class ArtificialChat(SlashbotCog):
         logger.debug("%d history: %s", history_id, self.channel_histories[history_id]["history"])
 
         # if over the limit, remove messages until under the limit
-        while self.channel_histories[history_id]["history"]["tokens"] > self.token_window_size:
+        while self.channel_histories[history_id]["history"]["tokens"] > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
             self.channel_histories[history_id]["history"]["tokens"] -= self.channel_messages[history_id]["history"][
                 "messages"
             ][0]["tokens"]

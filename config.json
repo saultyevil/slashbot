@@ -27,9 +27,10 @@
         },
         "AI_CHAT": {
             "SUMMARY_PROMPT": "You are named Margaret. Generate a detailed summary of the conversation, highlighting key points, sentiments, and notable exchanges to provide a comprehensive overview of the interaction. You should provide details about specific users, which may include yourself.",
-            "MAX_OUTPUT_TOKENS": 2048,
+            "TOKEN_WINDOW_SIZE": 2048,
+            "MAX_OUTPUT_TOKENS": 512,
             "MODEL_TEMPERATURE": 0.7,
-            "DEFAULT_MODEL": "gpt-3.5-turbo"
+            "GPT_MODEL": "gpt-3.5-turbo"
         }
     },
     "COOLDOWN": {
