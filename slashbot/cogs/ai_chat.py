@@ -371,7 +371,7 @@ class ArtificialChat(SlashbotCog):
 
         # don't record bot interactions
         if message.type != disnake.MessageType.application_command:
-            self.record_channel_history(history_id, message.author.name, message.clean_content)
+            self.record_channel_history(history_id, message.author.display_name, message.clean_content)
 
         # ignore other bot messages and itself
         if message.author.bot:
