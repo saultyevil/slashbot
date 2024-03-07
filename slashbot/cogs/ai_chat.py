@@ -191,7 +191,7 @@ class ArtificialChat(SlashbotCog):
         history_id : str | int
             The index to reset in chat history.
         """
-        model = self.channel_histories[history_id]["prompts"]["model"]
+        model = App.get_config("AI_CHAT_MODEL")
         current_prompt = self.channel_histories[history_id]["prompts"]["messages"][0]
         self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(model, current_prompt)
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
@@ -263,9 +263,7 @@ class ArtificialChat(SlashbotCog):
         prompt_messages.append({"role": "user", "content": clean_message})
 
         try:
-            ai_message, tokens_used = await self.get_api_response(
-                self.channel_histories[history_id]["prompts"]["model"], prompt_messages
-            )
+            ai_message, tokens_used = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), prompt_messages)
             self.channel_histories[history_id]["prompts"]["messages"] += [
                 {"role": "user", "content": clean_message},
                 {"role": "assistant", "content": ai_message},
@@ -293,7 +291,7 @@ class ArtificialChat(SlashbotCog):
         while self.channel_histories[history_id]["prompts"]["tokens"] > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
             message = self.channel_histories[history_id]["prompts"]["messages"][1]
             self.channel_histories[history_id]["prompts"]["tokens"] -= self.get_token_count_for_string(
-                self.channel_histories[history_id]["prompts"]["model"], message
+                App.get_config("AI_CHAT_MODEL"), message
             )
             self.channel_histories[history_id]["prompts"]["messages"].pop(1)
             removed_count += 1
@@ -479,7 +477,7 @@ class ArtificialChat(SlashbotCog):
         )
         # calculate token count after responding to interaction, as it may take a little time
         self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
-            self.channel_histories[history_id]["prompts"]["model"], prompt
+            App.get_config("AI_CHAT_MODEL"), prompt
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -511,7 +509,7 @@ class ArtificialChat(SlashbotCog):
             ephemeral=True,
         )
         self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
-            self.channel_histories[history_id]["prompts"]["model"], new_prompt
+            App.get_config("AI_CHAT_MODEL"), new_prompt
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
