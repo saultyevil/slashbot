@@ -334,7 +334,7 @@ class ArtificialChat(SlashbotCog):
 
         # if over the limit, remove messages until under the limit
         while self.channel_histories[history_id]["history"]["tokens"] > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
-            self.channel_histories[history_id]["history"]["tokens"] -= self.channel_messages[history_id]["history"][
+            self.channel_histories[history_id]["history"]["tokens"] -= self.channel_histories[history_id]["history"][
                 "messages"
             ][0]["tokens"]
             self.channel_histories[history_id]["history"]["messages"].pop(0)
