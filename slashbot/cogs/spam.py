@@ -218,7 +218,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
         search = query.replace(" ", "+")
         results = await self.rule34_api.getImages(search, fuzzy=False, randomPID=True)
-        if results is None:
+        if not results:
             return await inter.edit_original_message(f"No results found for `{search}`.")
 
         choices = [result for result in results if result.has_comments]
