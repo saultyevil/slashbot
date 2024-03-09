@@ -44,7 +44,6 @@ PROMPT_CHOICES = create_prompt_dict()
 DEFAULT_SYSTEM_TOKEN_COUNT = len(
     tiktoken.encoding_for_model(App.get_config("AI_CHAT_MODEL")).encode(DEFAULT_SYSTEM_PROMPT)
 )
-SUMMARY_START = "Summary of"
 
 
 class ArtificialChat(SlashbotCog):
@@ -568,7 +567,7 @@ class ArtificialChat(SlashbotCog):
                 prompt_name = name
 
         response = ""
-        response += f"**GPT model**: {self.channel_histories[history_id]['prompts']['model']}\n"
+        response += f"**GPT model**: {App.get_config('AI_CHAT_MODEL')}\n"
         response += f"**Token usage**: {self.channel_histories[history_id]['prompts']['tokens']}\n"
         response += "**Prompt name**: " + prompt_name + "\n"
         response += f"**Prompt**: {prompt[:1024] if prompt else '???'}\n"
