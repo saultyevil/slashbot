@@ -113,19 +113,19 @@ class ArtificialChat(SlashbotCog):
 
     @staticmethod
     def get_token_count_for_string(model: str, message: str) -> int:
-        """_summary_
+        """Get the token count for a given message using a specified model.
 
         Parameters
         ----------
         model : str
-            _description_
+            The name of the tokenization model to use.
         message : str
-            _description_
+            The message for which the token count needs to be computed.
 
         Returns
         -------
         int
-            _description_
+            The count of tokens in the given message for the specified model.
         """
         return len(tiktoken.encoding_for_model(model).encode(message))
 
@@ -163,19 +163,21 @@ class ArtificialChat(SlashbotCog):
 
     @staticmethod
     async def get_api_response(model: str, messages: list) -> str:
-        """_summary_
+        """Get the response from the OpenAI API for a given model and list of
+        messages.
 
         Parameters
         ----------
         model : str
-            _description_
+            The name of the OpenAI model to use.
         messages : list
-            _description_
+            List of messages to be sent to the OpenAI model for generating a
+            response.
 
         Returns
         -------
         str
-            _description_
+            The generated response message.
         """
         response = await openai.ChatCompletion.acreate(
             messages=messages,
@@ -202,19 +204,19 @@ class ArtificialChat(SlashbotCog):
     async def get_messages_from_reference_point(
         self, message_reference: disnake.MessageReference, messages: list
     ) -> list:
-        """_summary_
+        """Retrieve a list of messages up to a reference point.
 
         Parameters
         ----------
         message_reference : disnake.MessageReference
-            _description_
+            The reference to the message from which to retrieve messages.
         messages : list
-            _description_
+            List of messages to search through.
 
         Returns
         -------
         list
-            _description_
+            List of messages up to the reference point.
         """
         # we need the message first, to find it in the messages list
         message_to_find = message_reference.cached_message
@@ -240,17 +242,17 @@ class ArtificialChat(SlashbotCog):
         return messages[: index + 1]
 
     async def get_chat_prompt_response(self, message: disnake.Message) -> str:
-        """_summary_
+        """Generate a response based on the given message.
 
         Parameters
         ----------
         message : disnake.Message
-            _description_
+            The message to generate a response to.
 
         Returns
         -------
         str
-            _description_
+            The generated response.
         """
         history_id = self.get_history_id(message)
         clean_message = message.clean_content.replace(f"@{self.bot.user.name}", "")
@@ -306,18 +308,18 @@ class ArtificialChat(SlashbotCog):
         )
 
     def record_channel_history(self, history_id: int, user: str, message: str) -> None:
-        """_summary_
+        """Record the history of messages in a channel.
 
         Parameters
         ----------
         history_id : int
-            _description_
+            The unique identifier for the channel's history.
         user : str
-            _description_
+            The user who sent the message.
         message : str
-            _description_
+            The content of the message sent by the user.
         """
-        message = f"{user}: {message}"
+        message = f"{user if user != self.bot.user.display_name else 'Assistant'}: {message}"
         num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
         self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
         # increment number of tokens of latest message
@@ -390,17 +392,19 @@ class ArtificialChat(SlashbotCog):
             default=0, name="amount", description="The last X amount of messages to summarise"
         ),
     ) -> coroutine:
-        """_summary_
+        """Summarize the chat history.
 
         Parameters
         ----------
         inter : disnake.ApplicationCommandInteraction
-            _description_
+            The interaction object representing the user's command interaction.
+        amount : int, optional
+            The number of previous messages to include in the summary, by default 0.
 
         Returns
         -------
-        coroutine
-            _description_
+        Coroutine
+            An asynchronous coroutine representing the summary process.
         """
         history_id = self.get_history_id(inter)
         if self.channel_histories[history_id]["history"]["tokens"] == 0:
