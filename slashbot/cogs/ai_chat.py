@@ -41,9 +41,9 @@ DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/prompt-discord.json")[
 MAX_MESSAGE_LENGTH = 1920
 TOKEN_COUNT_UNSET = -1
 PROMPT_CHOICES = create_prompt_dict()
-AVAILABLE_MODELS = ("gpt-3.5-turbo",)  # Remove GPT-4, as it was too expensive
-DEFAULT_GPT_MODEL = AVAILABLE_MODELS[0]
-DEFAULT_SYSTEM_TOKEN_COUNT = len(tiktoken.encoding_for_model(DEFAULT_GPT_MODEL).encode(DEFAULT_SYSTEM_PROMPT))
+DEFAULT_SYSTEM_TOKEN_COUNT = len(
+    tiktoken.encoding_for_model(App.get_config("AI_CHAT_MODEL")).encode(DEFAULT_SYSTEM_PROMPT)
+)
 SUMMARY_START = "Summary of"
 
 
@@ -58,7 +58,6 @@ class ArtificialChat(SlashbotCog):
             lambda: {
                 "history": {"tokens": 0, "messages": [], "last_summary": ""},
                 "prompts": {
-                    "model": DEFAULT_GPT_MODEL,
                     "tokens": DEFAULT_SYSTEM_TOKEN_COUNT,
                     "messages": [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}],
                 },
@@ -315,7 +314,7 @@ class ArtificialChat(SlashbotCog):
             _description_
         """
         message = f"{user}: {message}"
-        num_tokens = self.get_token_count_for_string(DEFAULT_GPT_MODEL, message)
+        num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
         self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
         # increment number of tokens of latest message
         self.channel_histories[history_id]["history"]["tokens"] += num_tokens
@@ -411,7 +410,7 @@ class ArtificialChat(SlashbotCog):
             {"role": "system", "content": App.get_config("AI_SUMMARY_PROMPT")},
             {"role": "user", "content": user_prompt},
         ]
-        summary_message, token_count = await self.get_api_response(DEFAULT_GPT_MODEL, summary_prompt)
+        summary_message, token_count = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), summary_prompt)
 
         # add summary to the prompt history too. not sure if we need to do this...
         self.channel_histories[history_id]["prompts"]["messages"] += summary_prompt + [
