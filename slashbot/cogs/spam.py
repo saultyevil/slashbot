@@ -22,7 +22,7 @@ from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import get_users
-from slashbot.markov import async_generate_sentence, update_markov_chain_for_model
+from slashbot.markov import update_markov_chain_for_model
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -120,35 +120,8 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         await inter.response.send_message(content=message, file=file)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(
-        name="sentence",
-        description="artificial intelligence, powered by markov chain sentence generation",
-    )
-    async def sentence(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        words: str = commands.Param(
-            default="",
-            description="A seed word, or words, for sentence generation. Multiple word sentence generation is limited.",
-        ),
-    ):
-        """Generate a message from the Markov sentence model.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        words: str
-            A seed word (or words) to generate a message from.
-        """
-        await inter.response.defer()
-        return await inter.edit_original_message(content=await async_generate_sentence(markov.MARKOV_MODEL, words))
-
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(
-        name="update_markov_chain",
-        description="force update the markov chain for /sentence",
-    )
+    @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /sentence")
+    @commands.default_member_permissions(administrator=True)
     async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction):
         """Update the Markov chain model.
 
@@ -236,28 +209,28 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
     # Listeners ---------------------------------------------------------------
 
-    @commands.Cog.listener("on_message")
-    async def respond_to_same(self, message: disnake.Message) -> None:
-        """Respond "same" to a user who says same.
+    # @commands.Cog.listener("on_message")
+    # async def respond_to_same(self, message: disnake.Message) -> None:
+    #     """Respond "same" to a user who says same.
 
-        Parameters
-        ----------
-        message : disnake.Message
-            The message to check for "same".
-        """
-        if message.author.bot:
-            return
+    #     Parameters
+    #     ----------
+    #     message : disnake.Message
+    #         The message to check for "same".
+    #     """
+    #     if message.author.bot:
+    #         return
 
-        if self.check_user_on_cooldown(message.author.id):
-            return
+    #     if self.check_user_on_cooldown(message.author.id):
+    #         return
 
-        self.user_cooldown[message.author.id]["time"] = time.time()
-        self.user_cooldown[message.author.id]["count"] += 1
+    #     self.user_cooldown[message.author.id]["time"] = time.time()
+    #     self.user_cooldown[message.author.id]["count"] += 1
 
-        content = message.clean_content.strip().lower()
+    #     content = message.clean_content.strip().lower()
 
-        if content in ["same", "man", "sad", "fr?"]:
-            await message.channel.send(f"{message.content}")
+    #     if content in ["same", "man", "sad", "fr?"]:
+    #         await message.channel.send(f"{message.content}")
 
     @commands.Cog.listener("on_message")
     async def add_message_to_markov_training_sample(self, message: disnake.Message) -> None:

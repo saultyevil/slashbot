@@ -219,22 +219,6 @@ class ScheduledPosts(SlashbotCog):
             channel = await self.bot.fetch_channel(int(channel_id))
             await channel.send(file=disnake.File(random.choice(self.random_media_files)))
 
-    # @tasks.loop(minutes=1)
-    # async def post_evil_wii_loop(self):
-    #     """Posts a random piece of medium from a directory at a random
-    #     interval.
-    #     """
-    #     await self.bot.wait_until_ready()
-
-    #     sleep_for = random.randint(24 * 3600, 72 * 3600)
-    #     logger.info("Next random evil wii in %.1f hours", sleep_for / 3600)
-    #     await asyncio.sleep(sleep_for)
-
-    #     file = disnake.File("data/images/evil_wii.png")
-    #     file.filename = f"SPOILER_{file.filename}"
-    #     channel = await self.bot.fetch_channel(App.get_config("ID_CHANNEL_IDIOTS"))
-    #     await channel.send(file=file)
-
 
 def setup(bot: commands.InteractionBot):
     """Setup entry function for load_extensions().
