@@ -45,7 +45,7 @@ logger.info("Initializing Slashbot...")
 start = time.time()
 
 if args.development:
-    # logger.debug("Disabling automatic markov generation for development mode")
+    logger.debug("Disabling automatic markov generation for development mode")
     args.disable_auto_markov = False
     logger.setLevel(logging.DEBUG)
 else:
@@ -87,6 +87,11 @@ async def on_ready() -> None:
         logger.info("Started in %.2f seconds", time.time() - start)
     else:
         logger.info("Bot reconnected")
+
+@bot.event
+async def on_error(event, *args, **kwargs):
+    """Print exceptions to the logfile"""
+    logger.error("%s", traceback.print_exc())
 
 
 @bot.event
