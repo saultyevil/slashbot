@@ -103,9 +103,13 @@ class ArtificialChat(SlashbotCog):
             response_chunks = split_text_into_chunks(response, MAX_MESSAGE_LENGTH)
             for i, response_chunk in enumerate(response_chunks):
                 user_mention = obj.author.mention if not dont_tag_user else ""
-                await obj.channel.send(f"{user_mention if i == 0 else ''} {response_chunk}")
+                await obj.channel.send(
+                    f"{user_mention if i == 0 else ''} {disnake.utils.escape_markdown(response_chunk)}"
+                )
         else:
-            await obj.channel.send(f"{obj.author.mention if not dont_tag_user else ''} {response}")
+            await obj.channel.send(
+                f"{obj.author.mention if not dont_tag_user else ''} {disnake.utils.escape_markdown(response)}"
+            )
 
     @staticmethod
     def get_token_count_for_string(model: str, message: str) -> int:
