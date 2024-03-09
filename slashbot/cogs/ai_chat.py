@@ -37,7 +37,7 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 # this is all global so you can use it as a choice in interactions
-DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/broken-english.json")["prompt"]
+DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/prompt-girl.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 TOKEN_COUNT_UNSET = -1
 PROMPT_CHOICES = create_prompt_dict()
