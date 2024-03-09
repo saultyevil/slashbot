@@ -88,6 +88,7 @@ async def on_ready() -> None:
     else:
         logger.info("Bot reconnected")
 
+
 @bot.event
 async def on_error(event, *args, **kwargs):
     """Print exceptions to the logfile"""
