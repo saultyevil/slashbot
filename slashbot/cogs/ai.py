@@ -10,6 +10,7 @@ import asyncio
 import copy
 import json
 import logging
+import random
 import time
 from collections import defaultdict
 from types import coroutine
@@ -83,6 +84,7 @@ class AIChatbot(SlashbotCog):
                 "history": {"tokens": 0, "messages": [], "last_summary": ""},
                 "prompts": {
                     "tokens": DEFAULT_SYSTEM_TOKEN_COUNT,
+                    "system": DEFAULT_SYSTEM_PROMPT,
                     "messages": [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}],
                 },
             }
@@ -261,7 +263,10 @@ class AIChatbot(SlashbotCog):
         try:
             index = messages.index(message_to_find)
         except ValueError:
+            logger.debug("Failed to find reference message")
             return messages
+
+        logger.debug("Reference message found: %s", messages[: index + 1])
 
         return messages[: index + 1]
 
@@ -331,7 +336,7 @@ class AIChatbot(SlashbotCog):
             len(self.channel_histories[history_id]["prompts"]["messages"][1:]),
         )
 
-    def record_channel_history(self, history_id: int, user: str, message: str) -> None:
+    async def record_channel_history(self, history_id: int, user: str, message: str) -> None:
         """Record the history of messages in a channel.
 
         Parameters
@@ -343,7 +348,7 @@ class AIChatbot(SlashbotCog):
         message : str
             The content of the message sent by the user.
         """
-        message = f"{user if user != self.bot.user.display_name else 'Assistant'}: {message}"
+        message = f"{user if user != self.bot.user.display_name else 'Assistant (you)'}: {message}"
         num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
         self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
         # increment number of tokens of latest message
@@ -368,6 +373,22 @@ class AIChatbot(SlashbotCog):
             ][0]["tokens"]
             self.channel_histories[history_id]["history"]["messages"].pop(0)
 
+    async def respond_to_message(self, message: disnake.Message):
+        """Respond to a message.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to respond to.
+        """
+        history_id = self.get_history_id(message)
+        messages = [
+            {"role": "system", "content": self.channel_histories[history_id]["prompts"]["system"]},
+            {"role": "user", "content": message.clean_content},
+        ]
+        response, _ = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), messages)
+        await self.send_response_to_channel(response, message, True)
+
     # Listeners ----------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
@@ -383,7 +404,7 @@ class AIChatbot(SlashbotCog):
 
         # don't record bot interactions
         if message.type != disnake.MessageType.application_command:
-            self.record_channel_history(history_id, message.author.display_name, message.clean_content)
+            await self.record_channel_history(history_id, message.author.display_name, message.clean_content)
 
         # ignore other bot messages and itself
         if message.author.bot:
@@ -402,6 +423,9 @@ class AIChatbot(SlashbotCog):
             async with message.channel.typing():
                 ai_response = await self.get_chat_prompt_response(message)
                 await self.send_response_to_channel(ai_response, message, message_in_dm)  # In a DM, we won't @ the user
+
+        if random.random() <= App.get_config("AI_CHAT_RANDOM_RESPONSE"):
+            await self.respond_to_message(message)
 
     # Commands -----------------------------------------------------------------
 
@@ -501,6 +525,7 @@ class AIChatbot(SlashbotCog):
             )
 
         history_id = self.get_history_id(inter)
+        self.channel_histories[history_id]["prompts"]["system"] = prompt
         self.channel_histories[history_id]["prompts"]["messages"] = [{"role": "system", "content": prompt}]
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt[:1928]}",
@@ -534,6 +559,7 @@ class AIChatbot(SlashbotCog):
             The new system prompt to set.
         """
         history_id = self.get_history_id(inter)
+        self.channel_histories[history_id]["prompts"]["system"] = new_prompt
         self.channel_histories[history_id]["prompts"]["messages"] = [{"role": "system", "content": new_prompt}]
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{new_prompt}",
@@ -586,7 +612,7 @@ class AIChatbot(SlashbotCog):
         history_id = self.get_history_id(inter)
 
         prompt_name = "Unknown"
-        prompt = self.channel_histories[history_id]["prompts"]["messages"][0].get("content", None)
+        prompt = self.channel_histories[history_id]["prompts"]["system"]
         for name, text in PROMPT_CHOICES.items():
             if prompt == text:
                 prompt_name = name
