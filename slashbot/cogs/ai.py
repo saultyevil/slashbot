@@ -6,9 +6,11 @@ The purpose of this cog is to enable the bot to communicate with the OpenAI API
 and to generate responses to prompts given.
 """
 
+import asyncio
 import copy
 import json
 import logging
+import time
 from collections import defaultdict
 from types import coroutine
 
@@ -16,6 +18,7 @@ import disnake
 import openai
 import openai.error
 import openai.version
+import requests
 import tiktoken
 from disnake.ext import commands
 from watchdog.events import FileSystemEventHandler
@@ -37,16 +40,38 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 # this is all global so you can use it as a choice in interactions
-DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/prompt-girl.json")["prompt"]
+DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/prompt-discord.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
-TOKEN_COUNT_UNSET = -1
 PROMPT_CHOICES = create_prompt_dict()
 DEFAULT_SYSTEM_TOKEN_COUNT = len(
     tiktoken.encoding_for_model(App.get_config("AI_CHAT_MODEL")).encode(DEFAULT_SYSTEM_PROMPT)
 )
 
 
-class ArtificialChat(SlashbotCog):
+class PromptFileWatcher(FileSystemEventHandler):
+    """FileSystemEventHandler specifically for JSON files in the data/prompts
+    directory."""
+
+    def on_any_event(self, event):
+        global PROMPT_CHOICES  # pylint: disable=W0603
+
+        if event.is_directory:
+            return
+        if event.event_type in ["created", "modified"]:
+            if event.src_path.endswith(".json"):
+                prompt = read_in_prompt_json(event.src_path)
+                PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
+        if event.event_type == "deleted":
+            if event.src_path.endswith(".json"):
+                PROMPT_CHOICES = create_prompt_dict()
+
+
+observer = Observer()
+observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
+observer.start()
+
+
+class AIChatbot(SlashbotCog):
     """AI chat features powered by OpenAI."""
 
     def __init__(self, bot: SlashbotInterationBot):
@@ -575,27 +600,167 @@ class ArtificialChat(SlashbotCog):
         await inter.edit_original_message(content=response)
 
 
-class PromptFileWatcher(FileSystemEventHandler):
-    """FileSystemEventHandler specifically for JSON files in the data/prompts
-    directory."""
+MAX_ELAPSED_TIME = 300
+logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
-    def on_any_event(self, event):
-        global PROMPT_CHOICES  # pylint: disable=W0603
-
-        if event.is_directory:
-            return
-        if event.event_type in ["created", "modified"]:
-            if event.src_path.endswith(".json"):
-                prompt = read_in_prompt_json(event.src_path)
-                PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
-        if event.event_type == "deleted":
-            if event.src_path.endswith(".json"):
-                PROMPT_CHOICES = create_prompt_dict()
+HEADER = {
+    "accept": "application/json",
+    "content-type": "application/json",
+    "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
+}
 
 
-observer = Observer()
-observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
-observer.start()
+class AIImageGeneration(SlashbotCog):
+    """Cog for text to image generation using Monster API.
+
+    Possibly in the future, we'll use OpenAI instead.
+    """
+
+    def __init__(self, bot: SlashbotInterationBot):
+        super().__init__(bot)
+        self.running_tasks = {}
+
+    @staticmethod
+    def check_request_status(process_id: str) -> str:
+        """Check the progress of a request.
+
+        Parameters
+        ----------
+        process_id : str
+            The UUID for the process to check.
+
+        Returns
+        -------
+        str
+            If the process has finished, the URL to the finished process is
+            returned. Otherwise an empty string is returned.
+        """
+        headers = {
+            "accept": "application/json",
+            "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
+        }
+        response = requests.request(
+            "GET", f"https://api.monsterapi.ai/v1/status/{process_id}", headers=headers, timeout=5
+        )
+
+        response_data = json.loads(response.text)
+        response_status = response_data.get("status", None)
+
+        if response_status == "COMPLETED":
+            url = response_data["result"]["output"][0]
+        else:
+            url = ""
+
+        return url
+
+    @staticmethod
+    def send_image_request(prompt: str, steps: int, aspect_ratio: str) -> str:
+        """Send an image request to the API.
+
+        Parameters
+        ----------
+        prompt : str
+            The prompt to generate an image for.
+        steps : int
+            The number of sampling steps to use.
+        aspect_ratio : str
+            The aspect ratio of the image.
+
+        Returns
+        -------
+        str
+            The process ID if successful, or an empty string if unsuccessful.
+        """
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
+        }
+        payload = {
+            "prompt": prompt,
+            "samples": 1,
+            "steps": steps,
+            "aspect_ratio": aspect_ratio,
+        }
+        response = requests.request(
+            "POST",
+            "https://api.monsterapi.ai/v1/generate/txt2img",
+            headers=headers,
+            json=payload,
+            timeout=5,
+        )
+
+        response_data = json.loads(response.text)
+        process_id = response_data.get("process_id", "")
+
+        return process_id
+
+    @commands.cooldown(
+        rate=App.get_config("COOLDOWN_RATE"), per=App.get_config("COOLDOWN_STANDARD"), type=commands.BucketType.user
+    )
+    @commands.slash_command(description="Generate an image from a text prompt", dm_permission=False)
+    async def text_to_image(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        prompt: str = commands.Param(description="The prompt to generate an image for"),
+        steps: int = commands.Param(default=30, ge=30, lt=500, description="The number of sampling steps"),
+        aspect_ratio: str = commands.Param(
+            default="square", choices=["square", "landscape", "portrait"], description="The aspect ratio of the image"
+        ),
+    ):
+        """Generate an image from a text prompt.
+
+        Uses Monster API. The request to the API is not made asynchronously.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interaction to respond to.
+        prompt : str, optional
+            The prompt to generate an image for.
+        steps : int, optional
+            The number of sampling steps
+        aspect_ratio : str, optional
+            The aspect ratio of the image.
+        """
+        if inter.author.id in self.running_tasks:
+            return await inter.response.send_message("You already have a request processing.", ephemeral=True)
+
+        next_interaction = inter.followup
+        await inter.response.defer(ephemeral=True)
+
+        try:
+            process_id = self.send_image_request(prompt, steps, aspect_ratio)
+        except requests.exceptions.Timeout:
+            return inter.edit_original_message(content="The image generation API took too long to respond.")
+
+        if process_id == "":
+            return await inter.edit_original_message("There was an error when submitting your request.")
+
+        self.running_tasks[inter.author.id] = process_id
+        logger.debug("text2image: Request %s for user %s (%d)", process_id, inter.author.display_name, inter.author.id)
+        await inter.edit_original_message(content=f"Request submitted: {process_id}")
+
+        start = time.time()
+        elapsed_time = 0
+
+        while elapsed_time < MAX_ELAPSED_TIME:
+            try:
+                url = self.check_request_status(process_id)
+            except requests.exceptions.Timeout:
+                url = ""
+            if url:
+                self.running_tasks.pop(inter.author.id)
+                break
+
+            await asyncio.sleep(3)
+            elapsed_time = time.time() - start
+
+        if elapsed_time >= MAX_ELAPSED_TIME:
+            logger.error("text2image: timed out %s", process_id)
+            await next_interaction.send(f'Your request ({process_id}) for "{prompt}" timed out.', ephemeral=True)
+        else:
+            await next_interaction.send(f'{inter.author.display_name}\'s request for "{prompt}" {url}')
 
 
 def setup(bot: commands.InteractionBot):
@@ -606,4 +771,11 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    bot.add_cog(ArtificialChat(bot))
+    if App.get_config("OPENAI_API_KEY"):
+        bot.add_cog(AIChatbot(bot))
+    else:
+        logger.error("No API key found for OpenAI, unable to load AIChatBot cog")
+    if App.get_config("MONSTER_API_KEY"):
+        bot.add_cog(AIImageGeneration(bot))
+    else:
+        logger.error("No API key found for Monster AI, unable to load AIImageGeneration cog")

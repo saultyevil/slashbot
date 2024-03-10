@@ -7,7 +7,6 @@ scratch/
 data/*.txt
 
 # IDE specific directories
-
 .DS_Store
 .vscode
 .idea
@@ -61,3 +60,6 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+
+# ruff
+.ruff_cache
