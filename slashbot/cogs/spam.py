@@ -316,12 +316,11 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         """
         if post_id:
             response = requests.get(
-                "https://rule34.xxx//index.php?page=dapi&s=comment&q=index",
-                params={"post_id": f"{post_id}"},
+                f"https://api.rule34.xxx/index.php?page=dapi&s=comment&q=index&post_id={post_id}",
                 timeout=5,
             )
         else:
-            response = requests.get("https://rule34.xxx//index.php?page=dapi&s=comment&q=index", timeout=5)
+            response = requests.get("https://api.rule34.xxx//index.php?page=dapi&s=comment&q=index", timeout=5)
 
         if response.status_code != 200:
             return None, None, None
@@ -332,6 +331,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             tree = xml.etree.ElementTree.fromstring(response.content)
         except xml.etree.ElementTree.ParseError:
             return None, None, None
+
         post_comments = [
             (elem.get("body"), elem.get("creator"), elem.get("created_at")) for elem in tree.iter("comment")
         ]
