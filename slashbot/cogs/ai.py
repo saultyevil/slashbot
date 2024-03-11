@@ -421,7 +421,10 @@ class AIChatbot(SlashbotCog):
             async with message.channel.typing():
                 ai_response = await self.get_chat_prompt_response(message)
                 await self.send_response_to_channel(ai_response, message, message_in_dm)  # In a DM, we won't @ the user
+            return  # early return to avoid situation of randomly responding to itself
 
+        # If we get here, then there's a random chance the bot will respond to a
+        # "regular" message
         if random.random() <= App.get_config("AI_CHAT_RANDOM_RESPONSE"):
             await self.respond_to_message(message)
 
