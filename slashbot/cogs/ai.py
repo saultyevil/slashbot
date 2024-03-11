@@ -344,7 +344,9 @@ class AIChatbot(SlashbotCog):
         message : str
             The content of the message sent by the user.
         """
-        message = f"{disnake.utils.escape_markdown(user) if user != self.bot.user.display_name else 'Assistant (you)'}: {message}"
+        message = (
+            f"{disnake.utils.escape_markdown(user) if user != self.bot.user.display_name else 'Assistant'}: {message}"
+        )
         num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
         self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
         # increment number of tokens of latest message
@@ -465,9 +467,10 @@ class AIChatbot(SlashbotCog):
         summary_message, token_count = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), summary_prompt)
 
         # add summary to the prompt history too. not sure if we need to do this...
-        self.channel_histories[history_id]["prompts"]["messages"] += summary_prompt + [
-            {"role": "assistant", "content": summary_message}
-        ]
+        # self.channel_histories[history_id]["prompts"]["messages"] += summary_prompt + [
+        #     {"role": "assistant", "content": summary_message}
+        # ]
+        self.channel_histories[history_id]["prompts"]["messages"] += [{"role": "assistant", "content": summary_message}]
         self.channel_histories[history_id]["prompts"]["tokens"] += token_count
         self.channel_histories[history_id]["history"]["last_summary"] = f"{self.bot.user.name}: {summary_message}"
 
