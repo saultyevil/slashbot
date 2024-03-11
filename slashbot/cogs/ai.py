@@ -129,13 +129,9 @@ class AIChatbot(SlashbotCog):
             response_chunks = split_text_into_chunks(response, MAX_MESSAGE_LENGTH)
             for i, response_chunk in enumerate(response_chunks):
                 user_mention = obj.author.mention if not dont_tag_user else ""
-                await obj.channel.send(
-                    f"{user_mention if i == 0 else ''} {disnake.utils.escape_markdown(response_chunk)}"
-                )
+                await obj.channel.send(f"{user_mention if i == 0 else ''} {response_chunk}")
         else:
-            await obj.channel.send(
-                f"{obj.author.mention if not dont_tag_user else ''} {disnake.utils.escape_markdown(response)}"
-            )
+            await obj.channel.send(f"{obj.author.mention if not dont_tag_user else ''} {response}")
 
     @staticmethod
     def get_token_count_for_string(model: str, message: str) -> int:
@@ -297,17 +293,17 @@ class AIChatbot(SlashbotCog):
         prompt_messages.append({"role": "user", "content": clean_message})
 
         try:
-            ai_message, tokens_used = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), prompt_messages)
+            response, tokens_used = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), prompt_messages)
             self.channel_histories[history_id]["prompts"]["messages"] += [
                 {"role": "user", "content": clean_message},
-                {"role": "assistant", "content": ai_message},
+                {"role": "assistant", "content": response},
             ]
             self.channel_histories[history_id]["prompts"]["tokens"] = tokens_used
         except Exception as e:
             logger.exception("`get_chat_prompt_response` failed with %s", e)
-            ai_message = generate_markov_sentence()
+            response = generate_markov_sentence()
 
-        return ai_message
+        return response
 
     async def reduce_prompt_history(self, history_id: int | str) -> None:
         """Remove messages from a chat history.
@@ -348,7 +344,7 @@ class AIChatbot(SlashbotCog):
         message : str
             The content of the message sent by the user.
         """
-        message = f"{user if user != self.bot.user.display_name else 'Assistant (you)'}: {message}"
+        message = f"{disnake.utils.escape_markdown(user) if user != self.bot.user.display_name else 'Assistant (you)'}: {message}"
         num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
         self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
         # increment number of tokens of latest message
