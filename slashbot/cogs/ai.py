@@ -460,7 +460,7 @@ class AIChatbot(SlashbotCog):
                 if self.rate_limit_chat_response(message.author.id):
                     await self.send_response_to_channel(f"Stop abusing me, {message.author.mention}!", message, True)
                 else:
-                    ai_response = await self.get_chat_prompt_response(message.author.id)
+                    ai_response = await self.get_chat_prompt_response(message)
                     await self.send_response_to_channel(
                         ai_response, message, message_in_dm
                     )  # In a DM, we won't @ the user
