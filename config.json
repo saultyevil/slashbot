@@ -31,7 +31,9 @@
             "MAX_OUTPUT_TOKENS": 512,
             "MODEL_TEMPERATURE": 0.7,
             "GPT_MODEL": "gpt-3.5-turbo",
-            "RANDOM_RESPONSE_CHANCE": 1e-3
+            "RANDOM_RESPONSE_CHANCE": 1e-3,
+            "RESPONSE_RATE_LIMIT": 5,
+            "RATE_LIMIT_INTERVAL": 10
         }
     },
     "COOLDOWN": {

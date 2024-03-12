@@ -8,6 +8,7 @@ and to generate responses to prompts given.
 
 import asyncio
 import copy
+import datetime
 import json
 import logging
 import random
@@ -89,6 +90,9 @@ class AIChatbot(SlashbotCog):
                 },
             }
         )
+
+        # track user interactions with ai chat
+        self.user_cooldowns = defaultdict(lambda: {"count": 0, "last_interaction": datetime.datetime.now()})
 
     # Static -------------------------------------------------------------------
 
@@ -266,6 +270,40 @@ class AIChatbot(SlashbotCog):
 
         return messages[: index + 1]
 
+    def rate_limit_chat_response(self, user_id: int) -> bool:
+        """Check if a user is on cooldown or not.
+
+        Parameters
+        ----------
+        user_id : int
+            The id of the user to rate limit
+
+        Returns
+        -------
+        bool
+            Returns True if the user needs to be rate limited
+        """
+        current_time = datetime.datetime.now()
+        user_data = self.user_cooldowns[user_id]
+        time_difference = (current_time - user_data["last_interaction"]).seconds
+
+        # Check if exceeded rate limit
+        if user_data["count"] > App.get_config("AI_CHAT_RATE_LIMIT"):
+            # If exceeded rate limit, check if cooldown period has passed
+            if time_difference > App.get_config("AI_CHAT_RATE_INTERVAL"):
+                # reset count and update last_interaction time
+                user_data["count"] = 1
+                user_data["last_interaction"] = current_time
+                return False
+            else:
+                # still under cooldown
+                return True
+        else:
+            # hasn't exceeded rate limit, update count and last_interaction
+            user_data["count"] += 1
+            user_data["last_interaction"] = current_time
+            return False
+
     async def get_chat_prompt_response(self, message: disnake.Message) -> str:
         """Generate a response based on the given message.
 
@@ -419,8 +457,13 @@ class AIChatbot(SlashbotCog):
 
         if bot_mentioned or message_in_dm:
             async with message.channel.typing():
-                ai_response = await self.get_chat_prompt_response(message)
-                await self.send_response_to_channel(ai_response, message, message_in_dm)  # In a DM, we won't @ the user
+                if self.rate_limit_chat_response(message.author.id):
+                    await self.send_response_to_channel(f"Stop abusing me, {message.author.mention}!", message, True)
+                else:
+                    ai_response = await self.get_chat_prompt_response(message.author.id)
+                    await self.send_response_to_channel(
+                        ai_response, message, message_in_dm
+                    )  # In a DM, we won't @ the user
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a
