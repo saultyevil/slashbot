@@ -323,6 +323,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             response = requests.get("https://api.rule34.xxx//index.php?page=dapi&s=comment&q=index", timeout=5)
 
         if response.status_code != 200:
+            logger.error("rule34 comment api returned error code %d", response.status_code)
             return None, None, None
 
         # the response from the rule34 api is XML, so we have to try and parse
@@ -330,6 +331,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         try:
             tree = xml.etree.ElementTree.fromstring(response.content)
         except xml.etree.ElementTree.ParseError:
+            logger.error("failed to parse rule34 comment api")
             return None, None, None
 
         post_comments = [
@@ -337,6 +339,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         ]
 
         if not post_comments:
+            logger.error("failed to find comments in parsed rule34 comment api")
             return None, None, None
 
         comment, who, when = random.choice(post_comments)
