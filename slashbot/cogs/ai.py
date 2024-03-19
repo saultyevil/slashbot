@@ -613,6 +613,7 @@ class AIChatbot(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
             App.get_config("AI_CHAT_MODEL"), new_prompt
         )
+        logger.info("%s set the new prompt: %s", inter.author.display_name, new_prompt)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection")
