@@ -6,9 +6,7 @@
 import asyncio
 import json
 import logging
-import random
 import threading
-from pathlib import Path
 
 import disnake
 from disnake.ext import commands, tasks
@@ -39,15 +37,7 @@ class ScheduledPosts(SlashbotCog):
         self.random_channels = App.get_config("RANDOM_POST_CHANNELS")
         self.scheduled_posts = None
         self.get_scheduled_posts()
-        self.random_media_files = [
-            file for file in Path(App.get_config("RANDOM_MEDIA_DIRECTORY")).rglob("*") if not file.is_dir()
-        ]
-        logger.info("Random post channels: %s", self.random_channels)
-        logger.info("%d random media files found", len(self.random_media_files))
-
         self.post_loop.start()  # pylint: disable=no-member
-        self.post_random_media_file_loop.start()  # pylint: disable=no-member
-        # self.post_evil_wii_loop.start()  # pylint: disable=no-member
 
         self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
@@ -180,44 +170,6 @@ class ScheduledPosts(SlashbotCog):
     async def wait(self):
         """Wait for bot to be ready."""
         await self.bot.wait_until_ready()
-
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="random_image", description="send a random image")
-    async def random_image(self, inter: disnake.ApplicationCommandInteraction):
-        """Post a random image.
-
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            The command interaction.
-        """
-        if len(self.random_media_files) == 0:
-            await inter.response.send_message("Something bad has happened, there are no images loaded.", ephemeral=True)
-
-        await inter.response.defer()
-        await inter.edit_original_message(
-            content=f"{await self.async_get_markov_sentence('random')}",
-            file=disnake.File(random.choice(self.random_media_files)),
-        )
-
-    @tasks.loop(minutes=1)
-    async def post_random_media_file_loop(self):
-        """Posts a random piece of medium from a directory at a random
-        interval.
-        """
-        await self.bot.wait_until_ready()
-
-        sleep_for = random.randint(12 * 3600, 48 * 3600)
-        logger.info("Next random image in %.1f hours", sleep_for / 3600)
-        await asyncio.sleep(sleep_for)
-
-        # return after sleep to avoid return and calling every 1 sec
-        if len(self.random_media_files) == 0 or len(self.random_channels) == 0:
-            return
-
-        for channel_id in self.random_channels:
-            channel = await self.bot.fetch_channel(int(channel_id))
-            await channel.send(file=disnake.File(random.choice(self.random_media_files)))
 
 
 def setup(bot: commands.InteractionBot):
