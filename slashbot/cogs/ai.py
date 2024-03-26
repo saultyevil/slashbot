@@ -251,19 +251,25 @@ class AIChatbot(SlashbotCog):
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
                 message_to_find = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
+                logger.error("Unable to find `reply to` message in bot api")
                 return messages
+
+        # the bot will only ever respond to one person, so we can do something
+        # vile to remove the first word which is always a mention to the user
+        # it is responding to. This is not included in the prompt history.
+        message_to_find = " ".join(message_to_find.clean_content.split()[1:])
 
         # so now we have the message, let's try and find it in the messages
         # list. We munge it into the dict format for the OpenAI API, so we can
         # use the index method
         message_to_find = {
             "role": "assistant",
-            "content": message_to_find.clean_content.replace(f"@{self.bot.user.name}", ""),
+            "content": message_to_find,
         }
         try:
             index = messages.index(message_to_find)
         except ValueError:
-            logger.debug("Failed to find reference message")
+            logger.error("Failed to find `reply to` message in prompt history %s", message_to_find)
             return messages
 
         logger.debug("Reference message found: %s", messages[: index + 1])
