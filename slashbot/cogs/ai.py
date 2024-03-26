@@ -257,7 +257,7 @@ class AIChatbot(SlashbotCog):
         # the bot will only ever respond to one person, so we can do something
         # vile to remove the first word which is always a mention to the user
         # it is responding to. This is not included in the prompt history.
-        message_to_find = " ".join(message_to_find.clean_content.split()[1:])
+        message_to_find = " ".join(message_to_find.content.split()[1:])
 
         # so now we have the message, let's try and find it in the messages
         # list. We munge it into the dict format for the OpenAI API, so we can
