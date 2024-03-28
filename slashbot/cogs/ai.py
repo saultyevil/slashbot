@@ -585,10 +585,8 @@ class AIChatbot(SlashbotCog):
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(
-        name="set_custom_chat_prompt", description="Change the AI conversation prompt to one you write"
-    )
-    async def set_custom_prompt(
+    @commands.slash_command(name="set_chat_prompt", description="Change the AI conversation prompt to one you write")
+    async def set_chat_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
         new_prompt: str = commands.Param(description="The prompt to set"),
@@ -622,7 +620,7 @@ class AIChatbot(SlashbotCog):
     async def save_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        name: str = commands.Param(description="The name to save the prompt as"),
+        name: str = commands.Param(description="The name to save the prompt as", max_length=64, min_length=3),
         prompt: str = commands.Param(description="The prompt to save"),
     ):
         """Add a new prompt to the bot's available prompts.
@@ -636,8 +634,6 @@ class AIChatbot(SlashbotCog):
         prompt : str
             The contents of the prompt.
         """
-        if len(name) > 64:
-            return await inter.response.send_message("The prompt name should not exceed 64 characters.", ephemeral=True)
         await inter.response.defer(ephemeral=True)
         with open(f"data/prompts/prompt-{name}.json", "w", encoding="utf-8") as file_out:
             json.dump(
@@ -648,7 +644,7 @@ class AIChatbot(SlashbotCog):
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_chat_prompt", description="Print information about the current AI conversation")
-    async def echo_info(self, inter: disnake.ApplicationCommandInteraction):
+    async def show_chat_prompt(self, inter: disnake.ApplicationCommandInteraction):
         """Print the system prompt to the screen.
 
         Parameters
