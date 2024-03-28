@@ -224,7 +224,9 @@ class AIChatbot(SlashbotCog):
         """
         model = App.get_config("AI_CHAT_MODEL")
         current_prompt = self.channel_histories[history_id]["prompts"]["messages"][0]
-        self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(model, current_prompt)
+        self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
+	    model, current_prompt["content"]
+	)
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
 
     async def get_messages_from_reference_point(
