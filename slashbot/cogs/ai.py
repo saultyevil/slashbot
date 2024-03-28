@@ -40,7 +40,7 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 # this is all global so you can use it as a choice in interactions
-DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/prompt-discord.json")["prompt"]
+DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/clyde.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 PROMPT_CHOICES = create_prompt_dict()
 DEFAULT_SYSTEM_TOKEN_COUNT = len(DEFAULT_SYSTEM_PROMPT.split())
@@ -635,7 +635,7 @@ class AIChatbot(SlashbotCog):
             The contents of the prompt.
         """
         await inter.response.defer(ephemeral=True)
-        with open(f"data/prompts/prompt-{name}.json", "w", encoding="utf-8") as file_out:
+        with open(f"data/prompts/{name}.json", "w", encoding="utf-8") as file_out:
             json.dump(
                 {"name": name, "prompt": prompt},
                 file_out,
