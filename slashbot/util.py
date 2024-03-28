@@ -3,14 +3,19 @@
 
 """Various utility functions used through slashbot."""
 
+import base64
 import datetime
+import io
 import json
 import logging
 import pathlib
 import re
-from typing import Any, List
+from typing import Any, Dict, List, Union
+from urllib.parse import urlparse
 
 import disnake
+import httpx
+from PIL import Image
 
 from slashbot.config import App
 
@@ -158,18 +163,18 @@ def remove_emojis_from_string(string: str) -> str:
     """
     emoj = re.compile(
         "["
-        "\U0001F600-\U0001F64F"  # emoticons
-        "\U0001F300-\U0001F5FF"  # symbols & pictographs
-        "\U0001F680-\U0001F6FF"  # transport & map symbols
-        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
-        "\U00002500-\U00002BEF"  # chinese char
-        "\U00002702-\U000027B0"
-        "\U00002702-\U000027B0"
-        "\U000024C2-\U0001F251"
+        "\U0001f600-\U0001f64f"  # emoticons
+        "\U0001f300-\U0001f5ff"  # symbols & pictographs
+        "\U0001f680-\U0001f6ff"  # transport & map symbols
+        "\U0001f1e0-\U0001f1ff"  # flags (iOS)
+        "\U00002500-\U00002bef"  # chinese char
+        "\U00002702-\U000027b0"
+        "\U00002702-\U000027b0"
+        "\U000024c2-\U0001f251"
         "\U0001f926-\U0001f937"
         "\U00010000-\U0010ffff"
         "\u2640-\u2642"
-        "\u2600-\u2B55"
+        "\u2600-\u2b55"
         "\u200d"
         "\u23cf"
         "\u23e9"
@@ -322,3 +327,78 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int
         sleep_for_seconds = add_days_to_datetime(now, next_date, frequency)
 
     return sleep_for_seconds
+
+
+async def get_image_from_url(image_urls: str) -> List[Dict[str, str]]:
+    """Fetch images from the given URL(s) and return their base64-encoded data.
+
+    Parameters
+    ----------
+    image_urls : str or List[str]
+        A single image URL or a list of image URLs.
+
+    Returns
+    -------
+    List[Dict[str, str]]
+        A list of dictionaries, where each dictionary contains the base64-encoded image data string and the image type (file extension).
+    """
+    image_data = []
+    for url in image_urls:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url)
+                response.raise_for_status()
+                parsed_url = urlparse(url)
+                image_type = parsed_url.path.split(".")[-1]
+                image_type = "jpeg" if image_type == "jpg" else image_type  # Replace "jpg" with "jpeg"
+                image_data.append(
+                    {"type": "image/" + image_type, "image": base64.b64encode(response.content).decode("utf-8")}
+                )
+        except (httpx.HTTPError, httpx.HTTPStatusError) as exc:
+            logger.error("Error fetching image from %s: %s", url, exc)
+
+    return image_data
+
+
+def resize_image(input_image: Union[str, bytes], target_megapixels: float = 1.15) -> str:
+    """Rescale an image to a desired resolution in megapixels.
+
+    Parameters
+    ----------
+    input_image_data : str or bytes
+        Base64-encoded image data or raw image bytes.
+    target_megapixels : float, optional
+        Desired resolution in megapixels. Default is 1.15.
+
+    Returns
+    -------
+    str
+        Base64-encoded rescaled image data.
+    """
+    if isinstance(input_image, str):
+        img_bytes = base64.b64decode(input_image)
+    else:
+        img_bytes = input_image
+
+    # Open the image from bytes
+    img = Image.open(io.BytesIO(img_bytes))
+    width, height = img.size
+
+    # Calculate the current resolution in megapixels
+    current_megapixels = (width * height) / 1000000
+    scaling_factor = (target_megapixels / current_megapixels) ** 0.5
+    new_width = int(width * scaling_factor)
+    new_height = int(height * scaling_factor)
+
+    # Resize the image
+    resized_img = img.resize((new_width, new_height), resample=Image.LANCZOS)
+
+    # Save the resized image to bytes
+    output_bytes = io.BytesIO()
+    resized_img.save(output_bytes, format="PNG")
+    output_bytes.seek(0)
+
+    # Encode the resized image data to base64
+    output_image = base64.b64encode(output_bytes.getvalue()).decode("utf-8")
+
+    return output_image

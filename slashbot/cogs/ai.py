@@ -17,6 +17,7 @@ import random
 import time
 from collections import defaultdict
 from types import coroutine
+from typing import List, Tuple
 
 import anthropic
 import disnake
@@ -29,8 +30,9 @@ from slashbot.config import App
 from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import generate_markov_sentence
-from slashbot.util import (
+from slashbot.util import (  # resize_image,
     create_prompt_dict,
+    get_image_from_url,
     read_in_prompt_json,
     split_text_into_chunks,
 )
@@ -229,14 +231,14 @@ class AIChatbot(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
 
     async def get_messages_from_reference_point(
-        self, message_reference: disnake.MessageReference, messages: list
-    ) -> list:
+        self, message: disnake.Message, messages: list
+    ) -> Tuple[List[dict[str, str]], disnake.Message]:
         """Retrieve a list of messages up to a reference point.
 
         Parameters
         ----------
-        message_reference : disnake.MessageReference
-            The reference to the message from which to retrieve messages.
+        message : disnake.Message
+            The message containing the reference
         messages : list
             List of messages to search through.
 
@@ -246,30 +248,28 @@ class AIChatbot(SlashbotCog):
             List of messages up to the reference point.
         """
         # we need the message first, to find it in the messages list
-        message_to_find = message_reference.cached_message
-        if not message_to_find:
+        message_reference = message.reference
+        message_reference = message_reference.cached_message
+        if not message_reference:
             try:
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
-                message_to_find = await channel.fetch_message(message_reference.message_id)
+                message_reference = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
-                return messages
+                return messages, message
 
         # so now we have the message, let's try and find it in the messages
         # list. We munge it into the dict format for the OpenAI API, so we can
         # use the index method
-        message_to_find = {
+        to_find = {
             "role": "assistant",
-            "content": message_to_find.clean_content.replace(f"@{self.bot.user.name}", ""),
+            "content": message_reference.clean_content.replace(f"@{self.bot.user.name}", ""),
         }
         try:
-            index = messages.index(message_to_find)
+            index = messages.index(to_find)
         except ValueError:
-            logger.debug("Failed to find reference message")
-            return messages
+            return messages, message_reference
 
-        logger.debug("Reference message found: %s", messages[: index + 1])
-
-        return messages[: index + 1]
+        return messages[: index + 1], message_reference
 
     def rate_limit_chat_response(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
@@ -305,6 +305,41 @@ class AIChatbot(SlashbotCog):
             user_data["last_interaction"] = current_time
             return False
 
+    @staticmethod
+    async def get_attached_images(message: disnake.Message) -> List[str]:
+        """Retrieve the URLs for images attached or embedded in a Discord message.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The Discord message object to extract image URLs from.
+
+        Returns
+        -------
+        List[str]
+            A list of base64-encoded image data strings for the images attached or embedded in the message.
+        """
+        image_urls = []
+
+        if message.attachments:
+            for attachment in message.attachments:
+                if attachment.content_type.startswith("image/"):
+                    image_urls.append(attachment.url)
+        if message.embeds:
+            for embed in message.embeds:
+                if embed.image:
+                    image_urls.append(embed.image.url)
+        num_found = len(image_urls)
+        logger.debug("Found %d image URLs for message %d: %s", len(image_urls), message.id, image_urls)
+
+        if num_found == 0:
+            return []
+        images = await get_image_from_url(image_urls)
+        logger.debug("%d images have come out the other end: %s", len(images), [image["type"] for image in images])
+
+        # return [{"type": image["type"], "image": resize_image(image["image"])} for image in images]
+        return [{"type": image["type"], "image": image["image"]} for image in images]
+
     async def get_chat_prompt_response(self, message: disnake.Message) -> str:
         """Generate a response based on the given message.
 
@@ -319,22 +354,40 @@ class AIChatbot(SlashbotCog):
             The generated response.
         """
         history_id = self.get_history_id(message)
-        clean_message = message.clean_content.replace(f"@{self.bot.user.name}", "")
+        clean_content = message.clean_content.replace(f"@{self.bot.user.name}", "")
 
         # we work on a copy, to try and avoid race conditions
         prompt_messages = copy.deepcopy(self.channel_histories[history_id]["prompts"]["messages"])
 
         # if the response is a reply, let's find that message and present that as the last
         if message.reference:
-            prompt_messages = await self.get_messages_from_reference_point(message.reference, prompt_messages)
+            prompt_messages, message = await self.get_messages_from_reference_point(message, prompt_messages)
 
-        # append the latest prompt from a user
-        prompt_messages.append({"role": "user", "content": clean_message})
+        # find any attached images
+        images = await self.get_attached_images(message)
+
+        # append images and the prompt message
+        if images:
+            prompt_messages.append(
+                {
+                    "role": "user",
+                    "content": [  # add images
+                        {
+                            "type": "image",
+                            "source": {"type": "base64", "media_type": image["type"], "data": image["image"]},
+                        }
+                        for image in images
+                    ]
+                    + [{"type": "text", "text": clean_content}],  # add prompt
+                }
+            )
+        else:
+            prompt_messages.append({"role": "user", "content": clean_content})
 
         try:
             response, tokens_used = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), prompt_messages)
             self.channel_histories[history_id]["prompts"]["messages"] += [
-                {"role": "user", "content": clean_message},
+                {"role": "user", "content": clean_content},
                 {"role": "assistant", "content": response},
             ]
             self.channel_histories[history_id]["prompts"]["tokens"] = tokens_used
@@ -662,9 +715,9 @@ class AIChatbot(SlashbotCog):
                 prompt_name = name
 
         response = ""
-        response += f"**GPT model**: {App.get_config('AI_CHAT_MODEL')}\n"
+        response += f"**Model name**: {App.get_config('AI_CHAT_MODEL')}\n"
         response += f"**Token usage**: {self.channel_histories[history_id]['prompts']['tokens']}\n"
-        response += "**Prompt name**: " + prompt_name + "\n"
+        response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {prompt[:1024] if prompt else '???'}\n"
 
         await inter.edit_original_message(content=response)
