@@ -853,7 +853,7 @@ def setup(bot: commands.InteractionBot):
         bot.add_cog(AIChatbot(bot))
     else:
         logger.error("No API key found for OpenAI, unable to load AIChatBot cog")
-    if App.get_config("MONSTER_API_KEY"):
-        bot.add_cog(AIImageGeneration(bot))
-    else:
-        logger.error("No API key found for Monster AI, unable to load AIImageGeneration cog")
+    # if App.get_config("MONSTER_API_KEY"):
+    #     bot.add_cog(AIImageGeneration(bot))
+    # else:
+    #     logger.error("No API key found for Monster AI, unable to load AIImageGeneration cog")
