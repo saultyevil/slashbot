@@ -223,7 +223,9 @@ class AIChatbot(SlashbotCog):
         """
         model = App.get_config("AI_CHAT_MODEL")
         current_prompt = self.channel_histories[history_id]["prompts"]["messages"][0]
-        self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(model, current_prompt)
+        self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
+            model, current_prompt["content"]
+        )
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
 
     async def get_messages_from_reference_point(
@@ -511,11 +513,13 @@ class AIChatbot(SlashbotCog):
         ]
         summary_message, token_count = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), summary_prompt)
 
-        # add summary to the prompt history too. not sure if we need to do this...
-        # self.channel_histories[history_id]["prompts"]["messages"] += summary_prompt + [
-        #     {"role": "assistant", "content": summary_message}
-        # ]
-        self.channel_histories[history_id]["prompts"]["messages"] += [{"role": "assistant", "content": summary_message}]
+        self.channel_histories[history_id]["prompts"]["messages"] += [
+            {
+                "role": "user",
+                "content": "Summarise the the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
+            },
+            {"role": "assistant", "content": summary_message},
+        ]
         self.channel_histories[history_id]["prompts"]["tokens"] += token_count
         self.channel_histories[history_id]["history"]["last_summary"] = f"{self.bot.user.name}: {summary_message}"
 
