@@ -95,7 +95,7 @@ class App:
             "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
             "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
             "OWM_API_KEY": os.getenv("OWM_API_KEY"),
-            "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+            "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
             "MONSTER_API_KEY": os.getenv("MONSTER_API_KEY"),
             # File locations
             "DATABASE_LOCATION": Path(SLASH_CONFIG["FILES"]["DATABASE"]),

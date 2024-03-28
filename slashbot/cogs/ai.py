@@ -4,6 +4,8 @@
 """
 The purpose of this cog is to enable the bot to communicate with the OpenAI API
 and to generate responses to prompts given.
+
+TODO: need to tokenize messages for Claude somehow
 """
 
 import asyncio
@@ -16,12 +18,9 @@ import time
 from collections import defaultdict
 from types import coroutine
 
+import anthropic
 import disnake
-import openai
-import openai.error
-import openai.version
 import requests
-import tiktoken
 from disnake.ext import commands
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -36,7 +35,6 @@ from slashbot.util import (
     split_text_into_chunks,
 )
 
-openai.api_key = App.get_config("OPENAI_API_KEY")
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 COOLDOWN_USER = commands.BucketType.user
@@ -45,9 +43,7 @@ COOLDOWN_USER = commands.BucketType.user
 DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/prompt-discord.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 PROMPT_CHOICES = create_prompt_dict()
-DEFAULT_SYSTEM_TOKEN_COUNT = len(
-    tiktoken.encoding_for_model(App.get_config("AI_CHAT_MODEL")).encode(DEFAULT_SYSTEM_PROMPT)
-)
+DEFAULT_SYSTEM_TOKEN_COUNT = len(DEFAULT_SYSTEM_PROMPT.split())
 
 
 class PromptFileWatcher(FileSystemEventHandler):
@@ -78,6 +74,7 @@ class AIChatbot(SlashbotCog):
 
     def __init__(self, bot: SlashbotInterationBot):
         super().__init__(bot)
+        self.claude = anthropic.AsyncAnthropic(api_key=App.get_config("ANTHROPIC_API_KEY"))
 
         # todo: this data structure should be a class
         self.channel_histories = defaultdict(
@@ -138,7 +135,7 @@ class AIChatbot(SlashbotCog):
             await obj.channel.send(f"{obj.author.mention if not dont_tag_user else ''} {response}")
 
     @staticmethod
-    def get_token_count_for_string(model: str, message: str) -> int:
+    def get_token_count_for_string(_model: str, message: str) -> int:
         """Get the token count for a given message using a specified model.
 
         Parameters
@@ -153,7 +150,7 @@ class AIChatbot(SlashbotCog):
         int
             The count of tokens in the given message for the specified model.
         """
-        return len(tiktoken.encoding_for_model(model).encode(message))
+        return len(message.split())
 
     @staticmethod
     async def is_slash_interaction_highlight(message: disnake.Message) -> bool:
@@ -187,8 +184,7 @@ class AIChatbot(SlashbotCog):
         # if old_message is an interaction response, this will return true
         return isinstance(old_message.interaction, disnake.InteractionReference)
 
-    @staticmethod
-    async def get_api_response(model: str, messages: list) -> str:
+    async def get_api_response(self, model: str, messages: list) -> str:
         """Get the response from the OpenAI API for a given model and list of
         messages.
 
@@ -205,14 +201,17 @@ class AIChatbot(SlashbotCog):
         str
             The generated response message.
         """
-        response = await openai.ChatCompletion.acreate(
-            messages=messages,
+        response = await self.claude.messages.create(
+            system=messages[0]["content"],
+            messages=messages[1:],
             model=model,
             temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
             max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
         )
+        message = response.content[0].text
+        token_usage = response.usage.input_tokens + response.usage.output_tokens
 
-        return response["choices"][0]["message"]["content"], response["usage"]["total_tokens"]
+        return message, token_usage
 
     def reset_prompt_history(self, history_id: str | int):
         """Clear chat history and reset the token counter.
@@ -842,10 +841,10 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    if App.get_config("OPENAI_API_KEY"):
+    if App.get_config("ANTHROPIC_API_KEY"):
         bot.add_cog(AIChatbot(bot))
     else:
-        logger.error("No API key found for OpenAI, unable to load AIChatBot cog")
+        logger.error("No API key found for Anthropic, unable to load AIChatBot cog")
     if App.get_config("MONSTER_API_KEY"):
         bot.add_cog(AIImageGeneration(bot))
     else:
