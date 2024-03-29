@@ -20,7 +20,9 @@ from typing import List, Tuple
 
 import anthropic
 import disnake
+import openai
 import requests
+import tiktoken
 from disnake.ext import commands
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -42,6 +44,7 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 # this is all global so you can use it as a choice in interactions
+openai.api_key = App.get_config("OPENAI_API_KEY")
 DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/clyde.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 PROMPT_CHOICES = create_prompt_dict()
@@ -137,7 +140,7 @@ class AIChatbot(SlashbotCog):
             await obj.channel.send(f"{obj.author.mention if not dont_tag_user else ''} {response}")
 
     @staticmethod
-    def get_token_count_for_string(_model: str, message: str) -> int:
+    def get_token_count_for_string(model: str, message: str) -> int:
         """Get the token count for a given message using a specified model.
 
         Parameters
@@ -152,7 +155,10 @@ class AIChatbot(SlashbotCog):
         int
             The count of tokens in the given message for the specified model.
         """
-        return len(message.split())
+        if "claude-3" not in model:
+            return len(tiktoken.encoding_for_model(model).encode(message))
+        else:
+            return len(message.split())
 
     @staticmethod
     async def is_slash_interaction_highlight(message: disnake.Message) -> bool:
@@ -188,7 +194,11 @@ class AIChatbot(SlashbotCog):
 
     @staticmethod
     async def get_attached_images_for_message(message: disnake.Message) -> List[str]:
-        """Retrieve the URLs for images attached or embedded in a Discord message.
+        """Retrieve the URLs for images attached or embedded in a Discord
+        message.
+
+        If the current LLM model is OpenAI (e.g. gpt-3.5-turbo), then this will
+        return an empty string as it does not support vision.
 
         Parameters
         ----------
@@ -198,11 +208,14 @@ class AIChatbot(SlashbotCog):
         Returns
         -------
         List[str]
-            A list of base64-encoded image data strings for the images attached or embedded in the message.
+            A list of base64-encoded image data strings for the images attached
+            or embedded in the message.
         """
-        image_urls = []
+        if "claude-3" not in App.get_config("AI_CHAT_MODEL"):
+            logger.debug("current model does not have vision")
+            return []
 
-        logger.debug("Message: %s", message)
+        image_urls = []
         if message.attachments:
             for attachment in message.attachments:
                 if attachment.content_type.startswith("image/"):
@@ -225,8 +238,11 @@ class AIChatbot(SlashbotCog):
         return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
 
     async def get_api_response(self, model: str, messages: list) -> str:
-        """Get the response from the OpenAI API for a given model and list of
+        """Get the response from an LLM API for a given model and list of
         messages.
+
+        Allowed models are either claude-* from anthropic or chat-gpt from
+        openai.
 
         Parameters
         ----------
@@ -241,15 +257,25 @@ class AIChatbot(SlashbotCog):
         str
             The generated response message.
         """
-        response = await self.claude.messages.create(
-            system=messages[0]["content"],
-            messages=messages[1:],
-            model=model,
-            temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
-            max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
-        )
-        message = response.content[0].text
-        token_usage = response.usage.input_tokens + response.usage.output_tokens
+        if "claude-3" not in model:
+            response = await openai.ChatCompletion.acreate(
+                messages=messages,
+                model=model,
+                temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
+                max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
+            )
+            message = response["choices"][0]["message"]["content"]
+            token_usage = response["usage"]["total_tokens"]
+        else:
+            response = await self.claude.messages.create(
+                system=messages[0]["content"],
+                messages=messages[1:],
+                model=model,
+                temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
+                max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
+            )
+            message = response.content[0].text
+            token_usage = response.usage.input_tokens + response.usage.output_tokens
 
         return message, token_usage
 
@@ -897,7 +923,7 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
-    if App.get_config("ANTHROPIC_API_KEY"):
+    if App.get_config("ANTHROPIC_API_KEY") and App.get_config("OPENAI_API_KEY"):
         bot.add_cog(AIChatbot(bot))
     else:
         logger.error("No API key found for Anthropic, unable to load AIChatBot cog")
