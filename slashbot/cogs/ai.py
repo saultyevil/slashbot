@@ -4,7 +4,6 @@
 """
 The purpose of this cog is to enable the bot to communicate with the OpenAI API
 and to generate responses to prompts given.
-
 TODO: need to tokenize messages for Claude somehow
 """
 
@@ -187,6 +186,44 @@ class AIChatbot(SlashbotCog):
         # if old_message is an interaction response, this will return true
         return isinstance(old_message.interaction, disnake.InteractionReference)
 
+    @staticmethod
+    async def get_attached_images_for_message(message: disnake.Message) -> List[str]:
+        """Retrieve the URLs for images attached or embedded in a Discord message.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The Discord message object to extract image URLs from.
+
+        Returns
+        -------
+        List[str]
+            A list of base64-encoded image data strings for the images attached or embedded in the message.
+        """
+        image_urls = []
+
+        logger.debug("Message: %s", message)
+        if message.attachments:
+            for attachment in message.attachments:
+                if attachment.content_type.startswith("image/"):
+                    image_urls.append(attachment.url)
+        if message.embeds:
+            for embed in message.embeds:
+                if embed.image:  # for one image
+                    image_urls.append(embed.image.proxy_url)
+                elif embed.thumbnail:  # for multiple images
+                    image_urls.append(embed.thumbnail.proxy_url)
+        num_found = len(image_urls)
+        logger.debug("Found %d image URLs for message %d: %s", len(image_urls), message.id, image_urls)
+
+        if num_found == 0:
+            return []
+        images = await get_image_from_url(image_urls)
+        logger.debug("%d images have come out the other end: %s", len(images), [image["type"] for image in images])
+        logger.debug("image: data type %s", type(images[0]["image"]))
+
+        return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
+
     async def get_api_response(self, model: str, messages: list) -> str:
         """Get the response from the OpenAI API for a given model and list of
         messages.
@@ -306,41 +343,6 @@ class AIChatbot(SlashbotCog):
             user_data["last_interaction"] = current_time
             return False
 
-    @staticmethod
-    async def get_attached_images(message: disnake.Message) -> List[str]:
-        """Retrieve the URLs for images attached or embedded in a Discord message.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The Discord message object to extract image URLs from.
-
-        Returns
-        -------
-        List[str]
-            A list of base64-encoded image data strings for the images attached or embedded in the message.
-        """
-        image_urls = []
-
-        if message.attachments:
-            for attachment in message.attachments:
-                if attachment.content_type.startswith("image/"):
-                    image_urls.append(attachment.url)
-        if message.embeds:
-            for embed in message.embeds:
-                if embed.image:
-                    image_urls.append(embed.image.url)
-        num_found = len(image_urls)
-        logger.debug("Found %d image URLs for message %d: %s", len(image_urls), message.id, image_urls)
-
-        if num_found == 0:
-            return []
-        images = await get_image_from_url(image_urls)
-        logger.debug("%d images have come out the other end: %s", len(images), [image["type"] for image in images])
-        logger.debug("image: data type %s", type(images[0]["image"]))
-
-        return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
-
     async def get_chat_prompt_response(self, message: disnake.Message) -> str:
         """Generate a response based on the given message.
 
@@ -365,7 +367,7 @@ class AIChatbot(SlashbotCog):
             prompt_messages, message = await self.get_messages_from_reference_point(message, prompt_messages)
 
         # find any attached images
-        images = await self.get_attached_images(message)
+        images = await self.get_attached_images_for_message(message)
 
         # append images and the prompt message
         if images:
