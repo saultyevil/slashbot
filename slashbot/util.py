@@ -5,12 +5,12 @@
 
 import base64
 import datetime
-import io
 import json
 import logging
 import pathlib
 import re
-from typing import Any, Dict, List, Union
+from io import BytesIO
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 
 import disnake
@@ -360,45 +360,52 @@ async def get_image_from_url(image_urls: str) -> List[Dict[str, str]]:
     return image_data
 
 
-def resize_image(input_image: Union[str, bytes], target_megapixels: float = 1.15) -> str:
-    """Rescale an image to a desired resolution in megapixels.
+def resize_image(image_string: str, image_type: str, target_megapixels: float = 1.15) -> str:
+    """
+    Resizes an image to a target number of megapixels while maintaining the aspect ratio.
 
     Parameters
     ----------
-    input_image_data : str or bytes
-        Base64-encoded image data or raw image bytes.
+    image_string : str
+        The base64-encoded string representation of the image.
+    image_type : str
+        The MIME type of the image (e.g., "image/jpeg", "image/png").
     target_megapixels : float, optional
-        Desired resolution in megapixels. Default is 1.15.
+        The desired number of megapixels for the resized image. Default is 1.12.
 
     Returns
     -------
     str
-        Base64-encoded rescaled image data.
+        The base64-encoded string representation of the resized image.
     """
-    if isinstance(input_image, str):
-        img_bytes = base64.b64decode(input_image)
+    # Decode the base64-encoded string to a bytes object
+    image_bytes = base64.b64decode(image_string)
+
+    # Open the image from the bytes object
+    image = Image.open(BytesIO(image_bytes))
+
+    # Calculate the target dimensions based on the target megapixels and aspect ratio
+    width, height = image.size
+    aspect_ratio = width / height
+    target_pixels = target_megapixels * 1e6
+    if width * height > target_pixels:
+        if width > height:
+            target_width = int((target_pixels * aspect_ratio) ** 0.5)
+            target_height = int(target_width / aspect_ratio)
+        else:
+            target_height = int((target_pixels / aspect_ratio) ** 0.5)
+            target_width = int(target_height * aspect_ratio)
     else:
-        img_bytes = input_image
+        target_width = width
+        target_height = height
 
-    # Open the image from bytes
-    img = Image.open(io.BytesIO(img_bytes))
-    width, height = img.size
+    # Resize the image to the target dimensions
+    resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
-    # Calculate the current resolution in megapixels
-    current_megapixels = (width * height) / 1000000
-    scaling_factor = (target_megapixels / current_megapixels) ** 0.5
-    new_width = int(width * scaling_factor)
-    new_height = int(height * scaling_factor)
+    # Convert the resized image to a bytes object and encode it as a base64 string
+    buffer = BytesIO()
+    resized_image.save(buffer, format=image_type.split("/")[1].upper())
+    resized_image_bytes = buffer.getvalue()
+    resized_image_string = base64.b64encode(resized_image_bytes).decode("utf-8")
 
-    # Resize the image
-    resized_img = img.resize((new_width, new_height), resample=Image.LANCZOS)
-
-    # Save the resized image to bytes
-    output_bytes = io.BytesIO()
-    resized_img.save(output_bytes, format="PNG")
-    output_bytes.seek(0)
-
-    # Encode the resized image data to base64
-    output_image = base64.b64encode(output_bytes.getvalue()).decode("utf-8")
-
-    return output_image
+    return resized_image_string

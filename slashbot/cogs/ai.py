@@ -30,10 +30,11 @@ from slashbot.config import App
 from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import generate_markov_sentence
-from slashbot.util import (  # resize_image,
+from slashbot.util import (
     create_prompt_dict,
     get_image_from_url,
     read_in_prompt_json,
+    resize_image,
     split_text_into_chunks,
 )
 
@@ -231,7 +232,7 @@ class AIChatbot(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
 
     async def get_messages_from_reference_point(
-        self, message: disnake.Message, messages: list
+        self, message: disnake.Message, prompt_history: list
     ) -> Tuple[List[dict[str, str]], disnake.Message]:
         """Retrieve a list of messages up to a reference point.
 
@@ -249,27 +250,27 @@ class AIChatbot(SlashbotCog):
         """
         # we need the message first, to find it in the messages list
         message_reference = message.reference
-        message_reference = message_reference.cached_message
-        if not message_reference:
+        previous_message = message_reference.cached_message
+        if not previous_message:
             try:
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
-                message_reference = await channel.fetch_message(message_reference.message_id)
+                previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
-                return messages, message
+                return prompt_history, message
 
         # so now we have the message, let's try and find it in the messages
         # list. We munge it into the dict format for the OpenAI API, so we can
         # use the index method
         to_find = {
             "role": "assistant",
-            "content": message_reference.clean_content.replace(f"@{self.bot.user.name}", ""),
+            "content": previous_message.clean_content.replace(f"@{self.bot.user.name}", ""),
         }
         try:
-            index = messages.index(to_find)
+            index = prompt_history.index(to_find)
         except ValueError:
-            return messages, message_reference
+            return prompt_history, previous_message
 
-        return messages[: index + 1], message_reference
+        return prompt_history[: index + 1], previous_message
 
     def rate_limit_chat_response(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
@@ -336,9 +337,9 @@ class AIChatbot(SlashbotCog):
             return []
         images = await get_image_from_url(image_urls)
         logger.debug("%d images have come out the other end: %s", len(images), [image["type"] for image in images])
+        logger.debug("image: data type %s", type(images[0]["image"]))
 
-        # return [{"type": image["type"], "image": resize_image(image["image"])} for image in images]
-        return [{"type": image["type"], "image": image["image"]} for image in images]
+        return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
 
     async def get_chat_prompt_response(self, message: disnake.Message) -> str:
         """Generate a response based on the given message.
