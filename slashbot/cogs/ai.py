@@ -20,10 +20,10 @@ from typing import List, Tuple
 
 import anthropic
 import disnake
-import openai
 import requests
 import tiktoken
 from disnake.ext import commands
+from openai import AsyncOpenAI
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -44,7 +44,6 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 # this is all global so you can use it as a choice in interactions
-openai.api_key = App.get_config("OPENAI_API_KEY")
 DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/clyde.json")["prompt"]
 MAX_MESSAGE_LENGTH = 1920
 PROMPT_CHOICES = create_prompt_dict()
@@ -80,6 +79,7 @@ class AIChatbot(SlashbotCog):
     def __init__(self, bot: SlashbotInterationBot):
         super().__init__(bot)
         self.claude = anthropic.AsyncAnthropic(api_key=App.get_config("ANTHROPIC_API_KEY"))
+        self.chat_gpt = AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
 
         # todo: this data structure should be a class
         self.channel_histories = defaultdict(
@@ -258,14 +258,14 @@ class AIChatbot(SlashbotCog):
             The generated response message.
         """
         if "claude-3" not in model:
-            response = await openai.ChatCompletion.acreate(
+            response = await self.chat_gpt.chat.completions.create(
                 messages=messages,
                 model=model,
                 temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
                 max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
             )
-            message = response["choices"][0]["message"]["content"]
-            token_usage = response["usage"]["total_tokens"]
+            message = response.choices[0].message.content
+            token_usage = response.usage.total_tokens
         else:
             response = await self.claude.messages.create(
                 system=messages[0]["content"],
