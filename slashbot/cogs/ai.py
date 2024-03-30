@@ -529,14 +529,22 @@ class AIChatbot(SlashbotCog):
         if message.author.bot:
             return
 
-        # Don't respond to replies, or mentions, which have a reference to a
-        # slash command response or interaction
-        if await self.is_slash_interaction_highlight(message):
-            return
-
-        # only respond when mentioned or in DM
+        # only respond when mentioned or in DM. mention_string is used for slash
+        # commands
         bot_mentioned = self.bot.user in message.mentions
+        mention_string = self.bot.user.mention in message.content
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
+
+        logger.debug("message content %s", message.content)
+        logger.debug(
+            "bot_mentioned %s mention_string %s message_in_dm %s", bot_mentioned, mention_string, message_in_dm
+        )
+
+        # Don't respond to replies, or mentions, which have a reference to a
+        # slash command response or interaction UNLESS explicitly mentioned with
+        # an @
+        if await self.is_slash_interaction_highlight(message) and not mention_string:
+            return
 
         if bot_mentioned or message_in_dm:
             async with message.channel.typing():
