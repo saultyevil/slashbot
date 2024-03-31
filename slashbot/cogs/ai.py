@@ -292,6 +292,7 @@ class AIChatbot(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
             model, current_prompt["content"]
         )
+
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
 
     async def get_messages_from_reference_point(
@@ -321,6 +322,12 @@ class AIChatbot(SlashbotCog):
             except disnake.NotFound:
                 return prompt_history, message
 
+
+        # the bot will only ever respond to one person, so we can do something
+        # vile to remove the first word which is always a mention to the user
+        # it is responding to. This is not included in the prompt history.
+        message_to_find = " ".join(message_to_find.content.split()[1:])
+
         # so now we have the message, let's try and find it in the messages
         # list. We munge it into the dict format for the OpenAI API, so we can
         # use the index method
@@ -332,6 +339,7 @@ class AIChatbot(SlashbotCog):
             index = prompt_history.index(to_find)
         except ValueError:
             return prompt_history, previous_message
+
 
         return prompt_history[: index + 1], previous_message
 
@@ -706,6 +714,7 @@ class AIChatbot(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
             App.get_config("AI_CHAT_MODEL"), new_prompt
         )
+        logger.info("%s set the new prompt: %s", inter.author.display_name, new_prompt)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection")
@@ -936,7 +945,8 @@ def setup(bot: commands.InteractionBot):
     if App.get_config("ANTHROPIC_API_KEY") and App.get_config("OPENAI_API_KEY"):
         bot.add_cog(AIChatbot(bot))
     else:
-        logger.error("No API key found for Anthropic, unable to load AIChatBot cog")
+        logger.error("No API key found for Anthropic and OpenAI, unable to load AIChatBot cog")
+
     # if App.get_config("MONSTER_API_KEY"):
     #     bot.add_cog(AIImageGeneration(bot))
     # else:
