@@ -116,32 +116,57 @@ class Reminders(SlashbotCog):
 
         return future
 
-    async def replace_mentions_with_user_name(self, sentence: str) -> Union[List[str], str]:
-        """Replace mentions from a post with the user name.
+    async def replace_mentions_with_names(self, guild: disnake.Guild, sentence: str) -> Union[List[str], str]:
+        """Replace mentions from a post with the corresponding name.
 
         Parameters
         ----------
+        guild: disnake.Guild
+            The guild the reminder is being set in
         sentence: str
             The sentence to remove mentions from.
 
         Returns
         -------
-        user_ids: List[str]
-            A list of user ids in the sentence.
-        sentence: str
-            The sentence with mentions removed.
+        mentions_str: str
+            A string containing the original user and role mentions found in
+            the sentence.
+        modified_sentence: str
+            The sentence with user and role mentions replaced by names.
         """
-        user_ids = re.findall(r"\<@!(.*?)\>", sentence)
-        mention_pattern = "@!"
-        if not user_ids:
-            user_ids = re.findall(r"\<@(.*?)\>", sentence)
-            mention_pattern = "@"
+        mentions = []
+        modified_sentence = sentence
 
-        for user_id in user_ids:
-            user = await self.bot.fetch_user(user_id)
-            sentence = sentence.replace(f"<{mention_pattern}{user_id}>", f"@{user.name}")
+        # Replace user mentions
+        user_mentions = re.findall(r"<@!?(\d+)>", sentence)
+        for mention in user_mentions:
+            mentions.append(f"<@!{mention}>")
+            try:
+                if mention.startswith(str(self.bot.user.id)):
+                    name = self.bot.user.name
+                else:
+                    user = await self.bot.fetch_user(int(mention))
+                    name = user.name
+            except disnake.errors.HTTPException:
+                continue
 
-        return user_ids, sentence
+            modified_sentence = modified_sentence.replace(f"<@!{mention}>", f"@{name}")
+            modified_sentence = modified_sentence.replace(f"<@{mention}>", f"@{name}")
+
+        # Replace role mentions
+        role_mentions = re.findall(r"<@&(\d+)>", sentence)
+        for mention in role_mentions:
+            mentions.append(f"<@&{mention}>")
+            try:
+                role = guild.get_role(int(mention))
+                name = role.name
+            except AttributeError:
+                continue
+
+            modified_sentence = modified_sentence.replace(f"<@&{mention}>", f"@{name}")
+
+        mentions_str = " ".join(mentions)
+        return mentions_str, modified_sentence
 
     # Tasks --------------------------------------------------------------------
 
@@ -169,12 +194,7 @@ class Reminders(SlashbotCog):
                 message = f"{reminder_user.mention}"
 
                 if reminder["tagged_users"]:
-                    for user_id in reminder["tagged_users"]:
-                        if user_id == str(reminder["user_id"]):
-                            continue
-                        user_to_tag = await self.bot.fetch_user(int(user_id))
-                        if user_to_tag and user_to_tag.mention not in message:
-                            message += f" {user_to_tag.mention}"
+                    message = f"{reminder['tagged_users']} {message}"
 
                 remove_reminder(index)
                 await channel.send(message, embed=embed)
@@ -239,8 +259,7 @@ class Reminders(SlashbotCog):
             logger.debug("future < now: Current time %s", now)
             return await inter.response.send_message(f"{date_string} is in the past.", ephemeral=True)
 
-        # this is a bit of a hack, because the tagged users is a CSV string....
-        tagged_users, reminder = await self.replace_mentions_with_user_name(reminder)
+        tagged_users, reminder = await self.replace_mentions_with_names(inter.guild, reminder)
 
         add_reminder(
             {
