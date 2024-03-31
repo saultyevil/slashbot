@@ -407,7 +407,9 @@ class AIChatbot(SlashbotCog):
                         }
                         for image in images
                     ]
-                    + [{"type": "text", "text": clean_content}],  # add prompt
+                    + [
+                        {"type": "text", "text": clean_content if clean_content else "describe this image"}
+                    ],  # add prompt
                 }
             )
         else:
@@ -935,7 +937,7 @@ def setup(bot: commands.InteractionBot):
         bot.add_cog(AIChatbot(bot))
     else:
         logger.error("No API key found for Anthropic, unable to load AIChatBot cog")
-    if App.get_config("MONSTER_API_KEY"):
-        bot.add_cog(AIImageGeneration(bot))
-    else:
-        logger.error("No API key found for Monster AI, unable to load AIImageGeneration cog")
+    # if App.get_config("MONSTER_API_KEY"):
+    #     bot.add_cog(AIImageGeneration(bot))
+    # else:
+    #     logger.error("No API key found for Monster AI, unable to load AIImageGeneration cog")
