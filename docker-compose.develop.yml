@@ -12,6 +12,7 @@ services:
       - OPENAI_API_KEY
       - MONSTER_API_KEY
       - GOOGLE_API_KEY
+      - ANTHROPIC_API_KEY
       - TZ=Europe/London
     volumes:
       - .:/bot
