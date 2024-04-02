@@ -350,7 +350,8 @@ async def get_image_from_url(image_urls: str) -> List[Dict[str, str]]:
                 response.raise_for_status()
                 parsed_url = urlparse(url)
                 image_type = parsed_url.path.split(".")[-1]
-                image_type = "jpeg" if image_type == "jpg" else image_type  # Replace "jpg" with "jpeg"
+                if image_type == "webp" or image_type == "jpg":
+                    image_type = "jpeg"
                 image_data.append(
                     {"type": "image/" + image_type, "image": base64.b64encode(response.content).decode("utf-8")}
                 )
