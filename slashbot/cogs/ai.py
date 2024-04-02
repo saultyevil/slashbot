@@ -227,13 +227,10 @@ class AIChatbot(SlashbotCog):
                 elif embed.thumbnail:  # for multiple images
                     image_urls.append(embed.thumbnail.proxy_url)
         num_found = len(image_urls)
-        logger.debug("Found %d image URLs for message %d: %s", len(image_urls), message.id, image_urls)
-
         if num_found == 0:
             return []
+
         images = await get_image_from_url(image_urls)
-        logger.debug("%d images have come out the other end: %s", len(images), [image["type"] for image in images])
-        logger.debug("image: data type %s", type(images[0]["image"]))
 
         return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
 
