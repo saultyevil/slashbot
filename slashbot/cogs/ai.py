@@ -442,9 +442,8 @@ class AIChatbot(SlashbotCog):
 
         try:
             response, tokens_used = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), prompt_messages)
-            self.channel_histories[history_id]["prompts"]["messages"] += [
-                {"role": "user", "content": clean_content},
-                {"role": "assistant", "content": response},
+            self.channel_histories[history_id]["prompts"]["messages"] = prompt_messages + [
+                {"role": "assistant", "content": response}
             ]
             self.channel_histories[history_id]["prompts"]["tokens"] = tokens_used
         except Exception as e:
@@ -577,6 +576,7 @@ class AIChatbot(SlashbotCog):
                     await self.send_response_to_channel(
                         ai_response, message, message_in_dm
                     )  # In a DM, we won't @ the user
+            logger.debug("%s", self.channel_histories[history_id]["prompts"]["messages"])
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a
