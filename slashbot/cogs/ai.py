@@ -270,7 +270,7 @@ class AIChatbot(SlashbotCog):
             )
             # We also need a required text prompt -- if one isn't provided (
             # e.g. the message is just an image) then we add a vague message
-            messages += +[{"type": "text", "text": new_prompt if new_prompt else "describe the image(s)"}]
+            messages += [{"type": "text", "text": new_prompt if new_prompt else "describe the image(s)"}]
         else:
             messages.append({"role": "user", "content": new_prompt})
 
