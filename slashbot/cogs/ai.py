@@ -256,6 +256,8 @@ class AIChatbot(SlashbotCog):
         """
         if images:
             # add base64 encoded images
+            # We also need a required text prompt -- if one isn't provided (
+            # e.g. the message is just an image) then we add a vague message
             messages.append(
                 {
                     "role": "user",
@@ -265,12 +267,10 @@ class AIChatbot(SlashbotCog):
                             "source": {"type": "base64", "media_type": image["type"], "data": image["image"]},
                         }
                         for image in images
-                    ],
+                    ]
+                    + [{"type": "text", "text": new_prompt if new_prompt else "describe the image(s)"}],
                 }
             )
-            # We also need a required text prompt -- if one isn't provided (
-            # e.g. the message is just an image) then we add a vague message
-            messages += [{"type": "text", "text": new_prompt if new_prompt else "describe the image(s)"}]
         else:
             messages.append({"role": "user", "content": new_prompt})
 
