@@ -232,8 +232,7 @@ class AIChatbot(SlashbotCog):
 
         images = await get_image_from_url(image_urls)
 
-        # return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
-        return [{"type": "image/jpeg", "image": resize_image(image["image"], image["type"])} for image in images]
+        return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
 
     async def get_api_response(self, model: str, messages: list) -> str:
         """Get the response from an LLM API for a given model and list of
