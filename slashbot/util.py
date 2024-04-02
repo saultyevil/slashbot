@@ -404,7 +404,7 @@ def resize_image(image_string: str, image_type: str, target_megapixels: float = 
 
     # Convert the resized image to a bytes object and encode it as a base64 string
     buffer = BytesIO()
-    resized_image.save(buffer, format=image_type.split("/")[1].upper())
+    resized_image.save(buffer, format="JPEG")
     resized_image_bytes = buffer.getvalue()
     resized_image_string = base64.b64encode(resized_image_bytes).decode("utf-8")
 
