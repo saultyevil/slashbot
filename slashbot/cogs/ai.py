@@ -193,7 +193,7 @@ class AIChatbot(SlashbotCog):
         return isinstance(old_message.interaction, disnake.InteractionReference)
 
     @staticmethod
-    async def get_attached_images_for_message(message: disnake.Message) -> List[str]:
+    async def get_attached_images_for_message(model: str, message: disnake.Message) -> List[str]:
         """Retrieve the URLs for images attached or embedded in a Discord
         message.
 
@@ -211,8 +211,7 @@ class AIChatbot(SlashbotCog):
             A list of base64-encoded image data strings for the images attached
             or embedded in the message.
         """
-        if "claude-3" not in App.get_config("AI_CHAT_MODEL"):
-            logger.debug("current model does not have vision")
+        if "claude-3" not in model:  # only claude 3 has vision capability
             return []
 
         image_urls = []
@@ -396,7 +395,7 @@ class AIChatbot(SlashbotCog):
             prompt_messages, message = await self.get_messages_from_reference_point(message, prompt_messages)
 
         # find any attached images
-        images = await self.get_attached_images_for_message(message)
+        images = await self.get_attached_images_for_message(App.get_config("AI_CHAT_MODEL"), message)
 
         # append images and the prompt message
         if images:
