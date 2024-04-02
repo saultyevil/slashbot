@@ -16,7 +16,7 @@ import random
 import time
 from collections import defaultdict
 from types import coroutine
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import anthropic
 import disnake
@@ -233,6 +233,49 @@ class AIChatbot(SlashbotCog):
 
         return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
 
+    @staticmethod
+    def prepare_next_prompt(
+        new_prompt: str, images: List[Dict[str, str]], messages: List[Dict[str, str]]
+    ) -> List[Dict[str, str]]:
+        """Prepare the next prompt by adding images and the next prompt
+        requested.
+
+        Parameters
+        ----------
+        new_prompt : str
+            The new text prompt to add
+        images : List[Dict[str, str]]
+            A list of images to potentially add to the prompt history
+        messages : List[Dict[str, str]]
+            The list of prompts to add to
+
+        Returns
+        -------
+        List[Dict[str, str]]
+            The updated prompt messages
+        """
+        if images:
+            # add base64 encoded images
+            messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {"type": "base64", "media_type": image["type"], "data": image["image"]},
+                        }
+                        for image in images
+                    ],
+                }
+            )
+            # We also need a required text prompt -- if one isn't provided (
+            # e.g. the message is just an image) then we add a vague message
+            messages += +[{"type": "text", "text": new_prompt if new_prompt else "describe the image(s)"}]
+        else:
+            messages.append({"role": "user", "content": new_prompt})
+
+        return messages
+
     async def get_api_response(self, model: str, messages: list) -> str:
         """Get the response from an LLM API for a given model and list of
         messages.
@@ -275,7 +318,7 @@ class AIChatbot(SlashbotCog):
 
         return message, token_usage
 
-    def reset_prompt_history(self, history_id: str | int):
+    def reset_message_history(self, history_id: str | int):
         """Clear chat history and reset the token counter.
 
         Parameters
@@ -394,28 +437,8 @@ class AIChatbot(SlashbotCog):
         if message.reference:
             prompt_messages, message = await self.get_messages_from_reference_point(message, prompt_messages)
 
-        # find any attached images
         images = await self.get_attached_images_for_message(App.get_config("AI_CHAT_MODEL"), message)
-
-        # append images and the prompt message
-        if images:
-            prompt_messages.append(
-                {
-                    "role": "user",
-                    "content": [  # add images
-                        {
-                            "type": "image",
-                            "source": {"type": "base64", "media_type": image["type"], "data": image["image"]},
-                        }
-                        for image in images
-                    ]
-                    + [
-                        {"type": "text", "text": clean_content if clean_content else "describe this image"}
-                    ],  # add prompt
-                }
-            )
-        else:
-            prompt_messages.append({"role": "user", "content": clean_content})
+        prompt_messages = self.prepare_next_prompt(clean_content, images, prompt_messages)
 
         try:
             response, tokens_used = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), prompt_messages)
@@ -539,11 +562,6 @@ class AIChatbot(SlashbotCog):
         mention_string = self.bot.user.mention in message.content
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
-        logger.debug("message content %s", message.content)
-        logger.debug(
-            "bot_mentioned %s mention_string %s message_in_dm %s", bot_mentioned, mention_string, message_in_dm
-        )
-
         # Don't respond to replies, or mentions, which have a reference to a
         # slash command response or interaction UNLESS explicitly mentioned with
         # an @
@@ -630,7 +648,7 @@ class AIChatbot(SlashbotCog):
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
         """
-        self.reset_prompt_history(self.get_history_id(inter))
+        self.reset_message_history(self.get_history_id(inter))
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{DEFAULT_SYSTEM_PROMPT}",
             ephemeral=True,
@@ -936,12 +954,13 @@ def setup(bot: commands.InteractionBot):
     bot : commands.InteractionBot
         The bot to pass to the cog.
     """
+    # chat
     if App.get_config("ANTHROPIC_API_KEY") and App.get_config("OPENAI_API_KEY"):
         bot.add_cog(AIChatbot(bot))
     else:
         logger.error("No API key found for Anthropic and OpenAI, unable to load AIChatBot cog")
-
-    # if App.get_config("MONSTER_API_KEY"):
-    #     bot.add_cog(AIImageGeneration(bot))
-    # else:
-    #     logger.error("No API key found for Monster AI, unable to load AIImageGeneration cog")
+    # image generation
+    if App.get_config("MONSTER_API_KEY"):
+        bot.add_cog(AIImageGeneration(bot))
+    else:
+        logger.error("No API key found for Monster AI, unable to load AIImageGeneration cog")
