@@ -272,7 +272,7 @@ class AIChatbot(SlashbotCog):
                 }
             )
         else:
-            messages.append({"role": "user", "content": new_prompt})
+            messages.append({"role": "user", "content": new_prompt + App.get_config("AI_CHAT_PROMPT_APPEND")})
 
         return messages
 

@@ -34,7 +34,8 @@
             "_LLM_MODEL": "gpt-3.5-turbo",
             "RANDOM_RESPONSE_CHANCE": 1e-3,
             "RESPONSE_RATE_LIMIT": 5,
-            "RATE_LIMIT_INTERVAL": 10
+            "RATE_LIMIT_INTERVAL": 10,
+            "PROMPT_APPEND": ". Remember to keep your response brief, limiting to a few sentences unless a longer response is required."
         }
     },
     "COOLDOWN": {
