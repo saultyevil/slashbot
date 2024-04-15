@@ -193,12 +193,9 @@ class AIChatbot(SlashbotCog):
         return isinstance(old_message.interaction, disnake.InteractionReference)
 
     @staticmethod
-    async def get_attached_images_for_message(model: str, message: disnake.Message) -> List[str]:
+    async def get_attached_images_for_message(message: disnake.Message) -> List[str]:
         """Retrieve the URLs for images attached or embedded in a Discord
         message.
-
-        If the current LLM model is OpenAI (e.g. gpt-3.5-turbo), then this will
-        return an empty string as it does not support vision.
 
         Parameters
         ----------
@@ -537,7 +534,7 @@ class AIChatbot(SlashbotCog):
         if message.reference:
             prompt_messages, message = await self.get_prompt_history_from_reference_point(message, prompt_messages)
 
-        images = await self.get_attached_images_for_message(App.get_config("AI_CHAT_MODEL"), message)
+        images = await self.get_attached_images_for_message(message)
         if images:
             chat_model = App.get_config("AI_CHAT_VISION_MODEL")
         else:
