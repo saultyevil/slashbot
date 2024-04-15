@@ -211,9 +211,6 @@ class AIChatbot(SlashbotCog):
             A list of base64-encoded image data strings for the images attached
             or embedded in the message.
         """
-        if "claude-3" not in model:  # only claude 3 has vision capability
-            return []
-
         image_urls = []
         if message.attachments:
             for attachment in message.attachments:
