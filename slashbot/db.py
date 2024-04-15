@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """This module contains functions for accessing and modifying the slashbot
 database.
@@ -12,7 +11,6 @@ the database will likely remain small.
 import json
 import logging
 import pathlib
-from typing import List
 
 import disnake
 
@@ -35,6 +33,7 @@ def create_empty_database(location: str) -> None:
     ----------
     location : str
         The file location to save the database.
+
     """
     with open(location, "w", encoding="utf-8") as file_out:
         json.dump({"USERS": {}, "REMINDERS": []}, file_out)
@@ -47,6 +46,7 @@ def check_database_exists(location: str) -> None:
     ----------
     location : str
         The file location to check.
+
     """
     location = pathlib.Path(location)
     if not location.exists():
@@ -69,13 +69,14 @@ def load_database(location: str = None) -> dict:
     -------
     dict
         The database as a dict.
+
     """
     if not location:
         location = App.get_config("DATABASE_LOCATION")
 
     check_database_exists(location)
 
-    with open(location, "r", encoding="utf-8") as file_in:
+    with open(location, encoding="utf-8") as file_in:
         database = json.load(file_in)
 
     return database
@@ -101,6 +102,7 @@ def save_database(database: dict, location: str = None) -> dict:
     -------
     dict
         The database written to disk.
+
     """
     if not location:
         location = App.get_config("DATABASE_LOCATION")
@@ -128,6 +130,7 @@ def create_new_user(user: disnake.User | disnake.Member) -> dict:
     -------
     dict
         _description_
+
     """
     new_user = {
         "user_name": user.name,
@@ -154,6 +157,7 @@ def get_users() -> dict:
     -------
     dict
         A dict of users. The keys of the dict are user ids.
+
     """
     database = load_database()
     return database["USERS"]
@@ -173,6 +177,7 @@ def get_user(user: disnake.User | disnake.Member) -> dict:
     -------
     dict
         The information set by the user.
+
     """
     database = load_database()
 
@@ -194,6 +199,7 @@ def get_user_location(user: disnake.User | disnake.Member) -> None | str:
     -------
     None | str
         If no location is set None. Otherwise a string 'city, county_code'.
+
     """
     user = get_user(user)
     if not user["city"]:
@@ -202,13 +208,14 @@ def get_user_location(user: disnake.User | disnake.Member) -> None | str:
     return f"{user['city'].capitalize()}{', ' + user['country_code'].upper() if user['country_code'] else ''}"
 
 
-def get_twitter_convert_users() -> List[int]:
+def get_twitter_convert_users() -> list[int]:
     """Return a list of Discord user IDs where `convert_twitter_url` == True.
 
     Returns
     -------
     List[int]
         The list of user IDs where `convert_twitter_url` = True.
+
     """
     database = load_database()
     return [
@@ -231,6 +238,7 @@ def update_user(user: disnake.Member | disnake.User, updated_fields: dict) -> No
         The user to update.
     updated_fields : dict
         A dict containing all the fields with the updated field.
+
     """
     database = load_database()
     users = database["USERS"]
@@ -241,19 +249,20 @@ def update_user(user: disnake.Member | disnake.User, updated_fields: dict) -> No
 # Reminder functions -----------------------------------------------------------
 
 
-def get_all_reminders() -> List[dict]:
+def get_all_reminders() -> list[dict]:
     """Get all the remidners in a database.
 
     Returns
     -------
     List[dict]
         A list of all the reminders.
+
     """
     database = load_database()
     return database["REMINDERS"]
 
 
-def get_all_reminders_for_user(user_id: int) -> List[dict]:
+def get_all_reminders_for_user(user_id: int) -> list[dict]:
     """Get all reminders set for a given user.
 
     Parameters
@@ -265,6 +274,7 @@ def get_all_reminders_for_user(user_id: int) -> List[dict]:
     -------
     List[dict]
         A list of the reminders for this user.
+
     """
     return filter(lambda r: r["user_id"] == user_id, get_all_reminders())
 
@@ -276,6 +286,7 @@ def add_reminder(reminder: dict) -> None:
     ----------
     reminder : dict
         The reminder dict to add.
+
     """
     database = load_database()
     database["REMINDERS"].append(reminder)
@@ -289,6 +300,7 @@ def remove_reminder(index: int) -> None:
     ----------
     index : int
         The index of the reminder in the REMINDERS list.
+
     """
     database = load_database()
     database["REMINDERS"].pop(index)

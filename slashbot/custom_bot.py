@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
-"""Modified InteractionBot class.
-"""
+"""Modified InteractionBot class."""
 
 import logging
 from collections.abc import Iterable
@@ -43,6 +41,7 @@ class SlashbotInterationBot(commands.InteractionBot):
             The function to add to the cleanup routine.
         args: iterable | None
             The arguments to pass to the function.
+
         """
         self.cleanup_functions.append({"message": message, "function": function, "args": args})
 

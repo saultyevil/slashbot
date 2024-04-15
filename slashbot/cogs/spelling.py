@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """This cog contains commands and tasks to bully people."""
 
@@ -7,7 +6,6 @@ import asyncio
 import logging
 import re
 from collections import defaultdict
-from typing import List
 
 import disnake
 from disnake.ext import commands, tasks
@@ -32,7 +30,7 @@ class Spelling(SlashbotCog):
         super().__init__(bot)
         self.incorrect_spellings = defaultdict(
             lambda: defaultdict(
-                lambda: {"word_count": 0, "unknown_words": []}
+                lambda: {"word_count": 0, "unknown_words": []},
             ),  # incorrect_spellings[guild_id][user_id]
         )
         self.spellchecker = SpellChecker(case_sensitive=False)
@@ -68,7 +66,10 @@ class Spelling(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         word: str = commands.Param(
-            name="word", description="The word to add to the dictionary", min_length=2, max_length=64
+            name="word",
+            description="The word to add to the dictionary",
+            min_length=2,
+            max_length=64,
         ),
     ):
         """Add a word to the custom dictionary.
@@ -79,6 +80,7 @@ class Spelling(SlashbotCog):
             The interaction to respond to.
         word : str
             The word to add to the dictionary.
+
         """
         word_lower = word.lower()
         if word_lower in self.custom_words:
@@ -99,7 +101,10 @@ class Spelling(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         word: str = commands.Param(
-            name="word", description="The word to remove from the dictionary", min_length=2, max_length=64
+            name="word",
+            description="The word to remove from the dictionary",
+            min_length=2,
+            max_length=64,
         ),
     ):
         """Add a word to the custom dictionary.
@@ -110,6 +115,7 @@ class Spelling(SlashbotCog):
             The interaction to respond to.
         word : str
             The word to add to the dictionary.
+
         """
         word_lower = word.lower()
         if word_lower not in self.custom_words:
@@ -121,7 +127,7 @@ class Spelling(SlashbotCog):
         await inter.response.send_message(f"Removed '{word_lower}' from dictionary.", ephemeral=True)
 
     @staticmethod
-    def get_custom_words() -> List[str]:
+    def get_custom_words() -> list[str]:
         """Get a list of custom dictionary words.
 
         These are checked in addition to the unknown words in spellchecker.
@@ -130,11 +136,12 @@ class Spelling(SlashbotCog):
         -------
         List[str]
             The list of words in the custom dictionary.
+
         """
         try:
-            with open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "r", encoding="utf-8") as file_in:
+            with open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), encoding="utf-8") as file_in:
                 return list(set([line.strip() for line in file_in.readlines()]))
-        except IOError:
+        except OSError:
             logger.error("No dictionary found at %s", App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"))
             return []
 
@@ -151,6 +158,7 @@ class Spelling(SlashbotCog):
         -------
         str
             The cleaned up string.
+
         """
         # remove discord mentions
         clean_text = re.sub(r"@(\w+|\d+)", "", text.lower())
@@ -176,6 +184,7 @@ class Spelling(SlashbotCog):
         ----------
         message : disnake.Message
             The message to check.
+
         """
         if not App.get_config("SPELLCHECK_ENABLED"):
             return
@@ -234,14 +243,15 @@ class Spelling(SlashbotCog):
                 ]
                 actual_mistakes = [
                     f"{correction} [{mistake}]"
-                    for mistake, correction in zip(mistakes, corrections)
+                    for mistake, correction in zip(mistakes, corrections, strict=False)
                     if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake  # this re.sub removes all punctuation
                 ]
                 mistake_string = join_list_max_chars(actual_mistakes, 4096)
 
                 user = await self.bot.fetch_user(int(user_id))
                 embed = disnake.Embed(
-                    title=f"{user.display_name.capitalize()}'s spelling summary", description=mistake_string
+                    title=f"{user.display_name.capitalize()}'s spelling summary",
+                    description=mistake_string,
                 )
                 embed.add_field(name="Total words", value=f"{word_count}", inline=True)
                 embed.add_field(name="Mistakes", value=f"{len(mistakes)}", inline=True)
@@ -269,5 +279,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(Spelling(bot))

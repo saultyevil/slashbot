@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Slashbot is another discord bot using slash commands. The sole purpose of
 this bot is to sometimes annoy Gareth with its useful information.
@@ -10,7 +9,7 @@ import logging
 import os
 import time
 import traceback
-from typing import Coroutine
+from collections.abc import Coroutine
 
 import disnake
 from disnake.ext import commands
@@ -103,6 +102,7 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     ----------
     error: Exception
         The error that occurred.
+
     """
     stack = traceback.format_exception(type(error), error, error.__traceback__)
     logger.error("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))

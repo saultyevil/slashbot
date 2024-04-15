@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Global configuration class."""
 
@@ -17,7 +16,6 @@ from watchdog.observers import Observer
 
 def setup_logging():
     """Setup up the logger and log file."""
-
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
     logger = logging.getLogger(App.get_config("LOGGER_NAME"))
@@ -25,12 +23,16 @@ def setup_logging():
 
     if Path(App.get_config("LOGFILE_NAME")).parent.exists():
         file_handler = RotatingFileHandler(
-            filename=App.get_config("LOGFILE_NAME"), encoding="utf-8", maxBytes=int(5e5), backupCount=5
+            filename=App.get_config("LOGFILE_NAME"),
+            encoding="utf-8",
+            maxBytes=int(5e5),
+            backupCount=5,
         )
         file_handler.setFormatter(
             logging.Formatter(
-                "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)", "%Y-%m-%d %H:%M:%S"
-            )
+                "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)",
+                "%Y-%m-%d %H:%M:%S",
+            ),
         )
         logger.addHandler(file_handler)
 
@@ -73,7 +75,7 @@ class App:
 
         The purpose of this script is to populate the __conf class attribute.
         """
-        with open(os.getenv("SLASHBOT_CONFIG"), "r", encoding="utf-8") as file_in:
+        with open(os.getenv("SLASHBOT_CONFIG"), encoding="utf-8") as file_in:
             SLASH_CONFIG = json.load(file_in)
         CURRENT_CHAIN = cls._config.get("CURRENT_MARKOV_CHAIN", None)
         _config = {
@@ -144,6 +146,7 @@ class App:
         -------
         Any
             The value of the parameter requested.
+
         """
         try:
             return App._config[name]
@@ -160,6 +163,7 @@ class App:
             The name of the parameter to set.
         value : str
             The value of the parameter.
+
         """
         App._config[name] = value
 

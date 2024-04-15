@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Commands for sending spam/important messages to the chat."""
 
@@ -11,7 +10,7 @@ import time
 import xml
 from collections import defaultdict
 from types import coroutine
-from typing import Any, Union
+from typing import Any
 
 import disnake
 import requests
@@ -44,6 +43,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The bot object.
         attempts: int
             The number of attempts to generate a markov sentence.
+
         """
         super().__init__(bot)
 
@@ -83,8 +83,9 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
+
         """
-        with open(App.get_config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+        with open(App.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
             bad_words = file_in.readlines()
 
         bad_word = random.choice(bad_words).strip()
@@ -111,6 +112,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to respond to.
+
         """
         message = random.choice(["evil wii", "evil wii?", "have you seen this?", "||evil wii||", "||evil|| ||wii||"])
 
@@ -136,6 +138,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
+
         """
         if not App.get_config("ENABLE_MARKOV_TRAINING"):
             await inter.response.send_message("Updating the Markov Chain has been disabled.")
@@ -161,12 +164,13 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
+
         """
-        with open(App.get_config("GOD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+        with open(App.get_config("GOD_WORDS_FILE"), encoding="utf-8") as file_in:
             oracle_words = file_in.readlines()
 
         await inter.response.send_message(
-            f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}"
+            f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -175,7 +179,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self,
         inter: disnake.ApplicationCommandInteraction,
         query: str = commands.Param(
-            description="The search query as you would on rule34.xxx, e.g. furry+donald_trump or ada_wong."
+            description="The search query as you would on rule34.xxx, e.g. furry+donald_trump or ada_wong.",
         ),
     ):
         """Get an image from rule34 and a random comment.
@@ -186,6 +190,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
         query: str
             The properly formatted query to search for.
+
         """
         await inter.response.defer()
 
@@ -240,6 +245,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         ----------
         message: disnake.Message
             The message to record.
+
         """
         if not App.get_config("ENABLE_MARKOV_TRAINING"):
             return
@@ -255,6 +261,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         ----------
         payload: disnake.RawMessageDeleteEvent
             The payload containing the message.
+
         """
         if not App.get_config("ENABLE_MARKOV_TRAINING"):
             return
@@ -287,6 +294,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         -------
         bool
             Returns True if user on cooldown.
+
         """
         if self.user_cooldown[user_id]["count"] > self.cooldown_rate:
             if time.time() - self.user_cooldown[user_id]["time"] < self.cooldown_duration:
@@ -297,7 +305,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         return False
 
     @staticmethod
-    def get_comments_for_rule34_post(post_id: Union[int, str] = None) -> tuple[None, None, None] | tuple[Any, Any, str]:
+    def get_comments_for_rule34_post(post_id: int | str = None) -> tuple[None, None, None] | tuple[Any, Any, str]:
         """Get a random comment from a rule34.xxx post.
 
         Parameters
@@ -313,6 +321,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The name of the commenter.
         when: str
             A string of when the comment was created
+
         """
         if post_id:
             response = requests.get(
@@ -371,5 +380,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(Spam(bot))

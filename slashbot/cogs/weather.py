@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Commands for getting the weather."""
 
@@ -7,7 +6,6 @@ import datetime
 import json
 import logging
 from types import coroutine
-from typing import List, Tuple
 
 import disnake
 import requests
@@ -56,6 +54,7 @@ class Weather(SlashbotCog):
         ----------
         bot: commands.InteractionBot
             The bot object.
+
         """
         super().__init__(bot)
         self.geolocator = GoogleV3(
@@ -97,6 +96,7 @@ class Weather(SlashbotCog):
         -------
         str
             The URL top the icon.
+
         """
         return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
@@ -113,6 +113,7 @@ class Weather(SlashbotCog):
         ------
         ValueError
             Raised when an unknown unit system is passed
+
         """
         if units not in WEATHER_UNITS:
             raise ValueError(f"Unknown weather units {units}")
@@ -139,13 +140,14 @@ class Weather(SlashbotCog):
         -------
         str
             The processed address.
+
         """
         locality = next((comp["long_name"] for comp in raw if "locality" in comp["types"]), "")
         country = next((comp["short_name"] for comp in raw if "country" in comp["types"]), "")
 
         return f"{locality}, {country}"
 
-    def get_weather_for_location(self, location: str, units: str, extract_type: str | List | Tuple) -> Tuple[str, dict]:
+    def get_weather_for_location(self, location: str, units: str, extract_type: str | list | tuple) -> tuple[str, dict]:
         """Query the OpenWeatherMap API for the weather.
 
         Parameters
@@ -163,6 +165,7 @@ class Weather(SlashbotCog):
         Tuple
             The location, as from the API, and the weather requested as a dict
             of the key provided in extract_type.
+
         """
         location = self.geolocator.geocode(location, region="GB")
 
@@ -209,13 +212,19 @@ class Weather(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         user_location: str = commands.Param(
-            name="location", description="The city to get weather at, default is your saved location.", default=None
+            name="location",
+            description="The city to get weather at, default is your saved location.",
+            default=None,
         ),
         forecast_type: str = commands.Param(
-            description="The type of forecast to return.", default="daily", choices=FORECAST_TYPES
+            description="The type of forecast to return.",
+            default="daily",
+            choices=FORECAST_TYPES,
         ),
         units: str = commands.Param(
-            description="The units to return weather readings in.", default="mixed", choices=WEATHER_UNITS
+            description="The units to return weather readings in.",
+            default="mixed",
+            choices=WEATHER_UNITS,
         ),
         amount: int = commands.Param(description="The number of results to return.", default=4, gt=0, lt=7),
     ) -> coroutine:
@@ -234,6 +243,7 @@ class Weather(SlashbotCog):
         amount: int
             The number of items to return the forecast for, e.g. 4 days or 4
             hours.
+
         """
         await inter.response.defer()
 
@@ -241,7 +251,8 @@ class Weather(SlashbotCog):
             user_location = get_user_location(inter.author)
             if user_location is None:
                 return await deferred_error_message(
-                    inter, "You need to either specify a city, or set your city and/or country using /set_info."
+                    inter,
+                    "You need to either specify a city, or set your city and/or country using /set_info.",
                 )
 
         try:
@@ -280,7 +291,7 @@ class Weather(SlashbotCog):
             )
 
         embed.set_footer(
-            text=f"{await self.async_get_markov_sentence('forecast')}\n(You can set your location using /set_info)"
+            text=f"{await self.async_get_markov_sentence('forecast')}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weater_icon_url(forecast[0]["weather"][0]["icon"]))
 
@@ -292,10 +303,14 @@ class Weather(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         user_location: str = commands.Param(
-            name="location", description="The city to get weather for, default is your saved location.", default=None
+            name="location",
+            description="The city to get weather for, default is your saved location.",
+            default=None,
         ),
         units: str = commands.Param(
-            description="The units to return weather readings in.", default="mixed", choices=WEATHER_UNITS
+            description="The units to return weather readings in.",
+            default="mixed",
+            choices=WEATHER_UNITS,
         ),
     ) -> coroutine:
         """Get the weather for a location.
@@ -308,6 +323,7 @@ class Weather(SlashbotCog):
             The location to get the weather for.
         units: str
             The units to use, either metric or imperial.
+
         """
         await inter.response.defer()
 
@@ -315,7 +331,8 @@ class Weather(SlashbotCog):
             user_location = get_user_location(inter.author)
             if user_location is None:
                 return await deferred_error_message(
-                    inter, "You need to specify a city, or set your city and/or country using /set_info."
+                    inter,
+                    "You need to specify a city, or set your city and/or country using /set_info.",
                 )
 
         try:
@@ -339,7 +356,9 @@ class Weather(SlashbotCog):
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.add_field(
-            name="Description", value=current_weather["weather"][0]["description"].capitalize(), inline=False
+            name="Description",
+            value=current_weather["weather"][0]["description"].capitalize(),
+            inline=False,
         )
         if weather_alerts:
             now = datetime.datetime.now()
@@ -371,7 +390,7 @@ class Weather(SlashbotCog):
         )
 
         embed.set_footer(
-            text=f"{await self.async_get_markov_sentence('weather')}\n(You can set your location using /set_info)"
+            text=f"{await self.async_get_markov_sentence('weather')}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weater_icon_url(current_weather["weather"][0]["icon"]))
 
@@ -385,5 +404,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(Weather(bot))

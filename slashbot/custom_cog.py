@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Custom Cog class."""
 
@@ -32,7 +31,8 @@ class SlashbotCog(commands.Cog):
     # Before command invokes ---------------------------------------------------
 
     async def cog_before_slash_command_invoke(
-        self, inter: disnake.ApplicationCommandInteraction
+        self,
+        inter: disnake.ApplicationCommandInteraction,
     ) -> disnake.ApplicationCommandInteraction:
         """Reset the cooldown for some users and servers.
 
@@ -40,6 +40,7 @@ class SlashbotCog(commands.Cog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
+
         """
         if inter.guild and inter.guild.id not in App.get_config("COOLDOWN_SERVERS"):
             return inter.application_command.reset_cooldown(inter)
@@ -59,7 +60,9 @@ class SlashbotCog(commands.Cog):
             if len(seed_sentences) <= App.get_config("PREGEN_REGENERATE_LIMIT"):
                 # logger.debug("Regenerating sentences for seed word %s", seed_word)
                 self.markov_sentences[seed_word] = await async_generate_list_of_sentences_with_seed_word(
-                    MARKOV_MODEL, seed_word, App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT")
+                    MARKOV_MODEL,
+                    seed_word,
+                    App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
                 )
 
     @regenerate_markov_sentences.before_loop
@@ -84,6 +87,7 @@ class SlashbotCog(commands.Cog):
         -------
         str
             The generated sentence.
+
         """
         if seed_word not in self.markov_sentences:
             if self.bot.markov_gen_on:
@@ -112,6 +116,7 @@ class SlashbotCog(commands.Cog):
         -------
         str
             The generated sentence.
+
         """
         if seed_word not in self.markov_sentences:
             if self.bot.markov_gen_on:

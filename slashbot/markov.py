@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
-"""Markov chain module
-"""
+"""Markov chain module"""
 
 import logging
 import pickle
 import re
 import shutil
 import string
+from collections.abc import Coroutine
 from pathlib import Path
-from typing import Coroutine, Dict, List
 
 import disnake
 
@@ -25,7 +23,7 @@ MARKOV_MODEL = None
 # Private functions ------------------------------------------------------------
 
 
-def __clean_sentences_for_learning(sentences: List[str]) -> List[str]:
+def __clean_sentences_for_learning(sentences: list[str]) -> list[str]:
     """Clean up a list of sentences for learning.
 
     This will remove empty strings, messages which start with punctuation
@@ -40,6 +38,7 @@ def __clean_sentences_for_learning(sentences: List[str]) -> List[str]:
     -------
     List[str]
         The cleaned up list of sentences.
+
     """
     clean_sentences = []
 
@@ -79,6 +78,7 @@ def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.
     -------
     markovify.Text
         The Markov Chain model loaded.
+
     """
     if not isinstance(str, Path):
         chain_location = Path(chain_location)
@@ -97,7 +97,7 @@ def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.
                 shutil.copy2(str(chain_location) + ".bak", chain_location)
                 model = load_markov_model(chain_location, state_size)  # the recursion might be a bit spicy here
     else:
-        raise IOError(f"No chain at {chain_location}")
+        raise OSError(f"No chain at {chain_location}")
 
     App.set_config("CURRENT_MARKOV_CHAIN", chain_location)
 
@@ -121,6 +121,7 @@ def generate_markov_sentence(model: markovify.Text = None, seed_word: str = None
     -------
     str
         The generated sentence
+
     """
     if not model:
         model = MARKOV_MODEL
@@ -158,7 +159,7 @@ def generate_markov_sentence(model: markovify.Text = None, seed_word: str = None
 async def update_markov_chain_for_model(
     inter: disnake.ApplicationCommandInteraction | None,
     model: markovify.Text,
-    new_messages: List[str],
+    new_messages: list[str],
     save_location: str | Path,
 ) -> Coroutine | None | markovify.Text:
     """Update a Markov chain model.
@@ -181,6 +182,7 @@ async def update_markov_chain_for_model(
     Coroutine | None
         Either the updated model, a co-routine for a interaction, or None
         when no interaction is passed and a model could not be updated.
+
     """
     if not isinstance(save_location, Path):
         save_location = Path(save_location)
@@ -191,7 +193,7 @@ async def update_markov_chain_for_model(
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
         logger.info("No sentences to update chain with")
-        return
+        return None
 
     messages = __clean_sentences_for_learning(new_messages)
     num_messages = len(messages)
@@ -200,7 +202,7 @@ async def update_markov_chain_for_model(
         if inter:
             return await deferred_error_message(inter, "No new messages to update chain with.")
         logger.info("No sentences to update chain with")
-        return
+        return None
 
     shutil.copy2(save_location, str(save_location) + ".bak")
     try:
@@ -209,7 +211,7 @@ async def update_markov_chain_for_model(
         if inter:
             await deferred_error_message(inter, "The interim model failed to train.")
         logger.error("The interim model failed to train.")
-        return
+        return None
 
     combined_chain = markovify.combine([model.chain, new_model.chain])
     with open(save_location, "wb") as file_out:
@@ -225,7 +227,7 @@ async def update_markov_chain_for_model(
     return model
 
 
-def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: str, amount: int) -> List[str]:
+def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: str, amount: int) -> list[str]:
     """Generates a list of markov generated sentences for a specific key word.
 
     Parameters
@@ -241,13 +243,16 @@ def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: 
     -------
     List[str]
         The generated sentences.
+
     """
     return [generate_markov_sentence(model, seed_word) for _ in range(amount)]
 
 
 def generate_sentences_for_seed_words(
-    model: markovify.Text, seed_words: List[str], amount: int
-) -> Dict[str, List[str]]:
+    model: markovify.Text,
+    seed_words: list[str],
+    amount: int,
+) -> dict[str, list[str]]:
     """Create a dictionary containing markov generated sentences, where the keys
     are seed words and the values are a list of sentences.
 
@@ -264,6 +269,7 @@ def generate_sentences_for_seed_words(
     -------
     Dict[List[str]]
         The generated dictionary.
+
     """
     return {seed_word: generate_list_of_sentences_with_seed_word(model, seed_word, amount) for seed_word in seed_words}
 
@@ -285,13 +291,16 @@ async def async_generate_sentence(model: markovify.Text = None, seed_word: str =
     -------
     str
         The generated sentence
+
     """
     return generate_markov_sentence(model, seed_word, attempts)
 
 
 async def async_generate_list_of_sentences_with_seed_word(
-    model: markovify.Text, seed_word: str, amount: int
-) -> List[str]:
+    model: markovify.Text,
+    seed_word: str,
+    amount: int,
+) -> list[str]:
     """Generates a list of markov generated sentences for a specific key word.
 
     Parameters
@@ -307,13 +316,16 @@ async def async_generate_list_of_sentences_with_seed_word(
     -------
     List[str]
         The generated sentences.
+
     """
     return generate_list_of_sentences_with_seed_word(model, seed_word, amount)
 
 
 async def async_generate_sentences_for_seed_words(
-    model: markovify.Text, seed_words: List[str], amount: int
-) -> Dict[str, List[str]]:
+    model: markovify.Text,
+    seed_words: list[str],
+    amount: int,
+) -> dict[str, list[str]]:
     """Create a dictionary containing markov generated sentences, where the keys
     are seed words and the values are a list of sentences.
 
@@ -330,5 +342,6 @@ async def async_generate_sentences_for_seed_words(
     -------
     Dict[List[str]]
         The generated dictionary.
+
     """
     return await async_generate_sentences_for_seed_words(model, seed_words, amount)

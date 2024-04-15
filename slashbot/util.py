@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Various utility functions used through slashbot."""
 
@@ -10,7 +9,7 @@ import logging
 import pathlib
 import re
 from io import BytesIO
-from typing import Any, Dict, List
+from typing import Any
 from urllib.parse import urlparse
 
 import disnake
@@ -23,7 +22,8 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 async def send_cooldown_message(
-    channel: disnake.TextChannel | disnake.DMChannel, author: disnake.User | disnake.Member
+    channel: disnake.TextChannel | disnake.DMChannel,
+    author: disnake.User | disnake.Member,
 ) -> None:
     """Respond to a user on cooldown.
 
@@ -35,13 +35,13 @@ async def send_cooldown_message(
         The channel to send the message to
     author
         The user to respond to
+
     """
     await channel.send(f"Stop abusing me {author.mention}!")
 
 
 def split_text_into_chunks(text: str, chunk_length: int) -> list:
-    """
-    Split text into smaller chunks of a set length while preserving sentences.
+    """Split text into smaller chunks of a set length while preserving sentences.
 
     Parameters
     ----------
@@ -54,6 +54,7 @@ def split_text_into_chunks(text: str, chunk_length: int) -> list:
     -------
     list
         A list of strings where each string represents a chunk of the text.
+
     """
     chunks = []
     current_chunk = ""
@@ -78,7 +79,7 @@ def split_text_into_chunks(text: str, chunk_length: int) -> list:
     return chunks
 
 
-def join_list_max_chars(words: List[str], max_chars: int) -> str:
+def join_list_max_chars(words: list[str], max_chars: int) -> str:
     """Join a list of words into a comma-separated list.
 
     Parameters
@@ -92,6 +93,7 @@ def join_list_max_chars(words: List[str], max_chars: int) -> str:
     -------
     str
         The joined words with "..." at the end if max_chars is hit
+
     """
     result = ""
     current_length = 0
@@ -126,6 +128,7 @@ def convert_string_to_lower(_inter: disnake.ApplicationCommandInteraction, varia
     Any :
         If a string was passed, the lower version of the string is returned.
         Otherwise the original variable is returned.
+
     """
     return variable.lower() if isinstance(variable, str) else variable
 
@@ -144,6 +147,7 @@ def convert_yes_no_to_bool(_inter: disnake.ApplicationCommandInteraction, choice
     -------
     bool
         True or False depending on yes or no.
+
     """
     return True if choice.lower() == "yes" else False
 
@@ -160,6 +164,7 @@ def remove_emojis_from_string(string: str) -> str:
     -------
     str
         _description_
+
     """
     emoj = re.compile(
         "["
@@ -198,6 +203,7 @@ def convert_radial_to_cardinal_direction(degrees: float) -> str:
     Returns
     -------
     The cardinal direction as a string.
+
     """
     directions = [
         "N",
@@ -228,7 +234,7 @@ def read_in_prompt_json(filepath: str | pathlib.Path) -> dict:
         "prompt",
     )
 
-    with open(filepath, "r", encoding="utf-8") as prompt_in:
+    with open(filepath, encoding="utf-8") as prompt_in:
         prompt = json.load(prompt_in)
         if not all(key in prompt for key in required_keys):
             raise OSError(f"{filepath} is missing either 'name' or 'prompt' key")
@@ -249,7 +255,9 @@ def create_prompt_dict() -> dict:
 
 
 def add_days_to_datetime(
-    now: datetime.datetime, original_date: datetime.datetime, days_to_add: float
+    now: datetime.datetime,
+    original_date: datetime.datetime,
+    days_to_add: float,
 ) -> datetime.datetime:
     """Add a week to a datetime object.
 
@@ -265,6 +273,7 @@ def add_days_to_datetime(
     Returns
     -------
     A datetime object a week after the given one.
+
     """
     if days_to_add < 0:
         raise ValueError("Invalid value for days_to_add, cannot be < 0")
@@ -306,6 +315,7 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int
     -------
     int
         The time to sleep for in seconds.
+
     """
     if frequency < 0:
         raise ValueError("Invalid value for frequency, cannot be < 0")
@@ -319,7 +329,12 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int
 
     day_delta = now + datetime.timedelta(days=(weekday - now.weekday()) % 7)
     next_date = datetime.datetime(
-        year=day_delta.year, month=day_delta.month, day=day_delta.day, hour=hour, minute=minute, second=0
+        year=day_delta.year,
+        month=day_delta.month,
+        day=day_delta.day,
+        hour=hour,
+        minute=minute,
+        second=0,
     )
     sleep_for_seconds = (next_date - now).total_seconds()
 
@@ -329,7 +344,7 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int
     return sleep_for_seconds
 
 
-async def get_image_from_url(image_urls: str) -> List[Dict[str, str]]:
+async def get_image_from_url(image_urls: str) -> list[dict[str, str]]:
     """Fetch images from the given URL(s) and return their base64-encoded data.
 
     Parameters
@@ -341,6 +356,7 @@ async def get_image_from_url(image_urls: str) -> List[Dict[str, str]]:
     -------
     List[Dict[str, str]]
         A list of dictionaries, where each dictionary contains the base64-encoded image data string and the image type (file extension).
+
     """
     image_data = []
     for url in image_urls:
@@ -353,7 +369,7 @@ async def get_image_from_url(image_urls: str) -> List[Dict[str, str]]:
                 if image_type == "webp" or image_type == "jpg":
                     image_type = "jpeg"
                 image_data.append(
-                    {"type": "image/" + image_type, "image": base64.b64encode(response.content).decode("utf-8")}
+                    {"type": "image/" + image_type, "image": base64.b64encode(response.content).decode("utf-8")},
                 )
         except (httpx.HTTPError, httpx.HTTPStatusError) as exc:
             logger.error("Error fetching image from %s: %s", url, exc)
@@ -362,8 +378,7 @@ async def get_image_from_url(image_urls: str) -> List[Dict[str, str]]:
 
 
 def resize_image(image_string: str, image_type: str, target_megapixels: float = 1.15) -> str:
-    """
-    Resizes an image to a target number of megapixels while maintaining the aspect ratio.
+    """Resizes an image to a target number of megapixels while maintaining the aspect ratio.
 
     Parameters
     ----------
@@ -378,6 +393,7 @@ def resize_image(image_string: str, image_type: str, target_megapixels: float = 
     -------
     str
         The base64-encoded string representation of the resized image.
+
     """
     # Decode the base64-encoded string to a bytes object
     image_bytes = base64.b64decode(image_string)

@@ -4,7 +4,7 @@ import re
 
 from unidecode import unidecode
 
-from .chain import BEGIN, END, Chain
+from .chain import BEGIN, Chain
 from .splitters import split_into_sentences
 
 DEFAULT_MAX_OVERLAP_RATIO = 0.7
@@ -16,7 +16,7 @@ class ParamError(Exception):
     pass
 
 
-class Text(object):
+class Text:
     reject_pat = re.compile(r"(^')|('$)|\s'|'\s|[\"(\(\)\[\])]")
 
     def __init__(
@@ -29,8 +29,7 @@ class Text(object):
         well_formed=True,
         reject_reg="",
     ):
-        """
-        input_text: A string.
+        """input_text: A string.
         state_size: An integer, indicating the number of words in the model's state.
         chain: A trained markovify.Chain instance for this text, if pre-processed.
         parsed_sentences: A list of lists, where each outer list is a "run"
@@ -45,7 +44,6 @@ class Text(object):
         reject_reg: If well_formed is True, this can be provided to override the
               standard rejection pattern.
         """
-
         self.well_formed = well_formed
         if well_formed and reject_reg != "":
             self.reject_pat = re.compile(reject_reg)
@@ -281,7 +279,8 @@ class Text(object):
     def make_short_sentence(self, max_chars, min_chars=0, **kwargs):
         """Tries making a sentence of no more than `max_chars` characters and
         optionally no less than `min_chars` characters, passing **kwargs to
-        `self.make_sentence`."""
+        `self.make_sentence`.
+        """
         tries = kwargs.get("tries", DEFAULT_TRIES)
 
         for _ in range(tries):
@@ -323,16 +322,14 @@ class Text(object):
 
                 random.shuffle(init_states)
         else:
-            err_msg = "`make_sentence_with_start` for this model requires a string containing 1 to {0} words. Yours has {1}: {2}".format(
-                self.state_size, word_count, str(split)
-            )
+            err_msg = f"`make_sentence_with_start` for this model requires a string containing 1 to {self.state_size} words. Yours has {word_count}: {split!s}"
             raise ParamError(err_msg)
 
         for init_state in init_states:
             output = self.make_sentence(init_state, **kwargs)
             if output is not None:
                 return output
-        err_msg = "`make_sentence_with_start` can't find sentence beginning with {0}".format(beginning)
+        err_msg = f"`make_sentence_with_start` can't find sentence beginning with {beginning}"
         raise ParamError(err_msg)
 
     def make_sentence_that_finish(self, finishing, **kwargs):
@@ -358,9 +355,7 @@ class Text(object):
 
             random.shuffle(init_states)
         else:
-            err_msg = "`make_sentence_that_finish` for this model requires a string containing 1 to {0} words. Yours has {1}: {2}".format(
-                self.state_size, word_count, str(split)
-            )
+            err_msg = f"`make_sentence_that_finish` for this model requires a string containing 1 to {self.state_size} words. Yours has {word_count}: {split!s}"
             raise ParamError(err_msg)
 
         for init_state in init_states:
@@ -368,7 +363,7 @@ class Text(object):
             if output is not None:
                 reversed_output = reversed(output.split(" "))
                 return " ".join(reversed_output)
-        err_msg = "`make_sentence_that_finish` can't find sentence finishing with {0}".format(finishing)
+        err_msg = f"`make_sentence_that_finish` can't find sentence finishing with {finishing}"
         raise ParamError(err_msg)
 
     def make_sentence_that_contains(self, contains, **kwargs):
@@ -395,9 +390,7 @@ class Text(object):
 
             random.shuffle(init_states)
         else:
-            err_msg = "`make_sentence_that_contains` for this model requires a string containing 1 to {0} words. Yours has {1}: {2}".format(
-                self.state_size, word_count, str(split)
-            )
+            err_msg = f"`make_sentence_that_contains` for this model requires a string containing 1 to {self.state_size} words. Yours has {word_count}: {split!s}"
             raise ParamError(err_msg)
         for init_state in init_states:
             output = self.make_sentence(init_state, **kwargs)
@@ -418,7 +411,7 @@ class Text(object):
                     begin_of_sentence_ordered = " ".join(begin_of_sentence)
 
                     return begin_of_sentence_ordered + " " + end_of_sentence
-        err_msg = "`make_sentence_that_contains` can't find sentence that contains {0}".format(contains)
+        err_msg = f"`make_sentence_that_contains` can't find sentence that contains {contains}"
         raise ParamError(err_msg)
 
     def update(self, input_text=None, parsed_sentences=None):
@@ -446,7 +439,8 @@ class Text(object):
     @classmethod
     def from_chain(cls, chain_json, corpus=None, parsed_sentences=None):
         """Init a Text class based on an existing chain JSON string or object
-        If corpus is None, overlap checking won't work."""
+        If corpus is None, overlap checking won't work.
+        """
         chain = Chain.from_json(chain_json)
         return cls(
             corpus or None,

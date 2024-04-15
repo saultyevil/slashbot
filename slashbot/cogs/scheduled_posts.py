@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Scheduled posts cog."""
 
@@ -31,7 +30,7 @@ class ScheduledPosts(SlashbotCog):
     # Special methods ----------------------------------------------------------
 
     def __init__(self, bot: commands.bot):
-        """init function"""
+        """Init function"""
         super().__init__(bot)
 
         self.random_channels = App.get_config("RANDOM_POST_CHANNELS")
@@ -55,7 +54,10 @@ class ScheduledPosts(SlashbotCog):
         """Calculates how long until a post is to be posted."""
         for post in self.scheduled_posts:
             post["time_until_post"] = calculate_seconds_until(
-                int(post["day"]), int(post["hour"]), int(post["minute"]), 7
+                int(post["day"]),
+                int(post["hour"]),
+                int(post["minute"]),
+                7,
             )
 
     def order_scheduled_posts_by_soonest(self):
@@ -67,7 +69,7 @@ class ScheduledPosts(SlashbotCog):
 
     def get_scheduled_posts(self):
         """Read in the scheduled posts Json file."""
-        with open(App.get_config("SCHEDULED_POST_FILE"), "r", encoding="utf-8") as file_in:
+        with open(App.get_config("SCHEDULED_POST_FILE"), encoding="utf-8") as file_in:
             posts_json = json.load(file_in)
 
         self.scheduled_posts = posts_json["SCHEDULED_POSTS"]
@@ -84,7 +86,9 @@ class ScheduledPosts(SlashbotCog):
             assert hasattr(post["channels"], "__iter__"), f"{post['title']} has non-iterable channels"
 
         logger.info(
-            "%d scheduled posts loaded from %s", len(self.scheduled_posts), App.get_config("SCHEDULED_POST_FILE")
+            "%d scheduled posts loaded from %s",
+            len(self.scheduled_posts),
+            App.get_config("SCHEDULED_POST_FILE"),
         )
         self.order_scheduled_posts_by_soonest()
 
@@ -161,7 +165,8 @@ class ScheduledPosts(SlashbotCog):
                 # disnake.File to complain if it gets nothing
                 if len(post["files"]) > 0:
                     await channel.send(
-                        f"{message} {markov_sentence}", files=[disnake.File(file) for file in post["files"]]
+                        f"{message} {markov_sentence}",
+                        files=[disnake.File(file) for file in post["files"]],
                     )
                 else:
                     await channel.send(f"{message} {markov_sentence}")
@@ -179,5 +184,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(ScheduledPosts(bot))

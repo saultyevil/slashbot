@@ -1,20 +1,12 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """This module contains functions for modifying the slashbot database."""
 
 import pickle
 from multiprocessing import Pool
 
-from sqlalchemy import create_engine
-from sqlalchemy import Column
-from sqlalchemy import String
-from sqlalchemy import Integer
-from sqlalchemy import DateTime
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Session
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
+from sqlalchemy.orm import DeclarativeBase, Session, relationship
 
 import markovify
 
@@ -32,6 +24,7 @@ class ChannelMessage(Base):
     ----------
     Base : _type_
         _description_
+
     """
 
     __tablename__ = "channel_messages"
@@ -57,6 +50,7 @@ class MessageAttachment(Base):
     ----------
     Base : _type_
         _description_
+
     """
 
     __tablename__ = "message_attachments"
@@ -82,6 +76,7 @@ def connect_to_database_engine(location: str = None):
     location : str
         The location of the SQLite database to load, default is None where the
         value is then taken from App.config.
+
     """
     engine = create_engine(f"sqlite:///{location}")
     Base.metadata.create_all(bind=engine)
@@ -98,6 +93,7 @@ def train_model(state_size, messages):
         The state size.
     messages: list
         The messages to train the chain on.
+
     """
     print("Starting state size:", state_size)
     new_model = markovify.NewlineText(messages, state_size=state_size)

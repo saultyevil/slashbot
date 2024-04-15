@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """This cog contains admin commands for Slashbot."""
 
@@ -35,6 +34,7 @@ def convert_level_to_int(choice: str) -> int:
     -------
     int
         The integer for the choice.
+
     """
     choice = choice.lower()
     if choice == "debug":
@@ -92,6 +92,7 @@ class AdminTools(SlashbotCog):
             The name of the file to look at
         num_lines: int
             The number of lines to print.
+
         """
         await inter.response.defer(ephemeral=True)
 
@@ -100,7 +101,7 @@ class AdminTools(SlashbotCog):
         else:
             file_name = self.logfile_path.with_name("disnake.log")
 
-        with open(file_name, "r", encoding="utf-8") as file_in:
+        with open(file_name, encoding="utf-8") as file_in:
             log_lines = file_in.readlines()
 
         # iterate backwards over log_lines, until either n_lines is reached or
@@ -144,7 +145,9 @@ class AdminTools(SlashbotCog):
             converter=lambda _, arg: arg == "Yes",
         ),
         state_size: int = commands.Param(
-            choices=["0", "1", "2", "3", "4"], default=0, description="Set the state size of the markov model"
+            choices=["0", "1", "2", "3", "4"],
+            default=0,
+            description="Set the state size of the markov model",
         ),
     ):
         """Restart the bot with a new process.
@@ -158,6 +161,7 @@ class AdminTools(SlashbotCog):
             input is a string of "Yes" or "No" which is converted into a bool.
         state_size : int
             The state size of the Markov Chain to load.
+
         """
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
@@ -191,7 +195,9 @@ class AdminTools(SlashbotCog):
             converter=lambda _, arg: arg == "Yes",
         ),
         state_size: int = commands.Param(
-            choices=["0", "1", "2", "3", "4"], default=0, description="Set the state size of the markov model"
+            choices=["0", "1", "2", "3", "4"],
+            default=0,
+            description="Set the state size of the markov model",
         ),
     ):
         """Update and restart the bot with a new process.
@@ -205,6 +211,7 @@ class AdminTools(SlashbotCog):
             input is a string of "Yes" or "No" which is converted into a bool.
         state_size : int
             The state size of the Markov Chain to load.
+
         """
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message(
@@ -259,6 +266,7 @@ class AdminTools(SlashbotCog):
             The command interaction.
         level : int, optional
             The logging level to set.
+
         """
         logger.setLevel(level)
         await inter.response.send_message(f"Logging level set to {level.lower()}")
@@ -278,6 +286,7 @@ class AdminTools(SlashbotCog):
         ----------
         chain_name : str, optional
             The name of the chain to use.
+
         """
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
@@ -297,5 +306,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(AdminTools(bot))

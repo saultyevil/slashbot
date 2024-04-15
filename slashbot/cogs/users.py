@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Commands for remembering user info."""
 
 import logging
 import re
 from types import coroutine
-from typing import List
 
 import disnake
 from disnake.ext import commands
@@ -27,7 +25,7 @@ USER_OPTIONS = [
 ]
 
 
-def press(inter: disnake.ApplicationCommandInteraction, _: str) -> List[str]:
+def press(inter: disnake.ApplicationCommandInteraction, _: str) -> list[str]:
     """Auto complete options for set_info.
 
     This is currently set up only for the "Twitter URL" option.
@@ -49,6 +47,7 @@ class Users(SlashbotCog):
         ----------
         bot: commands.InteractionBot
             The bot object.
+
         """
         super().__init__(bot)
         self.opt_in_twitter_users = get_twitter_convert_users()
@@ -62,7 +61,9 @@ class Users(SlashbotCog):
         inter: disnake.ApplicationCommandInteraction,
         thing: str = commands.Param(description="The thing to be remembered.", choices=USER_OPTIONS),
         value: str = commands.Param(
-            description="What to be remembered.", autocomplete=press, converter=convert_string_to_lower
+            description="What to be remembered.",
+            autocomplete=press,
+            converter=convert_string_to_lower,
         ),
     ) -> coroutine:
         """Set some user variables for a user.
@@ -75,6 +76,7 @@ class Users(SlashbotCog):
             The thing to set.
         value: str
             The value of the thing to set.
+
         """
         await inter.response.defer(ephemeral=True)
 
@@ -91,7 +93,7 @@ class Users(SlashbotCog):
             case "Country code":
                 if len(value) != 2:
                     return await inter.edit_original_message(
-                        content=f"{value} is not a valid country code, which should be 2 characters e.g. GB, US."
+                        content=f"{value} is not a valid country code, which should be 2 characters e.g. GB, US.",
                     )
                 user_fields["country_code"] = value.upper()
             case "Bad word":
@@ -127,6 +129,7 @@ class Users(SlashbotCog):
             The disnake interaction.
         thing : str, optional
             The thing to show saved values for.
+
         """
         await inter.response.defer(ephemeral=True)
 
@@ -158,6 +161,7 @@ class Users(SlashbotCog):
         ----------
         message : disnake.Message
             A message potentially containing a twitter link.
+
         """
         url_pattern = r"https://twitter\.com/[^/\s]+/status/\d+"
         matches = list(re.finditer(url_pattern, message.content))
@@ -168,7 +172,7 @@ class Users(SlashbotCog):
         await message.edit(suppress_embeds=True)
         for match in matches:
             await message.channel.send(
-                f"(Opt in, or out, of Twitter URL conversion with /set_info)\n{match.group(0).replace('twitter', 'fxtwitter')}"
+                f"(Opt in, or out, of Twitter URL conversion with /set_info)\n{match.group(0).replace('twitter', 'fxtwitter')}",
             )
 
 
@@ -179,5 +183,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(Users(bot))

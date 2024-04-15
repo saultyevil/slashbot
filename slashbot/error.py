@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Commands for getting the weather."""
 
@@ -22,6 +21,7 @@ async def deferred_error_message(
     delay : int, optional
         The delay (in seconds) before the error message is deleted, by
         default 10
+
     """
     await inter.edit_original_message(content=message)
     await inter.delete_original_message(delay=delay)

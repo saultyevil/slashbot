@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Commands for setting, viewing and removing reminders."""
 
@@ -7,7 +6,6 @@ import datetime
 import logging
 import re
 from types import coroutine
-from typing import List, Union
 
 import dateparser
 import disnake
@@ -46,6 +44,7 @@ def get_reminders_autocomplete(inter: disnake.ApplicationCommandInteraction, _: 
     -------
     List[str]
         A list of reminders
+
     """
     reminders = get_all_reminders_for_user(inter.author.id)
     return [f"{reminder['date']}: {reminder['reminder']}" for reminder in reminders]
@@ -96,6 +95,7 @@ class Reminders(SlashbotCog):
         -------
         datetime.datetime
             A date time object for the reminder in the future.
+
         """
         if time_format == "time-string":
             # settings makes BST -> British Summer Time instead of Bangladesh, but
@@ -116,7 +116,7 @@ class Reminders(SlashbotCog):
 
         return future
 
-    async def replace_mentions_with_names(self, guild: disnake.Guild, sentence: str) -> Union[List[str], str]:
+    async def replace_mentions_with_names(self, guild: disnake.Guild, sentence: str) -> list[str] | str:
         """Replace mentions from a post with the corresponding name.
 
         Parameters
@@ -133,6 +133,7 @@ class Reminders(SlashbotCog):
             the sentence.
         modified_sentence: str
             The sentence with user and role mentions replaced by names.
+
         """
         mentions = []
         modified_sentence = sentence
@@ -212,7 +213,7 @@ class Reminders(SlashbotCog):
             choices=["time-string", "days", "hours", "minutes", "seconds"],
         ),
         when: str = commands.Param(
-            description="When you want to be reminded. The current UK time zones is used by default."
+            description="When you want to be reminded. The current UK time zones is used by default.",
         ),
         reminder: str = commands.Param(description="What you want to be reminded about."),
     ) -> coroutine:
@@ -226,6 +227,7 @@ class Reminders(SlashbotCog):
             The amount of time to wait before the reminder.
         reminder: str
             The reminder to set.
+
         """
         if len(reminder) > 1024:
             return await inter.response.send_message(
@@ -268,7 +270,7 @@ class Reminders(SlashbotCog):
                 "date": future.astimezone(datetime.UTC).isoformat(),
                 "reminder": reminder,
                 "tagged_users": tagged_users if tagged_users else None,
-            }
+            },
         )
 
         return await inter.response.send_message(f"Reminder set for {date_string}.", ephemeral=True)
@@ -291,9 +293,10 @@ class Reminders(SlashbotCog):
             The interaction object for the command.
         reminder: str
             The reminder to forget
+
         """
         specific_reminder = list(
-            filter(lambda r: f"{r['date']}: {r['reminder']}" == reminder, get_all_reminders_for_user(inter.author.id))
+            filter(lambda r: f"{r['date']}: {r['reminder']}" == reminder, get_all_reminders_for_user(inter.author.id)),
         )
         if not specific_reminder:
             return await inter.response.send_message("This reminder doesn't exist, somehow.", ephemeral=True)
@@ -318,6 +321,7 @@ class Reminders(SlashbotCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction object for the command.
+
         """
         reminders = get_all_reminders_for_user(inter.author.id)
         if not reminders:
@@ -351,5 +355,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(Reminders(bot))

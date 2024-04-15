@@ -4,7 +4,6 @@ import copy
 import json
 import operator
 import random
-import time
 
 basestring = str
 
@@ -32,7 +31,7 @@ def compile_next(next_dict):
     return [words, cff]
 
 
-class Chain(object):
+class Chain:
     """A Markov chain representing processes that have both beginnings and
     ends.
 
@@ -40,8 +39,7 @@ class Chain(object):
     """
 
     def __init__(self, corpus, state_size, model=None, model_reversed=None):
-        """
-        `corpus`: A list of lists, where each outer list is a "run"
+        """`corpus`: A list of lists, where each outer list is a "run"
         of the process (e.g., a single sentence), and each inner list
         contains the steps (e.g., words) in the run. If you want to simulate
         an infinite process, you can come very close by passing just one, very
@@ -97,7 +95,6 @@ class Chain(object):
         overwrite is True, this method will update the self.model dict
         instead of starting from scratch with an empty dict.
         """
-
         # Using a DefaultDict here would be a lot more convenient, however the memory
         # usage is far higher.
         model = self.model if overwrite else {}
@@ -124,7 +121,6 @@ class Chain(object):
         inner dicts represent all possibilities for the "next" item in
         the chain, along with the count of times it appears.
         """
-
         # Using a DefaultDict here would be a lot more convenient, however the memory
         # usage is far higher.
         model = {}
@@ -144,8 +140,7 @@ class Chain(object):
         return model
 
     def precompute_begin_state(self):
-        """
-        Caches the summation calculation and available choices for BEGIN * state_size.
+        """Caches the summation calculation and available choices for BEGIN * state_size.
         Significantly speeds up chain generation on large corpora. Thanks, @schollz!
         """
         begin_state = tuple([BEGIN] * self.state_size)
@@ -161,7 +156,7 @@ class Chain(object):
             choices = self.begin_choices
             cumdist = self.begin_cumdist
         else:
-            choices, weights = zip(*self.model[state].items())
+            choices, weights = zip(*self.model[state].items(), strict=False)
             cumdist = list(accumulate(weights))
         r = random.random() * cumdist[-1]
         selection = choices[bisect.bisect(cumdist, r)]
@@ -175,7 +170,7 @@ class Chain(object):
             choices = self.begin_choices
             cumdist = self.begin_cumdist
         else:
-            choices, weights = zip(*self.model_reversed[state].items())
+            choices, weights = zip(*self.model_reversed[state].items(), strict=False)
             cumdist = list(accumulate(weights))
         r = random.random() * cumdist[-1]
         selection = choices[bisect.bisect(cumdist, r)]
@@ -184,7 +179,8 @@ class Chain(object):
     def gen(self, init_state=None):
         """Starting either with a naive BEGIN state, or the provided
         `init_state` (as a tuple), return a generator that will yield
-        successive items until the chain reaches the END state."""
+        successive items until the chain reaches the END state.
+        """
         state = init_state or (BEGIN,) * self.state_size
         while True:
             next_word = self.move(state)
@@ -196,7 +192,8 @@ class Chain(object):
     def gen_back(self, init_state=None):
         """Starting either with a naive BEGIN state, or the provided
         `init_state` (as a tuple), return a generator that will yield
-        successive items until the chain reaches the END state."""
+        successive items until the chain reaches the END state.
+        """
         state = init_state or (BEGIN,) * self.state_size
         while True:
             next_word = self.move_back(state)
@@ -208,13 +205,15 @@ class Chain(object):
     def walk_back(self, init_state=None):
         """Return a list representing a single run of the Markov model, either
         starting with a naive BEGIN state, or the provided `init_state` (as a
-        tuple)."""
+        tuple).
+        """
         return list(self.gen_back(init_state))
 
     def walk(self, init_state=None):
         """Return a list representing a single run of the Markov model, either
         starting with a naive BEGIN state, or the provided `init_state` (as a
-        tuple)."""
+        tuple).
+        """
         return list(self.gen(init_state))
 
     def update(self, corpus):
@@ -233,19 +232,19 @@ class Chain(object):
     @classmethod
     def from_json(cls, json_thing):
         """Given a JSON object or JSON string that was created by
-        `self.to_json`, return the corresponding markovify.Chain."""
-
+        `self.to_json`, return the corresponding markovify.Chain.
+        """
         if isinstance(json_thing, str):
             obj = json.loads(json_thing)
         else:
             obj = json_thing
 
-        if isinstance(obj, tuple) and not isinstance(obj[0], dict):
-            obj1 = ast.literal_eval(obj[0])
-            obj2 = ast.literal_eval(obj[1])
-            rehydrated = dict((tuple(item[0]), item[1]) for item in obj1)
-            rehydrated_reversed = dict((tuple(item[0]), item[1]) for item in obj2)
-        elif isinstance(obj, list) and not isinstance(obj[0], dict):
+        if (
+            isinstance(obj, tuple)
+            and not isinstance(obj[0], dict)
+            or isinstance(obj, list)
+            and not isinstance(obj[0], dict)
+        ):
             obj1 = ast.literal_eval(obj[0])
             obj2 = ast.literal_eval(obj[1])
             rehydrated = dict((tuple(item[0]), item[1]) for item in obj1)

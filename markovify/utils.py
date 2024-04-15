@@ -41,7 +41,7 @@ def combine(models, weights=None):
         raise ValueError("All `models` must be of the same type.")
 
     c = {}
-    for m, w in zip(models_list, weights):
+    for m, w in zip(models_list, weights, strict=False):
         for state, options in m.items():
             current = c.get(state, {})
             for subseq_k, subseq_v in options.items():
@@ -51,7 +51,7 @@ def combine(models, weights=None):
 
     c_reversed = {}
 
-    for m, w in zip(models_reversed_list, weights):
+    for m, w in zip(models_reversed_list, weights, strict=False):
         for state, options in m.items():
             current = c_reversed.get(state, {})
             for subseq_k, subseq_v in options.items():

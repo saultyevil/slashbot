@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Commands for searching for stuff on the internet, and etc."""
 
@@ -28,12 +27,14 @@ class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         attempts: int = 10,
     ) -> None:
         """Initialize the bot.
+
         Parameters
         ----------
         bot: commands.InteractionBot
             The bot object.
         attempts: int
             The number of attempts to try and generate a sentence for.
+
         """
         super().__init__(bot)
         self.attempts = attempts
@@ -72,6 +73,7 @@ class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         ----------
         num_sides: int
             The number of sides of the dice.
+
         """
         return await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
@@ -91,18 +93,19 @@ class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
             The question to ask.
         num_solutions: int
             The number of solutions to return.
+
         """
         await inter.response.defer()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
         embed.set_footer(text=f"{await self.async_get_markov_sentence('wolfram')}")
         embed.set_thumbnail(
-            url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg"
+            url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg",
         )
 
         results = self.wolfram_api.query(question)
 
         if not results["@success"]:
-            with open(App.get_config("BAD_WORDS_FILE"), "r", encoding="utf-8") as file_in:
+            with open(App.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
                 bad_word = random.choice(file_in.readlines())
             embed.add_field(
                 name=f"{question}",
@@ -142,5 +145,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(UtilityTools(bot))

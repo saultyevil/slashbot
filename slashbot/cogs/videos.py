@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """Commands for sending videos, and scheduled videos."""
 
@@ -29,6 +28,7 @@ class Videos(SlashbotCog):
         ----------
         bot: commands.InteractionBot
             The bot object.
+
         """
         super().__init__(bot)
         self.markov_sentences = ()
@@ -64,11 +64,13 @@ class Videos(SlashbotCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
+
         """
         await inter.response.defer()
         seed = random.choice(["admin", "admin abuse"])
         return await inter.edit_original_message(
-            content=f"{await self.async_get_markov_sentence(seed)}", file=disnake.File("data/videos/admin_abuse.mp4")
+            content=f"{await self.async_get_markov_sentence(seed)}",
+            file=disnake.File("data/videos/admin_abuse.mp4"),
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -80,6 +82,7 @@ class Videos(SlashbotCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
+
         """
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
@@ -93,6 +96,7 @@ class Videos(SlashbotCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
+
         """
         await inter.response.defer()
         time = datetime.datetime.now()
@@ -122,6 +126,7 @@ class Videos(SlashbotCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction to possibly remove the cooldown from.
+
         """
         await inter.response.defer()
         return await inter.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
@@ -134,5 +139,6 @@ def setup(bot: commands.InteractionBot):
     ----------
     bot : commands.InteractionBot
         The bot to pass to the cog.
+
     """
     bot.add_cog(Videos(bot))
