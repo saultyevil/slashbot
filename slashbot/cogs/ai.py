@@ -868,12 +868,17 @@ HEADER = {
 
 
 class AIImageGeneration(SlashbotCog):
-    """Cog for text to image generation using Monster API.
+    """Cog for text to image generation using Monster API."""
 
-    Possibly in the future, we'll use OpenAI instead.
-    """
+    def __init__(self: "AIImageGeneration", bot: SlashbotInterationBot) -> None:
+        """Initialize the AIImageGeneration cog.
 
-    def __init__(self, bot: SlashbotInterationBot):
+        Parameters
+        ----------
+        bot : SlashbotInterationBot
+            The instance of the SlashbotInterationBot.
+
+        """
         super().__init__(bot)
         self.running_tasks = {}
 
@@ -907,12 +912,7 @@ class AIImageGeneration(SlashbotCog):
         response_data = json.loads(response.text)
         response_status = response_data.get("status", None)
 
-        if response_status == "COMPLETED":
-            url = response_data["result"]["output"][0]
-        else:
-            url = ""
-
-        return url
+        return response_data["result"]["output"][0] if response_status == "COMPLETED" else ""
 
     @staticmethod
     def send_image_request(prompt: str, steps: int, aspect_ratio: str) -> str:
@@ -953,9 +953,7 @@ class AIImageGeneration(SlashbotCog):
         )
 
         response_data = json.loads(response.text)
-        process_id = response_data.get("process_id", "")
-
-        return process_id
+        return response_data.get("process_id", "")
 
     @commands.cooldown(
         rate=App.get_config("COOLDOWN_RATE"),
@@ -964,7 +962,7 @@ class AIImageGeneration(SlashbotCog):
     )
     @commands.slash_command(description="Generate an image from a text prompt", dm_permission=False)
     async def text_to_image(
-        self,
+        self: "AIImageGeneration",
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to generate an image for"),
         steps: int = commands.Param(default=30, ge=30, lt=500, description="The number of sampling steps"),
@@ -973,7 +971,7 @@ class AIImageGeneration(SlashbotCog):
             choices=["square", "landscape", "portrait"],
             description="The aspect ratio of the image",
         ),
-    ):
+    ) -> None:
         """Generate an image from a text prompt.
 
         Uses Monster API. The request to the API is not made asynchronously.
@@ -991,7 +989,8 @@ class AIImageGeneration(SlashbotCog):
 
         """
         if inter.author.id in self.running_tasks:
-            return await inter.response.send_message("You already have a request processing.", ephemeral=True)
+            await inter.response.send_message("You already have a request processing.", ephemeral=True)
+            return
 
         next_interaction = inter.followup
         await inter.response.defer(ephemeral=True)
@@ -999,10 +998,12 @@ class AIImageGeneration(SlashbotCog):
         try:
             process_id = self.send_image_request(prompt, steps, aspect_ratio)
         except requests.exceptions.Timeout:
-            return inter.edit_original_message(content="The image generation API took too long to respond.")
+            inter.edit_original_message(content="The image generation API took too long to respond.")
+            return
 
         if process_id == "":
-            return await inter.edit_original_message("There was an error when submitting your request.")
+            await inter.edit_original_message("There was an error when submitting your request.")
+            return
 
         self.running_tasks[inter.author.id] = process_id
         logger.debug("text2image: Request %s for user %s (%d)", process_id, inter.author.display_name, inter.author.id)
@@ -1030,8 +1031,8 @@ class AIImageGeneration(SlashbotCog):
             await next_interaction.send(f'{inter.author.display_name}\'s request for "{prompt}" {url}')
 
 
-def setup(bot: commands.InteractionBot):
-    """Setup entry function for load_extensions().
+def setup(bot: commands.InteractionBot) -> None:
+    """Set up the entry function for load_extensions().
 
     Parameters
     ----------
