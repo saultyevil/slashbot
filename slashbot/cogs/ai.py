@@ -56,7 +56,7 @@ class PromptFileWatcher(FileSystemEventHandler):
     changes.
     """
 
-    def on_any_event(self, event: FileSystemEvent) -> None:
+    def on_any_event(self: "PromptFileWatcher", event: FileSystemEvent) -> None:
         """Handle any file system event.
 
         This method is called when any file system event occurs.
