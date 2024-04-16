@@ -627,7 +627,11 @@ class AIChatbot(SlashbotCog):
             async with message.channel.typing():
                 # Rate limit
                 if self.rate_limit_chat_response(message.author.id):
-                    await self.send_message_to_channel(f"Stop abusing me, {message.author.mention}!", message, True)
+                    await self.send_message_to_channel(
+                        f"Stop abusing me, {message.author.mention}!",
+                        message,
+                        dont_tag_user=True,
+                    )
                 # If not rate limited, then respond in a conversation
                 else:
                     ai_response = await self.respond_to_conversation(message)
@@ -701,7 +705,7 @@ class AIChatbot(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["tokens"] += token_count
         self.channel_histories[history_id]["history"]["last_summary"] = f"{self.bot.user.name}: {summary_message}"
 
-        await self.send_message_to_channel(summary_message, inter, True)
+        await self.send_message_to_channel(summary_message, inter, dont_tag_user=True)
         await inter.edit_original_message(content="...")
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
