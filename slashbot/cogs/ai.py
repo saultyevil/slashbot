@@ -7,6 +7,8 @@ text-to-image generation using Monster API.
 TODO: feedback vision results back to ChatGPT model
 """
 
+from __future__ import annotations
+
 import asyncio
 import copy
 import datetime
@@ -56,7 +58,7 @@ class PromptFileWatcher(FileSystemEventHandler):
     changes.
     """
 
-    def on_any_event(self: "PromptFileWatcher", event: FileSystemEvent) -> None:
+    def on_any_event(self, event: FileSystemEvent) -> None:
         """Handle any file system event.
 
         This method is called when any file system event occurs.
@@ -82,7 +84,7 @@ observer.start()
 class AIChatbot(SlashbotCog):
     """AI chat features powered by OpenAI."""
 
-    def __init__(self: "AIChatbot", bot: SlashbotInterationBot) -> None:
+    def __init__(self, bot: SlashbotInterationBot) -> None:
         """Initialize the AIChatbot class.
 
         Parameters
@@ -292,7 +294,7 @@ class AIChatbot(SlashbotCog):
 
         return messages
 
-    async def get_api_response(self: "AIChatbot", model: str, messages: list) -> str:
+    async def get_api_response(self, model: str, messages: list) -> str:
         """Get the response from an LLM API for a given model and list of messages.
 
         Allowed models are either claude-* from anthropic or chat-gpt from
@@ -334,7 +336,7 @@ class AIChatbot(SlashbotCog):
 
         return message, token_usage
 
-    def rate_limit_chat_response(self: "AIChatbot", user_id: int) -> bool:
+    def rate_limit_chat_response(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
 
         Parameters
@@ -368,7 +370,7 @@ class AIChatbot(SlashbotCog):
 
         return False
 
-    def clear_prompt_history(self: "AIChatbot", history_id: str | int) -> None:
+    def clear_prompt_history(self, history_id: str | int) -> None:
         """Clear chat history and reset the token counter.
 
         Parameters
@@ -386,7 +388,7 @@ class AIChatbot(SlashbotCog):
 
         self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
 
-    async def reduce_prompt_history(self: "AIChatbot", history_id: int | str) -> None:
+    async def reduce_prompt_history(self, history_id: int | str) -> None:
         """Remove messages from a chat history.
 
         Removes a fraction of the messages from the chat history if the number
@@ -416,7 +418,7 @@ class AIChatbot(SlashbotCog):
         )
 
     async def update_prompt_history(
-        self: "AIChatbot",
+        self,
         history_id: int,
         previous_messages: list[dict[str, str]],
         new_message: str,
@@ -443,7 +445,7 @@ class AIChatbot(SlashbotCog):
         self.channel_histories[history_id]["prompts"]["tokens"] = tokens_used
 
     async def get_prompt_history_from_reference_point(
-        self: "AIChatbot",
+        self,
         message: disnake.Message,
         prompt_history: list,
     ) -> tuple[list[dict[str, str]], disnake.Message]:
@@ -491,7 +493,7 @@ class AIChatbot(SlashbotCog):
 
         return prompt_history[: index + 1], previous_message
 
-    async def update_channel_message_history(self: "AIChatbot", history_id: int, user: str, message: str) -> None:
+    async def update_channel_message_history(self, history_id: int, user: str, message: str) -> None:
         """Record the history of messages in a channel.
 
         Parameters
@@ -531,7 +533,7 @@ class AIChatbot(SlashbotCog):
             ][0]["tokens"]
             self.channel_histories[history_id]["history"]["messages"].pop(0)
 
-    async def respond_to_unprompted_message(self: "AIChatbot", message: disnake.Message) -> None:
+    async def respond_to_unprompted_message(self, message: disnake.Message) -> None:
         """Respond to a single message with no context.
 
         Parameters
@@ -548,7 +550,7 @@ class AIChatbot(SlashbotCog):
         response, _ = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), messages)
         await self.send_message_to_channel(response, message, dont_tag_user=True)
 
-    async def respond_to_conversation(self: "AIChatbot", message: disnake.Message) -> str:
+    async def respond_to_conversation(self, message: disnake.Message) -> str:
         """Generate a response to a prompt for a conversation of messages.
 
         Parameters
@@ -592,7 +594,7 @@ class AIChatbot(SlashbotCog):
     # Listeners ----------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
-    async def listen_to_messages(self: "AIChatbot", message: disnake.Message) -> None:
+    async def listen_to_messages(self, message: disnake.Message) -> None:
         """Listen for mentions which are prompts for the AI.
 
         Parameters
@@ -638,7 +640,7 @@ class AIChatbot(SlashbotCog):
                     await self.send_message_to_channel(
                         ai_response,
                         message,
-                        message_in_dm,
+                        dont_tag_user=message_in_dm,
                     )  # In a DM, we won't @ the user
             logger.debug("%s", self.channel_histories[history_id]["prompts"]["messages"])
             return  # early return to avoid situation of randomly responding to itself
@@ -657,7 +659,7 @@ class AIChatbot(SlashbotCog):
         dm_permission=False,
     )
     async def summarise_chat_history(
-        self: "AIChatbot",
+        self,
         inter: disnake.ApplicationCommandInteraction,
         amount: int = commands.Param(
             default=0,
@@ -710,7 +712,7 @@ class AIChatbot(SlashbotCog):
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="reset_chat_history", description="Reset the AI conversation history")
-    async def reset_history(self: "AIChatbot", inter: disnake.ApplicationCommandInteraction) -> None:
+    async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
         Parameters
@@ -731,7 +733,7 @@ class AIChatbot(SlashbotCog):
         description="Set the AI conversation prompt from a list of choices",
     )
     async def select_existing_prompt(
-        self: "AIChatbot",
+        self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
             autocomplete=lambda _inter, user_input: [choice for choice in PROMPT_CHOICES if user_input in choice],
@@ -772,7 +774,7 @@ class AIChatbot(SlashbotCog):
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_chat_prompt", description="Change the AI conversation prompt to one you write")
     async def set_chat_prompt(
-        self: "AIChatbot",
+        self,
         inter: disnake.ApplicationCommandInteraction,
         new_prompt: str = commands.Param(description="The prompt to set"),
     ) -> None:
@@ -805,7 +807,7 @@ class AIChatbot(SlashbotCog):
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection")
     async def save_prompt(
-        self: "AIChatbot",
+        self,
         inter: disnake.ApplicationCommandInteraction,
         name: str = commands.Param(description="The name to save the prompt as", max_length=64, min_length=3),
         prompt: str = commands.Param(description="The prompt to save"),
@@ -830,7 +832,7 @@ class AIChatbot(SlashbotCog):
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_chat_prompt", description="Print information about the current AI conversation")
-    async def show_chat_prompt(self: "AIChatbot", inter: disnake.ApplicationCommandInteraction) -> None:
+    async def show_chat_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Print the system prompt to the screen.
 
         Parameters
@@ -870,7 +872,7 @@ HEADER = {
 class AIImageGeneration(SlashbotCog):
     """Cog for text to image generation using Monster API."""
 
-    def __init__(self: "AIImageGeneration", bot: SlashbotInterationBot) -> None:
+    def __init__(self, bot: SlashbotInterationBot) -> None:
         """Initialize the AIImageGeneration cog.
 
         Parameters
@@ -962,7 +964,7 @@ class AIImageGeneration(SlashbotCog):
     )
     @commands.slash_command(description="Generate an image from a text prompt", dm_permission=False)
     async def text_to_image(
-        self: "AIImageGeneration",
+        self,
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to generate an image for"),
         steps: int = commands.Param(default=30, ge=30, lt=500, description="The number of sampling steps"),
