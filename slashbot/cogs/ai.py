@@ -585,7 +585,7 @@ class AIChatbot(SlashbotCog):
         # conversation history. We will still update the prompt history for
         # when it fails and uses a Markov response, as that will be fun.
         if chat_model != App.get_config("AI_CHAT_VISION_MODEL"):
-            self.update_prompt_history(history_id, prompt_messages, ai_response, tokens_used)
+            await self.update_prompt_history(history_id, prompt_messages, ai_response, tokens_used)
 
         return ai_response
 
