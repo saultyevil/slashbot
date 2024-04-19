@@ -3,15 +3,15 @@
 """Commands for sending spam/important messages to the chat."""
 
 import atexit
-import datetime
 import logging
 import random
 import time
 import xml
 from collections import defaultdict
 from types import coroutine
-from typing import Any
 
+import defusedxml
+import defusedxml.ElementTree
 import disnake
 import requests
 import rule34 as r34
@@ -25,6 +25,7 @@ from slashbot.markov import update_markov_chain_for_model
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
+EMPTY_STRING = ""
 
 
 class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -181,7 +182,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         query: str = commands.Param(
             description="The search query as you would on rule34.xxx, e.g. furry+donald_trump or ada_wong.",
         ),
-    ):
+    ) -> None:
         """Get an image from rule34 and a random comment.
 
         Parameters
@@ -194,23 +195,22 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         """
         await inter.response.defer()
 
-        search = query.replace(" ", "+")
-        results = await self.rule34_api.getImages(search, fuzzy=False, randomPID=True)
+        results = await self.rule34_api.getImages(query, fuzzy=False, randomPID=True)
         if not results:
-            return await inter.edit_original_message(f"No results found for `{search}`.")
+            await inter.edit_original_message(f"No results found for `{query}`.")
+            return
 
         choices = [result for result in results if result.has_comments]
         if len(choices) == 0:
             choices = results
+        image = random.choice(choices)  # noqa: S311
 
-        image = random.choice(choices)
+        comment, user = self.get_comments_for_rule34_post(image.id)
+        comment = "*Too cursed for comments*" if not comment else f'"{comment}"'
+        user = " " if not user else f"\n\- *{user}*"
+        message = f"|| {image.file_url} ||\n>>> {comment}{user}"
 
-        comment, user_name_comment, _ = self.get_comments_for_rule34_post(image.id)
-        if not comment:
-            comment = "*Too cursed for comments*"
-        message = f"|| {image.file_url} ||"
-
-        return await inter.edit_original_message(content=f'{message}\n>>> "{comment}"\n*{user_name_comment}*')
+        await inter.edit_original_message(content=message)
 
     # Listeners ---------------------------------------------------------------
 
@@ -305,12 +305,12 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         return False
 
     @staticmethod
-    def get_comments_for_rule34_post(post_id: int | str = None) -> tuple[None, None, None] | tuple[Any, Any, str]:
+    def get_comments_for_rule34_post(post_id: int | str) -> tuple[str, str]:
         """Get a random comment from a rule34.xxx post.
 
         Parameters
         ----------
-        post_id: int
+        post_id: int | str
             The post ID number.
 
         Returns
@@ -319,48 +319,42 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The comment.
         who: str
             The name of the commenter.
-        when: str
-            A string of when the comment was created
 
         """
-        if post_id:
-            response = requests.get(
-                f"https://api.rule34.xxx/index.php?page=dapi&s=comment&q=index&post_id={post_id}",
-                timeout=5,
-            )
-        else:
-            response = requests.get("https://api.rule34.xxx//index.php?page=dapi&s=comment&q=index", timeout=5)
-
-        if response.status_code != 200:
-            logger.error("rule34 comment api returned error code %d", response.status_code)
-            return None, None, None
-
-        # the response from the rule34 api is XML, so we have to try and parse
-        # that
         try:
-            tree = xml.etree.ElementTree.fromstring(response.content)
-        except xml.etree.ElementTree.ParseError:
-            logger.error("failed to parse rule34 comment api")
-            return None, None, None
+            request_url = f"https://api.rule34.xxx/index.php?page=dapi&s=comment&q=index&post_id={post_id}"
+            logger.debug("Rule34 API request to %s", request_url)
+            response = requests.get(request_url, timeout=5)
+            response.raise_for_status()
+        except requests.exceptions.Timeout:
+            logger.exception("Request to Rule34 API timed out")
+            return EMPTY_STRING, EMPTY_STRING
+        except requests.exceptions.RequestException:
+            logger.exception("Rule34 API returned %d: unable to get comments for post", response.status_code)
+            return EMPTY_STRING, EMPTY_STRING
+
+        # the response from the rule34 api is XML, so we have to try and parse that
+        try:
+            parsed_comment_xml = defusedxml.ElementTree.fromstring(response.content)
+        except defusedxml.ElementTree.ParseError:
+            logger.exception("Unable to parse Rule34 comment API return from string into XML")
+            logger.debug("%s", response.content)
+            return EMPTY_STRING, EMPTY_STRING
 
         post_comments = [
-            (elem.get("body"), elem.get("creator"), elem.get("created_at")) for elem in tree.iter("comment")
+            (element.get("body"), element.get("creator")) for element in parsed_comment_xml.iter("comment")
         ]
-
         if not post_comments:
-            logger.error("failed to find comments in parsed rule34 comment api")
-            return None, None, None
+            logger.error("Unable to find any comments in parsed XML comments")
+            logger.debug("%s", response.content)
+            return EMPTY_STRING, EMPTY_STRING
 
-        comment, who, when = random.choice(post_comments)
-        # the original date format isn't very readable
-        when = datetime.datetime.strptime(when, "%Y-%m-%d %H:%M").strftime("%d %B, %Y")
-
-        return comment, who, when
+        return random.choice(post_comments)  # noqa: S311
 
     # Scheduled tasks ----------------------------------------------------------
 
     @tasks.loop(hours=6)
-    async def markov_chain_update_loop(self):
+    async def markov_chain_update_loop(self) -> None:
         """Get the bot to update the chain every 6 hours."""
         if not App.get_config("ENABLE_MARKOV_TRAINING"):
             return
@@ -373,8 +367,8 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.markov_training_sample.clear()
 
 
-def setup(bot: commands.InteractionBot):
-    """Setup entry function for load_extensions().
+def setup(bot: commands.InteractionBot) -> None:
+    """Set up the entry function for load_extensions().
 
     Parameters
     ----------
