@@ -638,7 +638,7 @@ class AIChatbot(SlashbotCog):
                     await self.send_message_to_channel(
                         ai_response,
                         message,
-                        message_in_dm,
+                        dont_tag_user=message_in_dm,
                     )  # In a DM, we won't @ the user
             logger.debug("%s", self.channel_histories[history_id]["prompts"]["messages"])
             return  # early return to avoid situation of randomly responding to itself
