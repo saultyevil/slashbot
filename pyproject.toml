@@ -75,7 +75,7 @@ target-version = "py311"
 [tool.ruff.lint]
 # select = ["E", "F", "I", "D", "ARG"]
 select = ["ALL"]
-ignore = ["E501"]
+ignore = ["E501", "ANN101"]
 fixable = ["ALL"]
 unfixable = []
 # Allow unused variables when underscore-prefixed.
