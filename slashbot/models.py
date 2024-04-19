@@ -13,11 +13,13 @@ class Message:
     are generic across APIs.
     """
 
-    def __init__(self: "Message", content: str, tokens: int, role: str) -> None:
+    def __init__(self, content: str, tokens: int, role: str) -> None:
         """Initialise the message.
 
         Parameters
         ----------
+        model : str
+            The name of the model used to generate the message
         content : str
             The message contents
         tokens : int
@@ -26,7 +28,6 @@ class Message:
             The role the message belongs to, e.g. user or assistant.
 
         """
-        self.id = uuid.uuid4()
         self.content = content
         self.tokens = int(tokens)
         if role not in ["user", "assistant"]:
@@ -40,28 +41,25 @@ class Conversation:
     This data class should be used as a wrapper around a list of messages.
     """
 
-    def __init__(self: "Conversation", location_id: int, system_prompt: str, system_prompt_tokens: int) -> None:
+    def __init__(self, system_prompt: str, system_prompt_tokens: int) -> None:
         """Initialise a conversation.
 
         Parameters
         ----------
-        location_id : int
-            The ID of the location where the conversation is, typically a
-            channel ID.
         system_prompt : str
             The system prompt of the conversation.
         system_prompt_tokens : int
             The number of tokens in the system prompt
 
         """
-        self.id = location_id
         self.tokens = system_prompt_tokens
-        self.system_prompt_tokens = system_prompt_tokens
-        self.system_prompt = system_prompt
+        self.prompt = system_prompt
         self.messages = [Message(system_prompt, system_prompt_tokens, "system")]
-        self.conversation = [{"role": "system", "content": system_prompt}]
 
-    def __getitem__(self: "Conversation", index: int) -> dict[str, str]:
+        self._raw_conversation = [{"role": "system", "content": system_prompt}]
+        self._system_prompt_tokens = system_prompt_tokens
+
+    def __getitem__(self, index: int) -> dict[str, str]:
         """Get a message at index in the conversation history.
 
         Parameters
@@ -75,38 +73,44 @@ class Conversation:
             The message
 
         """
-        return self.conversation[index]
+        return self.messages[index]
 
-    def add(self: "Conversation", message: Message) -> None:
+    def add(self, content: str, tokens: int, role: str) -> None:
         """Add a new message to the conversation history.
 
         Parameters
         ----------
-        message : Message
-            The message to add to the conversation history.
+        content : str
+            The content of the message
+        tokens : int
+            The number of tokens in the message
+        role : str
+            The role of the message, e.g. user or assistant
 
         """
+        self.tokens += tokens
+        message = Message(content, tokens, role)
         self.messages.append(message)
-        self.conversation.append({"role": message.role, "content": message.content})
+        self._raw_conversation.append({"role": role, "content": content})
 
-    def remove(self: "Conversation", message: Message) -> None:
-        """Remove a message from the conversation history.
+    def get_conversation(self) -> list[dict[str, str]]:
+        """Get the conversation history.
 
-        Parameters
-        ----------
-        message : Message
-            The message to remove.
+        Returns
+        -------
+        list[dict[str, str]]
+            The conversation history
 
         """
-        self.messages.append(message)
-        self.conversation.remove({"role": message.role, "content": message.content})
+        return self._raw_conversation
 
-    def clear(self: "Conversation") -> None:
+    def clear(self) -> None:
         """Clear a conversation.
 
         This resets the conversation back to just the system prompt, including
         the number of tokens.
         """
-        self.tokens = self.system_prompt_tokens
-        self.conversation = [{"role": "system", "content": self.system_prompt}]
-        self.system_prompt = self.conversation[0]
+        self.tokens = self._system_prompt_tokens
+        self.messages = [Message(self.prompt, self._system_prompt_tokens, "system")]
+        self._raw_conversation = [{"role": "system", "content": self.prompt}]
+        self.prompt = self._raw_conversation[0]
