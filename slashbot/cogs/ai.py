@@ -809,7 +809,7 @@ class AIChatbot(SlashbotCog):
         response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {prompt[:1800]}...\n"
 
-        await inter.response.send_message(response)
+        await inter.response.send_message(response, ephemeral=True)
 
 
 MAX_ELAPSED_TIME = 300
