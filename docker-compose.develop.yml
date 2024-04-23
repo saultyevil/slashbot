@@ -3,17 +3,10 @@ services:
   bot:
     build: .
     container_name: slashbot
+    env_file:
+      - .env
     environment:
       - DEVELOPMENT_MODE=true
-      - SLASHBOT_CONFIG=/bot/config.json
-      - SLASHBOT_DEVELOPMENT_TOKEN
-      - OWM_API_KEY
-      - WOLFRAM_API_KEY
-      - OPENAI_API_KEY
-      - MONSTER_API_KEY
-      - GOOGLE_API_KEY
-      - ANTHROPIC_API_KEY
-      - TZ=Europe/London
     volumes:
       - .:/bot
       - ~/.ssh:/home/user/.ssh:ro

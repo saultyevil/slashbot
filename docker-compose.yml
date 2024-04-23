@@ -4,16 +4,10 @@ services:
     build: .
     container_name: slashbot
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - SLASHBOT_CONFIG=/bot/config.json
-      - SLASHBOT_TOKEN
-      - OWM_API_KEY
-      - WOLFRAM_API_KEY
-      - OPENAI_API_KEY
-      - MONSTER_API_KEY
-      - GOOGLE_API_KEY
-      - ANTHROPIC_API_KEY
-      - TZ=Europe/London
+      - DEVELOPMENT_MODE=false
     volumes:
       - .:/bot
       - ~/.ssh:/home/user/.ssh:ro
