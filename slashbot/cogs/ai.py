@@ -3,8 +3,6 @@
 The purpose of this cog is to enable AI features in the Discord chat. This
 currently implements AI chat/vision using ChatGPT and Claude, as well as
 text-to-image generation using Monster API.
-
-TODO: feedback vision results back to ChatGPT model
 """
 
 from __future__ import annotations
@@ -17,6 +15,7 @@ import logging
 import random
 import time
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import aiofiles
 import anthropic
@@ -29,7 +28,6 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from slashbot.config import App
-from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import generate_markov_sentence
 from slashbot.models import Conversation
@@ -40,6 +38,9 @@ from slashbot.util import (
     resize_image,
     split_text_into_chunks,
 )
+
+if TYPE_CHECKING:
+    from slashbot.custom_bot import SlashbotInterationBot
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
@@ -98,7 +99,8 @@ class AIChatbot(SlashbotCog):
         self.anthropic_client = anthropic.AsyncAnthropic(api_key=App.get_config("ANTHROPIC_API_KEY"))
         self.openai_client = AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
 
-        self.conversations = defaultdict(Conversation(DEFAULT_SYSTEM_PROMPT, DEFAULT_SYSTEM_TOKEN_COUNT))
+        self.history = defaultdict(list)
+        self.conversations = defaultdict(lambda: Conversation(DEFAULT_SYSTEM_PROMPT, DEFAULT_SYSTEM_TOKEN_COUNT))
 
         # TODO: this data structure should be a class
         self.channel_histories = defaultdict(
@@ -253,7 +255,7 @@ class AIChatbot(SlashbotCog):
         return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
 
     @staticmethod
-    def prepare_next_prompt(
+    def prepare_next_conversation_prompt(
         new_prompt: str,
         images: list[dict[str, str]],
         messages: list[dict[str, str]],
@@ -339,7 +341,7 @@ class AIChatbot(SlashbotCog):
 
         return message, token_usage
 
-    def rate_limit_chat_response(self, user_id: int) -> bool:
+    def rate_limit_conversation_requests(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
 
         Parameters
@@ -373,7 +375,7 @@ class AIChatbot(SlashbotCog):
 
         return False
 
-    def clear_prompt_history(self, history_id: str | int) -> None:
+    def clear_conversation_history(self, history_id: str | int) -> None:
         """Clear chat history and reset the token counter.
 
         Parameters
@@ -384,12 +386,8 @@ class AIChatbot(SlashbotCog):
         """
         self.conversations[history_id].clear_messages()
 
-    async def reduce_prompt_history(self, history_id: int | str) -> None:
+    async def reduce_conversation_token_size(self, history_id: int | str) -> None:
         """Remove messages from a chat history.
-
-        Removes a fraction of the messages from the chat history if the number
-        of tokens exceeds a threshold controlled by
-        `self.model.max_history_tokens`.
 
         Parameters
         ----------
@@ -406,17 +404,17 @@ class AIChatbot(SlashbotCog):
                 message,
             )
             removed_count += 1
-        logger.info(
-            "Removed %d messages from channel %s due to token limit: %d messages remaining",
-            removed_count,
-            history_id,
-            len(self.channel_histories[history_id]),
-        )
+        if removed_count > 0:
+            logger.debug(
+                "Removed %d messages from channel %s due to token limit: %d messages remaining",
+                removed_count,
+                history_id,
+                len(self.channel_histories[history_id]),
+            )
 
-    async def update_prompt_history(
+    async def add_new_message_to_conversation(
         self,
         history_id: int,
-        previous_messages: list[dict[str, str]],
         new_message: str,
         tokens_used: int,
     ) -> None:
@@ -426,18 +424,17 @@ class AIChatbot(SlashbotCog):
         ----------
         history_id : int
             The key for the channel
-        previous_messages : List[Dict[str, str]]
-            The previous prompt messages
         new_message : str
             The bot response to add to the prompt history
         tokens_used : int
             The number of tokens used by the prompt history
 
         """
-        self.conversation[history_id].tokens = tokens_used
-        self.conversation[history_id].conversation = [*previous_messages, {"role": "assistant", "content": new_message}]
+        self.conversations[history_id].tokens = tokens_used
+        self.conversations[history_id].add_message(new_message, "assistant")
+        logger.debug("%d tokens in prompt history for %d", self.conversations[history_id].tokens, history_id)
 
-    async def get_prompt_history_from_reference_point(
+    async def get_conversation_from_reference_point(
         self,
         message: disnake.Message,
         prompt_history: list,
@@ -503,6 +500,9 @@ class AIChatbot(SlashbotCog):
             f"{disnake.utils.escape_markdown(user) if user != self.bot.user.display_name else 'Assistant'}: {message}"
         )
         num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
+
+        # message = Message(message, "user", )
+
         self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
         # increment number of tokens of latest message
         self.channel_histories[history_id]["history"]["tokens"] += num_tokens
@@ -516,8 +516,6 @@ class AIChatbot(SlashbotCog):
                 summary_removed = True
         if summary_removed:
             self.channel_histories[history_id]["history"]["last_summary"] = ""
-
-        logger.debug("%d history: %s", history_id, self.channel_histories[history_id]["history"])
 
         # if over the limit, remove messages until under the limit
         while self.channel_histories[history_id]["history"]["tokens"] > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
@@ -558,6 +556,7 @@ class AIChatbot(SlashbotCog):
 
         """
         history_id = self.get_history_id(message)
+        await self.reduce_conversation_token_size(history_id)
         clean_content = message.clean_content.replace(f"@{self.bot.user.name}", "")
 
         # we work on a copy, to try and avoid race conditions
@@ -565,24 +564,24 @@ class AIChatbot(SlashbotCog):
 
         # if the response is a reply, let's find that message and present that as the last
         if message.reference:
-            prompt_messages, message = await self.get_prompt_history_from_reference_point(message, prompt_messages)
+            prompt_messages, message = await self.get_conversation_from_reference_point(message, prompt_messages)
 
         images = await self.get_attached_images_for_message(message)
-        prompt_messages = self.prepare_next_prompt(clean_content, images, prompt_messages)
+        prompt_messages = self.prepare_next_conversation_prompt(clean_content, images, prompt_messages)
         chat_model = App.get_config("AI_CHAT_VISION_MODEL") if images else App.get_config("AI_CHAT_MODEL")
         try:
-            ai_response, tokens_used = await self.get_model_response(chat_model, prompt_messages)
+            response, tokens_used = await self.get_model_response(chat_model, prompt_messages)
         except Exception:
             logger.exception("`get_api_response` failed.")
-            ai_response = generate_markov_sentence()
+            response = generate_markov_sentence()
 
         # ChatGPT can't cope with the image prompts, so we won't update the
         # conversation history with the image part
         if chat_model == App.get_config("AI_CHAT_VISION_MODEL"):
             prompt_messages[-1] = {"role": "user", "content": prompt_messages[-1]["content"][-1]["text"]}
-        await self.update_prompt_history(history_id, prompt_messages, ai_response, tokens_used)
+        await self.add_new_message_to_conversation(history_id, response, tokens_used)
 
-        return ai_response
+        return response
 
     # Listeners ----------------------------------------------------------------
 
@@ -621,7 +620,7 @@ class AIChatbot(SlashbotCog):
         if bot_mentioned or message_in_dm:
             async with message.channel.typing():
                 # Rate limit
-                if self.rate_limit_chat_response(message.author.id):
+                if self.rate_limit_conversation_requests(message.author.id):
                     await self.send_message_to_channel(
                         f"Stop abusing me, {message.author.mention}!",
                         message,

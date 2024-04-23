@@ -11,7 +11,7 @@ class Message:
     are generic across APIs.
     """
 
-    def __init__(self, content: str, role: str) -> None:
+    def __init__(self, content: str, role: str, *, tokens: int = 0) -> None:
         """Dataclass for messages returned from an LLM API.
 
         Parameters
@@ -24,12 +24,15 @@ class Message:
             The number of tokens of the message
         role : str
             The role the message belongs to, e.g. user or assistant.
+        tokens : int
+            The number of tokens in the message, optional.
 
         """
         self.content = content
-        if role not in ["user", "assistant"]:
+        if role not in ["system", "user", "assistant"]:
             raise ValueError("Unknown role %s. Allowed: user, assistant" % role)
         self.role = role
+        self.tokens = tokens
 
 
 class Conversation:
