@@ -18,7 +18,7 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
+class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -41,22 +41,22 @@ class UtilityTools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         self.wolfram_api = wolframalpha.Client(App.get_config("WOLFRAM_API_KEY"))
         self.markov_sentences = ()
 
-    async def cog_load(self):
-        """Initialise the cog.
+    # async def cog_load(self):
+    #     """Initialise the cog.
 
-        Currently this does:
-            - create markov sentences
-        """
-        self.markov_sentences = (
-            generate_sentences_for_seed_words(
-                MARKOV_MODEL,
-                ["wolfram"],
-                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
-            )
-            if self.bot.markov_gen_on
-            else {"wolfram": []}
-        )
-        logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
+    #     Currently this does:
+    #         - create markov sentences
+    #     """
+    #     self.markov_sentences = (
+    #         generate_sentences_for_seed_words(
+    #             MARKOV_MODEL,
+    #             ["wolfram"],
+    #             App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+    #         )
+    #         if self.bot.markov_gen_on
+    #         else {"wolfram": []}
+    #     )
+    #     logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Commands -----------------------------------------------------------------
 
@@ -147,4 +147,4 @@ def setup(bot: commands.InteractionBot):
         The bot to pass to the cog.
 
     """
-    bot.add_cog(UtilityTools(bot))
+    bot.add_cog(Tools(bot))

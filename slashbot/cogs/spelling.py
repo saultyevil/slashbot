@@ -45,16 +45,16 @@ class Spelling(SlashbotCog):
         Currently this does:
             - create markov sentences
         """
-        self.markov_sentences = (
-            generate_sentences_for_seed_words(
-                MARKOV_MODEL,
-                ["spelling"],
-                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
-            )
-            if self.bot.markov_gen_on
-            else {"spelling": []}
-        )
-        logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
+        # self.markov_sentences = (
+        #     generate_sentences_for_seed_words(
+        #         MARKOV_MODEL,
+        #         ["spelling"],
+        #         App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        #     )
+        #     if self.bot.markov_gen_on
+        #     else {"spelling": []}
+        # )
+        # logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
@@ -254,7 +254,7 @@ class Spelling(SlashbotCog):
                 embed.add_field(name="Percent wrong", value=f"{percent_wrong:.1f}%", inline=True)
 
                 embed.set_thumbnail(url=user.avatar.url)
-                embed.set_footer(text=f"{await self.async_get_markov_sentence('spelling')}")
+                # embed.set_footer(text=f"{await self.async_get_markov_sentence('spelling')}")
 
                 embeds.append(embed)
 

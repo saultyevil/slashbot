@@ -26,8 +26,8 @@
             ]
         },
         "AI_CHAT": {
-            "SUMMARY_PROMPT": "Pretend you are a secretary named Rosamund. Generate a detailed summary of the conversation, highlighting key points, sentiments, and notable exchanges to provide a comprehensive overview of the interaction. You should provide details about specific users, which may include yourself. When you see someone named Assistant, it is referring to the person you are pretending to be.",
-            "TOKEN_WINDOW_SIZE": 256,
+            "SUMMARY_PROMPT": "Roleplay as a secretary named Rosamund. Generate a detailed summary of the conversation, highlighting key points, sentiments, and notable exchanges to provide a comprehensive overview of the interaction. You should provide details about specific users, which may include the character (Rosamund) you are pretending to be.",
+            "TOKEN_WINDOW_SIZE": 4096,
             "MAX_OUTPUT_TOKENS": 1024,
             "MODEL_TEMPERATURE": 0.5,
             "LLM_MODEL": "gpt-3.5-turbo",
@@ -72,6 +72,6 @@
         "ENABLE_MARKOV_TRAINING": false,
         "ENABLE_PREGEN_SENTENCES": true,
         "NUM_PREGEN_SENTENCES": 5,
-        "PREGEN_REGENERATE_LIMIT": 1
+        "PREGEN_REGENERATE_LIMIT": 2
     }
 }
