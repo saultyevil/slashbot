@@ -23,6 +23,7 @@ import disnake
 import requests
 import tiktoken
 from disnake.ext import commands
+from disnake.utils import escape_markdown
 from openai import AsyncOpenAI
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -30,7 +31,7 @@ from watchdog.observers import Observer
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import generate_markov_sentence
-from slashbot.models import Conversation
+from slashbot.models import ChannelHistory, Conversation
 from slashbot.util import (
     create_prompt_dict,
     get_image_from_url,
@@ -100,19 +101,10 @@ class AIChatbot(SlashbotCog):
         self.openai_client = AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
 
         self.history = defaultdict(list)
-        self.conversations = defaultdict(lambda: Conversation(DEFAULT_SYSTEM_PROMPT, DEFAULT_SYSTEM_TOKEN_COUNT))
-
-        # TODO: this data structure should be a class
-        self.channel_histories = defaultdict(
-            lambda: {
-                "history": {"tokens": 0, "messages": [], "last_summary": ""},
-                "prompts": {
-                    "tokens": DEFAULT_SYSTEM_TOKEN_COUNT,
-                    "system": DEFAULT_SYSTEM_PROMPT,
-                    "messages": [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}],
-                },
-            },
+        self.conversations: dict[Conversation] = defaultdict(
+            lambda: Conversation(DEFAULT_SYSTEM_PROMPT, DEFAULT_SYSTEM_TOKEN_COUNT),
         )
+        self.channel_histories: dict[ChannelHistory] = defaultdict(lambda: ChannelHistory())
 
         # track user interactions with ai chat
         self.user_cooldowns = defaultdict(
@@ -299,7 +291,7 @@ class AIChatbot(SlashbotCog):
 
         return messages
 
-    async def get_model_response(self, model: str, messages: list) -> str:
+    async def get_model_response(self, model: str, messages: list) -> tuple[str, int]:
         """Get the response from an LLM API for a given model and list of messages.
 
         Allowed models are either claude-* from anthropic or chat-gpt from
@@ -317,6 +309,8 @@ class AIChatbot(SlashbotCog):
         -------
         str
             The generated response message.
+        int
+            The number of tokens in the conversation
 
         """
         if "gpt-" in model:
@@ -496,33 +490,12 @@ class AIChatbot(SlashbotCog):
             The content of the message sent by the user.
 
         """
-        message = (
-            f"{disnake.utils.escape_markdown(user) if user != self.bot.user.display_name else 'Assistant'}: {message}"
-        )
         num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
+        self.channel_histories[history_id].add_message(message, escape_markdown(user), num_tokens)
 
-        # message = Message(message, "user", )
-
-        self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
-        # increment number of tokens of latest message
-        self.channel_histories[history_id]["history"]["tokens"] += num_tokens
-
-        # remove last summary if set
-        summary_removed = False
-        for i, message in enumerate(self.channel_histories[history_id]["history"]["messages"]):
-            if message["message"] == self.channel_histories[history_id]["history"]["last_summary"]:
-                self.channel_histories[history_id]["history"]["tokens"] -= message["tokens"]
-                self.channel_histories[history_id]["history"]["messages"].pop(i)
-                summary_removed = True
-        if summary_removed:
-            self.channel_histories[history_id]["history"]["last_summary"] = ""
-
-        # if over the limit, remove messages until under the limit
-        while self.channel_histories[history_id]["history"]["tokens"] > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
-            self.channel_histories[history_id]["history"]["tokens"] -= self.channel_histories[history_id]["history"][
-                "messages"
-            ][0]["tokens"]
-            self.channel_histories[history_id]["history"]["messages"].pop(0)
+        # keep it under the token limit
+        while self.channel_histories[history_id].tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
+            self.channel_histories[history_id].remove_message(0)
 
     async def respond_to_unprompted_message(self, message: disnake.Message) -> None:
         """Respond to a single message with no context.
@@ -649,7 +622,7 @@ class AIChatbot(SlashbotCog):
         description="Get a summary of the previous conversation",
         dm_permission=False,
     )
-    async def summarise_chat_history(
+    async def generate_chat_summary(
         self,
         inter: disnake.ApplicationCommandInteraction,
         amount: int = commands.Param(
@@ -674,29 +647,26 @@ class AIChatbot(SlashbotCog):
 
         """
         history_id = self.get_history_id(inter)
-        if self.channel_histories[history_id]["history"]["tokens"] == 0:
+        channel_history = self.channel_histories[history_id]
+        if channel_history.tokens == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
-
         await inter.response.defer(ephemeral=True)
 
-        messages = [e["message"] for e in self.channel_histories[history_id]["history"]["messages"][-amount:]]
-        user_prompt = "Summarise the following conversation between multiple users.\n\n" + "\n".join(messages)
-        summary_prompt = [
+        message = "Summarise the following conversation between multiple users.\n" + "\n".join(
+            channel_history.get_messages(amount),
+        )
+        conversation = [
             {"role": "system", "content": App.get_config("AI_SUMMARY_PROMPT")},
-            {"role": "user", "content": user_prompt},
+            {"role": "user", "content": message},
         ]
-        summary_message, token_count = await self.get_model_response(App.get_config("AI_CHAT_MODEL"), summary_prompt)
+        summary_message, token_count = await self.get_model_response(App.get_config("AI_CHAT_MODEL"), conversation)
 
-        self.channel_histories[history_id]["prompts"]["messages"] += [
-            {
-                "role": "user",
-                "content": "Summarise the the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
-            },
-            {"role": "assistant", "content": summary_message},
-        ]
-        self.channel_histories[history_id]["prompts"]["tokens"] += token_count
-        self.channel_histories[history_id]["history"]["last_summary"] = f"{self.bot.user.name}: {summary_message}"
+        self.conversations[history_id].add_message(
+            "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
+            "user",
+        )
+        self.conversations[history_id].add_message(summary_message, "assistant", tokens=token_count)
 
         await self.send_message_to_channel(summary_message, inter, dont_tag_user=True)
         await inter.edit_original_message(content="...")
