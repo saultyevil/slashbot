@@ -72,6 +72,6 @@
         "ENABLE_MARKOV_TRAINING": false,
         "ENABLE_PREGEN_SENTENCES": true,
         "NUM_PREGEN_SENTENCES": 3,
-        "PREGEN_REGENERATE_LIMIT": 1,
+        "PREGEN_REGENERATE_LIMIT": 1
     }
 }
