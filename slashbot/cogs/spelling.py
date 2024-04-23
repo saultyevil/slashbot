@@ -197,10 +197,6 @@ class Spelling(SlashbotCog):
             return
 
         cleaned_content = self.cleanup_message(message.content)
-        logger.debug(
-            "Cleaned message content: %s",
-            cleaned_content,
-        )
         unknown_words = self.spellchecker.unknown(cleaned_content.split())
         unknown_words = list(filter(lambda w: w not in self.custom_words, unknown_words))
 
