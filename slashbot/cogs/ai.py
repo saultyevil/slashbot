@@ -291,6 +291,28 @@ class AIChatbot(SlashbotCog):
 
         return messages
 
+    @staticmethod
+    def find_first_user_message(messages: list[dict[str, str]]) -> int:
+        """Return a list of messages where the first is a user message.
+
+        Parameters
+        ----------
+        messages : list[dict[str, str]]
+            The list of messages to search through.
+
+        Returns
+        -------
+        list[dict[str, str]]
+            The list of messages from the first user message to the end.
+
+        """
+        for i, message in enumerate(messages):
+            if message["role"] == "user":
+                return messages[i:]
+
+        msg = "No user message found in conversation"
+        raise ValueError(msg)
+
     async def get_model_response(self, model: str, messages: list) -> tuple[str, int]:
         """Get the response from an LLM API for a given model and list of messages.
 
@@ -323,8 +345,7 @@ class AIChatbot(SlashbotCog):
             message = response.choices[0].message.content
             token_usage = response.usage.total_tokens
         else:
-            logger.debug("Using Claude model %s", model)
-            logger.debug("Messages: %s", messages)
+            messages = self.find_first_user_message(messages)
             response = await self.anthropic_client.messages.create(
                 system=messages[0]["content"],
                 messages=messages[1:],
