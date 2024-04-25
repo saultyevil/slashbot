@@ -345,10 +345,9 @@ class AIChatbot(SlashbotCog):
             message = response.choices[0].message.content
             token_usage = response.usage.total_tokens
         else:
-            messages = self.find_first_user_message(messages)
             response = await self.anthropic_client.messages.create(
                 system=messages[0]["content"],
-                messages=messages[1:],
+                messages=self.find_first_user_message(messages),
                 model=model,
                 temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
                 max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
