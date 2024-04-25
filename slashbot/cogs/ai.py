@@ -323,6 +323,8 @@ class AIChatbot(SlashbotCog):
             message = response.choices[0].message.content
             token_usage = response.usage.total_tokens
         else:
+            logger.debug("Using Claude model %s", model)
+            logger.debug("Messages: %s", messages)
             response = await self.anthropic_client.messages.create(
                 system=messages[0]["content"],
                 messages=messages[1:],
@@ -543,16 +545,23 @@ class AIChatbot(SlashbotCog):
         prompt_messages = self.prepare_next_conversation_prompt(clean_content, images, prompt_messages)
         chat_model = App.get_config("AI_CHAT_VISION_MODEL") if images else App.get_config("AI_CHAT_MODEL")
         try:
-            response, tokens_used = await self.get_model_response(chat_model, prompt_messages)
+            response, tokens_used = await self.get_model_response(
+                chat_model,
+                prompt_messages,
+            )
+            # ChatGPT can't cope with the image prompts, so we won't update the
+            # conversation history with the image part
+            if chat_model == App.get_config("AI_CHAT_VISION_MODEL"):
+                prompt_messages[-1] = {
+                    "role": "user",
+                    "content": prompt_messages[-1]["content"][-1]["text"],
+                }
+            await self.add_new_message_to_conversation(
+                history_id, response, tokens_used
+            )
         except Exception:
             logger.exception("`get_api_response` failed.")
             response = generate_markov_sentence()
-
-        # ChatGPT can't cope with the image prompts, so we won't update the
-        # conversation history with the image part
-        if chat_model == App.get_config("AI_CHAT_VISION_MODEL"):
-            prompt_messages[-1] = {"role": "user", "content": prompt_messages[-1]["content"][-1]["text"]}
-        await self.add_new_message_to_conversation(history_id, response, tokens_used)
 
         return response
 
