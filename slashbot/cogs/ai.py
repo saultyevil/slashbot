@@ -100,7 +100,6 @@ class AIChatbot(SlashbotCog):
         self.anthropic_client = anthropic.AsyncAnthropic(api_key=App.get_config("ANTHROPIC_API_KEY"))
         self.openai_client = AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
 
-        self.history = defaultdict(list)
         self.conversations: dict[Conversation] = defaultdict(
             lambda: Conversation(DEFAULT_SYSTEM_PROMPT, DEFAULT_SYSTEM_TOKEN_COUNT),
         )
@@ -576,9 +575,7 @@ class AIChatbot(SlashbotCog):
                     "role": "user",
                     "content": prompt_messages[-1]["content"][-1]["text"],
                 }
-            await self.add_new_message_to_conversation(
-                history_id, response, tokens_used
-            )
+            await self.add_new_message_to_conversation(history_id, response, tokens_used)
         except Exception:
             logger.exception("`get_api_response` failed.")
             response = generate_markov_sentence()
