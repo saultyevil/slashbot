@@ -3,9 +3,9 @@
 The purpose of this cog is to enable AI features in the Discord chat. This
 currently implements AI chat/vision using ChatGPT and Claude, as well as
 text-to-image generation using Monster API.
-
-TODO: feedback vision results back to ChatGPT model
 """
+
+from __future__ import annotations
 
 import asyncio
 import copy
@@ -15,6 +15,7 @@ import logging
 import random
 import time
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import aiofiles
 import anthropic
@@ -22,14 +23,15 @@ import disnake
 import requests
 import tiktoken
 from disnake.ext import commands
+from disnake.utils import escape_markdown
 from openai import AsyncOpenAI
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from slashbot.config import App
-from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog
 from slashbot.markov import generate_markov_sentence
+from slashbot.models import ChannelHistory, Conversation
 from slashbot.util import (
     create_prompt_dict,
     get_image_from_url,
@@ -37,6 +39,9 @@ from slashbot.util import (
     resize_image,
     split_text_into_chunks,
 )
+
+if TYPE_CHECKING:
+    from slashbot.custom_bot import SlashbotInterationBot
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
@@ -95,17 +100,10 @@ class AIChatbot(SlashbotCog):
         self.anthropic_client = anthropic.AsyncAnthropic(api_key=App.get_config("ANTHROPIC_API_KEY"))
         self.openai_client = AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
 
-        # TODO: this data structure should be a class
-        self.channel_histories = defaultdict(
-            lambda: {
-                "history": {"tokens": 0, "messages": [], "last_summary": ""},
-                "prompts": {
-                    "tokens": DEFAULT_SYSTEM_TOKEN_COUNT,
-                    "system": DEFAULT_SYSTEM_PROMPT,
-                    "messages": [{"role": "system", "content": DEFAULT_SYSTEM_PROMPT}],
-                },
-            },
+        self.conversations: dict[Conversation] = defaultdict(
+            lambda: Conversation(DEFAULT_SYSTEM_PROMPT, DEFAULT_SYSTEM_TOKEN_COUNT),
         )
+        self.channel_histories: dict[ChannelHistory] = defaultdict(lambda: ChannelHistory())
 
         # track user interactions with ai chat
         self.user_cooldowns = defaultdict(
@@ -248,7 +246,7 @@ class AIChatbot(SlashbotCog):
         return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
 
     @staticmethod
-    def prepare_next_prompt(
+    def prepare_next_conversation_prompt(
         new_prompt: str,
         images: list[dict[str, str]],
         messages: list[dict[str, str]],
@@ -292,7 +290,29 @@ class AIChatbot(SlashbotCog):
 
         return messages
 
-    async def get_api_response(self, model: str, messages: list) -> str:
+    @staticmethod
+    def find_first_user_message(messages: list[dict[str, str]]) -> int:
+        """Return a list of messages where the first is a user message.
+
+        Parameters
+        ----------
+        messages : list[dict[str, str]]
+            The list of messages to search through.
+
+        Returns
+        -------
+        list[dict[str, str]]
+            The list of messages from the first user message to the end.
+
+        """
+        for i, message in enumerate(messages):
+            if message["role"] == "user":
+                return messages[i:]
+
+        msg = "No user message found in conversation"
+        raise ValueError(msg)
+
+    async def get_model_response(self, model: str, messages: list) -> tuple[str, int]:
         """Get the response from an LLM API for a given model and list of messages.
 
         Allowed models are either claude-* from anthropic or chat-gpt from
@@ -310,6 +330,8 @@ class AIChatbot(SlashbotCog):
         -------
         str
             The generated response message.
+        int
+            The number of tokens in the conversation
 
         """
         if "gpt-" in model:
@@ -324,7 +346,7 @@ class AIChatbot(SlashbotCog):
         else:
             response = await self.anthropic_client.messages.create(
                 system=messages[0]["content"],
-                messages=messages[1:],
+                messages=self.find_first_user_message(messages),
                 model=model,
                 temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
                 max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
@@ -334,7 +356,7 @@ class AIChatbot(SlashbotCog):
 
         return message, token_usage
 
-    def rate_limit_chat_response(self, user_id: int) -> bool:
+    def rate_limit_conversation_requests(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
 
         Parameters
@@ -368,7 +390,7 @@ class AIChatbot(SlashbotCog):
 
         return False
 
-    def clear_prompt_history(self, history_id: str | int) -> None:
+    def clear_conversation_history(self, history_id: str | int) -> None:
         """Clear chat history and reset the token counter.
 
         Parameters
@@ -377,21 +399,10 @@ class AIChatbot(SlashbotCog):
             The index to reset in chat history.
 
         """
-        model = App.get_config("AI_CHAT_MODEL")
-        current_prompt = self.channel_histories[history_id]["prompts"]["messages"][0]
-        self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
-            model,
-            current_prompt["content"],
-        )
+        self.conversations[history_id].clear_messages()
 
-        self.channel_histories[history_id]["prompts"]["messages"] = [current_prompt]
-
-    async def reduce_prompt_history(self, history_id: int | str) -> None:
+    async def reduce_conversation_token_size(self, history_id: int | str) -> None:
         """Remove messages from a chat history.
-
-        Removes a fraction of the messages from the chat history if the number
-        of tokens exceeds a threshold controlled by
-        `self.model.max_history_tokens`.
 
         Parameters
         ----------
@@ -400,25 +411,25 @@ class AIChatbot(SlashbotCog):
 
         """
         removed_count = 0
-        while self.channel_histories[history_id]["prompts"]["tokens"] > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
-            message = self.channel_histories[history_id]["prompts"]["messages"][1]
-            self.channel_histories[history_id]["prompts"]["tokens"] -= self.get_token_count_for_string(
+        while self.conversations[history_id].tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
+            message = self.conversations[history_id][1].content
+            self.conversations[history_id].remove_message(1)
+            self.conversations[history_id].tokens -= self.get_token_count_for_string(
                 App.get_config("AI_CHAT_MODEL"),
                 message,
             )
-            self.channel_histories[history_id]["prompts"]["messages"].pop(1)
             removed_count += 1
-        logger.debug(
-            "%d messages removed from channel %s due to token limit. There are now %d messages.",
-            removed_count,
-            history_id,
-            len(self.channel_histories[history_id]["prompts"]["messages"][1:]),
-        )
+        if removed_count > 0:
+            logger.debug(
+                "Removed %d messages from channel %s due to token limit: %d messages remaining",
+                removed_count,
+                history_id,
+                len(self.channel_histories[history_id]),
+            )
 
-    async def update_prompt_history(
+    async def add_new_message_to_conversation(
         self,
         history_id: int,
-        previous_messages: list[dict[str, str]],
         new_message: str,
         tokens_used: int,
     ) -> None:
@@ -428,21 +439,17 @@ class AIChatbot(SlashbotCog):
         ----------
         history_id : int
             The key for the channel
-        previous_messages : List[Dict[str, str]]
-            The previous prompt messages
         new_message : str
             The bot response to add to the prompt history
         tokens_used : int
             The number of tokens used by the prompt history
 
         """
-        self.channel_histories[history_id]["prompts"]["messages"] = [
-            *previous_messages,
-            {"role": "assistant", "content": new_message},
-        ]
-        self.channel_histories[history_id]["prompts"]["tokens"] = tokens_used
+        self.conversations[history_id].tokens = tokens_used
+        self.conversations[history_id].add_message(new_message, "assistant")
+        logger.debug("%d tokens in prompt history for %d", self.conversations[history_id].tokens, history_id)
 
-    async def get_prompt_history_from_reference_point(
+    async def get_conversation_from_reference_point(
         self,
         message: disnake.Message,
         prompt_history: list,
@@ -504,32 +511,12 @@ class AIChatbot(SlashbotCog):
             The content of the message sent by the user.
 
         """
-        message = (
-            f"{disnake.utils.escape_markdown(user) if user != self.bot.user.display_name else 'Assistant'}: {message}"
-        )
         num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
-        self.channel_histories[history_id]["history"]["messages"].append({"tokens": num_tokens, "message": message})
-        # increment number of tokens of latest message
-        self.channel_histories[history_id]["history"]["tokens"] += num_tokens
+        self.channel_histories[history_id].add_message(message, escape_markdown(user), num_tokens)
 
-        # remove last summary if set
-        summary_removed = False
-        for i, message in enumerate(self.channel_histories[history_id]["history"]["messages"]):
-            if message["message"] == self.channel_histories[history_id]["history"]["last_summary"]:
-                self.channel_histories[history_id]["history"]["tokens"] -= message["tokens"]
-                self.channel_histories[history_id]["history"]["messages"].pop(i)
-                summary_removed = True
-        if summary_removed:
-            self.channel_histories[history_id]["history"]["last_summary"] = ""
-
-        logger.debug("%d history: %s", history_id, self.channel_histories[history_id]["history"])
-
-        # if over the limit, remove messages until under the limit
-        while self.channel_histories[history_id]["history"]["tokens"] > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
-            self.channel_histories[history_id]["history"]["tokens"] -= self.channel_histories[history_id]["history"][
-                "messages"
-            ][0]["tokens"]
-            self.channel_histories[history_id]["history"]["messages"].pop(0)
+        # keep it under the token limit
+        while self.channel_histories[history_id].tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
+            self.channel_histories[history_id].remove_message(0)
 
     async def respond_to_unprompted_message(self, message: disnake.Message) -> None:
         """Respond to a single message with no context.
@@ -542,10 +529,10 @@ class AIChatbot(SlashbotCog):
         """
         history_id = self.get_history_id(message)
         messages = [
-            {"role": "system", "content": self.channel_histories[history_id]["prompts"]["system"]},
+            {"role": "system", "content": self.conversations[history_id].prompt},
             {"role": "user", "content": message.clean_content},
         ]
-        response, _ = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), messages)
+        response, _ = await self.get_model_response(App.get_config("AI_CHAT_MODEL"), messages)
         await self.send_message_to_channel(response, message, dont_tag_user=True)
 
     async def respond_to_conversation(self, message: disnake.Message) -> str:
@@ -563,31 +550,37 @@ class AIChatbot(SlashbotCog):
 
         """
         history_id = self.get_history_id(message)
+        await self.reduce_conversation_token_size(history_id)
         clean_content = message.clean_content.replace(f"@{self.bot.user.name}", "")
 
         # we work on a copy, to try and avoid race conditions
-        prompt_messages = copy.deepcopy(self.channel_histories[history_id]["prompts"]["messages"])
+        prompt_messages = copy.deepcopy(self.conversations[history_id].conversation)
 
         # if the response is a reply, let's find that message and present that as the last
         if message.reference:
-            prompt_messages, message = await self.get_prompt_history_from_reference_point(message, prompt_messages)
+            prompt_messages, message = await self.get_conversation_from_reference_point(message, prompt_messages)
 
         images = await self.get_attached_images_for_message(message)
-        prompt_messages = self.prepare_next_prompt(clean_content, images, prompt_messages)
+        prompt_messages = self.prepare_next_conversation_prompt(clean_content, images, prompt_messages)
         chat_model = App.get_config("AI_CHAT_VISION_MODEL") if images else App.get_config("AI_CHAT_MODEL")
         try:
-            ai_response, tokens_used = await self.get_api_response(chat_model, prompt_messages)
+            response, tokens_used = await self.get_model_response(
+                chat_model,
+                prompt_messages,
+            )
+            # ChatGPT can't cope with the image prompts, so we won't update the
+            # conversation history with the image part
+            if chat_model == App.get_config("AI_CHAT_VISION_MODEL"):
+                prompt_messages[-1] = {
+                    "role": "user",
+                    "content": prompt_messages[-1]["content"][-1]["text"],
+                }
+            await self.add_new_message_to_conversation(history_id, response, tokens_used)
         except Exception:
             logger.exception("`get_api_response` failed.")
-            ai_response = generate_markov_sentence()
+            response = generate_markov_sentence()
 
-        # ChatGPT can't cope with the image prompts, so we won't update the
-        # conversation history. We will still update the prompt history for
-        # when it fails and uses a Markov response, as that will be fun.
-        if chat_model != App.get_config("AI_CHAT_VISION_MODEL"):
-            await self.update_prompt_history(history_id, prompt_messages, ai_response, tokens_used)
-
-        return ai_response
+        return response
 
     # Listeners ----------------------------------------------------------------
 
@@ -626,7 +619,7 @@ class AIChatbot(SlashbotCog):
         if bot_mentioned or message_in_dm:
             async with message.channel.typing():
                 # Rate limit
-                if self.rate_limit_chat_response(message.author.id):
+                if self.rate_limit_conversation_requests(message.author.id):
                     await self.send_message_to_channel(
                         f"Stop abusing me, {message.author.mention}!",
                         message,
@@ -640,7 +633,6 @@ class AIChatbot(SlashbotCog):
                         message,
                         dont_tag_user=message_in_dm,
                     )  # In a DM, we won't @ the user
-            logger.debug("%s", self.channel_histories[history_id]["prompts"]["messages"])
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a
@@ -656,7 +648,7 @@ class AIChatbot(SlashbotCog):
         description="Get a summary of the previous conversation",
         dm_permission=False,
     )
-    async def summarise_chat_history(
+    async def generate_chat_summary(
         self,
         inter: disnake.ApplicationCommandInteraction,
         amount: int = commands.Param(
@@ -681,29 +673,26 @@ class AIChatbot(SlashbotCog):
 
         """
         history_id = self.get_history_id(inter)
-        if self.channel_histories[history_id]["history"]["tokens"] == 0:
+        channel_history = self.channel_histories[history_id]
+        if channel_history.tokens == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
-
         await inter.response.defer(ephemeral=True)
 
-        messages = [e["message"] for e in self.channel_histories[history_id]["history"]["messages"][-amount:]]
-        user_prompt = "Summarise the following conversation between multiple users.\n\n" + "\n".join(messages)
-        summary_prompt = [
+        message = "Summarise the following conversation between multiple users.\n" + "\n".join(
+            channel_history.get_messages(amount),
+        )
+        conversation = [
             {"role": "system", "content": App.get_config("AI_SUMMARY_PROMPT")},
-            {"role": "user", "content": user_prompt},
+            {"role": "user", "content": message},
         ]
-        summary_message, token_count = await self.get_api_response(App.get_config("AI_CHAT_MODEL"), summary_prompt)
+        summary_message, token_count = await self.get_model_response(App.get_config("AI_CHAT_MODEL"), conversation)
 
-        self.channel_histories[history_id]["prompts"]["messages"] += [
-            {
-                "role": "user",
-                "content": "Summarise the the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
-            },
-            {"role": "assistant", "content": summary_message},
-        ]
-        self.channel_histories[history_id]["prompts"]["tokens"] += token_count
-        self.channel_histories[history_id]["history"]["last_summary"] = f"{self.bot.user.name}: {summary_message}"
+        self.conversations[history_id].add_message(
+            "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
+            "user",
+        )
+        self.conversations[history_id].add_message(summary_message, "assistant", tokens=token_count)
 
         await self.send_message_to_channel(summary_message, inter, dont_tag_user=True)
         await inter.edit_original_message(content="...")
@@ -719,11 +708,9 @@ class AIChatbot(SlashbotCog):
             The slash command interaction.
 
         """
-        self.clear_prompt_history(self.get_history_id(inter))
-        await inter.response.send_message(
-            f"History cleared and system prompt changed to:\n\n{DEFAULT_SYSTEM_PROMPT}",
-            ephemeral=True,
-        )
+        history_id = self.get_history_id(inter)
+        self.conversations[history_id].clear_conversation()
+        await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
@@ -734,7 +721,7 @@ class AIChatbot(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
-            autocomplete=lambda _inter, user_input: [choice for choice in PROMPT_CHOICES if user_input in choice],
+            autocomplete=lambda _, user_input: [choice for choice in PROMPT_CHOICES if user_input in choice],
             description="The choice of prompt to use",
         ),
     ) -> None:
@@ -757,16 +744,13 @@ class AIChatbot(SlashbotCog):
             return
 
         history_id = self.get_history_id(inter)
-        self.channel_histories[history_id]["prompts"]["system"] = prompt
-        self.channel_histories[history_id]["prompts"]["messages"] = [{"role": "system", "content": prompt}]
-        await inter.response.send_message(
-            f"History cleared and system prompt changed to:\n\n{prompt[:1928]}",
-            ephemeral=True,
-        )
-        # calculate token count after responding to interaction, as it may take a little time
-        self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
-            App.get_config("AI_CHAT_MODEL"),
+        self.conversations[history_id].set_prompt(
             prompt,
+            self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
+        )
+        await inter.response.send_message(
+            f"History cleared and system prompt changed to:\n\n{prompt}",
+            ephemeral=True,
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -774,7 +758,7 @@ class AIChatbot(SlashbotCog):
     async def set_chat_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        new_prompt: str = commands.Param(description="The prompt to set"),
+        prompt: str = commands.Param(description="The prompt to set"),
     ) -> None:
         """Set a new system message for the location were the interaction came from.
 
@@ -785,22 +769,20 @@ class AIChatbot(SlashbotCog):
         ----------
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
-        new_prompt : str
+        prompt : str
             The new system prompt to set.
 
         """
+        logger.info("%s set new prompt: %s", inter.author.display_name, prompt)
         history_id = self.get_history_id(inter)
-        self.channel_histories[history_id]["prompts"]["system"] = new_prompt
-        self.channel_histories[history_id]["prompts"]["messages"] = [{"role": "system", "content": new_prompt}]
+        self.conversations[history_id].set_prompt(
+            prompt,
+            self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
+        )
         await inter.response.send_message(
-            f"History cleared and system prompt changed to:\n\n{new_prompt}",
+            f"History cleared and system prompt changed to:\n\n{prompt}",
             ephemeral=True,
         )
-        self.channel_histories[history_id]["prompts"]["tokens"] = self.get_token_count_for_string(
-            App.get_config("AI_CHAT_MODEL"),
-            new_prompt,
-        )
-        logger.info("%s set the new prompt: %s", inter.author.display_name, new_prompt)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection")
@@ -839,22 +821,21 @@ class AIChatbot(SlashbotCog):
             The slash command interaction.
 
         """
-        await inter.response.defer(ephemeral=True)
         history_id = self.get_history_id(inter)
 
         prompt_name = "Unknown"
-        prompt = self.channel_histories[history_id]["prompts"]["system"]
+        prompt = self.conversations[history_id].prompt
         for name, text in PROMPT_CHOICES.items():
             if prompt == text:
                 prompt_name = name
 
         response = ""
         response += f"**Model name**: {App.get_config('AI_CHAT_MODEL')}\n"
-        response += f"**Token usage**: {self.channel_histories[history_id]['prompts']['tokens']}\n"
+        response += f"**Token usage**: {self.conversations[history_id].tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
-        response += f"**Prompt**: {prompt[:1024] if prompt else '???'}\n"
+        response += f"**Prompt**: {prompt[:1800]}...\n"
 
-        await inter.edit_original_message(content=response)
+        await inter.response.send_message(response, ephemeral=True)
 
 
 MAX_ELAPSED_TIME = 300

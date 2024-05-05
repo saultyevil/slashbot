@@ -59,22 +59,22 @@ class Reminders(SlashbotCog):
         self.check_reminders.start()  # pylint: disable=no-member
         self.markov_sentences = ()
 
-    async def cog_load(self):
-        """Initialise the cog.
+    # async def cog_load(self):
+    #     """Initialise the cog.
 
-        Currently this does:
-            - create markov sentences
-        """
-        self.markov_sentences = (
-            generate_sentences_for_seed_words(
-                MARKOV_MODEL,
-                ["reminder"],
-                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
-            )
-            if self.bot.markov_gen_on
-            else {"reminder": []}
-        )
-        logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
+    #     Currently this does:
+    #         - create markov sentences
+    #     """
+    #     # self.markov_sentences = (
+    #         generate_sentences_for_seed_words(
+    #             MARKOV_MODEL,
+    #             ["reminder"],
+    #             App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+    #         )
+    #         if self.bot.markov_gen_on
+    #         else {"reminder": []}
+    #     )
+    #     logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Private methods ----------------------------------------------------------
 
@@ -188,7 +188,7 @@ class Reminders(SlashbotCog):
                     continue
 
                 embed = disnake.Embed(title=reminder["reminder"], color=disnake.Color.default())
-                embed.set_footer(text=f"{await self.async_get_markov_sentence('reminder')}")
+                # embed.set_footer(text=f"{await self.async_get_markov_sentence('reminder')}")
                 embed.set_thumbnail(url=reminder_user.avatar.url)
 
                 channel = await self.bot.fetch_channel(reminder["channel"])

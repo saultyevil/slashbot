@@ -33,25 +33,25 @@ class Videos(SlashbotCog):
         super().__init__(bot)
         self.markov_sentences = ()
 
-    async def cog_load(self):
-        """Initialise the cog.
+    # async def cog_load(self):
+    #     """Initialise the cog.
 
-        Currently this does:
-            - create markov sentences
-        """
-        self.markov_sentences = (
-            generate_sentences_for_seed_words(
-                MARKOV_MODEL,
-                [
-                    "admin",
-                    "admin abuse",
-                ],
-                1,  # these only happen once in a while, so dont need a big bank of them
-            )
-            if self.bot.markov_gen_on
-            else {"admin": [], "admin abuse": []}
-        )
-        logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
+    #     Currently this does:
+    #         - create markov sentences
+    #     """
+    #     self.markov_sentences = (
+    #         generate_sentences_for_seed_words(
+    #             MARKOV_MODEL,
+    #             [
+    #                 "admin",
+    #                 "admin abuse",
+    #             ],
+    #             1,  # these only happen once in a while, so dont need a big bank of them
+    #         )
+    #         if self.bot.markov_gen_on
+    #         else {"admin": [], "admin abuse": []}
+    #     )
+    #     logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Commands -----------------------------------------------------------------
 

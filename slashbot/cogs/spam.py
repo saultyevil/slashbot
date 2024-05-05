@@ -297,14 +297,16 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         try:
             parsed_comment_xml = defusedxml.ElementTree.fromstring(response.content)
         except defusedxml.ElementTree.ParseError:
-            logger.exception("Unable to parse Rule34 comment API return from string into XML: %s", response.content)
+            logger.exception("Unable to parse Rule34 comment API return from string into XML")
+            logger.debug("%s", response.content)
             return EMPTY_STRING, EMPTY_STRING
 
         post_comments = [
             (element.get("body"), element.get("creator")) for element in parsed_comment_xml.iter("comment")
         ]
         if not post_comments:
-            logger.error("Unable to find any comments in parsed XML comments: %s", response.content)
+            logger.error("Unable to find any comments in parsed XML comments")
+            logger.debug("%s", response.content)
             return EMPTY_STRING, EMPTY_STRING
 
         return random.choice(post_comments)  # noqa: S311
