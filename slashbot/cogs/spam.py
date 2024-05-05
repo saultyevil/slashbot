@@ -1,15 +1,13 @@
-#!/usr/bin/env python3
-
-"""Commands for sending spam/important messages to the chat."""
+"""Commands designed to spam the chat with various things."""
 
 import atexit
 import logging
 import random
 import time
-import xml
 from collections import defaultdict
 from types import coroutine
 
+import aiofiles
 import defusedxml
 import defusedxml.ElementTree
 import disnake
@@ -51,27 +49,13 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.attempts = attempts
         self.markov_training_sample = {}
         self.rule34_api = r34.Rule34()
-
         self.user_cooldown = defaultdict(lambda: {"time": 0.0, "count": 0})  # tracks last unix time someone used it
         self.cooldown_duration = App.get_config("COOLDOWN_STANDARD")
         self.cooldown_rate = App.get_config("COOLDOWN_RATE")
-
         self.markov_chain_update_loop.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
-        atexit.unregister(self.rule34_api._exitHandler)
-
-        # this forces a markov chain update when the bot exits, e.g. ctrl+c
-        # self.bot.add_function_to_cleanup(
-        #     None,
-        #     update_markov_chain_for_model,
-        #     (
-        #         None,
-        #         markov.MARKOV_MODEL,
-        #         self.markov_training_sample.values(),
-        #         App.config("CURRENT_MARKOV_CHAIN"),
-        #     ),
-        # )
+        atexit.unregister(self.rule34_api._exitHandler)  # noqa: SLF001
 
     # Slash commands -----------------------------------------------------------
 
@@ -86,17 +70,15 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
 
         """
-        with open(App.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
-            bad_words = file_in.readlines()
+        async with aiofiles.open(App.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
+            bad_words = await file_in.readlines()
 
-        bad_word = random.choice(bad_words).strip()
-
+        bad_word = random.choice(bad_words).strip()  # noqa: S311
         users_to_mention = [
             inter.guild.get_member(user_id).mention
             for user_id, user_settings in get_users().items()
             if user_settings["bad_word"] == bad_word
         ]
-
         if users_to_mention:
             await inter.response.send_message(f"Here's one for ya, {', '.join(users_to_mention)} ... {bad_word}!")
         else:
@@ -107,7 +89,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         description="evil wii",
     )
     async def evil_wii(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
-        """Send the Evil Wii
+        """Send the Evil Wii, a cursed image.
 
         Parameters
         ----------
@@ -115,8 +97,9 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to respond to.
 
         """
-        message = random.choice(["evil wii", "evil wii?", "have you seen this?", "||evil wii||", "||evil|| ||wii||"])
-
+        message = random.choice(  # noqa: S311
+            ["evil wii", "evil wii?", "have you seen this?", "||evil wii||", "||evil|| ||wii||"],
+        )
         file = disnake.File("data/images/evil_wii.png")
         file.filename = f"SPOILER_{file.filename}"
 
@@ -125,7 +108,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /sentence")
     @commands.default_member_permissions(administrator=True)
-    async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction):
+    async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Update the Markov chain model.
 
         If there is no inter, e.g. not called from a command, then this function
@@ -158,7 +141,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="oracle", description="a message from god")
-    async def oracle(self, inter: disnake.ApplicationCommandInteraction):
+    async def oracle(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a Terry Davis inspired "God message" to the chat.
 
         Parameters
@@ -167,11 +150,11 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
 
         """
-        with open(App.get_config("GOD_WORDS_FILE"), encoding="utf-8") as file_in:
-            oracle_words = file_in.readlines()
+        async with aiofiles.open(App.get_config("GOD_WORDS_FILE"), encoding="utf-8") as file_in:
+            oracle_words = await file_in.readlines()
 
         await inter.response.send_message(
-            f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",
+            f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",  # noqa: S311
         )
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
@@ -207,35 +190,12 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
         comment, user = self.get_comments_for_rule34_post(image.id)
         comment = "*Too cursed for comments*" if not comment else f'"{comment}"'
-        user = " " if not user else f"\n\- *{user}*"
+        user = " " if not user else f"\n\- *{user}*"  # noqa: W605
         message = f"|| {image.file_url} ||\n>>> {comment}{user}"
 
         await inter.edit_original_message(content=message)
 
     # Listeners ---------------------------------------------------------------
-
-    # @commands.Cog.listener("on_message")
-    # async def respond_to_same(self, message: disnake.Message) -> None:
-    #     """Respond "same" to a user who says same.
-
-    #     Parameters
-    #     ----------
-    #     message : disnake.Message
-    #         The message to check for "same".
-    #     """
-    #     if message.author.bot:
-    #         return
-
-    #     if self.check_user_on_cooldown(message.author.id):
-    #         return
-
-    #     self.user_cooldown[message.author.id]["time"] = time.time()
-    #     self.user_cooldown[message.author.id]["count"] += 1
-
-    #     content = message.clean_content.strip().lower()
-
-    #     if content in ["same", "man", "sad", "fr?"]:
-    #         await message.channel.send(f"{message.content}")
 
     @commands.Cog.listener("on_message")
     async def add_message_to_markov_training_sample(self, message: disnake.Message) -> None:
@@ -275,7 +235,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             try:
                 message = await channel.fetch_message(int(payload.message_id))
             except disnake.NotFound:
-                logger.error("Unable to fetch message %d", payload.message_id)
+                logger.exception("Unable to fetch message %d", payload.message_id)
                 return
 
         self.markov_training_sample.pop(message.id, None)
