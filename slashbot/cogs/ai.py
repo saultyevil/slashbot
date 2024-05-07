@@ -1006,7 +1006,7 @@ class AIImageGeneration(SlashbotCog):
             elapsed_time = time.time() - start
 
         if elapsed_time >= MAX_ELAPSED_TIME:
-            logger.error("text2image: timed out %s", process_id)
+	    self.running_tasks.pop(inter.author.id)
             await next_interaction.send(f'Your request ({process_id}) for "{prompt}" timed out.', ephemeral=True)
         else:
             await next_interaction.send(f'{inter.author.display_name}\'s request for "{prompt}" {url}')
