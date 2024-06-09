@@ -58,8 +58,7 @@ class Conversation:
         self._system_prompt_tokens = system_prompt_tokens
 
         self.tokens = system_prompt_tokens
-        self.prompt = system_prompt
-        self.messages = [Message(system_prompt, "system")]
+        self.system_prompt = system_prompt
         self.conversation = [{"role": "system", "content": system_prompt}]
 
     def __getitem__(self, index: int) -> dict[str, str]:
@@ -116,7 +115,7 @@ class Conversation:
         the number of tokens.
         """
         self.tokens = self._system_prompt_tokens
-        self.conversation = [{"role": "system", "content": self.prompt}]
+        self.conversation = [{"role": "system", "content": self.system_prompt}]
 
     def remove_message(self, index: int) -> Message:
         """Remove a message from the conversation history.
@@ -146,7 +145,7 @@ class Conversation:
             The number of tokens in the new prompt.
 
         """
-        self.prompt = new_prompt
+        self.system_prompt = new_prompt
         self._system_prompt_tokens = new_prompt_tokens
         self.clear_conversation()
 

@@ -420,11 +420,11 @@ class AIChatbot(SlashbotCog):
             )
             removed_count += 1
         if removed_count > 0:
-            logger.debug(
+            logger.info(
                 "Removed %d messages from channel %s due to token limit: %d messages remaining",
                 removed_count,
                 history_id,
-                len(self.channel_histories[history_id]),
+                len(self.conversations[history_id]),
             )
 
     async def add_new_message_to_conversation(
