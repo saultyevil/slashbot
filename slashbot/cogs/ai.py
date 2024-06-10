@@ -529,7 +529,7 @@ class AIChatbot(SlashbotCog):
         """
         history_id = self.get_history_id(message)
         messages = [
-            {"role": "system", "content": self.conversations[history_id].prompt},
+            {"role": "system", "content": self.conversations[history_id].system_prompt},
             {"role": "user", "content": message.clean_content},
         ]
         response, _ = await self.get_model_response(App.get_config("AI_CHAT_MODEL"), messages)
@@ -824,7 +824,7 @@ class AIChatbot(SlashbotCog):
         history_id = self.get_history_id(inter)
 
         prompt_name = "Unknown"
-        prompt = self.conversations[history_id].prompt
+        prompt = self.conversations[history_id].system_prompt
         for name, text in PROMPT_CHOICES.items():
             if prompt == text:
                 prompt_name = name
