@@ -411,8 +411,20 @@ class AIChatbot(SlashbotCog):
 
         """
         removed_count = 0
-        while self.conversations[history_id].tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
-            message = self.conversations[history_id][1].content
+        while (
+            self.conversations[history_id].tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")
+            and len(self.conversations[history_id]) + 1 > 1  # +1 to account for system prompt
+        ):
+            try:
+                message = self.conversations[history_id][1].content
+            except IndexError:
+                logger.exception(
+                    "History %d appears to be empty: tokens %d, conversation %s",
+                    history_id,
+                    self.conversations[history_id].tokens,
+                    self.conversations[history_id],
+                )
+                return
             self.conversations[history_id].remove_message(1)
             self.conversations[history_id].tokens -= self.get_token_count_for_string(
                 App.get_config("AI_CHAT_MODEL"),
