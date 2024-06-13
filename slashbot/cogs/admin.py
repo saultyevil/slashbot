@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-"""This cog contains admin commands for Slashbot."""
+"""Admin commands for Slashbot."""
 
+import datetime
 import logging
 import os
 import re
@@ -9,14 +10,17 @@ import sys
 from pathlib import Path
 from types import coroutine
 
+import aiofiles
+import aiohttp
 import disnake
 import git
-import requests
 from disnake.ext import commands
+from prettytable import PrettyTable
 
 from slashbot import __version__, markov
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
+from slashbot.db import get_all_reminders
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
@@ -37,12 +41,13 @@ def convert_level_to_int(choice: str) -> int:
 
     """
     choice = choice.lower()
+
     if choice == "debug":
         return logging.DEBUG
-    elif choice == "info":
+    if choice == "info":
         return logging.INFO
-    else:
-        return logging.WARNING
+
+    return logging.WARNING
 
 
 class AdminTools(SlashbotCog):
@@ -55,18 +60,28 @@ class AdminTools(SlashbotCog):
     def __init__(
         self,
         bot: commands.InteractionBot,
-    ):
+    ) -> None:
+        """Initialise the cog.
+
+        Parameters
+        ----------
+        bot : commands.InteractionBot
+            The bot object.
+
+        """
         super().__init__(bot)
         self.logfile_path = Path(App.get_config("LOGFILE_NAME"))
 
     # Commands -----------------------------------------------------------------
 
+    @commands.has_permissions(administrator=True)
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="version", description="Print the current version number of the bot")
     async def print_version(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Print the current version number of the bot."""
         await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
+    @commands.has_permissions(administrator=True)
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="logfile", description="get the tail of the logfile")
     async def print_logfile(
@@ -88,6 +103,8 @@ class AdminTools(SlashbotCog):
 
         Parameters
         ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interaction to respond to.
         file: str
             The name of the file to look at
         num_lines: int
@@ -96,13 +113,9 @@ class AdminTools(SlashbotCog):
         """
         await inter.response.defer(ephemeral=True)
 
-        if file == "slashbot":
-            file_name = self.logfile_path
-        else:
-            file_name = self.logfile_path.with_name("disnake.log")
-
-        with open(file_name, encoding="utf-8") as file_in:
-            log_lines = file_in.readlines()
+        file_name = self.logfile_path if file == "slashbot" else self.logfile_path.with_name("disnake.log")
+        async with aiofiles.open(file_name, encoding="utf-8") as file_in:
+            log_lines = await file_in.read().splitlines()
 
         # iterate backwards over log_lines, until either n_lines is reached or
         # the character limit is reached
@@ -120,20 +133,25 @@ class AdminTools(SlashbotCog):
                 break
             tail.append(log_lines[-i])
 
-        return await inter.edit_original_message(f"```{''.join(tail[::-1])}```")
+        await inter.edit_original_message(f"```{''.join(tail[::-1])}```")
 
     @commands.slash_command(name="ip", description="get the external ip address for the bot")
-    async def print_ip_address(self, inter: disnake.ApplicationCommandInteraction):
+    async def print_ip_address(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Get the external IP of the bot."""
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
             return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
-
         try:
-            ip_addr = requests.get("https://api.ipify.org", timeout=5).content.decode("utf-8")
-            await inter.response.send_message(f"```{ip_addr}```", ephemeral=True)
-        except requests.exceptions.Timeout:
-            await inter.response.send_message("The IP request timed out.", ephemeral=True)
+            async with (
+                aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=4)) as session,
+                session.get("https://api.ipify.org") as resp,
+            ):
+                ip_addr = await resp.text()
+            await inter.response.send_message(f"{ip_addr}", ephemeral=True)
+        except (TimeoutError, aiohttp.ClientError):
+            await inter.response.send_message("The IP request failed.", ephemeral=True)
+            await session.close()
 
+    @commands.has_permissions(administrator=True)
     @commands.slash_command(name="restart_bot", description="restart the bot")
     async def restart_bot(
         self,
@@ -149,7 +167,7 @@ class AdminTools(SlashbotCog):
             default=0,
             description="Set the state size of the markov model",
         ),
-    ):
+    ) -> None:
         """Restart the bot with a new process.
 
         Parameters
@@ -164,7 +182,8 @@ class AdminTools(SlashbotCog):
 
         """
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
-            return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            return
 
         arguments = ["run.py"]
         if disable_markov:
@@ -178,8 +197,9 @@ class AdminTools(SlashbotCog):
         else:
             await inter.response.send_message("Restarting the bot...", ephemeral=True)
 
-        os.execv(sys.executable, ["python"] + arguments)
+        os.execv(sys.executable, ["python", *arguments])
 
+    @commands.has_permissions(administrator=True)
     @commands.slash_command(name="update_bot", description="Update and restart the bot")
     async def update_and_restart(
         self,
@@ -199,13 +219,15 @@ class AdminTools(SlashbotCog):
             default=0,
             description="Set the state size of the markov model",
         ),
-    ):
+    ) -> None:
         """Update and restart the bot with a new process.
 
         Parameters
         ----------
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
+        branch : str
+            The name of the git branch to use
         disable_markov : str / bool
             A bool to indicate if we should disable cached markov sentences. The
             input is a string of "Yes" or "No" which is converted into a bool.
@@ -214,10 +236,11 @@ class AdminTools(SlashbotCog):
 
         """
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
-            return await inter.response.send_message(
+            await inter.response.send_message(
                 "You don't have permission to use this command.",
                 ephemeral=True,
             )
+            return
 
         await inter.response.defer(ephemeral=True)
 
@@ -229,18 +252,20 @@ class AdminTools(SlashbotCog):
                 branch.checkout()
                 logger.info("Switched to branch %s", branch)
             except git.exc.GitCommandError as exc:
-                logger.exception("Failed to switch branch: %s", exc)
-                return await inter.edit_original_message(
+                logger.exception("Failed to switch branch")
+                await inter.edit_original_message(
                     content=f"Failed to checkout {branch}  due to {exc}",
                 )
+                return
 
         try:
             repo.remotes.origin.pull()
         except git.exc.GitCommandError as exc:
-            logger.exception("Failed to pull changes: %s", exc)
-            return await inter.edit_original_message(
+            logger.exception("Failed to pull changes")
+            await inter.edit_original_message(
                 content=f"Failed to pull updated changes due to {exc}",
             )
+            return
 
         await self.restart_bot(
             inter,
@@ -248,6 +273,7 @@ class AdminTools(SlashbotCog):
             state_size,
         )
 
+    @commands.has_permissions(administrator=True)
     @commands.slash_command(name="set_logging_level", description="Set the verbosity level for /logfile")
     async def set_logging_level(
         self,
@@ -257,7 +283,7 @@ class AdminTools(SlashbotCog):
             converter=convert_level_to_int,
             description="What to show in the log output",
         ),
-    ):
+    ) -> None:
         """Set the logging level for the logfile.
 
         Parameters
@@ -271,6 +297,7 @@ class AdminTools(SlashbotCog):
         logger.setLevel(level)
         await inter.response.send_message(f"Logging level set to {level.lower()}")
 
+    @commands.has_permissions(administrator=True)
     @commands.slash_command(name="set_markov_chain", description="Set a new Markov chain")
     async def set_markov_chain(
         self,
@@ -279,28 +306,66 @@ class AdminTools(SlashbotCog):
             choices=sorted([str(p) for p in Path("data/chains").glob("*.pickle")]),
             description="The name of the Markov chain to use.",
         ),
-    ):
+    ) -> None:
         """Switch the current Markov chain.
 
         Parameters
         ----------
+        inter : disnake.ApplicationCommandInteraction
+            The command interaction.
         chain_name : str, optional
             The name of the chain to use.
 
         """
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
-            return await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            return
 
         await inter.response.send_message(f"Loading chain: {chain_name}", ephemeral=True)
-
         state_size = int(re.findall(r"\d+", chain_name)[0])
         markov.MARKOV_MODEL = markov.load_markov_model(f"data/chains/{chain_name}", state_size)
 
         await inter.followup.send(f"{chain_name} has successfully loaded.", ephemeral=True)
 
+    @commands.has_permissions(administrator=True)
+    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.slash_command(name="show_all_reminders", description="view all of the reminders")
+    async def show_all_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+        """Show the reminders set for a user.
 
-def setup(bot: commands.InteractionBot):
-    """Setup entry function for load_extensions().
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction object for the command.
+
+        """
+        reminders = get_all_reminders()
+        if not reminders:
+            return await inter.response.send_message("You don't have any reminders.", ephemeral=True)
+        reminders = sorted(
+            [
+                (datetime.datetime.fromisoformat(reminder["date"]).astimezone(datetime.UTC), reminder["reminder"])
+                for reminder in reminders
+            ],
+            key=lambda entry: entry[0],
+        )
+
+        reminders = [(entry[0].strftime(r"%H:%M %d %B %Y (UTC)"), entry[1]) for entry in reminders]
+
+        table = PrettyTable()
+        table.align = "r"
+        table.field_names = ["When", "What"]
+        table._max_width = {"When": 25, "What": 75}  # pylint: disable=protected-access
+        table.add_rows(reminders)
+        message = f"You have {len(reminders)} reminders set.\n```"
+        message += table.get_string() + "```"
+        message += f"Current UTC time: {datetime.datetime.now(tz=datetime.UTC).strftime(r'%H:%M %d %B %Y')}"
+
+        return await inter.response.send_message(message, ephemeral=True)
+
+
+def setup(bot: commands.InteractionBot) -> None:
+    """Set up cogs in this module.
 
     Parameters
     ----------

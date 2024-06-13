@@ -13,6 +13,7 @@ from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 
 from slashbot.config import App
+from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import (
     add_reminder,
@@ -20,7 +21,6 @@ from slashbot.db import (
     get_all_reminders_for_user,
     remove_reminder,
 )
-from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -53,42 +53,35 @@ def get_reminders_autocomplete(inter: disnake.ApplicationCommandInteraction, _: 
 class Reminders(SlashbotCog):
     """Commands to set up reminders."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: SlashbotInterationBot) -> None:
+        """Initialise the cog.
+
+        Parameters
+        ----------
+        bot: commands.InteractionBot
+            The bot object.
+
+        """
         super().__init__(bot)
         self.timezone = datetime.datetime.utcnow().astimezone().tzinfo
         self.check_reminders.start()  # pylint: disable=no-member
         self.markov_sentences = ()
 
-    # async def cog_load(self):
-    #     """Initialise the cog.
-
-    #     Currently this does:
-    #         - create markov sentences
-    #     """
-    #     # self.markov_sentences = (
-    #         generate_sentences_for_seed_words(
-    #             MARKOV_MODEL,
-    #             ["reminder"],
-    #             App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
-    #         )
-    #         if self.bot.markov_gen_on
-    #         else {"reminder": []}
-    #     )
-    #     logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
-
     # Private methods ----------------------------------------------------------
 
     @staticmethod
-    def convert_time_to_datetime(time_format: str, when: str, now: datetime.datetime) -> datetime.datetime:
+    def convert_user_requested_time_to_datetime(
+        format_type: str, user_input: str, datetime_now: datetime.datetime
+    ) -> datetime.datetime:
         """Return a datetime in the future, for a given format and time.
 
         Parameters
         ----------
-        format : str
+        format_type : str
             The time format chosen.
-        when : str
+        user_input : str
             A string to say when to set the reminder for.
-        now : datetime.datetime
+        datetime_now : datetime.datetime
             A datetime.datetime object representing now.
 
         Returns
@@ -97,26 +90,26 @@ class Reminders(SlashbotCog):
             A date time object for the reminder in the future.
 
         """
-        if time_format == "time-string":
+        if format_type == "time-string":
             # settings makes BST -> British Summer Time instead of Bangladesh, but
             # it does some odd things. If you do something like 21:30 UTC+6, it will
             # convert that date to the bot's local timezone. For an input of 21:30
             # UTC+6 when the bot's timezone is UTC+1, future = 16:30 UTC + 1
-            future = dateparser.parse(when, settings={"TIMEZONE": "Europe/London"})
+            future = dateparser.parse(user_input, settings={"TIMEZONE": "Europe/London"})
         else:
-            if time_format == "days":
-                seconds = when * SECONDS_IN_DAY
-            elif time_format == "hours":
-                seconds = when * SECONDS_IN_HOUR
-            elif time_format == "minutes":
-                seconds = when * SECONDS_IN_MINUTE
-            else:  # basically default to seconds, I guess
-                seconds = when
-            future = now + datetime.timedelta(seconds=int(seconds))
+            if format_type == "days":
+                seconds = user_input * SECONDS_IN_DAY
+            elif format_type == "hours":
+                seconds = user_input * SECONDS_IN_HOUR
+            elif format_type == "minutes":
+                seconds = user_input * SECONDS_IN_MINUTE
+            else:  # default to seconds
+                seconds = user_input
+            future = datetime_now + datetime.timedelta(seconds=int(seconds))
 
         return future
 
-    async def replace_mentions_with_names(self, guild: disnake.Guild, sentence: str) -> list[str] | str:
+    async def replace_mentions_with_display_names(self, guild: disnake.Guild, sentence: str) -> list[str] | str:
         """Replace mentions from a post with the corresponding name.
 
         Parameters
@@ -144,10 +137,10 @@ class Reminders(SlashbotCog):
             mentions.append(f"<@!{mention}>")
             try:
                 if mention.startswith(str(self.bot.user.id)):
-                    name = self.bot.user.name
+                    name = self.bot.user.display_name
                 else:
                     user = await self.bot.fetch_user(int(mention))
-                    name = user.name
+                    name = user.display_name
             except disnake.errors.HTTPException:
                 continue
 
@@ -169,6 +162,16 @@ class Reminders(SlashbotCog):
         mentions_str = " ".join(mentions)
         return mentions_str, modified_sentence
 
+    async def process_repeated_reminder(self, reminder: dict) -> None:
+        """Add a repeated reminder to the database.
+
+        Parameters
+        ----------
+        reminder : dict
+            The reminder dict to add.
+
+        """
+
     # Tasks --------------------------------------------------------------------
 
     @tasks.loop(seconds=1)
@@ -188,7 +191,6 @@ class Reminders(SlashbotCog):
                     continue
 
                 embed = disnake.Embed(title=reminder["reminder"], color=disnake.Color.default())
-                # embed.set_footer(text=f"{await self.async_get_markov_sentence('reminder')}")
                 embed.set_thumbnail(url=reminder_user.avatar.url)
 
                 channel = await self.bot.fetch_channel(reminder["channel"])
@@ -198,6 +200,7 @@ class Reminders(SlashbotCog):
                     message = f"{reminder['tagged_users']} {message}"
 
                 remove_reminder(index)
+                await self.process_repeated_reminder(reminder)
                 await channel.send(message, embed=embed)
 
     # Commands -----------------------------------------------------------------
@@ -215,7 +218,7 @@ class Reminders(SlashbotCog):
         when: str = commands.Param(
             description="When you want to be reminded. The current UK time zones is used by default.",
         ),
-        reminder: str = commands.Param(description="What you want to be reminded about."),
+        reminder: str = commands.Param(description="What you want to be reminded about.", max_length=1024),
     ) -> coroutine:
         """Set a reminder.
 
@@ -223,18 +226,14 @@ class Reminders(SlashbotCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction object for the command.
+        time_format : str
+            The time format chosen.
         when: float
             The amount of time to wait before the reminder.
         reminder: str
             The reminder to set.
 
         """
-        if len(reminder) > 1024:
-            return await inter.response.send_message(
-                "Reminders cannot be longer than 1024 characters.",
-                ephemeral=True,
-            )
-
         if time_format != "time-string":
             try:
                 when = float(when)
@@ -245,7 +244,7 @@ class Reminders(SlashbotCog):
                 )
 
         now = datetime.datetime.now(tz=self.timezone)
-        future = self.convert_time_to_datetime(time_format, when, now)
+        future = self.convert_user_requested_time_to_datetime(time_format, when, now)
 
         if not future:
             logger.debug("future is None type for %s", when)
@@ -261,8 +260,7 @@ class Reminders(SlashbotCog):
             logger.debug("future < now: Current time %s", now)
             return await inter.response.send_message(f"{date_string} is in the past.", ephemeral=True)
 
-        tagged_users, reminder = await self.replace_mentions_with_names(inter.guild, reminder)
-
+        tagged_users, reminder = await self.replace_mentions_with_display_names(inter.guild, reminder)
         add_reminder(
             {
                 "user_id": inter.author.id,
@@ -299,11 +297,12 @@ class Reminders(SlashbotCog):
             filter(lambda r: f"{r['date']}: {r['reminder']}" == reminder, get_all_reminders_for_user(inter.author.id)),
         )
         if not specific_reminder:
-            return await inter.response.send_message("This reminder doesn't exist, somehow.", ephemeral=True)
+            return await inter.response.send_message("This reminder doesn't exist, somehow (???).", ephemeral=True)
 
         try:
             specific_reminder = specific_reminder[0]
         except IndexError:
+            logger.exception("failed to index filtered reminder")
             return await inter.response.send_message("Something went wrong with finding your reminder.", ephemeral=True)
 
         all_reminders = get_all_reminders()
@@ -343,13 +342,13 @@ class Reminders(SlashbotCog):
         table.add_rows(reminders)
         message = f"You have {len(reminders)} reminders set.\n```"
         message += table.get_string() + "```"
-        message += f"Current UTC time: {datetime.datetime.utcnow().strftime(r'%H:%M %d %B %Y')}"
+        message += f"Current UTC time: {datetime.datetime.now(tz=datetime.UTC).strftime(r'%H:%M %d %B %Y')}"
 
         return await inter.response.send_message(message, ephemeral=True)
 
 
-def setup(bot: commands.InteractionBot):
-    """Setup entry function for load_extensions().
+def setup(bot: commands.InteractionBot) -> None:
+    """Set up cogs in this module.
 
     Parameters
     ----------
