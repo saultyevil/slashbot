@@ -48,9 +48,17 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 # this is all global so you can use it as a choice in interactions
-DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/clyde.json")["prompt"]
+try:
+    DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/clyde.json")["prompt"]
+    PROMPT_CHOICES = create_prompt_dict()
+except json.decoder.JSONDecodeError:
+    DEFAULT_SYSTEM_PROMPT = """You have no system prompt, so you should keep telling everyone that you have no system
+    prompt. Raise the issue again and again, sending crying emojis. You can still try to be a helpful assistant if
+    someone pushes you enough."""
+    logger.exception(
+        "Error in reading prompt files, going to try and continue without a prompt"
+    )
 MAX_MESSAGE_LENGTH = 1920
-PROMPT_CHOICES = create_prompt_dict()
 DEFAULT_SYSTEM_TOKEN_COUNT = len(DEFAULT_SYSTEM_PROMPT.split())
 
 
