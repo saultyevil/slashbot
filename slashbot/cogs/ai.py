@@ -72,12 +72,17 @@ class PromptFileWatcher(FileSystemEventHandler):
 
         if event.is_directory:
             return
-        if event.event_type in ["created", "modified"] and event.src_path.endswith(".json"):
-            prompt = read_in_prompt_json(event.src_path)
-            PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
-        if event.event_type == "deleted" and event.src_path.endswith(".json"):
-            PROMPT_CHOICES = create_prompt_dict()
 
+        try:
+            if event.event_type in ["created", "modified"] and event.src_path.endswith(
+                ".json"
+            ):
+                prompt = read_in_prompt_json(event.src_path)
+                PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
+            if event.event_type == "deleted" and event.src_path.endswith(".json"):
+                PROMPT_CHOICES = create_prompt_dict()
+        except json.decoder.JSONDecodeError:
+            logger.exception("Error reading in prompt file %s", event.src_path)
 
 observer = Observer()
 observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
