@@ -766,7 +766,7 @@ class AIChatbot(SlashbotCog):
             self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
-            f"History cleared and system prompt changed to:\n\n{prompt}",
+            f"History cleared and system prompt changed to:\n\n{prompt[:1800]}...",
             ephemeral=True,
         )
 
@@ -775,7 +775,7 @@ class AIChatbot(SlashbotCog):
     async def set_chat_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        prompt: str = commands.Param(description="The prompt to set"),
+        prompt: str = commands.Param(description="The prompt to set", max_length=2000),
     ) -> None:
         """Set a new system message for the location were the interaction came from.
 
