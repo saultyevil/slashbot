@@ -13,7 +13,6 @@ from spellchecker import SpellChecker
 
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
-from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 from slashbot.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user
@@ -38,23 +37,6 @@ class Spelling(SlashbotCog):
         self.custom_words = self.get_custom_words()
 
         self.markov_sentences = ()
-
-    async def cog_load(self):
-        """Initialise the cog.
-
-        Currently this does:
-            - create markov sentences
-        """
-        # self.markov_sentences = (
-        #     generate_sentences_for_seed_words(
-        #         MARKOV_MODEL,
-        #         ["spelling"],
-        #         App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
-        #     )
-        #     if self.bot.markov_gen_on
-        #     else {"spelling": []}
-        # )
-        # logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(
@@ -254,7 +236,6 @@ class Spelling(SlashbotCog):
                 embed.add_field(name="Percent wrong", value=f"{percent_wrong:.1f}%", inline=True)
 
                 embed.set_thumbnail(url=user.avatar.url)
-                # embed.set_footer(text=f"{await self.async_get_markov_sentence('spelling')}")
 
                 embeds.append(embed)
 
