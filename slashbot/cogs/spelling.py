@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
-
-"""This cog contains commands and tasks to bully people."""
+"""Cog for bullying people about their spelling mistakes."""
 
 import asyncio
 import logging
 import re
 from collections import defaultdict
 
+import aiofiles
 import disnake
 from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
@@ -25,7 +24,15 @@ class Spelling(SlashbotCog):
     The purpose of this cog is to bully Pip for his poor spelling.
     """
 
-    def __init__(self, bot: commands.InteractionBot):
+    def __init__(self, bot: commands.InteractionBot) -> None:
+        """Initialise the cog.
+
+        Parameters
+        ----------
+        bot : commands.InteractionBot
+            The bot to pass to the cog.
+
+        """
         super().__init__(bot)
         self.incorrect_spellings = defaultdict(
             lambda: defaultdict(
@@ -38,11 +45,17 @@ class Spelling(SlashbotCog):
 
         self.markov_sentences = ()
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(
+        App.get_config("COOLDOWN_RATE"),
+        App.get_config("COOLDOWN_STANDARD"),
+        COOLDOWN_USER,
+    )
     @commands.slash_command(
         name="add_word_to_dict",
         description="Add a word to the custom dictionary for the spelling summary",
-        guild_ids=[int(guild_id) for guild_id in App.get_config("SPELLCHECK_SERVERS").keys()],
+        guild_ids=tuple(
+            int(guild_id) for guild_id in App.get_config("SPELLCHECK_SERVERS")
+        ),
     )
     async def add_word_to_dict(
         self,
@@ -53,7 +66,7 @@ class Spelling(SlashbotCog):
             min_length=2,
             max_length=64,
         ),
-    ):
+    ) -> None:
         """Add a word to the custom dictionary.
 
         Parameters
@@ -66,18 +79,27 @@ class Spelling(SlashbotCog):
         """
         word_lower = word.lower()
         if word_lower in self.custom_words:
-            return await inter.response.send_message(f"The word '{word}' is already in the dictionary.", ephemeral=True)
+            await inter.response.send_message(
+                f"The word '{word}' is already in the dictionary.", ephemeral=True
+            )
+            return
         self.custom_words.append(word_lower)
-        with open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "w", encoding="utf-8") as file_out:
-            file_out.write("\n".join(self.custom_words))
+        async with aiofiles.open(
+            App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "w", encoding="utf-8"
+        ) as file_out:
+            await file_out.write("\n".join(self.custom_words))
 
         await inter.response.send_message(f"Added '{word_lower}' to dictionary.", ephemeral=True)
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(
+        App.get_config("COOLDOWN_RATE"),
+        App.get_config("COOLDOWN_STANDARD"),
+        COOLDOWN_USER,
+    )
     @commands.slash_command(
         name="remove_word_from_dict",
         description="Remove a word from the custom dictionary for the spelling summary",
-        guild_ids=[int(guild_id) for guild_id in App.get_config("SPELLCHECK_SERVERS").keys()],
+        guild_ids=[int(guild_id) for guild_id in App.get_config("SPELLCHECK_SERVERS")],
     )
     async def remove_word_from_dict(
         self,
@@ -88,7 +110,7 @@ class Spelling(SlashbotCog):
             min_length=2,
             max_length=64,
         ),
-    ):
+    ) -> None:
         """Add a word to the custom dictionary.
 
         Parameters
@@ -249,8 +271,8 @@ class Spelling(SlashbotCog):
         self.incorrect_spellings.clear()
 
 
-def setup(bot: commands.InteractionBot):
-    """Setup entry function for load_extensions().
+def setup(bot: commands.InteractionBot) -> None:
+    """Set up cogs in this module.
 
     Parameters
     ----------

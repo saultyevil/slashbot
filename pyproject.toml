@@ -74,10 +74,9 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["E501", "ANN101"]
+ignore = ["E501", "ANN101", "COM812"]
 fixable = ["ALL"]
 unfixable = []
-# Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.format]

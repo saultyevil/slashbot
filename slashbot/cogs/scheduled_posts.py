@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Scheduled posts cog."""
 
 import asyncio

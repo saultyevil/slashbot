@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Admin commands for Slashbot."""
 
 import datetime
