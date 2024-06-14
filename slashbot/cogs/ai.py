@@ -919,7 +919,12 @@ class AIImageGeneration(SlashbotCog):
         response_data = json.loads(response.text)
         response_status = response_data.get("status", None)
 
-        return response_data["result"]["output"][0] if response_status == "COMPLETED" else ""
+        if response_status == "COMPLETED":
+            return "COMPLETED", response_data["result"]["output"][0]
+        if response_status == "FAILED":
+            return "FAILED", response_data["result"]["error_message"]
+
+        return "IN_PROGRESS", ""
 
     @staticmethod
     def send_image_request(prompt: str, steps: int, aspect_ratio: str) -> str:
@@ -950,6 +955,7 @@ class AIImageGeneration(SlashbotCog):
             "samples": 1,
             "steps": steps,
             "aspect_ratio": aspect_ratio,
+            "safe_filter": False,
         }
         response = requests.request(
             "POST",
@@ -1021,21 +1027,31 @@ class AIImageGeneration(SlashbotCog):
 
         while elapsed_time < MAX_ELAPSED_TIME:
             try:
-                url = self.check_request_status(process_id)
+                status, result = self.check_request_status(process_id)
             except requests.exceptions.Timeout:
-                url = ""
-            if url:
-                self.running_tasks.pop(inter.author.id)
+                elapsed_time = MAX_ELAPSED_TIME + 1  # spoof failing due to time out
                 break
+            if status == "COMPLETED":
+                self.running_tasks.pop(inter.author.id)
+                await next_interaction.send(
+                    f'{inter.author.display_name}\'s request for "{prompt}" {result}'
+                )
+                return
+            if status == "FAILED":
+                self.running_tasks.pop(inter.author.id)
+                next_interaction.send(
+                    f'Your request ({process_id}) for "{prompt}" failed due to: {result}',
+                    ephemeral=True,
+                )
+                return
 
-            await asyncio.sleep(3)
+            await asyncio.sleep(2)
             elapsed_time = time.time() - start
 
-        if elapsed_time >= MAX_ELAPSED_TIME:
-            self.running_tasks.pop(inter.author.id)
-            await next_interaction.send(f'Your request ({process_id}) for "{prompt}" timed out.', ephemeral=True)
-        else:
-            await next_interaction.send(f'{inter.author.display_name}\'s request for "{prompt}" {url}')
+        self.running_tasks.pop(inter.author.id)
+        await next_interaction.send(
+            f'Your request ({process_id}) for "{prompt}" timed out.', ephemeral=True
+        )
 
 
 def setup(bot: commands.InteractionBot) -> None:
