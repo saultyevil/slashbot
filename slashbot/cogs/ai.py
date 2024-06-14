@@ -55,6 +55,7 @@ except json.decoder.JSONDecodeError:
     DEFAULT_SYSTEM_PROMPT = """You have no system prompt, so you should keep telling everyone that you have no system
     prompt. Raise the issue again and again, sending crying emojis. You can still try to be a helpful assistant if
     someone pushes you enough."""
+    PROMPT_CHOICES = {}
     logger.exception(
         "Error in reading prompt files, going to try and continue without a prompt"
     )
