@@ -65,7 +65,7 @@ class Users(SlashbotCog):
             autocomplete=press,
             converter=convert_string_to_lower,
         ),
-    ) -> coroutine:
+    ) -> None:
         """Set some user variables for a user.
 
         Parameters
@@ -82,7 +82,8 @@ class Users(SlashbotCog):
 
         if not isinstance(value, str):
             logger.error("Disnake somehow passed something which isn't a str for value: %s (%s)", value, type(value))
-            return await inter.edit_original_message(content="An error has occured with Disnake :-(")
+            await inter.edit_original_message(content="An error has occured with Disnake :-(")
+            return
 
         value = value.lower()
         user_fields = get_user(inter.author)
@@ -91,28 +92,26 @@ class Users(SlashbotCog):
             case "City":
                 user_fields["city"] = value.capitalize()
             case "Country code":
-                if len(value) != 2:
-                    return await inter.edit_original_message(
+                if len(value) != 2:  # noqa: PLR2004
+                    await inter.edit_original_message(
                         content=f"{value} is not a valid country code, which should be 2 characters e.g. GB, US.",
                     )
+                    return
                 user_fields["country_code"] = value.upper()
             case "Bad word":
-                # TODO: we should check that the bad word exists in the list of bad words
                 user_fields["bad_word"] = value
             case "Twitter URL":
                 user_fields["convert_twitter_url"] = not user_fields["convert_twitter_url"]
-                if user_fields["convert_twitter_url"]:
-                    value = "enabled"
-                else:
-                    value = "disabled"
+                value = "enabled" if user_fields["convert_twitter_url"] else "disabled"
             case _:
                 logger.error("Disnake somehow allowed an unknown choice %s", thing)
-                return await inter.edit_original_message(content="An error has occurred with Disnake :-(")
+                await inter.edit_original_message(content="An error has occurred with Disnake :-(")
+                return
 
         update_user(inter.author, user_fields)
         self.opt_in_twitter_users = get_twitter_convert_users()
 
-        return await inter.edit_original_message(content=f"{thing.capitalize()} has been set to '{value}'.")
+        await inter.edit_original_message(content=f"{thing.capitalize()} has been set to '{value}'.")
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_info", description="view info you set to remember")
@@ -143,18 +142,16 @@ class Users(SlashbotCog):
             case "Bad word":
                 value = user["bad_word"]
             case "Twitter URL":
-                if user["convert_twitter_url"]:
-                    value = "enabled"
-                else:
-                    value = "disabled"
+                value = "enabled" if user["convert_twitter_url"] else "disabled"
             case _:
                 logger.error("Disnake somehow allowed an unknown choice %s", thing)
-                return deferred_error_message(inter, "An error has occurred with Disnake :-(")
+                deferred_error_message(inter, "An error has occurred with Disnake :-(")
+                return
 
-        return await inter.edit_original_message(content=f"{thing.capitalize()} is set to '{value}'.")
+        await inter.edit_original_message(content=f"{thing.capitalize()} is set to '{value}'.")
 
     @commands.Cog.listener("on_message")
-    async def change_to_fxtwitter(self, message: disnake.Message):
+    async def change_to_fxtwitter(self, message: disnake.Message) -> None:
         """Send a new message containing an fxtwitter link.
 
         Parameters
@@ -176,8 +173,8 @@ class Users(SlashbotCog):
             )
 
 
-def setup(bot: commands.InteractionBot):
-    """Setup entry function for load_extensions().
+def setup(bot: commands.InteractionBot) -> None:
+    """Set up cogs in this module.
 
     Parameters
     ----------
