@@ -1011,7 +1011,9 @@ class AIImageGeneration(SlashbotCog):
         try:
             process_id = self.send_image_request(prompt, steps, aspect_ratio)
         except requests.exceptions.Timeout:
-            inter.edit_original_message(content="The image generation API took too long to respond.")
+            await inter.edit_original_message(
+                content="The image generation API took too long to respond."
+            )
             return
 
         if process_id == "":
