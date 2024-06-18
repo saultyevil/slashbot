@@ -61,7 +61,7 @@ class Reminders(SlashbotCog):
 
         """
         super().__init__(bot)
-        self.timezone = datetime.datetime.utcnow().astimezone().tzinfo
+        self.timezone = datetime.utcnow().astimezone().tzinfo
         self.check_reminders.start()  # pylint: disable=no-member
         self.markov_sentences = ()
 
@@ -336,7 +336,7 @@ class Reminders(SlashbotCog):
         table = PrettyTable()
         table.align = "r"
         table.field_names = ["When", "What"]
-        table._max_width = {"When": 25, "What": 75}  # pylint: disable=protected-access
+        table._max_width = {"When": 25, "What": 75}  # pylint: disable=protected-access  # noqa: SLF001
         table.add_rows(reminders)
         message = f"You have {len(reminders)} reminders set.\n```"
         message += table.get_string() + "```"

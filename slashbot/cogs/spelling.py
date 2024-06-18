@@ -4,6 +4,7 @@ import asyncio
 import logging
 import re
 from collections import defaultdict
+from pathlib import Path
 
 import aiofiles
 import disnake
@@ -16,6 +17,8 @@ from slashbot.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+
+MAX_EMBEDS_AT_ONCE = 5
 
 
 class Spelling(SlashbotCog):
@@ -53,9 +56,7 @@ class Spelling(SlashbotCog):
     @commands.slash_command(
         name="add_word_to_dict",
         description="Add a word to the custom dictionary for the spelling summary",
-        guild_ids=tuple(
-            int(guild_id) for guild_id in App.get_config("SPELLCHECK_SERVERS")
-        ),
+        guild_ids=tuple(int(guild_id) for guild_id in App.get_config("SPELLCHECK_SERVERS")),
     )
     async def add_word_to_dict(
         self,
@@ -79,14 +80,10 @@ class Spelling(SlashbotCog):
         """
         word_lower = word.lower()
         if word_lower in self.custom_words:
-            await inter.response.send_message(
-                f"The word '{word}' is already in the dictionary.", ephemeral=True
-            )
+            await inter.response.send_message(f"The word '{word}' is already in the dictionary.", ephemeral=True)
             return
         self.custom_words.append(word_lower)
-        async with aiofiles.open(
-            App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "w", encoding="utf-8"
-        ) as file_out:
+        async with aiofiles.open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "w", encoding="utf-8") as file_out:
             await file_out.write("\n".join(self.custom_words))
 
         await inter.response.send_message(f"Added '{word_lower}' to dictionary.", ephemeral=True)
@@ -123,10 +120,11 @@ class Spelling(SlashbotCog):
         """
         word_lower = word.lower()
         if word_lower not in self.custom_words:
-            return await inter.response.send_message(f"The word '{word}' is not in the dictionary.", ephemeral=True)
+            await inter.response.send_message(f"The word '{word}' is not in the dictionary.", ephemeral=True)
+            return
         self.custom_words.remove(word_lower)
-        with open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "w", encoding="utf-8") as file_out:
-            file_out.write("\n".join(self.custom_words))
+        async with aiofiles.open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), "w", encoding="utf-8") as file_out:
+            await file_out.write("\n".join(self.custom_words))
 
         await inter.response.send_message(f"Removed '{word_lower}' from dictionary.", ephemeral=True)
 
@@ -143,10 +141,10 @@ class Spelling(SlashbotCog):
 
         """
         try:
-            with open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), encoding="utf-8") as file_in:
-                return list(set([line.strip() for line in file_in.readlines()]))
+            with Path.open(App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), encoding="utf-8") as file_in:
+                return list({line.strip() for line in file_in.readlines()})
         except OSError:
-            logger.error("No dictionary found at %s", App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"))
+            logger.exception("No dictionary found at %s", App.get_config("SPELLCHECK_CUSTOM_DICTIONARY"))
             return []
 
     @staticmethod
@@ -174,12 +172,10 @@ class Spelling(SlashbotCog):
         # remove numbers and non-word characters (excluding hyphens in words)
         clean_text = re.sub(r"[0-9]+|(?<!\w)-(?!\w)|[^\w\s-]|<[^>]+>", " ", clean_text)
         # replace multiple spaces with a single space
-        clean_text = re.sub(r"\s+", " ", clean_text)
-
-        return clean_text
+        return re.sub(r"\s+", " ", clean_text)
 
     @commands.Cog.listener("on_message")
-    async def check_for_incorrect_spelling(self, message: disnake.Message):
+    async def check_for_incorrect_spelling(self, message: disnake.Message) -> None:
         """Check a message for an incorrect spelling.
 
         At the moment, this will only run in the Bumpaper server.
@@ -208,7 +204,7 @@ class Spelling(SlashbotCog):
         self.incorrect_spellings[guild_key][str(message.author.id)]["unknown_words"] += unknown_words
 
     @tasks.loop(seconds=5)
-    async def spelling_summary(self):
+    async def spelling_summary(self) -> None:
         """Print the misspellings of the day.
 
         The summary will be in a single message. This will run everyday at 5pm.
@@ -262,7 +258,7 @@ class Spelling(SlashbotCog):
                 embeds.append(embed)
 
             channel = await self.bot.fetch_channel(App.get_config("SPELLCHECK_SERVERS")[str(guild_id)]["CHANNEL"])
-            if len(embeds) < 10:
+            if len(embeds) < MAX_EMBEDS_AT_ONCE:
                 await channel.send(embeds=embeds)
             else:
                 for embed in embeds:

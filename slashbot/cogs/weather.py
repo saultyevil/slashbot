@@ -29,16 +29,16 @@ FORECAST_TYPES = ["hourly", "daily"]
 API_KEY = App.get_config("OWM_API_KEY")
 
 
-class GeocodeException(Exception):
-    """Geocoding API failure"""
+class GeocodeError(Exception):
+    """Raise when the Geocoding API fails."""
 
 
-class OneCallException(Exception):
-    """OneCall API failure"""
+class OneCallError(Exception):
+    """Raise when the OWM OneCall API fails."""
 
 
-class LocationNotFoundException(Exception):
-    """Location not in OWM failure"""
+class LocationNotFoundError(Exception):
+    """Raise when OWM cannot find the provided location."""
 
 
 class Weather(SlashbotCog):
@@ -64,7 +64,7 @@ class Weather(SlashbotCog):
 
         self.markov_sentences = ()
 
-    async def cog_load(self):
+    async def cog_load(self) -> None:
         """Initialise the cog.
 
         Currently, this does:
@@ -101,7 +101,7 @@ class Weather(SlashbotCog):
         return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
     @staticmethod
-    def get_unit_strings(units: str):
+    def get_unit_strings(units: str) -> tuple[str, str, float]:
         """Get unit strings for a unit system.
 
         Parameters
@@ -116,14 +116,15 @@ class Weather(SlashbotCog):
 
         """
         if units not in WEATHER_UNITS:
-            raise ValueError(f"Unknown weather units {units}")
+            msg = f"Unknown weather units {units}"
+            raise ValueError(msg)
 
         if units == "metric":
             temp_unit, wind_unit, wind_factor = "C", "kph", 3.6
         elif units == "mixed":
             temp_unit, wind_unit, wind_factor = "C", "mph", 2.237
         else:
-            temp_unit, wind_unit, wind_factor = "F", "mph", 1
+            temp_unit, wind_unit, wind_factor = "F", "mph", 1.0
 
         return temp_unit, wind_unit, wind_factor
 
@@ -170,7 +171,8 @@ class Weather(SlashbotCog):
         location = self.geolocator.geocode(location, region="GB")
 
         if location is None:
-            raise LocationNotFoundException(f"{location} not found in Geocoding API")
+            msg = f"{location} not found in Geocoding API"
+            raise LocationNotFoundError(msg)
 
         lat, lon = location.latitude, location.longitude
         address = self.get_address_from_raw(location.raw["address_components"])
@@ -181,23 +183,21 @@ class Weather(SlashbotCog):
             address = str(location)
         address += f"\n({lat}, {lon})"
 
-        if units == "mixed":
-            api_units = "metric"
-        else:
-            api_units = units
-
+        api_units = "metric" if units == "mixed" else units
         one_call_request = requests.get(
             f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={API_KEY}",
             timeout=5,
         )
 
-        if one_call_request.status_code != 200:
-            if one_call_request.status_code == 400:
-                raise LocationNotFoundException(f"{location} could not be found")
-            raise OneCallException(f"OneCall API failed for {location}")
+        if one_call_request.status_code != requests.codes.ok:
+            if one_call_request.status_code == requests.codes.not_found:
+                msg = f"{location} could not be found"
+                raise LocationNotFoundError(msg)
+            msg = f"OneCall API failed for {location}"
+            raise OneCallError(msg)
 
         content = json.loads(one_call_request.content)
-        if isinstance(extract_type, (list, tuple)):
+        if isinstance(extract_type, list | tuple):
             weather_return = {key: value for key, value in content.items() if key in extract_type}
         else:
             weather_return = content[extract_type]
@@ -208,7 +208,7 @@ class Weather(SlashbotCog):
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forecast", description="get the weather forecast")
-    async def forecast(  # pylint: disable=too-many-locals, too-many-arguments
+    async def forecast(  # pylint: disable=too-many-locals, too-many-arguments  # noqa: PLR0913
         self,
         inter: disnake.ApplicationCommandInteraction,
         user_location: str = commands.Param(
@@ -227,7 +227,7 @@ class Weather(SlashbotCog):
             choices=WEATHER_UNITS,
         ),
         amount: int = commands.Param(description="The number of results to return.", default=4, gt=0, lt=7),
-    ) -> coroutine:
+    ) -> None:
         """Send the weather forecast to chat, either daily or hourly.
 
         Parameters
@@ -257,9 +257,9 @@ class Weather(SlashbotCog):
 
         try:
             location, forecast = self.get_weather_for_location(user_location, units, forecast_type)
-        except (LocationNotFoundException, GeocodeException):
+        except (LocationNotFoundError, GeocodeError):
             return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
-        except OneCallException:
+        except OneCallError:
             return await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
@@ -268,7 +268,7 @@ class Weather(SlashbotCog):
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         for sub in forecast[1 : amount + 1]:
-            date = datetime.datetime.fromtimestamp(int(sub["dt"]))
+            date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.utc)
 
             if forecast_type == "hourly":
                 date_string = f"{date.strftime(r'%I:%M %p')}"
@@ -280,7 +280,7 @@ class Weather(SlashbotCog):
             desc_string = f"{sub['weather'][0]['description'].capitalize()}"
             wind_string = (
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} @ {sub['wind_deg']}° "
-                + f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
+                f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
             humidity_string = f"({sub['humidity']}% RH)"
 
@@ -337,19 +337,17 @@ class Weather(SlashbotCog):
 
         try:
             location, weather_return = self.get_weather_for_location(
-                # user_location, units, ("current", "daily", "alerts")
                 user_location,
                 units,
                 ("current", "alerts"),
             )
-        except (LocationNotFoundException, GeocodeException):
+        except (LocationNotFoundError, GeocodeError):
             return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
-        except OneCallException:
+        except OneCallError:
             return await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
         except requests.Timeout:
             return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
 
-        # daily_forecast = weather_return["daily"][0]
         weather_alerts = weather_return.get("alerts") if "alerts" in weather_return else None
         current_weather = weather_return["current"]
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
@@ -360,12 +358,13 @@ class Weather(SlashbotCog):
             value=current_weather["weather"][0]["description"].capitalize(),
             inline=False,
         )
+        # todo: make this a function
         if weather_alerts:
-            now = datetime.datetime.now()
+            now = datetime.datetime.now(tz=datetime.utc)
             alert_strings = []
             for alert in weather_alerts:
-                alert_start = datetime.datetime.fromtimestamp(alert["start"])
-                alert_end = datetime.datetime.fromtimestamp(alert["end"])
+                alert_start = datetime.datetime.fromtimestamp(alert["start"], tz=datetime.utc)
+                alert_end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.utc)
                 if alert_start < now < alert_end:
                     alert_strings.append(
                         f"{alert['event']}: {alert_start.strftime(r'%H:%m')} to {alert_end.strftime(r'%H:%m')} ",
@@ -385,7 +384,7 @@ class Weather(SlashbotCog):
         embed.add_field(
             name="Wind",
             value=f"{float(current_weather['wind_speed']) * wind_factor:.0f} {wind_unit} @ "
-            + f"{current_weather['wind_deg']:.0f}° ({convert_radial_to_cardinal_direction(current_weather['wind_deg'])})",
+            f"{current_weather['wind_deg']:.0f}° ({convert_radial_to_cardinal_direction(current_weather['wind_deg'])})",
             inline=False,
         )
 
@@ -397,8 +396,8 @@ class Weather(SlashbotCog):
         return await inter.edit_original_message(embed=embed)
 
 
-def setup(bot: commands.InteractionBot):
-    """Setup entry function for load_extensions().
+def setup(bot: commands.InteractionBot) -> None:
+    """Set up the cogs in this module.
 
     Parameters
     ----------
