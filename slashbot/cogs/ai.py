@@ -966,7 +966,7 @@ class AIImageGeneration(SlashbotCog):
         )
 
         response_data = json.loads(response.text)
-        return response_data.get("process_id", "")
+        return response_data.get("process_id", ""), response_data
 
     @commands.cooldown(
         rate=App.get_config("COOLDOWN_RATE"),
@@ -1009,7 +1009,7 @@ class AIImageGeneration(SlashbotCog):
         await inter.response.defer(ephemeral=True)
 
         try:
-            process_id = self.send_image_request(prompt, steps, aspect_ratio)
+            process_id, response = self.send_image_request(prompt, steps, aspect_ratio)
         except requests.exceptions.Timeout:
             await inter.edit_original_message(
                 content="The image generation API took too long to respond."
@@ -1018,6 +1018,7 @@ class AIImageGeneration(SlashbotCog):
 
         if process_id == "":
             await inter.edit_original_message("There was an error when submitting your request.")
+            logger.error("Request did not return a process ID: %s", response)
             return
 
         self.running_tasks[inter.author.id] = process_id
