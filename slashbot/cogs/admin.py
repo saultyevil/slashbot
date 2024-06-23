@@ -72,14 +72,12 @@ class AdminTools(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.has_permissions(administrator=True)
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="version", description="Print the current version number of the bot")
     async def print_version(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Print the current version number of the bot."""
         await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
-    @commands.has_permissions(administrator=True)
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="logfile", description="get the tail of the logfile")
     async def print_logfile(
@@ -151,7 +149,6 @@ class AdminTools(SlashbotCog):
             await inter.response.send_message("The IP request failed.", ephemeral=True)
             await session.close()
 
-    @commands.has_permissions(administrator=True)
     @commands.slash_command(name="restart_bot", description="restart the bot")
     async def restart_bot(
         self,
@@ -199,7 +196,6 @@ class AdminTools(SlashbotCog):
 
         os.execv(sys.executable, ["python", *arguments])
 
-    @commands.has_permissions(administrator=True)
     @commands.slash_command(name="update_bot", description="Update and restart the bot")
     async def update_and_restart(
         self,
@@ -273,7 +269,6 @@ class AdminTools(SlashbotCog):
             state_size,
         )
 
-    @commands.has_permissions(administrator=True)
     @commands.slash_command(name="set_logging_level", description="Set the verbosity level for /logfile")
     async def set_logging_level(
         self,
@@ -297,7 +292,6 @@ class AdminTools(SlashbotCog):
         logger.setLevel(level)
         await inter.response.send_message(f"Logging level set to {level.lower()}")
 
-    @commands.has_permissions(administrator=True)
     @commands.slash_command(name="set_markov_chain", description="Set a new Markov chain")
     async def set_markov_chain(
         self,
@@ -327,7 +321,6 @@ class AdminTools(SlashbotCog):
 
         await inter.followup.send(f"{chain_name} has successfully loaded.", ephemeral=True)
 
-    @commands.has_permissions(administrator=True)
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_all_reminders", description="view all of the reminders")
     async def show_all_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
