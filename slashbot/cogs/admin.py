@@ -113,7 +113,9 @@ class AdminTools(SlashbotCog):
 
         file_name = self.logfile_path if file == "slashbot" else self.logfile_path.with_name("disnake.log")
         async with aiofiles.open(file_name, encoding="utf-8") as file_in:
-            log_lines = await file_in.read().splitlines()
+            log_file = await file_in.read()
+
+        log_lines = log_file.splitlines()
 
         # iterate backwards over log_lines, until either n_lines is reached or
         # the character limit is reached
