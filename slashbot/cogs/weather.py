@@ -268,9 +268,7 @@ class Weather(SlashbotCog):
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         for sub in forecast[1 : amount + 1]:
-            date = datetime.datetime.fromtimestamp(
-                int(sub["dt"]), tz=datetime.datetime.utc
-            )
+            date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC)
 
             if forecast_type == "hourly":
                 date_string = f"{date.strftime(r'%I:%M %p')}"
@@ -362,14 +360,14 @@ class Weather(SlashbotCog):
         )
         # todo: make this a function
         if weather_alerts:
-            now = datetime.datetime.now(tz=datetime.datetime.utc)
+            now = datetime.datetime.now(tz=datetime.UTC)
             alert_strings = []
             for alert in weather_alerts:
                 alert_start = datetime.datetime.fromtimestamp(
-                    alert["start"], tz=datetime.datetime.utc
+                    alert["start"], tz=datetime.UTC
                 )
                 alert_end = datetime.datetime.fromtimestamp(
-                    alert["end"], tz=datetime.datetime.utc
+                    alert["end"], tz=datetime.UTC
                 )
                 if alert_start < now < alert_end:
                     alert_strings.append(
