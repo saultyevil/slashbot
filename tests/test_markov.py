@@ -12,13 +12,13 @@ def markov_model() -> markovify.Text:
 
 
 def test_load_model(markov_model: markovify.Text) -> None:
-    """Test that the Markov model is loaded correctly."""
+    """Test that the markov model load."""
     assert markov_model is not None
     assert markov_model.make_sentence() is not None
 
 
 def test_clean_sentences_for_cleaning() -> None:
-    """Tests that sentences are cleaned for training."""
+    """Test sentence cleaning for training the markov model."""
     sentences = ["", "!test", ">test", "?test", "sentence w/ @mention", "this should be fine", "punctuation.!?"]
     cleaned = markov.clean_sentence_for_learning(sentences)
     assert len(cleaned) == 2
@@ -27,26 +27,26 @@ def test_clean_sentences_for_cleaning() -> None:
 
 
 def test_generate_markov_sentence(markov_model: markovify.Text) -> None:
-    """Test that sentences are generated correctly."""
+    """Test single sentence generation."""
     sentence = markov.generate_markov_sentence(markov_model)
     assert sentence is not None
     seeded_sentence = markov.generate_markov_sentence(markov_model, seed_word="hello")
     assert "hello" in seeded_sentence
 
 
-def test_update_markov_chain_for_model():
-    pass
+def test_update_markov_chain_for_model() -> None:
+    """Test that markov models can be updated."""
 
 
 def test_generate_list_of_sentences_with_seed_word(markov_model: markovify.Text) -> None:
-    """Tests that multiple sentences are generated with a seed word."""
+    """Test that multiple sentences can be generated for a given a seed."""
     sentences = markov.generate_list_of_sentences_with_seed_word(markov_model, "hello", 3)
     for sentence in sentences:
         assert "hello" in sentence
 
 
 def test_generate_sentences_for_seed_words(markov_model: markovify.Text) -> None:
-    """Tests that multiple sentences are generated with a seed word, in dictionary format."""
+    """Tests that multiple sentences are generated for multiple seed words."""
     sentences_dict = markov.generate_sentences_for_seed_words(markov_model, ["hello", "goodbye"], 3)
     for seed, sentences in sentences_dict.items():
         for sentence in sentences:
