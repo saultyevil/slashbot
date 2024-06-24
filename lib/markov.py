@@ -7,11 +7,12 @@ import pickle
 import re
 import shutil
 import string
-from collections.abc import Coroutine
 from pathlib import Path
 
-import markovify
-from slashbot.config import App
+from lib import markovify
+from lib.config import App
+from lib.error import deferred_error_message
+from lib.typing import ApplicationCommandInteraction
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 MARKOV_MODEL = None
@@ -58,8 +59,8 @@ def __clean_sentences_for_learning(sentences: list[str]) -> list[str]:
 # Public functions -------------------------------------------------------------
 
 
-def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.Text:
-    """Load a Markovify model.
+def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markovify.Text:
+    """Load a Markovify markov chain.
 
     If a chain exists at chain_location, this is read in and applied. Otherwise
     a new model is created which is practically empty.
@@ -69,7 +70,7 @@ def load_markov_model(chain_location: str | Path, state_size: int) -> markovify.
     chain_location : str | Path
         The location of the markov chain to load. Must be a pickle.
     state_size : int
-        The state size of the model.
+        The state size of the model, defaults to 2.
 
     Returns
     -------
@@ -154,18 +155,18 @@ def generate_markov_sentence(model: markovify.Text = None, seed_word: str = None
 
 
 async def update_markov_chain_for_model(
-    inter: disnake.ApplicationCommandInteraction | None,
+    inter: ApplicationCommandInteraction | None,
     model: markovify.Text,
     new_messages: list[str],
     save_location: str | Path,
-) -> Coroutine | None | markovify.Text:
+) -> markovify.Text | None:
     """Update a Markov chain model.
 
     Can be used either with a command interaction, or by itself.
 
     Parameters
     ----------
-    inter : disnake.ApplicationCommandInteraction
+    inter : ApplicationCommandInteraction
         A Discord interaction with a deferred response.
     model : markovify.Text
         The model to update with new messages.
@@ -176,7 +177,7 @@ async def update_markov_chain_for_model(
 
     Returns
     -------
-    Coroutine | None
+    markovify.Text | None
         Either the updated model, a co-routine for a interaction, or None
         when no interaction is passed and a model could not be updated.
 
@@ -188,7 +189,8 @@ async def update_markov_chain_for_model(
 
     if len(new_messages) == 0:
         if inter:
-            return await deferred_error_message(inter, "No new messages to update chain with.")
+            await deferred_error_message(inter, "No new messages to update chain with.")
+            return
         logger.info("No sentences to update chain with")
         return None
 
@@ -197,7 +199,8 @@ async def update_markov_chain_for_model(
 
     if num_messages == 0:
         if inter:
-            return await deferred_error_message(inter, "No new messages to update chain with.")
+            await deferred_error_message(inter, "No new messages to update chain with.")
+            return
         logger.info("No sentences to update chain with")
         return None
 
@@ -207,6 +210,7 @@ async def update_markov_chain_for_model(
     except KeyError:  # I can't remember what causes this... but it can happen when indexing new words
         if inter:
             await deferred_error_message(inter, "The interim model failed to train.")
+            return
         logger.error("The interim model failed to train.")
         return None
 

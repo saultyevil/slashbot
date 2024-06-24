@@ -15,7 +15,7 @@ from geopy import GoogleV3
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import get_user_location
-from bot.error import deferred_error_message
+from lib.error import deferred_error_message
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 from slashbot.util import convert_radial_to_cardinal_direction
 

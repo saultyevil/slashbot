@@ -12,8 +12,6 @@ import json
 import logging
 import pathlib
 
-import disnake
-
 from slashbot.config import App
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))

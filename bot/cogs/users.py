@@ -12,7 +12,7 @@ from disnake.ext import commands
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import get_twitter_convert_users, get_user, update_user
-from bot.error import deferred_error_message
+from lib.error import deferred_error_message
 from slashbot.util import convert_string_to_lower
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))

@@ -75,21 +75,26 @@ class App:
 
         The purpose of this script is to populate the __conf class attribute.
         """
-        with open(os.getenv("SLASHBOT_CONFIG"), encoding="utf-8") as file_in:
-            SLASH_CONFIG = json.load(file_in)
+        try:
+            with Path.open(os.getenv("SLASHBOT_CONFIG"), encoding="utf-8") as file_in:
+                slash_config = json.load(file_in)
+        except OSError:
+            with Path.open("bot-config.json", encoding="utf-8") as file_in:
+                slash_config = json.load(file_in)
+
         CURRENT_CHAIN = cls._config.get("CURRENT_MARKOV_CHAIN", None)
         _config = {
             # cooldown parameters
-            "COOLDOWN_RATE": int(SLASH_CONFIG["COOLDOWN"]["RATE"]),
-            "COOLDOWN_STANDARD": int(SLASH_CONFIG["COOLDOWN"]["STANDARD"]),
-            "COOLDOWN_EXTENDED": int(SLASH_CONFIG["COOLDOWN"]["EXTENDED"]),
-            "COOLDOWN_SERVERS": SLASH_CONFIG["COOLDOWN"]["COOLDOWN_SERVERS"],
-            "NO_COOLDOWN_USERS": SLASH_CONFIG["COOLDOWN"]["NO_COOLDOWN_USERS"],
+            "COOLDOWN_RATE": int(slash_config["COOLDOWN"]["RATE"]),
+            "COOLDOWN_STANDARD": int(slash_config["COOLDOWN"]["STANDARD"]),
+            "COOLDOWN_EXTENDED": int(slash_config["COOLDOWN"]["EXTENDED"]),
+            "COOLDOWN_SERVERS": slash_config["COOLDOWN"]["COOLDOWN_SERVERS"],
+            "NO_COOLDOWN_USERS": slash_config["COOLDOWN"]["NO_COOLDOWN_USERS"],
             # general things
-            "MAX_CHARS": SLASH_CONFIG["DISCORD"]["MAX_CHARS"],
-            "LOGGER_NAME": SLASH_CONFIG["LOGFILE"]["LOG_NAME"],
-            "LOGFILE_NAME": SLASH_CONFIG["LOGFILE"]["LOG_LOCATION"],
-            "DEVELOPMENT_SERVERS": SLASH_CONFIG["DISCORD"]["DEVELOPMENT_SERVERS"],
+            "MAX_CHARS": slash_config["DISCORD"]["MAX_CHARS"],
+            "LOGGER_NAME": slash_config["LOGFILE"]["LOG_NAME"],
+            "LOGFILE_NAME": slash_config["LOGFILE"]["LOG_LOCATION"],
+            "DEVELOPMENT_SERVERS": slash_config["DISCORD"]["DEVELOPMENT_SERVERS"],
             # Define users, roles and channels
             "ID_USER_SAULTYEVIL": 151378138612367360,
             "ID_CHANNEL_IDIOTS": 237647756049514498,
@@ -101,31 +106,30 @@ class App:
             "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
             "MONSTER_API_KEY": os.getenv("MONSTER_API_KEY"),
             # File locations
-            "DATABASE_LOCATION": Path(SLASH_CONFIG["FILES"]["DATABASE"]),
-            "BAD_WORDS_FILE": Path(SLASH_CONFIG["FILES"]["BAD_WORDS"]),
-            "GOD_WORDS_FILE": Path(SLASH_CONFIG["FILES"]["GOD_WORDS"]),
-            "SCHEDULED_POST_FILE": Path(SLASH_CONFIG["FILES"]["SCHEDULED_POSTS"]),
-            "RANDOM_MEDIA_DIRECTORY": Path(SLASH_CONFIG["FILES"]["RANDOM_MEDIA_DIRECTORY"]),
+            "DATABASE_LOCATION": Path(slash_config["FILES"]["DATABASE"]),
+            "BAD_WORDS_FILE": Path(slash_config["FILES"]["BAD_WORDS"]),
+            "GOD_WORDS_FILE": Path(slash_config["FILES"]["GOD_WORDS"]),
+            "SCHEDULED_POST_FILE": Path(slash_config["FILES"]["SCHEDULED_POSTS"]),
             # Markov Chain configuration
-            "ENABLE_MARKOV_TRAINING": bool(SLASH_CONFIG["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
+            "ENABLE_MARKOV_TRAINING": bool(slash_config["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
             "CURRENT_MARKOV_CHAIN": CURRENT_CHAIN,
-            "PREGEN_MARKOV_SENTENCES_AMOUNT": int(SLASH_CONFIG["MARKOV"]["NUM_PREGEN_SENTENCES"]),
-            "PREGEN_REGENERATE_LIMIT": int(SLASH_CONFIG["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
+            "PREGEN_MARKOV_SENTENCES_AMOUNT": int(slash_config["MARKOV"]["NUM_PREGEN_SENTENCES"]),
+            "PREGEN_REGENERATE_LIMIT": int(slash_config["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
             # Cog settings
-            "SPELLCHECK_ENABLED": bool(SLASH_CONFIG["COGS"]["SPELLCHECK"]["ENABLED"]),
-            "SPELLCHECK_SERVERS": SLASH_CONFIG["COGS"]["SPELLCHECK"]["SERVERS"],
-            "SPELLCHECK_CUSTOM_DICTIONARY": SLASH_CONFIG["COGS"]["SPELLCHECK"]["CUSTOM_DICTIONARY"],
-            "RANDOM_POST_CHANNELS": SLASH_CONFIG["COGS"]["SCHEDULED_POSTS"]["RANDOM_POST_CHANNELS"],
-            "AI_CHAT_MODEL": SLASH_CONFIG["COGS"]["AI_CHAT"]["LLM_MODEL"],
-            "AI_CHAT_VISION_MODEL": SLASH_CONFIG["COGS"]["AI_CHAT"]["VISION_MODEL"],
-            "AI_CHAT_MODEL_TEMPERATURE": SLASH_CONFIG["COGS"]["AI_CHAT"]["MODEL_TEMPERATURE"],
-            "AI_CHAT_MAX_OUTPUT_TOKENS": SLASH_CONFIG["COGS"]["AI_CHAT"]["MAX_OUTPUT_TOKENS"],
-            "AI_CHAT_TOKEN_WINDOW_SIZE": SLASH_CONFIG["COGS"]["AI_CHAT"]["TOKEN_WINDOW_SIZE"],
-            "AI_SUMMARY_PROMPT": SLASH_CONFIG["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
-            "AI_CHAT_RANDOM_RESPONSE": SLASH_CONFIG["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
-            "AI_CHAT_RATE_LIMIT": SLASH_CONFIG["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
-            "AI_CHAT_RATE_INTERVAL": SLASH_CONFIG["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
-            "AI_CHAT_PROMPT_APPEND": SLASH_CONFIG["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
+            "SPELLCHECK_ENABLED": bool(slash_config["COGS"]["SPELLCHECK"]["ENABLED"]),
+            "SPELLCHECK_SERVERS": slash_config["COGS"]["SPELLCHECK"]["SERVERS"],
+            "SPELLCHECK_CUSTOM_DICTIONARY": slash_config["COGS"]["SPELLCHECK"]["CUSTOM_DICTIONARY"],
+            "RANDOM_POST_CHANNELS": slash_config["COGS"]["SCHEDULED_POSTS"]["RANDOM_POST_CHANNELS"],
+            "AI_CHAT_MODEL": slash_config["COGS"]["AI_CHAT"]["LLM_MODEL"],
+            "AI_CHAT_VISION_MODEL": slash_config["COGS"]["AI_CHAT"]["VISION_MODEL"],
+            "AI_CHAT_MODEL_TEMPERATURE": slash_config["COGS"]["AI_CHAT"]["MODEL_TEMPERATURE"],
+            "AI_CHAT_MAX_OUTPUT_TOKENS": slash_config["COGS"]["AI_CHAT"]["MAX_OUTPUT_TOKENS"],
+            "AI_CHAT_TOKEN_WINDOW_SIZE": slash_config["COGS"]["AI_CHAT"]["TOKEN_WINDOW_SIZE"],
+            "AI_SUMMARY_PROMPT": slash_config["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
+            "AI_CHAT_RANDOM_RESPONSE": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
+            "AI_CHAT_RATE_LIMIT": slash_config["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
+            "AI_CHAT_RATE_INTERVAL": slash_config["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
+            "AI_CHAT_PROMPT_APPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
         }
         cls._config = _config
 
