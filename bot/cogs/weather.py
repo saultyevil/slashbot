@@ -12,12 +12,12 @@ import requests
 from disnake.ext import commands
 from geopy import GoogleV3
 
-from slashbot.config import App
-from slashbot.custom_cog import SlashbotCog
-from slashbot.db import get_user_location
+from bot.custom_cog import SlashbotCog
+from lib.config import App
+from lib.db import get_user_location
 from lib.error import deferred_error_message
-from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
-from slashbot.util import convert_radial_to_cardinal_direction
+from lib.markov import MARKOV_MODEL, generate_sentences_for_seed_words
+from lib.util import convert_radial_to_cardinal_direction
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
@@ -76,7 +76,7 @@ class Weather(SlashbotCog):
                 ["weather", "forecast"],
                 App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
-            if self.bot.markov_gen_on
+            if self.bot.markov_gen_enabled
             else {"weather": [], "forecast": []}
         )
         logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)

@@ -10,10 +10,10 @@ import disnake
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 
-from slashbot.config import App
-from slashbot.custom_bot import SlashbotInterationBot
-from slashbot.custom_cog import SlashbotCog
-from slashbot.db import (
+from bot.custom_bot import SlashbotInterationBot
+from bot.custom_cog import SlashbotCog
+from lib.config import App
+from lib.db import (
     add_reminder,
     get_all_reminders,
     get_all_reminders_for_user,

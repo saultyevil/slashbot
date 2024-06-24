@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Custom Cog class."""
 
 import logging
@@ -7,9 +5,9 @@ import logging
 import disnake
 from disnake.ext import commands, tasks
 
-from slashbot.config import App
-from slashbot.custom_bot import SlashbotInterationBot
-from slashbot.markov import (
+from bot.custom_bot import SlashbotInterationBot
+from lib.config import App
+from lib.markov import (
     MARKOV_MODEL,
     async_generate_list_of_sentences_with_seed_word,
     async_generate_sentence,
@@ -20,13 +18,21 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 class SlashbotCog(commands.Cog):
-    """A custom cog class which modifies cooldown behavior."""
+    """A custom cog class which modifies cooldown behaviour."""
 
-    def __init__(self, bot: SlashbotInterationBot):
+    def __init__(self, bot: SlashbotInterationBot) -> None:
+        """Intialise the cog.
+
+        Parameters
+        ----------
+        bot : SlashbotInterationBot
+            The bot the cog will be added to.
+
+        """
         super().__init__()
         self.bot = bot
         self.markov_sentences = {}
-        self.regenerate_markov_sentences.start()  # pylint: disable=no-member
+        self.regenerate_markov_sentences.start()
 
     # Before command invokes ---------------------------------------------------
 
@@ -42,23 +48,23 @@ class SlashbotCog(commands.Cog):
             The interaction to possibly remove the cooldown from.
 
         """
+        # Servers which don't have a cooldown
         if inter.guild and inter.guild.id not in App.get_config("COOLDOWN_SERVERS"):
-            return inter.application_command.reset_cooldown(inter)
-
+            inter.application_command.reset_cooldown(inter)
+        # Users which don't have a cooldown
         if inter.author.id in App.get_config("NO_COOLDOWN_USERS"):
-            return inter.application_command.reset_cooldown(inter)
+            inter.application_command.reset_cooldown(inter)
 
     # Tasks --------------------------------------------------------------------
 
     @tasks.loop(seconds=30)
     async def regenerate_markov_sentences(self) -> None:
         """Re-generate the markov sentences with a given seed word."""
-        if not self.bot.markov_gen_on or not self.markov_sentences:
+        if not self.bot.markov_gen_enabled or not self.markov_sentences:
             return
 
         for seed_word, seed_sentences in self.markov_sentences.items():
             if len(seed_sentences) <= App.get_config("PREGEN_REGENERATE_LIMIT"):
-                # logger.debug("Regenerating sentences for seed word %s", seed_word)
                 self.markov_sentences[seed_word] = await async_generate_list_of_sentences_with_seed_word(
                     MARKOV_MODEL,
                     seed_word,
@@ -90,14 +96,14 @@ class SlashbotCog(commands.Cog):
 
         """
         if seed_word not in self.markov_sentences:
-            if self.bot.markov_gen_on:
+            if self.bot.markov_gen_enabled:
                 logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
             return generate_markov_sentence(MARKOV_MODEL, seed_word)
 
         try:
             return self.markov_sentences[seed_word].pop()
         except IndexError:
-            if self.bot.markov_gen_on:
+            if self.bot.markov_gen_enabled:
                 logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
             return generate_markov_sentence(MARKOV_MODEL, seed_word)
 
@@ -119,13 +125,13 @@ class SlashbotCog(commands.Cog):
 
         """
         if seed_word not in self.markov_sentences:
-            if self.bot.markov_gen_on:
+            if self.bot.markov_gen_enabled:
                 logger.error("No pre-generated markov sentences for seed word %s ", seed_word)
             return await async_generate_sentence(MARKOV_MODEL, seed_word)
 
         try:
             return self.markov_sentences[seed_word].pop()
         except IndexError:
-            if self.bot.markov_gen_on:
+            if self.bot.markov_gen_enabled:
                 logger.debug("Using generate_sentence instead of pre gen sentences for %s", seed_word)
             return await async_generate_sentence(MARKOV_MODEL, seed_word)

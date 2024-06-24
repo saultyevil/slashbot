@@ -12,7 +12,7 @@ import shutil
 import string
 from pathlib import Path
 
-from lib import markovify
+import markovify
 from lib.config import App
 from lib.error import deferred_error_message
 from lib.typing import ApplicationCommandInteraction

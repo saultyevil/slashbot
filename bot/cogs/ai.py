@@ -28,11 +28,11 @@ from openai import AsyncOpenAI
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from slashbot.config import App
-from slashbot.custom_cog import SlashbotCog
-from slashbot.markov import generate_markov_sentence
-from slashbot.models import ChannelHistory, Conversation
-from slashbot.util import (
+from bot.custom_cog import SlashbotCog
+from lib.config import App
+from lib.markov import generate_markov_sentence
+from lib.models import ChannelHistory, Conversation
+from lib.util import (
     create_prompt_dict,
     get_image_from_url,
     read_in_prompt_json,
@@ -41,7 +41,7 @@ from slashbot.util import (
 )
 
 if TYPE_CHECKING:
-    from slashbot.custom_bot import SlashbotInterationBot
+    from bot.custom_bot import SlashbotInterationBot
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 

@@ -15,14 +15,15 @@ from urllib.parse import urlparse
 import httpx
 from PIL import Image
 
-from slashbot.config import App
+from lib.config import App
+from lib.typing import ApplicationCommandInteraction, DMChannel, Member, TextChannel, User
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 async def send_cooldown_message(
-    channel: disnake.TextChannel | disnake.DMChannel,
-    author: disnake.User | disnake.Member,
+    channel: TextChannel | DMChannel,
+    author: User | Member,
 ) -> None:
     """Respond to a user on cooldown.
 
@@ -112,7 +113,7 @@ def join_list_max_chars(words: list[str], max_chars: int) -> str:
     return result
 
 
-def convert_string_to_lower(_inter: disnake.ApplicationCommandInteraction, variable: Any) -> Any:
+def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any) -> Any:
     """Slash command convertor to transform a string into all lower case.
 
     Parameters
@@ -132,7 +133,7 @@ def convert_string_to_lower(_inter: disnake.ApplicationCommandInteraction, varia
     return variable.lower() if isinstance(variable, str) else variable
 
 
-def convert_yes_no_to_bool(_inter: disnake.ApplicationCommandInteraction, choice: str) -> bool:
+def convert_yes_no_to_bool(_inter: ApplicationCommandInteraction, choice: str) -> bool:
     """_summary_
 
     Parameters

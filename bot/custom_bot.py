@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Modified InteractionBot class."""
 
 import logging
@@ -8,27 +6,37 @@ from typing import Any
 
 from disnake.ext import commands
 
-from slashbot.config import App
+from lib.config import App
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 class SlashbotInterationBot(commands.InteractionBot):
-    """ "SlashbotInterationBot is a modified version of
-    disnake.ext.commands.InteractionBot which includes a function to add
-    additional clean up functions when the bot is exited, e.g. with ctrl+c.
+    """InteractionBot class for Slashbot.
+
+    This is a modified version of disnake.ext.commands.InteractionBot.
     """
 
-    def __init__(self, markov_gen_on: bool, **kwargs) -> None:
+    def __init__(self, *, enable_markov_gen: bool = False, **kwargs: int) -> None:
+        """Initialise the bot.
+
+        Parameters
+        ----------
+        enable_markov_gen : bool
+            Whether or not to enable automatic Markov sentence generation,
+            default is False.
+        **kwargs : int
+            The keyword arguments to pass to the parent class.
+
+        """
         super().__init__(**kwargs)
         self.cleanup_functions = []
         self.times_connected = 0
-        self.markov_gen_on = markov_gen_on
-
-        if self.markov_gen_on:
-            logger.info("Automatic Markov sentence generation is enabled")
-        else:
-            logger.info("Automatic Markov sentence generation is disabled")
+        self.markov_gen_enabled = enable_markov_gen
+        logger.info(
+            "Automatic Markov sentence generation is %s",
+            "enabled" if self.markov_gen_enabled else "disabled",
+        )
 
     def add_function_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:
         """Add a function to the cleanup list.

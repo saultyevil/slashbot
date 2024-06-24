@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-
-"""Global configuration class."""
+"""Module for setting up the Slashbot config and logger."""
 
 import copy
 import json
@@ -8,14 +6,14 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 
-def setup_logging():
-    """Setup up the logger and log file."""
+def setup_logging() -> None:
+    """Set up logging for Slashbot."""
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
     logger = logging.getLogger(App.get_config("LOGGER_NAME"))
@@ -38,13 +36,22 @@ def setup_logging():
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
-    logger.info("Loaded config file %s", os.getenv("SLASHBOT_CONFIG"))
+    logger.info("Loaded config file %s", App.get_config("CONFIG_FILE"))
 
 
 class FileWatcher(FileSystemEventHandler):
-    def on_modified(self, event):
-        # TODO: this triggers twice on file modify...
-        if event.event_type == "modified" and event.src_path == os.getenv("SLASHBOT_CONFIG"):
+    """Class for watching for changes to the config file."""
+
+    def on_modified(self, event: FileSystemEventHandler) -> None:
+        """Reload the config on file modify.
+
+        Parameters
+        ----------
+        event : FileSystemEventHandler
+            The event to check.
+
+        """
+        if event.event_type == "modified" and event.src_path == App.get_config("CONFIG_FILE"):
             original_config = copy.copy(App._config)
             new_config = App.set_config_values()
             modified_keys = {
@@ -65,12 +72,12 @@ class App:
     """
 
     # __conf is a dictionary of configuration parameters
-    _config = {}
+    _config: ClassVar = {}
 
     # Private methods ----------------------------------------------------------
 
     @classmethod
-    def set_config_values(cls):
+    def set_config_values(cls) -> None:
         """Set the values of the config from the config file.
 
         The purpose of this script is to populate the __conf class attribute.
@@ -78,12 +85,17 @@ class App:
         try:
             with Path.open(os.getenv("SLASHBOT_CONFIG"), encoding="utf-8") as file_in:
                 slash_config = json.load(file_in)
-        except OSError:
+            current_config = os.getenv("SLASHBOT_CONFIG")
+        except (OSError, TypeError):
             with Path.open("bot-config.json", encoding="utf-8") as file_in:
                 slash_config = json.load(file_in)
+            current_config = "bot-config.json"
 
-        CURRENT_CHAIN = cls._config.get("CURRENT_MARKOV_CHAIN", None)
+        current_chain = cls._config.get("CURRENT_MARKOV_CHAIN", None)
+
         _config = {
+            # config file
+            "CONFIG_FILE": current_config,
             # cooldown parameters
             "COOLDOWN_RATE": int(slash_config["COOLDOWN"]["RATE"]),
             "COOLDOWN_STANDARD": int(slash_config["COOLDOWN"]["STANDARD"]),
@@ -112,7 +124,7 @@ class App:
             "SCHEDULED_POST_FILE": Path(slash_config["FILES"]["SCHEDULED_POSTS"]),
             # Markov Chain configuration
             "ENABLE_MARKOV_TRAINING": bool(slash_config["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
-            "CURRENT_MARKOV_CHAIN": CURRENT_CHAIN,
+            "CURRENT_MARKOV_CHAIN": current_chain,
             "PREGEN_MARKOV_SENTENCES_AMOUNT": int(slash_config["MARKOV"]["NUM_PREGEN_SENTENCES"]),
             "PREGEN_REGENERATE_LIMIT": int(slash_config["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
             # Cog settings
@@ -138,7 +150,7 @@ class App:
     # Public methods -----------------------------------------------------------
 
     @staticmethod
-    def get_config(name: str) -> Any:
+    def get_config(name: str) -> Any:  # noqa: ANN401
         """Get a configuration parameter.
 
         Parameters
@@ -176,5 +188,5 @@ App.set_config_values()
 setup_logging()
 
 observer = Observer()
-observer.schedule(FileWatcher(), path=Path(os.getenv("SLASHBOT_CONFIG")).parent)
+observer.schedule(FileWatcher(), path=Path(App.get_config("CONFIG_FILE")).parent)
 observer.start()

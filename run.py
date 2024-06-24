@@ -16,9 +16,9 @@ import traceback
 import disnake
 from disnake.ext import commands
 
-from slashbot import markov
-from slashbot.config import App
-from slashbot.custom_bot import SlashbotInterationBot
+from bot.custom_bot import SlashbotInterationBot
+from lib import markov
+from lib.config import App
 
 # Parse command line arguments, which configure the bot
 
@@ -49,7 +49,7 @@ else:
 
 # Load the markov model
 
-markov.MARKOV_MODEL = markov.load_markov_model(f"data/chains/chain.pickle")
+markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle", 2)
 
 # Set up the bot and cogs ------------------------------------------------------
 
@@ -59,12 +59,12 @@ intents.messages = True
 intents.members = True
 
 bot = SlashbotInterationBot(
-    markov_gen_on=args.disable_auto_markov,
+    enable_markov_gen=args.disable_auto_markov,
     intents=intents,
-    reload=True if args.development else False,
+    reload=bool(args.development),
 )
 
-bot.load_extensions("slashbot/cogs")
+bot.load_extensions("bot/cogs")
 
 # Define some global bot events
 
@@ -86,8 +86,8 @@ async def on_ready() -> None:
 
 
 @bot.event
-async def on_error(_event, *_args, **_kwargs):
-    """Print exceptions to the logfile"""
+async def on_error(_event, *_args, **_kwargs) -> None:
+    """Print exceptions to the logfile."""
     logger.error("%s", traceback.print_exc())
 
 
@@ -97,6 +97,8 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
 
     Parameters
     ----------
+    inter : disnake.ApplicationCommandInteraction
+        The interaction that failed.
     error: Exception
         The error that occurred.
 

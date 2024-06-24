@@ -11,10 +11,10 @@ from disnake.ext import commands, tasks
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from slashbot.config import App
-from slashbot.custom_bot import SlashbotInterationBot
-from slashbot.custom_cog import SlashbotCog
-from slashbot.util import calculate_seconds_until
+from bot.custom_bot import SlashbotInterationBot
+from bot.custom_cog import SlashbotCog
+from lib.config import App
+from lib.util import calculate_seconds_until
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
