@@ -1,6 +1,9 @@
-#!/usr/bin/env python3
+"""Markov sentence generation functions.
 
-"""Markov chain module"""
+This module contains functions for loading and updating Markov chains and
+generating sentences using the Markov chain. There is a synchronous and
+asynchronous version of sentence generation functions.
+"""
 
 import logging
 import pickle
@@ -18,10 +21,7 @@ logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 MARKOV_MODEL = None
 
 
-# Private functions ------------------------------------------------------------
-
-
-def __clean_sentences_for_learning(sentences: list[str]) -> list[str]:
+def clean_sentence_for_learning(sentences: list[str]) -> list[str]:
     """Clean up a list of sentences for learning.
 
     This will remove empty strings, messages which start with punctuation
@@ -56,9 +56,6 @@ def __clean_sentences_for_learning(sentences: list[str]) -> list[str]:
     return clean_sentences
 
 
-# Public functions -------------------------------------------------------------
-
-
 def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markovify.Text:
     """Load a Markovify markov chain.
 
@@ -87,22 +84,23 @@ def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markov
     )
 
     if chain_location.exists():
-        with open(chain_location, "rb") as file_in:
+        with Path.open(chain_location, "rb") as file_in:
             try:
-                model.chain = pickle.load(file_in)
+                model.chain = pickle.load(file_in)  # noqa: S301
                 logger.info("Model %s has been loaded", str(chain_location))
             except EOFError:
                 shutil.copy2(str(chain_location) + ".bak", chain_location)
                 model = load_markov_model(chain_location, state_size)  # the recursion might be a bit spicy here
     else:
-        raise OSError(f"No chain at {chain_location}")
+        msg = f"No chain at {chain_location}"
+        raise OSError(msg)
 
     App.set_config("CURRENT_MARKOV_CHAIN", chain_location)
 
     return model
 
 
-def generate_markov_sentence(model: markovify.Text = None, seed_word: str = None, attempts: int = 5) -> str:
+def generate_markov_sentence(model: markovify.Text = None, seed_word: str | None = None, attempts: int = 5) -> str:
     """Generate a sentence using a markov chain.
 
     Parameters
@@ -154,7 +152,7 @@ def generate_markov_sentence(model: markovify.Text = None, seed_word: str = None
     return sentence.strip()[:1024]
 
 
-async def update_markov_chain_for_model(
+async def update_markov_chain_for_model(  # noqa: PLR0911
     inter: ApplicationCommandInteraction | None,
     model: markovify.Text,
     new_messages: list[str],
@@ -190,17 +188,17 @@ async def update_markov_chain_for_model(
     if len(new_messages) == 0:
         if inter:
             await deferred_error_message(inter, "No new messages to update chain with.")
-            return
+            return None
         logger.info("No sentences to update chain with")
         return None
 
-    messages = __clean_sentences_for_learning(new_messages)
+    messages = clean_sentence_for_learning(new_messages)
     num_messages = len(messages)
 
     if num_messages == 0:
         if inter:
             await deferred_error_message(inter, "No new messages to update chain with.")
-            return
+            return None
         logger.info("No sentences to update chain with")
         return None
 
@@ -210,12 +208,12 @@ async def update_markov_chain_for_model(
     except KeyError:  # I can't remember what causes this... but it can happen when indexing new words
         if inter:
             await deferred_error_message(inter, "The interim model failed to train.")
-            return
-        logger.error("The interim model failed to train.")
+            return None
+        logger.exception("The interim model failed to train.")
         return None
 
     combined_chain = markovify.combine([model.chain, new_model.chain])
-    with open(save_location, "wb") as file_out:
+    with Path.open(save_location, "wb") as file_out:
         pickle.dump(combined_chain, file_out)
     model.chain = combined_chain
 
@@ -229,7 +227,7 @@ async def update_markov_chain_for_model(
 
 
 def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: str, amount: int) -> list[str]:
-    """Generates a list of markov generated sentences for a specific key word.
+    """Generate a list of markov generated sentences for a specific key word.
 
     Parameters
     ----------
@@ -254,8 +252,9 @@ def generate_sentences_for_seed_words(
     seed_words: list[str],
     amount: int,
 ) -> dict[str, list[str]]:
-    """Create a dictionary containing markov generated sentences, where the keys
-    are seed words and the values are a list of sentences.
+    """Create a dictionary containing markov generated sentences.
+
+    The keys are seed words and the values are a list of sentences.
 
     Parameters
     ----------
@@ -275,7 +274,7 @@ def generate_sentences_for_seed_words(
     return {seed_word: generate_list_of_sentences_with_seed_word(model, seed_word, amount) for seed_word in seed_words}
 
 
-async def async_generate_sentence(model: markovify.Text = None, seed_word: str = None, attempts: int = 5) -> str:
+async def async_generate_sentence(model: markovify.Text = None, seed_word: str | None = None, attempts: int = 5) -> str:
     """Generate a sentence using a markov chain.
 
     Parameters
@@ -302,7 +301,7 @@ async def async_generate_list_of_sentences_with_seed_word(
     seed_word: str,
     amount: int,
 ) -> list[str]:
-    """Generates a list of markov generated sentences for a specific key word.
+    """Generate a list of markov generated sentences for a specific key word.
 
     Parameters
     ----------
@@ -327,8 +326,9 @@ async def async_generate_sentences_for_seed_words(
     seed_words: list[str],
     amount: int,
 ) -> dict[str, list[str]]:
-    """Create a dictionary containing markov generated sentences, where the keys
-    are seed words and the values are a list of sentences.
+    """Create a dictionary containing markov generated sentences.
+
+    The keys are seed words and the values are a list of sentences.
 
     Parameters
     ----------
