@@ -12,12 +12,16 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 RUN apt update && apt install -y git openssh-client
+RUN mkdir -p /log
 
+# This enables git to be OK with adding this directory, so we can use the
+# git update command
 RUN git config --global --add safe.directory /bot
 
-RUN useradd -m user
-RUN mkdir -p /home/user/.ssh
-RUN chown -R user:user /home/user/.ssh
+#  We need SSH keys for github
+RUN useradd -m slashbot
+RUN mkdir -p /home/slashbot/.ssh
+RUN chown -R slashbot:slashbot /home/slashbot/.ssh
 USER user
 
 CMD ["./entrypoint.sh"]

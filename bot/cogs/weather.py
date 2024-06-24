@@ -15,7 +15,7 @@ from geopy import GoogleV3
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import get_user_location
-from slashbot.error import deferred_error_message
+from bot.error import deferred_error_message
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 from slashbot.util import convert_radial_to_cardinal_direction
 
@@ -363,12 +363,8 @@ class Weather(SlashbotCog):
             now = datetime.datetime.now(tz=datetime.UTC)
             alert_strings = []
             for alert in weather_alerts:
-                alert_start = datetime.datetime.fromtimestamp(
-                    alert["start"], tz=datetime.UTC
-                )
-                alert_end = datetime.datetime.fromtimestamp(
-                    alert["end"], tz=datetime.UTC
-                )
+                alert_start = datetime.datetime.fromtimestamp(alert["start"], tz=datetime.UTC)
+                alert_end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.UTC)
                 if alert_start < now < alert_end:
                     alert_strings.append(
                         f"{alert['event']}: {alert_start.strftime(r'%H:%m')} to {alert_end.strftime(r'%H:%m')} ",

@@ -12,7 +12,6 @@ from io import BytesIO
 from typing import Any
 from urllib.parse import urlparse
 
-import disnake
 import httpx
 from PIL import Image
 

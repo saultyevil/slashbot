@@ -10,12 +10,13 @@ from types import coroutine
 
 import aiofiles
 import aiohttp
+from bot import __version__
 import disnake
 import git
 from disnake.ext import commands
 from prettytable import PrettyTable
 
-from slashbot import __version__, markov
+from slashbot import markov
 from slashbot.config import App
 from slashbot.custom_cog import SlashbotCog
 from slashbot.db import get_all_reminders

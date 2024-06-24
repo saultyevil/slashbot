@@ -10,11 +10,8 @@ import string
 from collections.abc import Coroutine
 from pathlib import Path
 
-import disnake
-
 import markovify
 from slashbot.config import App
-from slashbot.error import deferred_error_message
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 MARKOV_MODEL = None
