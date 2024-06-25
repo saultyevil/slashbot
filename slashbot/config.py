@@ -100,10 +100,10 @@ class App:
             "COOLDOWN_RATE": int(slash_config["COOLDOWN"]["RATE"]),
             "COOLDOWN_STANDARD": int(slash_config["COOLDOWN"]["STANDARD"]),
             "COOLDOWN_EXTENDED": int(slash_config["COOLDOWN"]["EXTENDED"]),
-            "COOLDOWN_SERVERS": slash_config["COOLDOWN"]["COOLDOWN_SERVERS"],
+            "NO_COOLDOWN_SERVERS": slash_config["COOLDOWN"]["NO_COOLDOWN_SERVERS"],
             "NO_COOLDOWN_USERS": slash_config["COOLDOWN"]["NO_COOLDOWN_USERS"],
             # general things
-            "MAX_CHARS": slash_config["DISCORD"]["MAX_CHARS"],
+            "MAX_CHARS": 1800,
             "LOGGER_NAME": slash_config["LOGFILE"]["LOG_NAME"],
             "LOGFILE_NAME": slash_config["LOGFILE"]["LOG_LOCATION"],
             "DEVELOPMENT_SERVERS": slash_config["DISCORD"]["DEVELOPMENT_SERVERS"],

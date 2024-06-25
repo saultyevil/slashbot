@@ -49,7 +49,7 @@ class SlashbotCog(commands.Cog):
 
         """
         # Servers which don't have a cooldown
-        if inter.guild and inter.guild.id not in App.get_config("COOLDOWN_SERVERS"):
+        if inter.guild and inter.guild.id not in App.get_config("NO_COOLDOWN_SERVERS"):
             inter.application_command.reset_cooldown(inter)
         # Users which don't have a cooldown
         if inter.author.id in App.get_config("NO_COOLDOWN_USERS"):
