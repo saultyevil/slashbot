@@ -10,10 +10,10 @@ import disnake
 from disnake.ext import commands
 
 from bot.custom_cog import SlashbotCog
-from lib.config import App
-from lib.db import get_twitter_convert_users, get_user, update_user
-from lib.error import deferred_error_message
-from lib.util import convert_string_to_lower
+from slashbot.config import App
+from slashbot.db import get_twitter_convert_users, get_user, update_user
+from slashbot.error import deferred_error_message
+from slashbot.util import convert_string_to_lower
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

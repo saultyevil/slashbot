@@ -17,9 +17,9 @@ from prettytable import PrettyTable
 
 from bot import __version__
 from bot.custom_cog import SlashbotCog
-from lib import markov
-from lib.config import App
-from lib.db import get_all_reminders
+from slashbot import markov
+from slashbot.config import App
+from slashbot.db import get_all_reminders
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))

@@ -10,7 +10,7 @@ import disnake
 from disnake.ext import commands
 
 from bot.custom_cog import SlashbotCog
-from lib.config import App
+from slashbot.config import App
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

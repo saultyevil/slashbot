@@ -13,9 +13,9 @@ import string
 from pathlib import Path
 
 import markovify
-from lib.config import App
-from lib.error import deferred_error_message
-from lib.typing import ApplicationCommandInteraction
+from bot.types import ApplicationCommandInteraction
+from slashbot.config import App
+from slashbot.error import deferred_error_message
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 MARKOV_MODEL = None
@@ -221,7 +221,11 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         await inter.edit_original_message(content=f"Markov chain updated with {num_messages} new messages.")
 
     # num_messages should already but an int, but sometimes it isn't...
-    logger.info("Markov chain (%s) updated with %d new messages", str(save_location), int(num_messages))
+    logger.info(
+        "Markov chain (%s) updated with %d new messages",
+        str(save_location),
+        int(num_messages),
+    )
 
     return model
 

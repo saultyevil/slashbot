@@ -13,8 +13,8 @@ from watchdog.observers import Observer
 
 from bot.custom_bot import SlashbotInterationBot
 from bot.custom_cog import SlashbotCog
-from lib.config import App
-from lib.util import calculate_seconds_until
+from slashbot.config import App
+from slashbot.util import calculate_seconds_until
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

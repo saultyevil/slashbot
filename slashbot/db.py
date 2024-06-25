@@ -12,8 +12,8 @@ import json
 import logging
 import pathlib
 
-from lib.config import App
-from lib.typing import Member, User
+from slashbot.config import App
+from bot.types import Member, User
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 

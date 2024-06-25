@@ -13,11 +13,11 @@ from disnake.ext import commands
 from geopy import GoogleV3
 
 from bot.custom_cog import SlashbotCog
-from lib.config import App
-from lib.db import get_user_location
-from lib.error import deferred_error_message
-from lib.markov import MARKOV_MODEL, generate_sentences_for_seed_words
-from lib.util import convert_radial_to_cardinal_direction
+from slashbot.config import App
+from slashbot.db import get_user_location
+from slashbot.error import deferred_error_message
+from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
+from slashbot.util import convert_radial_to_cardinal_direction
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 

@@ -29,10 +29,10 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from bot.custom_cog import SlashbotCog
-from lib.config import App
-from lib.markov import generate_markov_sentence
-from lib.models import ChannelHistory, Conversation
-from lib.util import (
+from slashbot.config import App
+from slashbot.markov import generate_markov_sentence
+from slashbot.models import ChannelHistory, Conversation
+from slashbot.util import (
     create_prompt_dict,
     get_image_from_url,
     read_in_prompt_json,

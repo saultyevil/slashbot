@@ -12,8 +12,8 @@ from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
 
 from bot.custom_cog import SlashbotCog
-from lib.config import App
-from lib.util import calculate_seconds_until, join_list_max_chars
+from slashbot.config import App
+from slashbot.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))

@@ -2,7 +2,7 @@
 
 """Commands for getting the weather."""
 
-from lib.typing import ApplicationCommandInteraction
+from bot.types import ApplicationCommandInteraction
 
 
 async def deferred_error_message(

@@ -17,8 +17,8 @@ import disnake
 from disnake.ext import commands
 
 from bot.custom_bot import SlashbotInterationBot
-from lib import markov
-from lib.config import App
+from slashbot import markov
+from slashbot.config import App
 
 # Parse command line arguments, which configure the bot
 

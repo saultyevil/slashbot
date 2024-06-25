@@ -12,8 +12,8 @@ from prettytable import PrettyTable
 
 from bot.custom_bot import SlashbotInterationBot
 from bot.custom_cog import SlashbotCog
-from lib.config import App
-from lib.db import (
+from slashbot.config import App
+from slashbot.db import (
     add_reminder,
     get_all_reminders,
     get_all_reminders_for_user,

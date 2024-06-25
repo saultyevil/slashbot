@@ -6,7 +6,7 @@ from typing import Any
 
 from disnake.ext import commands
 
-from lib.config import App
+from slashbot.config import App
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 

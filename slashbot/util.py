@@ -15,8 +15,14 @@ from urllib.parse import urlparse
 import httpx
 from PIL import Image
 
-from lib.config import App
-from lib.typing import ApplicationCommandInteraction, DMChannel, Member, TextChannel, User
+from slashbot.config import App
+from bot.types import (
+    ApplicationCommandInteraction,
+    DMChannel,
+    Member,
+    TextChannel,
+    User,
+)
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
@@ -369,7 +375,10 @@ async def get_image_from_url(image_urls: str) -> list[dict[str, str]]:
                 if image_type == "webp" or image_type == "jpg":
                     image_type = "jpeg"
                 image_data.append(
-                    {"type": "image/" + image_type, "image": base64.b64encode(response.content).decode("utf-8")},
+                    {
+                        "type": "image/" + image_type,
+                        "image": base64.b64encode(response.content).decode("utf-8"),
+                    },
                 )
         except (httpx.HTTPError, httpx.HTTPStatusError) as exc:
             logger.error("Error fetching image from %s: %s", url, exc)

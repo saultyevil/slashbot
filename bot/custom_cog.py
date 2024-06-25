@@ -6,8 +6,8 @@ import disnake
 from disnake.ext import commands, tasks
 
 from bot.custom_bot import SlashbotInterationBot
-from lib.config import App
-from lib.markov import (
+from slashbot.config import App
+from slashbot.markov import (
     MARKOV_MODEL,
     async_generate_list_of_sentences_with_seed_word,
     async_generate_sentence,
