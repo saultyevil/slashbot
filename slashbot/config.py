@@ -34,6 +34,12 @@ def setup_logging() -> None:
         )
         logger.addHandler(file_handler)
 
+    logger = logging.getLogger("disnake")
+    logger.setLevel(logging.DEBUG)
+    handler = logging.FileHandler(filename=".disnake.log", encoding="utf-8", mode="w")
+    handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+    logger.addHandler(handler)
+
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
     logger.info("Loaded config file %s", App.get_config("CONFIG_FILE"))
@@ -150,7 +156,7 @@ class App:
     # Public methods -----------------------------------------------------------
 
     @staticmethod
-    def get_config(name: str) -> Any:  # noqa: ANN401
+    def get_config(name: str) -> Any | None:  # noqa: ANN401
         """Get a configuration parameter.
 
         Parameters
@@ -160,8 +166,8 @@ class App:
 
         Returns
         -------
-        Any
-            The value of the parameter requested.
+        Any | None
+            The value of the parameter requested, or None.
 
         """
         try:

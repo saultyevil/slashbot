@@ -7,20 +7,17 @@ text-to-image generation using Monster API.
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import datetime
 import json
 import logging
 import random
-import time
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import aiofiles
 import anthropic
 import disnake
-import requests
 import tiktoken
 from disnake.ext import commands
 from disnake.utils import escape_markdown
@@ -861,193 +858,6 @@ class AIChatbot(SlashbotCog):
         await inter.response.send_message(response, ephemeral=True)
 
 
-MAX_ELAPSED_TIME = 300
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
-
-HEADER = {
-    "accept": "application/json",
-    "content-type": "application/json",
-    "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
-}
-
-
-class AIImageGeneration(SlashbotCog):
-    """Cog for text to image generation using Monster API."""
-
-    def __init__(self, bot: SlashbotInterationBot) -> None:
-        """Initialize the AIImageGeneration cog.
-
-        Parameters
-        ----------
-        bot : SlashbotInterationBot
-            The instance of the SlashbotInterationBot.
-
-        """
-        super().__init__(bot)
-        self.running_tasks = {}
-
-    @staticmethod
-    def check_request_status(process_id: str) -> str:
-        """Check the progress of a request.
-
-        Parameters
-        ----------
-        process_id : str
-            The UUID for the process to check.
-
-        Returns
-        -------
-        str
-            If the process has finished, the URL to the finished process is
-            returned. Otherwise an empty string is returned.
-
-        """
-        headers = {
-            "accept": "application/json",
-            "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
-        }
-        response = requests.request(
-            "GET",
-            f"https://api.monsterapi.ai/v1/status/{process_id}",
-            headers=headers,
-            timeout=5,
-        )
-
-        response_data = json.loads(response.text)
-        response_status = response_data.get("status", None)
-
-        if response_status == "COMPLETED":
-            return "COMPLETED", response_data["result"]["output"][0]
-        if response_status == "FAILED":
-            return "FAILED", response_data["result"]["error_message"]
-
-        return "IN_PROGRESS", ""
-
-    @staticmethod
-    def send_image_request(prompt: str, steps: int, aspect_ratio: str) -> str:
-        """Send an image request to the API.
-
-        Parameters
-        ----------
-        prompt : str
-            The prompt to generate an image for.
-        steps : int
-            The number of sampling steps to use.
-        aspect_ratio : str
-            The aspect ratio of the image.
-
-        Returns
-        -------
-        str
-            The process ID if successful, or an empty string if unsuccessful.
-
-        """
-        headers = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
-        }
-        payload = {
-            "prompt": prompt,
-            "samples": 1,
-            "steps": steps,
-            "aspect_ratio": aspect_ratio,
-            "safe_filter": False,
-        }
-        response = requests.request(
-            "POST",
-            "https://api.monsterapi.ai/v1/generate/txt2img",
-            headers=headers,
-            json=payload,
-            timeout=5,
-        )
-
-        response_data = json.loads(response.text)
-        return response_data.get("process_id", ""), response_data
-
-    @commands.cooldown(
-        rate=App.get_config("COOLDOWN_RATE"),
-        per=App.get_config("COOLDOWN_STANDARD"),
-        type=commands.BucketType.user,
-    )
-    @commands.slash_command(description="Generate an image from a text prompt", dm_permission=False)
-    async def text_to_image(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        prompt: str = commands.Param(description="The prompt to generate an image for"),
-        steps: int = commands.Param(default=30, ge=30, lt=500, description="The number of sampling steps"),
-        aspect_ratio: str = commands.Param(
-            default="square",
-            choices=["square", "landscape", "portrait"],
-            description="The aspect ratio of the image",
-        ),
-    ) -> None:
-        """Generate an image from a text prompt.
-
-        Uses Monster API. The request to the API is not made asynchronously.
-
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            The interaction to respond to.
-        prompt : str, optional
-            The prompt to generate an image for.
-        steps : int, optional
-            The number of sampling steps
-        aspect_ratio : str, optional
-            The aspect ratio of the image.
-
-        """
-        if inter.author.id in self.running_tasks:
-            await inter.response.send_message("You already have a request processing.", ephemeral=True)
-            return
-
-        next_interaction = inter.followup
-        await inter.response.defer(ephemeral=True)
-
-        try:
-            process_id, response = self.send_image_request(prompt, steps, aspect_ratio)
-        except requests.exceptions.Timeout:
-            await inter.edit_original_message(content="The image generation API took too long to respond.")
-            return
-
-        if process_id == "":
-            await inter.edit_original_message("There was an error when submitting your request.")
-            logger.error("Request did not return a process ID: %s", response)
-            return
-
-        self.running_tasks[inter.author.id] = process_id
-        logger.debug("text2image: Request %s for user %s (%d)", process_id, inter.author.display_name, inter.author.id)
-        await inter.edit_original_message(content=f"Request submitted: {process_id}")
-
-        start = time.time()
-        elapsed_time = 0
-
-        while elapsed_time < MAX_ELAPSED_TIME:
-            try:
-                status, result = self.check_request_status(process_id)
-            except requests.exceptions.Timeout:
-                elapsed_time = MAX_ELAPSED_TIME + 1  # spoof failing due to time out
-                break
-            if status == "COMPLETED":
-                self.running_tasks.pop(inter.author.id)
-                await next_interaction.send(f'{inter.author.display_name}\'s request for "{prompt}" {result}')
-                return
-            if status == "FAILED":
-                self.running_tasks.pop(inter.author.id)
-                next_interaction.send(
-                    f'Your request ({process_id}) for "{prompt}" failed due to: {result}',
-                    ephemeral=True,
-                )
-                return
-
-            await asyncio.sleep(2)
-            elapsed_time = time.time() - start
-
-        self.running_tasks.pop(inter.author.id)
-        await next_interaction.send(f'Your request ({process_id}) for "{prompt}" timed out.', ephemeral=True)
-
-
 def setup(bot: commands.InteractionBot) -> None:
     """Set up the entry function for load_extensions().
 
@@ -1057,13 +867,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    # chat
     if App.get_config("ANTHROPIC_API_KEY") and App.get_config("OPENAI_API_KEY"):
         bot.add_cog(AIChatbot(bot))
     else:
         logger.error("No API key found for Anthropic and OpenAI, unable to load AIChatBot cog")
-    # image generation
-    if App.get_config("MONSTER_API_KEY"):
-        bot.add_cog(AIImageGeneration(bot))
-    else:
-        logger.error("No API key found for Monster AI, unable to load AIImageGeneration cog")

@@ -15,6 +15,7 @@ discord = disnake
 
 # Aliases for typing
 ApplicationCommandInteraction = disnake.ApplicationCommandInteraction
+Interaction = disnake.Interaction
 User = disnake.User
 Member = disnake.Member
 TextChannel = disnake.TextChannel
