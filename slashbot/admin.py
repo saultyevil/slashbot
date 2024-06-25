@@ -1,6 +1,6 @@
-"""Admin commands."""
-
 import logging
+import os
+import sys
 from pathlib import Path
 
 import aiofiles
@@ -42,7 +42,20 @@ async def get_logfile_tail(logfile_path: Path, num_lines: int) -> list[str]:
             break
         tail.append(log_lines[-i])
 
-    return tail
+    return "\n".join(tail[::-1])
+
+
+def restart_bot(arguments: list[str]) -> None:
+    """Restart the current process with the given arguments.
+
+    Parameters
+    ----------
+    arguments : list[str]
+        Additional arguments to pass to the new process.
+
+    """
+    logger.info("Restarting with new process with arguments %s", arguments)
+    os.execv(sys.executable, ["python", *arguments])  # noqa: S606
 
 
 def update_local_repository(branch: str) -> None:

@@ -1,8 +1,4 @@
-"""Admin commands for Slashbot."""
-
 import logging
-import os
-import sys
 from pathlib import Path
 
 import disnake
@@ -11,35 +7,14 @@ from disnake.ext import commands
 
 from bot import __version__
 from bot.custom_cog import SlashbotCog
-from slashbot.admin import get_logfile_tail, update_local_repository
+from bot.custom_command import cooldown_and_slash_command
+from slashbot.admin import get_logfile_tail, restart_bot, update_local_repository
 from slashbot.config import App
 
 COOLDOWN_USER = commands.BucketType.user
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
-
-
-def convert_level_to_int(choice: str) -> int:
-    """Convert a text choice for logging level into the respective integer.
-
-    Parameters
-    ----------
-    choice : str
-        The choice string.
-
-    Returns
-    -------
-    int
-        The integer for the choice.
-
-    """
-    choice = choice.lower()
-
-    if choice == "debug":
-        return logging.DEBUG
-    if choice == "info":
-        return logging.INFO
-
-    return logging.WARNING
+COOLDOWN_STANDARD = App.get_config("COOLDOWN_STANDARD")
+COOLDOWN_RATE = App.get_config("COOLDOWN_RATE")
+LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 class AdminTools(SlashbotCog):
@@ -49,22 +24,12 @@ class AdminTools(SlashbotCog):
     things are working as intended.
     """
 
-    @commands.cooldown(
-        App.get_config("COOLDOWN_RATE"),
-        App.get_config("COOLDOWN_STANDARD"),
-        COOLDOWN_USER,
-    )
-    @commands.slash_command(name="version")
+    @cooldown_and_slash_command(name="version")
     async def print_bot_version(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Print the current version number of the bot."""
         await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
-    @commands.cooldown(
-        App.get_config("COOLDOWN_RATE"),
-        App.get_config("COOLDOWN_STANDARD"),
-        COOLDOWN_USER,
-    )
-    @commands.slash_command(name="logfile")
+    @cooldown_and_slash_command(name="logfile")
     async def print_logfile_tail(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -87,9 +52,9 @@ class AdminTools(SlashbotCog):
         """
         await inter.response.defer(ephemeral=True)
         tail = await get_logfile_tail(Path(App.get_config("LOGFILE_NAME")), num_lines)
-        await inter.edit_original_message(f"```{''.join(tail[::-1])}```")
+        await inter.edit_original_message(f"```{tail}```")
 
-    @commands.slash_command()
+    @cooldown_and_slash_command()
     async def restart_bot(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -118,16 +83,15 @@ class AdminTools(SlashbotCog):
         arguments = ["run.py"]
         if disable_markov:
             arguments.append("--disable-auto-markov")
-        logger.info("Restarting with new process with arguments %s", arguments)
 
         if inter.response.type == disnake.InteractionResponseType.deferred_channel_message:
             await inter.edit_original_message("Restarting the bot...")
         else:
             await inter.response.send_message("Restarting the bot...", ephemeral=True)
 
-        os.execv(sys.executable, ["python", *arguments])  # noqa: S606
+        restart_bot(arguments)
 
-    @commands.slash_command(name="update_bot")
+    @cooldown_and_slash_command(name="update_bot")
     async def update_and_restart(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -156,23 +120,16 @@ class AdminTools(SlashbotCog):
 
         """
         if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
-            await inter.response.send_message(
-                "You don't have permission to use this command.",
-                ephemeral=True,
-            )
+            await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
-
         await inter.response.defer(ephemeral=True)
         try:
             update_local_repository(branch)
         except git.exc.GitCommandError:
-            logger.exception("Failed to update repository")
+            LOGGER.exception("Failed to update repository")
             await inter.edit_original_message("Failed to update local repository", ephemeral=True)
             return
-        await self.restart_bot(
-            inter,
-            disable_markov,
-        )
+        await self.restart_bot(inter, disable_markov)
 
 
 def setup(bot: commands.InteractionBot) -> None:
