@@ -30,10 +30,13 @@ from slashbot.config import App
 from slashbot.markov import generate_markov_sentence
 from slashbot.models import ChannelHistory, Conversation
 from slashbot.text_generation import (
+    add_assistant_message_to_conversation,
+    check_if_user_rate_limited,
     get_model_response,
     get_prompts_at_launch,
     get_token_count_for_string,
     prepare_next_conversation_prompt,
+    shrink_conversation_to_token_window,
 )
 from slashbot.util import create_prompt_dict, read_in_prompt_json
 
@@ -83,43 +86,9 @@ class TextGeneration(SlashbotCog):
             lambda: Conversation(DEFAULT_PROMPT, DEFAULT_PROMPT_TOKEN_COUNT),
         )
         self.channel_histories: dict[ChannelHistory] = defaultdict(lambda: ChannelHistory())
-        self.user_cooldowns = defaultdict(
+        self.cooldowns = defaultdict(
             lambda: {"count": 0, "last_interaction": datetime.datetime.now(tz=datetime.UTC)},
         )
-
-    def rate_limit_conversation_requests(self, user_id: int) -> bool:
-        """Check if a user is on cooldown or not.
-
-        Parameters
-        ----------
-        user_id : int
-            The id of the user to rate limit
-
-        Returns
-        -------
-        bool
-            Returns True if the user needs to be rate limited
-
-        """
-        current_time = datetime.datetime.now(tz=datetime.UTC)
-        user_data = self.user_cooldowns[user_id]
-        time_difference = (current_time - user_data["last_interaction"]).seconds
-
-        # Check if exceeded rate limit
-        if user_data["count"] > App.get_config("AI_CHAT_RATE_LIMIT"):
-            # If exceeded rate limit, check if cooldown period has passed
-            if time_difference > App.get_config("AI_CHAT_RATE_INTERVAL"):
-                # reset count and update last_interaction time
-                user_data["count"] = 1
-                user_data["last_interaction"] = current_time
-                return False
-            # still under cooldown
-            return True
-        # hasn't exceeded rate limit, update count and last_interaction
-        user_data["count"] += 1
-        user_data["last_interaction"] = current_time
-
-        return False
 
     def clear_conversation_history(self, history_id: str | int) -> None:
         """Clear chat history and reset the token counter.
@@ -131,66 +100,6 @@ class TextGeneration(SlashbotCog):
 
         """
         self.conversations[history_id].clear_messages()
-
-    async def reduce_conversation_token_size(self, history_id: int | str) -> None:
-        """Remove messages from a chat history.
-
-        Parameters
-        ----------
-        history_id : int | str
-            The chat history ID. Usually the guild or user id.
-
-        """
-        removed_count = 0
-        while (
-            self.conversations[history_id].tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")
-            and len(self.conversations[history_id]) + 1 > 1  # +1 to account for system prompt
-        ):
-            try:
-                message = self.conversations[history_id][1].content
-            except IndexError:
-                LOGGER.exception(
-                    "History %d appears to be empty: tokens %d, conversation %s",
-                    history_id,
-                    self.conversations[history_id].tokens,
-                    self.conversations[history_id],
-                )
-                return
-            self.conversations[history_id].remove_message(1)
-            self.conversations[history_id].tokens -= get_token_count_for_string(
-                App.get_config("AI_CHAT_MODEL"),
-                message,
-            )
-            removed_count += 1
-        if removed_count > 0:
-            LOGGER.info(
-                "Removed %d messages from channel %s due to token limit: %d messages remaining",
-                removed_count,
-                history_id,
-                len(self.conversations[history_id]),
-            )
-
-    async def add_new_message_to_conversation(
-        self,
-        history_id: int,
-        new_message: str,
-        tokens_used: int,
-    ) -> None:
-        """Update the prompt history for a given history id.
-
-        Parameters
-        ----------
-        history_id : int
-            The key for the channel
-        new_message : str
-            The bot response to add to the prompt history
-        tokens_used : int
-            The number of tokens used by the prompt history
-
-        """
-        self.conversations[history_id].tokens = tokens_used
-        self.conversations[history_id].add_message(new_message, "assistant")
-        LOGGER.debug("%d tokens in prompt history for %d", self.conversations[history_id].tokens, history_id)
 
     async def get_conversation_from_reference_point(
         self,
@@ -293,7 +202,7 @@ class TextGeneration(SlashbotCog):
 
         """
         history_id = get_history_id(message)
-        await self.reduce_conversation_token_size(history_id)
+        shrink_conversation_to_token_window(self.conversations[history_id])
         clean_content = message.clean_content.replace(f"@{self.bot.user.name}", "")
 
         # we work on a copy, to try and avoid race conditions
@@ -318,7 +227,7 @@ class TextGeneration(SlashbotCog):
                     "role": "user",
                     "content": prompt_messages[-1]["content"][-1]["text"],
                 }
-            await self.add_new_message_to_conversation(history_id, response, tokens_used)
+            add_assistant_message_to_conversation(self.conversations[history_id], response, tokens_used)
         except Exception:
             LOGGER.exception("`get_api_response` failed.")
             response = generate_markov_sentence()
@@ -362,7 +271,7 @@ class TextGeneration(SlashbotCog):
         if bot_mentioned or message_in_dm:
             async with message.channel.typing():
                 # Rate limit
-                if self.rate_limit_conversation_requests(message.author.id):
+                if check_if_user_rate_limited(self.cooldowns, message.author.id):
                     await send_message_to_channel(
                         f"Stop abusing me, {message.author.mention}!",
                         message,

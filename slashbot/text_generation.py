@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import json
 import logging
 
@@ -8,6 +9,7 @@ import openai
 import tiktoken
 
 from slashbot.config import App
+from slashbot.models import Conversation
 from slashbot.util import create_prompt_dict, read_in_prompt_json
 
 LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
@@ -42,8 +44,11 @@ async def get_model_response(model: str, messages: list) -> tuple[str, int]:
         response = await OPENAI_CLIENT.chat.completions.create(
             messages=messages,
             model=model,
-            temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
             max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
+            frequency_penalty=App.get_config("AI_CHAT_FREQUENCY_PENALTY"),
+            presence_penalty=App.get_config("AI_CHAT_PRESENCE_PENALTY"),
+            temperature=App.get_config("AI_CHAT_TEMPERATURE"),
+            top_p=App.get_config("AI_CHAT_TOP_P"),
         )
         message = response.choices[0].message.content
         token_usage = response.usage.total_tokens
@@ -170,3 +175,80 @@ def find_first_user_message(messages: list[dict[str, str]]) -> int:
 
     msg = "No user message found in conversation"
     raise ValueError(msg)
+
+
+def check_if_user_rate_limited(cooldown: dict[str, datetime.datetime], user_id: int) -> bool:
+    """Check if a user is on cooldown or not.
+
+    Parameters
+    ----------
+    cooldown : dict[str, datetime.datetime]
+        A dictionary (user_id are the keys) containing the interaction counts
+        and the last interaction time for users.
+    user_id : int
+        The id of the user to rate limit
+
+    Returns
+    -------
+    bool
+        Returns True if the user needs to be rate limited
+
+    """
+    current_time = datetime.datetime.now(tz=datetime.UTC)
+    user_cooldown = cooldown[user_id]
+    time_difference = (current_time - user_cooldown["last_interaction"]).seconds
+
+    # Check if exceeded rate limit
+    if user_cooldown["count"] > App.get_config("AI_CHAT_RATE_LIMIT"):
+        # If exceeded rate limit, check if cooldown period has passed
+        if time_difference > App.get_config("AI_CHAT_RATE_INTERVAL"):
+            # reset count and update last_interaction time
+            user_cooldown["count"] = 1
+            user_cooldown["last_interaction"] = current_time
+            return False
+        # still under cooldown
+        return True
+    # hasn't exceeded rate limit, update count and last_interaction
+    user_cooldown["count"] += 1
+    user_cooldown["last_interaction"] = current_time
+
+    return False
+
+
+def shrink_conversation_to_token_window(conversation: Conversation) -> None:
+    """Shrink a conversation to fit within the token window size.
+
+    Parameters
+    ----------
+    conversation : Conversation
+        The conversation to shrink.
+
+    """
+    while (
+        conversation.tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")
+        and len(conversation) + 1 > 1  # +1 to account for system prompt
+    ):
+        try:
+            message = conversation[1].content
+        except IndexError:
+            return
+        conversation.remove_message(1)
+        conversation.tokens -= get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
+
+
+def add_assistant_message_to_conversation(conversation: Conversation, new_message: str, tokens_used: int) -> None:
+    """Update the conversation with a new messages and the tokens used.
+
+    Parameters
+    ----------
+    conversation : Conversation
+        The conversation to update.
+    new_message : str
+        The new message to add to the conversation
+    tokens_used : int
+        The total number of tokens in the conversation, including the new
+        message. This is returned up the LLM API.
+
+    """
+    conversation.tokens = tokens_used
+    conversation.add_message(new_message, "assistant")
