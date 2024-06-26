@@ -8,6 +8,7 @@ from disnake.ext import commands
 from bot import __version__
 from bot.custom_cog import SlashbotCog
 from bot.custom_command import cooldown_and_slash_command
+from bot.types import ApplicationCommandInteraction
 from slashbot.admin import get_logfile_tail, restart_bot, update_local_repository
 from slashbot.config import App
 
@@ -25,14 +26,14 @@ class AdminTools(SlashbotCog):
     """
 
     @cooldown_and_slash_command(name="version")
-    async def print_bot_version(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    async def print_bot_version(self, inter: ApplicationCommandInteraction) -> None:
         """Print the current version number of the bot."""
         await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
     @cooldown_and_slash_command(name="logfile")
     async def print_logfile_tail(
         self,
-        inter: disnake.ApplicationCommandInteraction,
+        inter: ApplicationCommandInteraction,
         num_lines: int = commands.Param(
             default=10,
             description="The number of lines to include in the tail of the log file.",
@@ -44,7 +45,7 @@ class AdminTools(SlashbotCog):
 
         Parameters
         ----------
-        inter : disnake.ApplicationCommandInteraction
+        inter : ApplicationCommandInteraction
             The interaction to respond to.
         num_lines: int
             The number of lines to print.
@@ -57,7 +58,7 @@ class AdminTools(SlashbotCog):
     @cooldown_and_slash_command()
     async def restart_bot(
         self,
-        inter: disnake.ApplicationCommandInteraction,
+        inter: ApplicationCommandInteraction,
         disable_markov: str = commands.Param(
             choices=["Yes", "No"],
             default=False,
@@ -69,7 +70,7 @@ class AdminTools(SlashbotCog):
 
         Parameters
         ----------
-        inter : disnake.ApplicationCommandInteraction
+        inter : ApplicationCommandInteraction
             The slash command interaction.
         disable_markov : str / bool
             A bool to indicate if we should disable cached markov sentences. The
@@ -94,7 +95,7 @@ class AdminTools(SlashbotCog):
     @cooldown_and_slash_command(name="update_bot")
     async def update_and_restart(
         self,
-        inter: disnake.ApplicationCommandInteraction,
+        inter: ApplicationCommandInteraction,
         branch: str = commands.Param(
             default="main",
             description="The branch to update to",
@@ -110,7 +111,7 @@ class AdminTools(SlashbotCog):
 
         Parameters
         ----------
-        inter : disnake.ApplicationCommandInteraction
+        inter : ApplicationCommandInteraction
             The slash command interaction.
         branch : str
             The name of the git branch to use

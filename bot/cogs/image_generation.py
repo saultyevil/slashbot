@@ -8,18 +8,21 @@ text-to-image generation using Monster API.
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
-import disnake
 import requests
 from disnake.ext import commands
 
-from bot.custom_bot import SlashbotInterationBot
 from bot.custom_cog import SlashbotCog
 from bot.custom_command import cooldown_and_slash_command
+from bot.types import ApplicationCommandInteraction  # noqa: TCH001
 from slashbot.config import App
 from slashbot.image_generation import retrieve_image_request, send_image_request
 
 LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
+
+if TYPE_CHECKING:
+    from bot.custom_bot import SlashbotInterationBot
 
 
 class ImageGeneration(SlashbotCog):
@@ -39,7 +42,7 @@ class ImageGeneration(SlashbotCog):
     @cooldown_and_slash_command(description="Generate an image from a text prompt.")
     async def text_to_image(
         self,
-        inter: disnake.ApplicationCommandInteraction,
+        inter: ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to generate an image for"),
         steps: int = commands.Param(default=30, ge=30, lt=500, description="The number of sampling steps"),
         aspect_ratio: str = commands.Param(
@@ -54,7 +57,7 @@ class ImageGeneration(SlashbotCog):
 
         Parameters
         ----------
-        inter : disnake.ApplicationCommandInteraction
+        inter : ApplicationCommandInteraction
             The interaction to respond to.
         prompt : str, optional
             The prompt to generate an image for.

@@ -10,13 +10,15 @@ The current API client is Disnake.
 
 import disnake
 
-# Alias for API client
+# Alias for API client, if we want to use it
 discord = disnake
 
 # Aliases for typing
 ApplicationCommandInteraction = disnake.ApplicationCommandInteraction
 Interaction = disnake.Interaction
+InteractionReference = disnake.InteractionReference
 User = disnake.User
 Member = disnake.Member
 TextChannel = disnake.TextChannel
 DMChannel = disnake.DMChannel
+Message = disnake.Message

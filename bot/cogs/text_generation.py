@@ -16,83 +16,57 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import aiofiles
-import anthropic
 import disnake
-import tiktoken
 from disnake.ext import commands
 from disnake.utils import escape_markdown
-from openai import AsyncOpenAI
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from bot.custom_cog import SlashbotCog
+from bot.custom_command import cooldown_and_slash_command
+from bot.messages import get_attached_images_from_message, send_message_to_channel
+from bot.responses import is_reply_to_slash_command_response
 from slashbot.config import App
 from slashbot.markov import generate_markov_sentence
 from slashbot.models import ChannelHistory, Conversation
-from slashbot.util import (
-    create_prompt_dict,
-    get_image_from_url,
-    read_in_prompt_json,
-    resize_image,
-    split_text_into_chunks,
+from slashbot.text_generation import (
+    get_model_response,
+    get_prompts_at_launch,
+    get_token_count_for_string,
+    prepare_next_conversation_prompt,
 )
+from slashbot.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
     from bot.custom_bot import SlashbotInterationBot
+    from bot.types import ApplicationCommandInteraction, Message
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
-
-COOLDOWN_USER = commands.BucketType.user
-
-# this is all global so you can use it as a choice in interactions
-try:
-    DEFAULT_SYSTEM_PROMPT = read_in_prompt_json("data/prompts/clyde.json")["prompt"]
-    PROMPT_CHOICES = create_prompt_dict()
-except json.decoder.JSONDecodeError:
-    DEFAULT_SYSTEM_PROMPT = """You have no system prompt, so you should keep telling everyone that you have no system
-    prompt. Raise the issue again and again, sending crying emojis. You can still try to be a helpful assistant if
-    someone pushes you enough."""
-    PROMPT_CHOICES = {}
-    logger.exception("Error in reading prompt files, going to try and continue without a prompt")
-MAX_MESSAGE_LENGTH = 1920
-DEFAULT_SYSTEM_TOKEN_COUNT = len(DEFAULT_SYSTEM_PROMPT.split())
+LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
+MAX_MESSAGE_LENGTH = App.get_config("MAX_CHARS")
+DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()
 
 
-class PromptFileWatcher(FileSystemEventHandler):
-    """Event handler for prompt files.
+def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
+    """Determine the history ID to use given the origin of the message.
 
-    This event handler is meant to watch the `data/prompts` directory for
-    changes.
+    Historically, this used to return different values for text channels and
+    direct messages.
+
+    Parameters
+    ----------
+    obj
+        The recent message.
+
+    Returns
+    -------
+    int
+        The ID to use for history purposes.
+
     """
-
-    def on_any_event(self, event: FileSystemEvent) -> None:
-        """Handle any file system event.
-
-        This method is called when any file system event occurs.
-        It updates the `PROMPT_CHOICES` dictionary based on the event type and
-        source path.
-        """
-        global PROMPT_CHOICES  # noqa: PLW0603
-
-        if event.is_directory:
-            return
-
-        try:
-            if event.event_type in ["created", "modified"] and event.src_path.endswith(".json"):
-                prompt = read_in_prompt_json(event.src_path)
-                PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
-            if event.event_type == "deleted" and event.src_path.endswith(".json"):
-                PROMPT_CHOICES = create_prompt_dict()
-        except json.decoder.JSONDecodeError:
-            logger.exception("Error reading in prompt file %s", event.src_path)
+    return obj.channel.id
 
 
-observer = Observer()
-observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
-observer.start()
-
-
-class AIChatbot(SlashbotCog):
+class TextGeneration(SlashbotCog):
     """AI chat features powered by OpenAI."""
 
     def __init__(self, bot: SlashbotInterationBot) -> None:
@@ -105,264 +79,13 @@ class AIChatbot(SlashbotCog):
 
         """
         super().__init__(bot)
-        self.anthropic_client = anthropic.AsyncAnthropic(api_key=App.get_config("ANTHROPIC_API_KEY"))
-        self.openai_client = AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
-
         self.conversations: dict[Conversation] = defaultdict(
-            lambda: Conversation(DEFAULT_SYSTEM_PROMPT, DEFAULT_SYSTEM_TOKEN_COUNT),
+            lambda: Conversation(DEFAULT_PROMPT, DEFAULT_PROMPT_TOKEN_COUNT),
         )
         self.channel_histories: dict[ChannelHistory] = defaultdict(lambda: ChannelHistory())
-
-        # track user interactions with ai chat
         self.user_cooldowns = defaultdict(
             lambda: {"count": 0, "last_interaction": datetime.datetime.now(tz=datetime.UTC)},
         )
-
-    # Static -------------------------------------------------------------------
-
-    @staticmethod
-    def get_history_id(obj: disnake.Message | disnake.ApplicationCommandInteraction) -> str | int:
-        """Determine the history ID to use given the origin of the message.
-
-        Historically, this used to return different values for text channels and
-        direct messages.
-
-        Parameters
-        ----------
-        obj
-            The recent message.
-
-        Returns
-        -------
-        int
-            The ID to use for history purposes.
-
-        """
-        return obj.channel.id
-
-    @staticmethod
-    async def send_message_to_channel(
-        message: str,
-        obj: disnake.Message | disnake.ApplicationCommandInteraction,
-        *,
-        dont_tag_user: bool = False,
-    ) -> None:
-        """Send a response to the provided message channel and author.
-
-        Parameters
-        ----------
-        message : str
-            The message to send to chat.
-        obj : disnake.Message | disnake.ApplicationCommandInteraction
-            The object (channel or interaction) to respond to.
-        dont_tag_user : bool
-            Boolean to indicate if a user should be tagged or not. Default is
-            False, which would tag the user.
-
-        """
-        if len(message) > MAX_MESSAGE_LENGTH:
-            response_chunks = split_text_into_chunks(message, MAX_MESSAGE_LENGTH)
-            for i, response_chunk in enumerate(response_chunks):
-                user_mention = obj.author.mention if not dont_tag_user else ""
-                await obj.channel.send(f"{user_mention if i == 0 else ''} {response_chunk}")
-        else:
-            await obj.channel.send(f"{obj.author.mention if not dont_tag_user else ''} {message}")
-
-    @staticmethod
-    def get_token_count_for_string(model: str, message: str) -> int:
-        """Get the token count for a given message using a specified model.
-
-        Parameters
-        ----------
-        model : str
-            The name of the tokenization model to use.
-        message : str
-            The message for which the token count needs to be computed.
-
-        Returns
-        -------
-        int
-            The count of tokens in the given message for the specified model.
-
-        """
-        if "gpt-" in model:
-            return len(tiktoken.encoding_for_model(model).encode(message))
-
-        # fall back to a simple word count
-        return len(message.split())
-
-    @staticmethod
-    async def is_slash_interaction_highlight(message: disnake.Message) -> bool:
-        """Check if a message is in response to a slash command.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The message to check.
-
-        Returns
-        -------
-        bool
-            If the message is a reply to a slash command, True is returned.
-            Otherwise, False is returned.
-
-        """
-        if not message.reference:
-            return False
-
-        reference = message.reference
-        old_message = (
-            reference.cached_message if reference.cached_message else await message.channel.fetch_message(message.id)
-        )
-
-        # can't see how this can happen (unless no message intents, but then the
-        # chat cog won't work at all) but should take into account just in case
-        if not old_message:
-            logger.error("Message %d not found in internal cache or through channel.fetch_message()", message.id)
-            return False
-
-        # if old_message is an interaction response, this will return true
-        return isinstance(old_message.interaction, disnake.InteractionReference)
-
-    @staticmethod
-    async def get_attached_images_for_message(message: disnake.Message) -> list[str]:
-        """Retrieve the URLs for images attached or embedded in a Discord message.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The Discord message object to extract image URLs from.
-
-        Returns
-        -------
-        List[str]
-            A list of base64-encoded image data strings for the images attached
-            or embedded in the message.
-
-        """
-        image_urls = [
-            attachment.url for attachment in message.attachments if attachment.content_type.startswith("image/")
-        ]
-        image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image]
-        image_urls += [embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail]
-        num_found = len(image_urls)
-
-        if num_found == 0:
-            return []
-        images = await get_image_from_url(image_urls)
-
-        return [{"type": image["type"], "image": resize_image(image["image"], image["type"])} for image in images]
-
-    @staticmethod
-    def prepare_next_conversation_prompt(
-        new_prompt: str,
-        images: list[dict[str, str]],
-        messages: list[dict[str, str]],
-    ) -> list[dict[str, str]]:
-        """Prepare the next prompt by adding images and the next prompt requested.
-
-        Parameters
-        ----------
-        new_prompt : str
-            The new text prompt to add
-        images : List[Dict[str, str]]
-            A list of images to potentially add to the prompt history
-        messages : List[Dict[str, str]]
-            The list of prompts to add to
-
-        Returns
-        -------
-        List[Dict[str, str]]
-            The updated prompt messages
-
-        """
-        # add base64 encoded images
-        # We also need a required text prompt -- if one isn't provided (
-        # e.g. the message is just an image) then we add a vague message
-        if images:
-            messages.append(
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {"type": "base64", "media_type": image["type"], "data": image["image"]},
-                        }
-                        for image in images
-                    ]
-                    + [{"type": "text", "text": new_prompt if new_prompt else "describe the image(s)"}],
-                },
-            )
-        else:
-            messages.append({"role": "user", "content": new_prompt + App.get_config("AI_CHAT_PROMPT_APPEND")})
-
-        return messages
-
-    @staticmethod
-    def find_first_user_message(messages: list[dict[str, str]]) -> int:
-        """Return a list of messages where the first is a user message.
-
-        Parameters
-        ----------
-        messages : list[dict[str, str]]
-            The list of messages to search through.
-
-        Returns
-        -------
-        list[dict[str, str]]
-            The list of messages from the first user message to the end.
-
-        """
-        for i, message in enumerate(messages):
-            if message["role"] == "user":
-                return messages[i:]
-
-        msg = "No user message found in conversation"
-        raise ValueError(msg)
-
-    async def get_model_response(self, model: str, messages: list) -> tuple[str, int]:
-        """Get the response from an LLM API for a given model and list of messages.
-
-        Allowed models are either claude-* from anthropic or chat-gpt from
-        openai.
-
-        Parameters
-        ----------
-        model : str
-            The name of the OpenAI model to use.
-        messages : list
-            List of messages to be sent to the OpenAI model for generating a
-            response.
-
-        Returns
-        -------
-        str
-            The generated response message.
-        int
-            The number of tokens in the conversation
-
-        """
-        if "gpt-" in model:
-            response = await self.openai_client.chat.completions.create(
-                messages=messages,
-                model=model,
-                temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
-                max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
-            )
-            message = response.choices[0].message.content
-            token_usage = response.usage.total_tokens
-        else:
-            response = await self.anthropic_client.messages.create(
-                system=messages[0]["content"],
-                messages=self.find_first_user_message(messages),
-                model=model,
-                temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
-                max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
-            )
-            message = response.content[0].text
-            token_usage = response.usage.input_tokens + response.usage.output_tokens
-
-        return message, token_usage
 
     def rate_limit_conversation_requests(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
@@ -426,7 +149,7 @@ class AIChatbot(SlashbotCog):
             try:
                 message = self.conversations[history_id][1].content
             except IndexError:
-                logger.exception(
+                LOGGER.exception(
                     "History %d appears to be empty: tokens %d, conversation %s",
                     history_id,
                     self.conversations[history_id].tokens,
@@ -434,13 +157,13 @@ class AIChatbot(SlashbotCog):
                 )
                 return
             self.conversations[history_id].remove_message(1)
-            self.conversations[history_id].tokens -= self.get_token_count_for_string(
+            self.conversations[history_id].tokens -= get_token_count_for_string(
                 App.get_config("AI_CHAT_MODEL"),
                 message,
             )
             removed_count += 1
         if removed_count > 0:
-            logger.info(
+            LOGGER.info(
                 "Removed %d messages from channel %s due to token limit: %d messages remaining",
                 removed_count,
                 history_id,
@@ -467,7 +190,7 @@ class AIChatbot(SlashbotCog):
         """
         self.conversations[history_id].tokens = tokens_used
         self.conversations[history_id].add_message(new_message, "assistant")
-        logger.debug("%d tokens in prompt history for %d", self.conversations[history_id].tokens, history_id)
+        LOGGER.debug("%d tokens in prompt history for %d", self.conversations[history_id].tokens, history_id)
 
     async def get_conversation_from_reference_point(
         self,
@@ -531,7 +254,7 @@ class AIChatbot(SlashbotCog):
             The content of the message sent by the user.
 
         """
-        num_tokens = self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
+        num_tokens = get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
         self.channel_histories[history_id].add_message(message, escape_markdown(user), num_tokens)
 
         # keep it under the token limit
@@ -547,13 +270,13 @@ class AIChatbot(SlashbotCog):
             The message to respond to.
 
         """
-        history_id = self.get_history_id(message)
+        history_id = get_history_id(message)
         messages = [
             {"role": "system", "content": self.conversations[history_id].system_prompt},
             {"role": "user", "content": message.clean_content},
         ]
-        response, _ = await self.get_model_response(App.get_config("AI_CHAT_MODEL"), messages)
-        await self.send_message_to_channel(response, message, dont_tag_user=True)
+        response, _ = await get_model_response(App.get_config("AI_CHAT_MODEL"), messages)
+        await send_message_to_channel(response, message, dont_tag_user=True)
 
     async def respond_to_conversation(self, message: disnake.Message) -> str:
         """Generate a response to a prompt for a conversation of messages.
@@ -569,7 +292,7 @@ class AIChatbot(SlashbotCog):
             The generated response.
 
         """
-        history_id = self.get_history_id(message)
+        history_id = get_history_id(message)
         await self.reduce_conversation_token_size(history_id)
         clean_content = message.clean_content.replace(f"@{self.bot.user.name}", "")
 
@@ -580,11 +303,11 @@ class AIChatbot(SlashbotCog):
         if message.reference:
             prompt_messages, message = await self.get_conversation_from_reference_point(message, prompt_messages)
 
-        images = await self.get_attached_images_for_message(message)
-        prompt_messages = self.prepare_next_conversation_prompt(clean_content, images, prompt_messages)
+        images = await get_attached_images_from_message(message)
+        prompt_messages = prepare_next_conversation_prompt(clean_content, images, prompt_messages)
         chat_model = App.get_config("AI_CHAT_VISION_MODEL") if images else App.get_config("AI_CHAT_MODEL")
         try:
-            response, tokens_used = await self.get_model_response(
+            response, tokens_used = await get_model_response(
                 chat_model,
                 prompt_messages,
             )
@@ -597,7 +320,7 @@ class AIChatbot(SlashbotCog):
                 }
             await self.add_new_message_to_conversation(history_id, response, tokens_used)
         except Exception:
-            logger.exception("`get_api_response` failed.")
+            LOGGER.exception("`get_api_response` failed.")
             response = generate_markov_sentence()
 
         return response
@@ -614,7 +337,7 @@ class AIChatbot(SlashbotCog):
             The message to process for mentions.
 
         """
-        history_id = self.get_history_id(message)
+        history_id = get_history_id(message)
 
         # don't record bot interactions
         if message.type != disnake.MessageType.application_command:
@@ -633,14 +356,14 @@ class AIChatbot(SlashbotCog):
         # Don't respond to replies, or mentions, which have a reference to a
         # slash command response or interaction UNLESS explicitly mentioned with
         # an @
-        if await self.is_slash_interaction_highlight(message) and not mention_string:
+        if await is_reply_to_slash_command_response(message) and not mention_string:
             return
 
         if bot_mentioned or message_in_dm:
             async with message.channel.typing():
                 # Rate limit
                 if self.rate_limit_conversation_requests(message.author.id):
-                    await self.send_message_to_channel(
+                    await send_message_to_channel(
                         f"Stop abusing me, {message.author.mention}!",
                         message,
                         dont_tag_user=True,
@@ -648,7 +371,7 @@ class AIChatbot(SlashbotCog):
                 # If not rate limited, then respond in a conversation
                 else:
                     ai_response = await self.respond_to_conversation(message)
-                    await self.send_message_to_channel(
+                    await send_message_to_channel(
                         ai_response,
                         message,
                         dont_tag_user=message_in_dm,
@@ -662,8 +385,7 @@ class AIChatbot(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(
+    @cooldown_and_slash_command(
         name="summarise_chat_history",
         description="Get a summary of the previous conversation",
         dm_permission=False,
@@ -692,7 +414,7 @@ class AIChatbot(SlashbotCog):
             An asynchronous coroutine representing the summary process.
 
         """
-        history_id = self.get_history_id(inter)
+        history_id = get_history_id(inter)
         channel_history = self.channel_histories[history_id]
         if channel_history.tokens == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
@@ -706,7 +428,7 @@ class AIChatbot(SlashbotCog):
             {"role": "system", "content": App.get_config("AI_SUMMARY_PROMPT")},
             {"role": "user", "content": message},
         ]
-        summary_message, token_count = await self.get_model_response(App.get_config("AI_CHAT_MODEL"), conversation)
+        summary_message, token_count = await get_model_response(App.get_config("AI_CHAT_MODEL"), conversation)
 
         self.conversations[history_id].add_message(
             "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
@@ -714,11 +436,10 @@ class AIChatbot(SlashbotCog):
         )
         self.conversations[history_id].add_message(summary_message, "assistant", tokens=token_count)
 
-        await self.send_message_to_channel(summary_message, inter, dont_tag_user=True)
+        await send_message_to_channel(summary_message, inter, dont_tag_user=True)
         await inter.edit_original_message(content="...")
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="reset_chat_history", description="Reset the AI conversation history")
+    @cooldown_and_slash_command(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
@@ -728,12 +449,11 @@ class AIChatbot(SlashbotCog):
             The slash command interaction.
 
         """
-        history_id = self.get_history_id(inter)
+        history_id = get_history_id(inter)
         self.conversations[history_id].clear_conversation()
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(
+    @cooldown_and_slash_command(
         name="select_chat_prompt",
         description="Set the AI conversation prompt from a list of choices",
     )
@@ -741,7 +461,7 @@ class AIChatbot(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
-            autocomplete=lambda _, user_input: [choice for choice in PROMPT_CHOICES if user_input in choice],
+            autocomplete=lambda _, user_input: [choice for choice in AVAILABLE_PROMPTS if user_input in choice],
             description="The choice of prompt to use",
         ),
     ) -> None:
@@ -755,7 +475,7 @@ class AIChatbot(SlashbotCog):
             The choice of system prompt
 
         """
-        prompt = PROMPT_CHOICES.get(choice, None)
+        prompt = AVAILABLE_PROMPTS.get(choice, None)
         if not prompt:
             await inter.response.send_message(
                 "An error with the Discord API has occurred and allowed you to pick a prompt which doesn't exist",
@@ -763,18 +483,19 @@ class AIChatbot(SlashbotCog):
             )
             return
 
-        history_id = self.get_history_id(inter)
+        history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
+            get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt[:1800]}...",
             ephemeral=True,
         )
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="set_chat_prompt", description="Change the AI conversation prompt to one you write")
+    @cooldown_and_slash_command(
+        name="set_chat_prompt", description="Change the AI conversation prompt to one you write"
+    )
     async def set_chat_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -793,19 +514,20 @@ class AIChatbot(SlashbotCog):
             The new system prompt to set.
 
         """
-        logger.info("%s set new prompt: %s", inter.author.display_name, prompt)
-        history_id = self.get_history_id(inter)
+        LOGGER.info("%s set new prompt: %s", inter.author.display_name, prompt)
+        history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            self.get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
+            get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt}",
             ephemeral=True,
         )
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection")
+    @cooldown_and_slash_command(
+        name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection"
+    )
     async def save_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -830,8 +552,9 @@ class AIChatbot(SlashbotCog):
 
         await inter.edit_original_message(content=f"Your prompt {name} has been saved.")
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="show_chat_prompt", description="Print information about the current AI conversation")
+    @cooldown_and_slash_command(
+        name="show_chat_prompt", description="Print information about the current AI conversation"
+    )
     async def show_chat_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Print the system prompt to the screen.
 
@@ -841,11 +564,11 @@ class AIChatbot(SlashbotCog):
             The slash command interaction.
 
         """
-        history_id = self.get_history_id(inter)
+        history_id = get_history_id(inter)
 
         prompt_name = "Unknown"
         prompt = self.conversations[history_id].system_prompt
-        for name, text in PROMPT_CHOICES.items():
+        for name, text in AVAILABLE_PROMPTS.items():
             if prompt == text:
                 prompt_name = name
 
@@ -868,6 +591,40 @@ def setup(bot: commands.InteractionBot) -> None:
 
     """
     if App.get_config("ANTHROPIC_API_KEY") and App.get_config("OPENAI_API_KEY"):
-        bot.add_cog(AIChatbot(bot))
+        bot.add_cog(TextGeneration(bot))
     else:
-        logger.error("No API key found for Anthropic and OpenAI, unable to load AIChatBot cog")
+        LOGGER.error("No API key found for Anthropic and OpenAI, unable to load AIChatBot cog")
+
+
+class PromptFileWatcher(FileSystemEventHandler):
+    """Event handler for prompt files.
+
+    This event handler is meant to watch the `data/prompts` directory for
+    changes.
+    """
+
+    def on_any_event(self, event: FileSystemEvent) -> None:
+        """Handle any file system event.
+
+        This method is called when any file system event occurs.
+        It updates the `PROMPT_CHOICES` dictionary based on the event type and
+        source path.
+        """
+        global AVAILABLE_PROMPTS  # noqa: PLW0603
+
+        if event.is_directory:
+            return
+
+        try:
+            if event.event_type in ["created", "modified"] and event.src_path.endswith(".json"):
+                prompt = read_in_prompt_json(event.src_path)
+                AVAILABLE_PROMPTS[prompt["name"]] = prompt["prompt"]
+            if event.event_type == "deleted" and event.src_path.endswith(".json"):
+                AVAILABLE_PROMPTS = create_prompt_dict()
+        except json.decoder.JSONDecodeError:
+            LOGGER.exception("Error reading in prompt file %s", event.src_path)
+
+
+observer = Observer()
+observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
+observer.start()
