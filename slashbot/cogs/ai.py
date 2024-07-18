@@ -593,7 +593,7 @@ class AIChatbot(SlashbotCog):
             )
             # ChatGPT can't cope with the image prompts, so we won't update the
             # conversation history with the image part
-            if chat_model == App.get_config("AI_CHAT_VISION_MODEL"):
+            if images:
                 prompt_messages[-1] = {
                     "role": "user",
                     "content": prompt_messages[-1]["content"][-1]["text"],
