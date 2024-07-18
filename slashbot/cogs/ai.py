@@ -188,9 +188,11 @@ class AIChatbot(SlashbotCog):
             The count of tokens in the given message for the specified model.
 
         """
-        if "gpt-3" in model:
+        # 4o-mini doesn't have a tokenizer yet
+        if model == "gpt-4o-mini":
+            return len(tiktoken.encoding_for_model("gpt-4o").encode(message))
+        if "gpt-" in model:
             return len(tiktoken.encoding_for_model(model).encode(message))
-
         # fall back to a simple word count
         return len(message.split())
 
