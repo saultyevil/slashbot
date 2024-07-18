@@ -56,9 +56,7 @@ except json.decoder.JSONDecodeError:
     prompt. Raise the issue again and again, sending crying emojis. You can still try to be a helpful assistant if
     someone pushes you enough."""
     PROMPT_CHOICES = {}
-    logger.exception(
-        "Error in reading prompt files, going to try and continue without a prompt"
-    )
+    logger.exception("Error in reading prompt files, going to try and continue without a prompt")
 MAX_MESSAGE_LENGTH = 1920
 DEFAULT_SYSTEM_TOKEN_COUNT = len(DEFAULT_SYSTEM_PROMPT.split())
 
@@ -83,15 +81,14 @@ class PromptFileWatcher(FileSystemEventHandler):
             return
 
         try:
-            if event.event_type in ["created", "modified"] and event.src_path.endswith(
-                ".json"
-            ):
+            if event.event_type in ["created", "modified"] and event.src_path.endswith(".json"):
                 prompt = read_in_prompt_json(event.src_path)
                 PROMPT_CHOICES[prompt["name"]] = prompt["prompt"]
             if event.event_type == "deleted" and event.src_path.endswith(".json"):
                 PROMPT_CHOICES = create_prompt_dict()
         except json.decoder.JSONDecodeError:
             logger.exception("Error reading in prompt file %s", event.src_path)
+
 
 observer = Observer()
 observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
@@ -191,7 +188,7 @@ class AIChatbot(SlashbotCog):
             The count of tokens in the given message for the specified model.
 
         """
-        if "gpt-" in model:
+        if "gpt-3" in model:
             return len(tiktoken.encoding_for_model(model).encode(message))
 
         # fall back to a simple word count
@@ -1011,9 +1008,7 @@ class AIImageGeneration(SlashbotCog):
         try:
             process_id, response = self.send_image_request(prompt, steps, aspect_ratio)
         except requests.exceptions.Timeout:
-            await inter.edit_original_message(
-                content="The image generation API took too long to respond."
-            )
+            await inter.edit_original_message(content="The image generation API took too long to respond.")
             return
 
         if process_id == "":
@@ -1036,9 +1031,7 @@ class AIImageGeneration(SlashbotCog):
                 break
             if status == "COMPLETED":
                 self.running_tasks.pop(inter.author.id)
-                await next_interaction.send(
-                    f'{inter.author.display_name}\'s request for "{prompt}" {result}'
-                )
+                await next_interaction.send(f'{inter.author.display_name}\'s request for "{prompt}" {result}')
                 return
             if status == "FAILED":
                 self.running_tasks.pop(inter.author.id)
@@ -1052,9 +1045,7 @@ class AIImageGeneration(SlashbotCog):
             elapsed_time = time.time() - start
 
         self.running_tasks.pop(inter.author.id)
-        await next_interaction.send(
-            f'Your request ({process_id}) for "{prompt}" timed out.', ephemeral=True
-        )
+        await next_interaction.send(f'Your request ({process_id}) for "{prompt}" timed out.', ephemeral=True)
 
 
 def setup(bot: commands.InteractionBot) -> None:
