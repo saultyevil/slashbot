@@ -170,7 +170,7 @@ class Weather(SlashbotCog):
         """
         location = self.geolocator.geocode(location, region="GB")
 
-        if location is None:
+        if not location:
             msg = f"{location} not found in Geocoding API"
             raise LocationNotFoundError(msg)
 
@@ -249,20 +249,24 @@ class Weather(SlashbotCog):
 
         if not user_location:
             user_location = get_user_location(inter.author)
-            if user_location is None:
-                return await deferred_error_message(
+            if not user_location:
+                await deferred_error_message(
                     inter,
                     "You need to either specify a city, or set your city and/or country using /set_info.",
                 )
+                return
 
         try:
             location, forecast = self.get_weather_for_location(user_location, units, forecast_type)
         except (LocationNotFoundError, GeocodeError):
-            return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
+            await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
+            return
         except OneCallError:
-            return await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
+            await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
+            return
         except requests.Timeout:
-            return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
+            await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
+            return
 
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
 
@@ -295,7 +299,7 @@ class Weather(SlashbotCog):
         )
         embed.set_thumbnail(self.get_weater_icon_url(forecast[0]["weather"][0]["icon"]))
 
-        return await inter.edit_original_message(embed=embed)
+        await inter.edit_original_message(embed=embed)
 
     @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="weather", description="get the current weather")
@@ -329,33 +333,40 @@ class Weather(SlashbotCog):
 
         if not user_location:
             user_location = get_user_location(inter.author)
-            if user_location is None:
-                return await deferred_error_message(
+            if not user_location:
+                await deferred_error_message(
                     inter,
                     "You need to specify a city, or set your city and/or country using /set_info.",
                 )
+                return
 
         try:
             location, weather_return = self.get_weather_for_location(
                 user_location,
                 units,
-                ("current", "alerts"),
+                ("current", "daily", "alerts"),
             )
         except (LocationNotFoundError, GeocodeError):
-            return await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
+            await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
+            return
         except OneCallError:
-            return await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
+            await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
+            return
         except requests.Timeout:
-            return await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
+            await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
+            return
+
+        logger.debug("Got weather for %s: %s", location, weather_return)
 
         weather_alerts = weather_return.get("alerts") if "alerts" in weather_return else None
         current_weather = weather_return["current"]
+        forecast_today = weather_return["daily"][0]
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.add_field(
-            name="Description",
-            value=current_weather["weather"][0]["description"].capitalize(),
+            name="Conditions",
+            value=f"{current_weather['weather'][0]['description'].capitalize()}, {current_weather['temp']:.0f} °{temp_unit}",
             inline=False,
         )
         # todo: make this a function
@@ -375,11 +386,9 @@ class Weather(SlashbotCog):
                     value="\n".join(alert_strings),
                     inline=False,
                 )
-        embed.add_field(
-            name="Temperature",
-            value=f"{current_weather['temp']:.0f} °{temp_unit}",
-            inline=True,
-        )
+        min_temp = forecast_today["temp"]["min"]
+        max_temp = forecast_today["temp"]["max"]
+        embed.add_field(name="Temperature", value=f"{min_temp:0.0f} / {max_temp:.0f} °{temp_unit}", inline=False)
         embed.add_field(name="Humidity", value=f"{current_weather['humidity']}%", inline=False)
         embed.add_field(
             name="Wind",
@@ -393,7 +402,7 @@ class Weather(SlashbotCog):
         )
         embed.set_thumbnail(self.get_weater_icon_url(current_weather["weather"][0]["icon"]))
 
-        return await inter.edit_original_message(embed=embed)
+        await inter.edit_original_message(embed=embed)
 
 
 def setup(bot: commands.InteractionBot) -> None:
