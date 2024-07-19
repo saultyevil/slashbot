@@ -366,7 +366,7 @@ class Weather(SlashbotCog):
         temperature = current_weather["temp"]
         feels_like = current_weather["feels_like"]
         current_conditions = f"{current_weather['weather'][0]['description'].capitalize()}, "
-        current_conditions += f"{temperature} °{temp_unit} and feels like {feels_like:.0f} °{temp_unit}"
+        current_conditions += f"{temperature:.0f} °{temp_unit} and feels like {feels_like:.0f} °{temp_unit}"
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.add_field(name="Conditions", value=current_conditions, inline=False)
