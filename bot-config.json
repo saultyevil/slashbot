@@ -27,13 +27,13 @@
         },
         "AI_CHAT": {
             "SUMMARY_PROMPT": "data/prompts/_summary-prompt.json",
-            "TOKEN_WINDOW_SIZE": 4096,
-            "MAX_OUTPUT_TOKENS": 1024,
+            "TOKEN_WINDOW_SIZE": 8192,
+            "MAX_OUTPUT_TOKENS": 2048,
             "MODEL_TEMPERATURE": 1.0,
             "MODEL_TOP_P": 1.0,
             "MODEL_FREQUENCY_PENALTY": 0.0,
             "MODEL_PRESENCE_PENALTY": 0.0,
-            "CHAT_MODEL": "gpt-3.5-turbo",
+            "CHAT_MODEL": "gpt-4o-mini",
             "VISION_MODEL": "claude-3-haiku-20240307",
             "RANDOM_RESPONSE_CHANCE": 1e-3,
             "RESPONSE_RATE_LIMIT": 10,
@@ -67,7 +67,7 @@
     },
     "LOGFILE": {
         "LOG_NAME": "slashbot",
-        "LOG_LOCATION": ".slashbot.log"
+        "LOG_LOCATION": "slashbot.log"
     },
     "MARKOV": {
         "ENABLE_MARKOV_TRAINING": false,

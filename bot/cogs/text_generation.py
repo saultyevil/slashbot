@@ -58,7 +58,7 @@ def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
     Parameters
     ----------
     obj
-        The recent message.
+        The Disnake object to get the history ID from.
 
     Returns
     -------
@@ -334,9 +334,10 @@ class TextGeneration(SlashbotCog):
             channel_history.get_messages(amount),
         )
         conversation = [
-            {"role": "system", "content": App.get_config("AI_SUMMARY_PROMPT")},
+            {"role": "system", "content": App.get_config("AI_CHAT_SUMMARY_PROMPT")},
             {"role": "user", "content": message},
         ]
+        LOGGER.debug("Conversation to summarise: %s", conversation)
         summary_message, token_count = await get_model_response(App.get_config("AI_CHAT_MODEL"), conversation)
 
         self.conversations[history_id].add_message(

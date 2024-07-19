@@ -105,6 +105,7 @@ def get_token_count_for_string(model: str, message: str) -> int:
         The count of tokens in the given message for the specified model.
 
     """
+    model = model if model != "gpt-4o-mini" else "gpt-4o"  # hack for tiktoken!!
     if "gpt-" in model:
         return len(tiktoken.encoding_for_model(model).encode(message))
 
