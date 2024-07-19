@@ -128,7 +128,7 @@ class AdminTools(SlashbotCog):
             update_local_repository(branch)
         except git.exc.GitCommandError:
             LOGGER.exception("Failed to update repository")
-            await inter.edit_original_message("Failed to update local repository", ephemeral=True)
+            await inter.edit_original_message("Failed to update local repository")
             return
         await self.restart_bot(inter, disable_markov)
 
