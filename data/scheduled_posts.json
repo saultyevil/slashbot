@@ -98,23 +98,6 @@
       "message": "FRIDAY NIGHT MOTHERFUCKERS "
     },
     {
-      "title": "friday-night-usa",
-      "files": [
-        "data/images/its_friday.gif",
-        "data/images/friday_night.png",
-        "data/videos/weekend.mp4"
-      ],
-      "channels": [
-        237647756049514498
-      ],
-      "users": [],
-      "day": 4,
-      "hour": 23,
-      "minute": 59,
-      "seed_word": "friday",
-      "message": "FRIDAY NIGHT MOTHERFUCKERS IN AMERIKHASTAN "
-    },
-    {
       "title": "sunday-morning",
       "files": [
         "data/videos/sunday.mp4"
