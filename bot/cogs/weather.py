@@ -363,12 +363,13 @@ class Weather(SlashbotCog):
         forecast_today = weather_return["daily"][0]
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
 
+        temperature = current_weather["temp"]
+        feels_like = current_weather["feels_like"]
+        current_conditions = f"{current_weather['weather'][0]['description'].capitalize()}, "
+        current_conditions += f"{temperature} °{temp_unit} and feels like {feels_like:.0f} °{temp_unit}"
+
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
-        embed.add_field(
-            name="Conditions",
-            value=f"{current_weather['weather'][0]['description'].capitalize()}, {current_weather['temp']:.0f} °{temp_unit}",
-            inline=False,
-        )
+        embed.add_field(name="Conditions", value=current_conditions, inline=False)
         # todo: make this a function
         if weather_alerts:
             now = datetime.datetime.now(tz=datetime.UTC)
