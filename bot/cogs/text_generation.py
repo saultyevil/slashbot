@@ -163,7 +163,7 @@ class TextGeneration(SlashbotCog):
             The content of the message sent by the user.
 
         """
-        num_tokens = get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
+        num_tokens = get_token_count_for_string(App.get_config("AI_CHAT_CHAT_MODEL"), message)
         self.channel_histories[history_id].add_message(message, escape_markdown(user), num_tokens)
 
         # keep it under the token limit
@@ -184,7 +184,7 @@ class TextGeneration(SlashbotCog):
             {"role": "system", "content": self.conversations[history_id].system_prompt},
             {"role": "user", "content": message.clean_content},
         ]
-        response, _ = await get_model_response(App.get_config("AI_CHAT_MODEL"), messages)
+        response, _ = await get_model_response(App.get_config("AI_CHAT_CHAT_MODEL"), messages)
         await send_message_to_channel(response, message, dont_tag_user=True)
 
     async def respond_to_conversation(self, message: disnake.Message) -> str:
@@ -214,7 +214,7 @@ class TextGeneration(SlashbotCog):
 
         images = await get_attached_images_from_message(message)
         prompt_messages = prepare_next_conversation_prompt(clean_content, images, prompt_messages)
-        chat_model = App.get_config("AI_CHAT_VISION_MODEL") if images else App.get_config("AI_CHAT_MODEL")
+        chat_model = App.get_config("AI_CHAT_VISION_MODEL") if images else App.get_config("AI_CHAT_CHAT_MODEL")
         try:
             response, tokens_used = await get_model_response(
                 chat_model,
@@ -338,7 +338,7 @@ class TextGeneration(SlashbotCog):
             {"role": "user", "content": message},
         ]
         LOGGER.debug("Conversation to summarise: %s", conversation)
-        summary_message, token_count = await get_model_response(App.get_config("AI_CHAT_MODEL"), conversation)
+        summary_message, token_count = await get_model_response(App.get_config("AI_CHAT_CHAT_MODEL"), conversation)
 
         self.conversations[history_id].add_message(
             "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
@@ -396,7 +396,7 @@ class TextGeneration(SlashbotCog):
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
+            get_token_count_for_string(App.get_config("AI_CHAT_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt[:1800]}...",
@@ -428,7 +428,7 @@ class TextGeneration(SlashbotCog):
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), prompt),
+            get_token_count_for_string(App.get_config("AI_CHAT_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt}",
@@ -483,7 +483,7 @@ class TextGeneration(SlashbotCog):
                 prompt_name = name
 
         response = ""
-        response += f"**Model name**: {App.get_config('AI_CHAT_MODEL')}\n"
+        response += f"**Model name**: {App.get_config('AI_CHAT_CHAT_MODEL')}\n"
         response += f"**Token usage**: {self.conversations[history_id].tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {prompt[:1800]}...\n"
