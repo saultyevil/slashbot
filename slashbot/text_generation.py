@@ -4,7 +4,6 @@ import datetime
 import json
 import logging
 
-import anthropic
 import openai
 import tiktoken
 
@@ -14,15 +13,11 @@ from slashbot.util import create_prompt_dict, read_in_prompt_json
 
 LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = App.get_config("MAX_CHARS")
-ANTHROPHIC_CLIENT = anthropic.AsyncAnthropic(api_key=App.get_config("ANTHROPHIC_API_KEY"))
 OPENAI_CLIENT = openai.AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
 
 
 async def get_model_response(model: str, messages: list) -> tuple[str, int]:
     """Get the response from an LLM API for a given model and list of messages.
-
-    Allowed models are either claude-* from anthropic or chat-gpt from
-    openai.
 
     Parameters
     ----------
@@ -40,28 +35,17 @@ async def get_model_response(model: str, messages: list) -> tuple[str, int]:
         The number of tokens in the conversation
 
     """
-    if "gpt-" in model:
-        response = await OPENAI_CLIENT.chat.completions.create(
-            messages=messages,
-            model=model,
-            max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
-            frequency_penalty=App.get_config("AI_CHAT_FREQUENCY_PENALTY"),
-            presence_penalty=App.get_config("AI_CHAT_PRESENCE_PENALTY"),
-            temperature=App.get_config("AI_CHAT_TEMPERATURE"),
-            top_p=App.get_config("AI_CHAT_TOP_P"),
-        )
-        message = response.choices[0].message.content
-        token_usage = response.usage.total_tokens
-    else:
-        response = await ANTHROPHIC_CLIENT.messages.create(
-            system=messages[0]["content"],
-            messages=find_first_user_message(messages),  # claude needs to start with a user message
-            model=model,
-            temperature=App.get_config("AI_CHAT_MODEL_TEMPERATURE"),
-            max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
-        )
-        message = response.content[0].text
-        token_usage = response.usage.input_tokens + response.usage.output_tokens
+    response = await OPENAI_CLIENT.chat.completions.create(
+        messages=messages,
+        model=model,
+        max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
+        frequency_penalty=App.get_config("AI_CHAT_FREQUENCY_PENALTY"),
+        presence_penalty=App.get_config("AI_CHAT_PRESENCE_PENALTY"),
+        temperature=App.get_config("AI_CHAT_TEMPERATURE"),
+        top_p=App.get_config("AI_CHAT_TOP_P"),
+    )
+    message = response.choices[0].message.content
+    token_usage = response.usage.total_tokens
 
     return message, token_usage
 
@@ -86,7 +70,9 @@ def get_prompts_at_launch() -> tuple[str, dict, int]:
         choices = {}
         LOGGER.exception("Error in reading prompt files, going to try and continue without a prompt")
 
-    return prompt, choices, len(prompt.split())
+    tokens = get_token_count_for_string(App.get_config("AI_CHAT_CHAT_MODEL"), prompt)
+
+    return prompt, choices, tokens
 
 
 def get_token_count_for_string(model: str, message: str) -> int:
@@ -133,25 +119,32 @@ def prepare_next_conversation_prompt(
         The updated prompt messages
 
     """
-    # add base64 encoded images
-    # We also need a required text prompt -- if one isn't provided (
-    # e.g. the message is just an image) then we add a vague message
     if images:
+        message_images = [
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:image/{image['type']};base64,{image['image']}", "detail": "low"},
+            }
+            for image in images
+        ]
         messages.append(
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image",
-                        "source": {"type": "base64", "media_type": image["type"], "data": image["image"]},
-                    }
-                    for image in images
-                ]
-                + [{"type": "text", "text": new_prompt if new_prompt else "describe the image(s)"}],
+                    *message_images,
+                    {"type": "text", "text": new_prompt if new_prompt else "describe the following image(s)"},
+                ],
             },
         )
     else:
-        messages.append({"role": "user", "content": new_prompt + App.get_config("AI_CHAT_PROMPT_APPEND")})
+        messages.append(
+            {
+                "role": "user",
+                "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
+                + new_prompt
+                + App.get_config("AI_CHAT_PROMPT_APPEND"),
+            }
+        )
 
     return messages
 

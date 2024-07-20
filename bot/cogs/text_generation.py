@@ -214,22 +214,14 @@ class TextGeneration(SlashbotCog):
 
         images = await get_attached_images_from_message(message)
         prompt_messages = prepare_next_conversation_prompt(clean_content, images, prompt_messages)
-        chat_model = App.get_config("AI_CHAT_VISION_MODEL") if images else App.get_config("AI_CHAT_CHAT_MODEL")
         try:
             response, tokens_used = await get_model_response(
-                chat_model,
+                App.get_config("AI_CHAT_CHAT_MODEL"),
                 prompt_messages,
             )
-            # ChatGPT can't cope with the image prompts, so we won't update the
-            # conversation history with the image part
-            if chat_model == App.get_config("AI_CHAT_VISION_MODEL"):
-                prompt_messages[-1] = {
-                    "role": "user",
-                    "content": prompt_messages[-1]["content"][-1]["text"],
-                }
             add_assistant_message_to_conversation(self.conversations[history_id], response, tokens_used)
         except Exception:
-            LOGGER.exception("`get_api_response` failed.")
+            LOGGER.exception("Failed to get response from OpenAI, revert to random markov sentence")
             response = generate_markov_sentence()
 
         return response
@@ -500,10 +492,10 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if App.get_config("ANTHROPIC_API_KEY") and App.get_config("OPENAI_API_KEY"):
+    if App.get_config("OPENAI_API_KEY"):
         bot.add_cog(TextGeneration(bot))
     else:
-        LOGGER.error("No API key found for Anthropic and OpenAI, unable to load AIChatBot cog")
+        LOGGER.error("No API key found for OpenAI, unable to load AIChatBot cog")
 
 
 class PromptFileWatcher(FileSystemEventHandler):

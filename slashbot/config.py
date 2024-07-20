@@ -138,7 +138,6 @@ class App:
             "SPELLCHECK_SERVERS": slash_config["COGS"]["SPELLCHECK"]["SERVERS"],
             "SPELLCHECK_CUSTOM_DICTIONARY": slash_config["COGS"]["SPELLCHECK"]["CUSTOM_DICTIONARY"],
             "AI_CHAT_CHAT_MODEL": slash_config["COGS"]["AI_CHAT"]["CHAT_MODEL"],
-            "AI_CHAT_VISION_MODEL": slash_config["COGS"]["AI_CHAT"]["VISION_MODEL"],
             "AI_CHAT_TEMPERATURE": slash_config["COGS"]["AI_CHAT"]["MODEL_TEMPERATURE"],
             "AI_CHAT_TOP_P": slash_config["COGS"]["AI_CHAT"]["MODEL_TOP_P"],
             "AI_CHAT_FREQUENCY_PENALTY": slash_config["COGS"]["AI_CHAT"]["MODEL_FREQUENCY_PENALTY"],
@@ -173,10 +172,7 @@ class App:
             The value of the parameter requested, or None.
 
         """
-        try:
-            return App._config[name]
-        except KeyError:
-            return None
+        return App._config[name]
 
     @staticmethod
     def set_config(name: str, value: str) -> None:
