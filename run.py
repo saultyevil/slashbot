@@ -88,7 +88,7 @@ async def on_ready() -> None:
 @bot.event
 async def on_error(_event, *_args, **_kwargs) -> None:
     """Print exceptions to the logfile."""
-    logger.error("%s", traceback.print_exc())
+    logger.exception("on_error:")
 
 
 @bot.event
@@ -104,7 +104,7 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
 
     """
     stack = traceback.format_exception(type(error), error, error.__traceback__)
-    logger.error("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
+    logger.exception("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
 
     if isinstance(error, commands.errors.CommandOnCooldown):
         await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
