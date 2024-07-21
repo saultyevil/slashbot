@@ -78,7 +78,6 @@ class ScheduledPosts(SlashbotCog):
         """
         super().__init__(bot)
 
-        self.random_channels = App.get_config("RANDOM_POST_CHANNELS")
         self.scheduled_posts = None
         self.get_scheduled_posts()
         self.post_loop.start()  # pylint: disable=no-member

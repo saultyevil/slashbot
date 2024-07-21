@@ -30,13 +30,10 @@ from slashbot.config import App
 from slashbot.markov import generate_markov_sentence
 from slashbot.models import ChannelHistory, Conversation
 from slashbot.text_generation import (
-    add_assistant_message_to_conversation,
     check_if_user_rate_limited,
-    get_model_response,
+    generate_text,
     get_prompts_at_launch,
-    get_token_count_for_string,
-    prepare_next_conversation_prompt,
-    shrink_conversation_to_token_window,
+    get_token_count,
 )
 from slashbot.util import create_prompt_dict, read_in_prompt_json
 
@@ -101,19 +98,17 @@ class TextGeneration(SlashbotCog):
         """
         self.conversations[history_id].clear_messages()
 
-    async def get_conversation_from_reference_point(
-        self,
-        message: disnake.Message,
-        prompt_history: list,
+    async def get_conversation(
+        self, discord_message: disnake.Message, conversation: Conversation
     ) -> tuple[list[dict[str, str]], disnake.Message]:
         """Retrieve a list of messages up to a reference point.
 
         Parameters
         ----------
-        message : disnake.Message
+        discord_message : disnake.Message
             The message containing the reference
-        prompt_history : list
-            List of messages to search through.
+        conversation : Conversation
+            The conversation to retrieve messages from
 
         Returns
         -------
@@ -122,33 +117,22 @@ class TextGeneration(SlashbotCog):
 
         """
         # we need the message first, to find it in the messages list
-        message_reference = message.reference
+        message_reference = discord_message.reference
         previous_message = message_reference.cached_message
         if not previous_message:
             try:
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
                 previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
-                return prompt_history, message
+                return conversation.get_conversation(), discord_message
 
         # the bot will only ever respond to one person, so we can do something
         # vile to remove the first word which is always a mention to the user
         # it is responding to. This is not included in the prompt history.
         message_to_find = " ".join(previous_message.content.split()[1:])
+        messages = conversation.get_conversation(last_message=message_to_find, role="assistant")
 
-        # so now we have the message, let's try and find it in the messages
-        # list. We munge it into the dict format for the OpenAI API, so we can
-        # use the index method
-        to_find = {
-            "role": "assistant",
-            "content": message_to_find,
-        }
-        try:
-            index = prompt_history.index(to_find)
-        except ValueError:
-            return prompt_history, previous_message
-
-        return prompt_history[: index + 1], previous_message
+        return messages, previous_message
 
     async def update_channel_message_history(self, history_id: int, user: str, message: str) -> None:
         """Record the history of messages in a channel.
@@ -163,7 +147,7 @@ class TextGeneration(SlashbotCog):
             The content of the message sent by the user.
 
         """
-        num_tokens = get_token_count_for_string(App.get_config("AI_CHAT_CHAT_MODEL"), message)
+        num_tokens = get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), message)
         self.channel_histories[history_id].add_message(message, escape_markdown(user), num_tokens)
 
         # keep it under the token limit
@@ -184,10 +168,10 @@ class TextGeneration(SlashbotCog):
             {"role": "system", "content": self.conversations[history_id].system_prompt},
             {"role": "user", "content": message.clean_content},
         ]
-        response, _ = await get_model_response(App.get_config("AI_CHAT_CHAT_MODEL"), messages)
+        response, _ = await generate_text(App.get_config("AI_CHAT_CHAT_MODEL"), messages)
         await send_message_to_channel(response, message, dont_tag_user=True)
 
-    async def respond_to_conversation(self, message: disnake.Message) -> str:
+    async def get_message_response(self, message: disnake.Message) -> str:
         """Generate a response to a prompt for a conversation of messages.
 
         Parameters
@@ -202,24 +186,22 @@ class TextGeneration(SlashbotCog):
 
         """
         history_id = get_history_id(message)
-        shrink_conversation_to_token_window(self.conversations[history_id])
-        clean_content = message.clean_content.replace(f"@{self.bot.user.name}", "")
-
-        # we work on a copy, to try and avoid race conditions
-        prompt_messages = copy.deepcopy(self.conversations[history_id].conversation)
+        conversation = self.conversations[history_id]
+        message_contents = message.clean_content.replace(f"@{self.bot.user.name}", "")
 
         # if the response is a reply, let's find that message and present that as the last
         if message.reference:
-            prompt_messages, message = await self.get_conversation_from_reference_point(message, prompt_messages)
+            conversation, message = await self.get_conversation(message, conversation)
 
         images = await get_attached_images_from_message(message)
-        prompt_messages = prepare_next_conversation_prompt(clean_content, images, prompt_messages)
+        conversation.add_message(message_contents, "user", images=images)
+
         try:
-            response, tokens_used = await get_model_response(
+            response, tokens_used = await generate_text(
                 App.get_config("AI_CHAT_CHAT_MODEL"),
-                prompt_messages,
+                conversation.get_conversation(),
             )
-            add_assistant_message_to_conversation(self.conversations[history_id], response, tokens_used)
+            conversation.add_message(response, "assistant", tokens=tokens_used)
         except Exception:
             LOGGER.exception("Failed to get response from OpenAI, revert to random markov sentence")
             response = generate_markov_sentence()
@@ -271,7 +253,7 @@ class TextGeneration(SlashbotCog):
                     )
                 # If not rate limited, then respond in a conversation
                 else:
-                    ai_response = await self.respond_to_conversation(message)
+                    ai_response = await self.get_message_response(message)
                     await send_message_to_channel(
                         ai_response,
                         message,
@@ -281,7 +263,7 @@ class TextGeneration(SlashbotCog):
 
         # If we get here, then there's a random chance the bot will respond to a
         # "regular" message
-        if random.random() <= App.get_config("AI_CHAT_RANDOM_RESPONSE"):  # noqa: S311
+        if random.random() <= App.get_config("AI_CHAT_RANDOM_RESPONSE"):
             await self.respond_to_unprompted_message(message)
 
     # Commands -----------------------------------------------------------------
@@ -330,7 +312,7 @@ class TextGeneration(SlashbotCog):
             {"role": "user", "content": message},
         ]
         LOGGER.debug("Conversation to summarise: %s", conversation)
-        summary_message, token_count = await get_model_response(App.get_config("AI_CHAT_CHAT_MODEL"), conversation)
+        summary_message, token_count = await generate_text(App.get_config("AI_CHAT_CHAT_MODEL"), conversation)
 
         self.conversations[history_id].add_message(
             "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
@@ -388,7 +370,7 @@ class TextGeneration(SlashbotCog):
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            get_token_count_for_string(App.get_config("AI_CHAT_CHAT_MODEL"), prompt),
+            get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt[:1800]}...",
@@ -420,7 +402,7 @@ class TextGeneration(SlashbotCog):
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            get_token_count_for_string(App.get_config("AI_CHAT_CHAT_MODEL"), prompt),
+            get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt}",

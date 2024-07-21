@@ -3,6 +3,9 @@
 These classes are used to marshal data
 """
 
+from .config import App
+from .text_generation import get_token_count
+
 
 class Message:
     """Dataclass for messages returned from an LLM API.
@@ -30,9 +33,9 @@ class Message:
             The number of tokens in the message, optional.
 
         """
-        self.content = content
         if role not in ["system", "user", "assistant"]:
             raise ValueError("Unknown role %s. Allowed: user, assistant" % role)
+        self.content = content
         self.role = role
         self.tokens = tokens
         self.user = user
@@ -56,10 +59,10 @@ class Conversation:
 
         """
         self._system_prompt_tokens = system_prompt_tokens
+        self._messages = [{"role": "system", "content": system_prompt}]
 
         self.tokens = system_prompt_tokens
         self.system_prompt = system_prompt
-        self.conversation = [{"role": "system", "content": system_prompt}]
 
     def __getitem__(self, index: int) -> dict[str, str]:
         """Get a message at index in the conversation history.
@@ -78,7 +81,7 @@ class Conversation:
             The message
 
         """
-        message = self.conversation[index]
+        message = self._messages[index]
         return Message(message["content"], message["role"])
 
     def __len__(self) -> int:
@@ -90,32 +93,138 @@ class Conversation:
             The length of the conversation.
 
         """
-        return len(self.conversation[1:])
+        return len(self._messages[1:])
 
-    def add_message(self, content: str, role: str, *, tokens: int = 0) -> None:
+    def _add_user_message(self, message: str, images: list[str] | None = None) -> None:
+        """Add a user message to the conversation.
+
+        Parameters
+        ----------
+        message : str
+            The new message to add
+        images : list[str], optional
+            Any images to add, by default None
+
+        """
+        if images:
+            message_images = [
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/{image['type']};base64,{image['image']}", "detail": "low"},
+                }
+                for image in images
+            ]
+            self._messages.append(
+                {
+                    "role": "user",
+                    "content": [
+                        *message_images,
+                        {"type": "text", "text": message if message else "describe the following image(s)"},
+                    ],
+                },
+            )
+        else:
+            self._messages.append(
+                {
+                    "role": "user",
+                    "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
+                    + message
+                    + App.get_config("AI_CHAT_PROMPT_APPEND"),
+                }
+            )
+
+    def _add_assistant_message(self, message: str) -> None:
+        """Add an assistant message to the conversation.
+
+        Parameters
+        ----------
+        message : str
+            The assistant message to add.
+
+        """
+        self._messages.append({"role": "assistant", "content": message})
+
+    def _shrink_conversation_to_token_size(self) -> None:
+        """Shrink the conversation to within the token window."""
+        while self.tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self) > 1:
+            try:
+                message = self._messages[1]
+            except IndexError:
+                return
+            self.remove_message(1)
+            self.tokens -= get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
+
+    def add_message(self, message: str, role: str, *, images: list[str] | None = None, tokens: int = 0) -> list[dict]:
         """Add a new message to the conversation history.
 
         Parameters
         ----------
-        content : str
-            The content of the message
+        message : str
+            The message to add
         role : str
             The role of the message, e.g. user or assistant
+        images : list[str]
+            Any images to add to the conversation
         tokens : int
             The number of tokens in the message, optional
 
         """
-        self.conversation.append({"role": role, "content": content})
+        if role not in ("user", "assistant"):
+            msg = "unknown role, valid is either 'user' or 'assistant'"
+            raise ValueError(msg)
+        self._shrink_conversation_to_token_size()
+        if role == "user":
+            self._add_user_message(message, images)
+        else:
+            self._add_assistant_message(message)
         self.tokens += tokens
 
-    def clear_conversation(self) -> None:
+        return self._messages
+
+    def clear_conversation(self) -> list[dict]:
         """Clear a conversation.
 
         This resets the conversation back to just the system prompt, including
         the number of tokens.
         """
         self.tokens = self._system_prompt_tokens
-        self.conversation = [{"role": "system", "content": self.system_prompt}]
+        self._messages = [{"role": "system", "content": self.system_prompt}]
+
+        return self._messages
+
+    def get_conversation(self, *, last_message: str | None = None, role: str = "assistant") -> list[dict]:
+        """Get the conversation.
+
+        Can either get all of the messages, or will return messages up to the
+        provided, optional, message.
+
+        Parameters
+        ----------
+        last_message : str, optional
+            The last message to retrieve, by default None
+        role : str, optional
+            The role of the last message, by default "assistant"
+
+        Returns
+        -------
+        list[dict]
+            The conversation
+
+        """
+        if last_message:
+            to_find = {
+                "role": role,
+                "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
+                + last_message
+                + App.get_config("AI_CHAT_PROMPT_APPEND"),
+            }
+            try:
+                index = self._messages.index(to_find)
+                return self._messages[: index + 1]
+            except IndexError:
+                return self._messages
+
+        return self._messages
 
     def remove_message(self, index: int) -> Message:
         """Remove a message from the conversation history.
@@ -131,7 +240,7 @@ class Conversation:
             The removed message.
 
         """
-        message = self.conversation.pop(index)
+        message = self._messages.pop(index)
         return Message(message["content"], message["role"])
 
     def set_prompt(self, new_prompt: str, new_prompt_tokens: int) -> None:

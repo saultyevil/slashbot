@@ -3,20 +3,23 @@ from __future__ import annotations
 import datetime
 import json
 import logging
+from typing import TYPE_CHECKING
 
 import openai
 import tiktoken
 
 from slashbot.config import App
-from slashbot.models import Conversation
 from slashbot.util import create_prompt_dict, read_in_prompt_json
+
+if TYPE_CHECKING:
+    from slashbot.models import Conversation
 
 LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = App.get_config("MAX_CHARS")
 OPENAI_CLIENT = openai.AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
 
 
-async def get_model_response(model: str, messages: list) -> tuple[str, int]:
+async def generate_text(model: str, messages: list) -> tuple[str, int]:
     """Get the response from an LLM API for a given model and list of messages.
 
     Parameters
@@ -70,12 +73,12 @@ def get_prompts_at_launch() -> tuple[str, dict, int]:
         choices = {}
         LOGGER.exception("Error in reading prompt files, going to try and continue without a prompt")
 
-    tokens = get_token_count_for_string(App.get_config("AI_CHAT_CHAT_MODEL"), prompt)
+    tokens = get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), prompt)
 
     return prompt, choices, tokens
 
 
-def get_token_count_for_string(model: str, message: str) -> int:
+def get_token_count(model: str, message: str) -> int:
     """Get the token count for a given message using a specified model.
 
     Parameters
@@ -97,78 +100,6 @@ def get_token_count_for_string(model: str, message: str) -> int:
 
     # fall back to a simple word count
     return len(message.split())
-
-
-def prepare_next_conversation_prompt(
-    new_prompt: str, images: list[dict[str, str]], messages: list[dict[str, str]]
-) -> list[dict[str, str]]:
-    """Prepare the next prompt by adding images and the next prompt requested.
-
-    Parameters
-    ----------
-    new_prompt : str
-        The new text prompt to add
-    images : List[Dict[str, str]]
-        A list of images to potentially add to the prompt history
-    messages : List[Dict[str, str]]
-        The list of prompts to add to
-
-    Returns
-    -------
-    List[Dict[str, str]]
-        The updated prompt messages
-
-    """
-    if images:
-        message_images = [
-            {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/{image['type']};base64,{image['image']}", "detail": "low"},
-            }
-            for image in images
-        ]
-        messages.append(
-            {
-                "role": "user",
-                "content": [
-                    *message_images,
-                    {"type": "text", "text": new_prompt if new_prompt else "describe the following image(s)"},
-                ],
-            },
-        )
-    else:
-        messages.append(
-            {
-                "role": "user",
-                "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
-                + new_prompt
-                + App.get_config("AI_CHAT_PROMPT_APPEND"),
-            }
-        )
-
-    return messages
-
-
-def find_first_user_message(messages: list[dict[str, str]]) -> int:
-    """Return a list of messages where the first is a user message.
-
-    Parameters
-    ----------
-    messages : list[dict[str, str]]
-        The list of messages to search through.
-
-    Returns
-    -------
-    list[dict[str, str]]
-        The list of messages from the first user message to the end.
-
-    """
-    for i, message in enumerate(messages):
-        if message["role"] == "user":
-            return messages[i:]
-
-    msg = "No user message found in conversation"
-    raise ValueError(msg)
 
 
 def check_if_user_rate_limited(cooldown: dict[str, datetime.datetime], user_id: int) -> bool:
@@ -207,27 +138,6 @@ def check_if_user_rate_limited(cooldown: dict[str, datetime.datetime], user_id: 
     user_cooldown["last_interaction"] = current_time
 
     return False
-
-
-def shrink_conversation_to_token_window(conversation: Conversation) -> None:
-    """Shrink a conversation to fit within the token window size.
-
-    Parameters
-    ----------
-    conversation : Conversation
-        The conversation to shrink.
-
-    """
-    while (
-        conversation.tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")
-        and len(conversation) + 1 > 1  # +1 to account for system prompt
-    ):
-        try:
-            message = conversation[1].content
-        except IndexError:
-            return
-        conversation.remove_message(1)
-        conversation.tokens -= get_token_count_for_string(App.get_config("AI_CHAT_MODEL"), message)
 
 
 def add_assistant_message_to_conversation(conversation: Conversation, new_message: str, tokens_used: int) -> None:
