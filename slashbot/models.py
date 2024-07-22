@@ -3,8 +3,12 @@
 These classes are used to marshal data
 """
 
+import logging
+
 from .config import App
 from .text_generation import get_token_count
+
+LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
 
 
 class Message:
@@ -166,7 +170,7 @@ class Conversation:
         images : list[str]
             Any images to add to the conversation
         tokens : int
-            The number of tokens in the message, optional
+            The number of tokens in the conversation, optional
 
         """
         if role not in ("user", "assistant"):
@@ -177,11 +181,11 @@ class Conversation:
             self._add_user_message(message, images)
         else:
             self._add_assistant_message(message)
-        self.tokens += tokens
+        self.tokens = tokens
 
         return self._messages
 
-    def clear_conversation(self) -> list[dict]:
+    def clear_messages(self) -> list[dict]:
         """Clear a conversation.
 
         This resets the conversation back to just the system prompt, including
@@ -192,38 +196,15 @@ class Conversation:
 
         return self._messages
 
-    def get_conversation(self, *, last_message: str | None = None, role: str = "assistant") -> list[dict]:
-        """Get the conversation.
-
-        Can either get all of the messages, or will return messages up to the
-        provided, optional, message.
-
-        Parameters
-        ----------
-        last_message : str, optional
-            The last message to retrieve, by default None
-        role : str, optional
-            The role of the last message, by default "assistant"
+    def get_messages(self) -> list[dict]:
+        """Get the messages in a conversation.
 
         Returns
         -------
         list[dict]
-            The conversation
+            The messages in the conversation
 
         """
-        if last_message:
-            to_find = {
-                "role": role,
-                "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
-                + last_message
-                + App.get_config("AI_CHAT_PROMPT_APPEND"),
-            }
-            try:
-                index = self._messages.index(to_find)
-                return self._messages[: index + 1]
-            except IndexError:
-                return self._messages
-
         return self._messages
 
     def remove_message(self, index: int) -> Message:
@@ -243,6 +224,36 @@ class Conversation:
         message = self._messages.pop(index)
         return Message(message["content"], message["role"])
 
+    def set_conversation_point(self, message: str, role: str = "assistant") -> list[dict]:
+        """Get the conversation.
+
+        Can either get all of the messages, or will return messages up to the
+        provided, optional, message.
+
+        Parameters
+        ----------
+        message: str, optional
+            The last message to retrieve, by default None
+        role : str, optional
+            The role of the last message, by default "assistant"
+
+        Returns
+        -------
+        list[dict]
+            The conversation
+
+        """
+        a = 1
+        to_find = {
+            "role": role,
+            "content": App.get_config("AI_CHAT_PROMPT_PREPEND") + message + App.get_config("AI_CHAT_PROMPT_APPEND"),
+        }
+        try:
+            index = self._messages.index(to_find)
+            self._messages = self._messages[: index + 1]
+        except (ValueError, IndexError):
+            LOGGER.exception("Failed to find `to_find` in conversation")
+
     def set_prompt(self, new_prompt: str, new_prompt_tokens: int) -> None:
         """Set a new system prompt for the conversation.
 
@@ -256,7 +267,7 @@ class Conversation:
         """
         self.system_prompt = new_prompt
         self._system_prompt_tokens = new_prompt_tokens
-        self.clear_conversation()
+        self.clear_messages()
 
 
 class ChannelHistory:

@@ -100,7 +100,7 @@ class TextGeneration(SlashbotCog):
 
     async def get_conversation(
         self, discord_message: disnake.Message, conversation: Conversation
-    ) -> tuple[list[dict[str, str]], disnake.Message]:
+    ) -> tuple[Conversation, disnake.Message]:
         """Retrieve a list of messages up to a reference point.
 
         Parameters
@@ -124,15 +124,18 @@ class TextGeneration(SlashbotCog):
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
                 previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
-                return conversation.get_conversation(), discord_message
+                return conversation, discord_message
 
         # the bot will only ever respond to one person, so we can do something
         # vile to remove the first word which is always a mention to the user
         # it is responding to. This is not included in the prompt history.
-        message_to_find = " ".join(previous_message.content.split()[1:])
-        messages = conversation.get_conversation(last_message=message_to_find, role="assistant")
+        LOGGER.debug("message to find: %s", previous_message.clean_content)
+        message_to_find = previous_message.clean_content
+        if message_to_find.startswith("@"):
+            message_to_find = " ".join(previous_message.content.split()[1:])
+        conversation.set_conversation_point(message_to_find, role="assistant")
 
-        return messages, previous_message
+        return conversation, previous_message
 
     async def update_channel_message_history(self, history_id: int, user: str, message: str) -> None:
         """Record the history of messages in a channel.
@@ -171,12 +174,12 @@ class TextGeneration(SlashbotCog):
         response, _ = await generate_text(App.get_config("AI_CHAT_CHAT_MODEL"), messages)
         await send_message_to_channel(response, message, dont_tag_user=True)
 
-    async def get_message_response(self, message: disnake.Message) -> str:
+    async def get_message_response(self, discord_message: disnake.Message) -> str:
         """Generate a response to a prompt for a conversation of messages.
 
         Parameters
         ----------
-        message : disnake.Message
+        discord_message : disnake.Message
             The message to generate a response to.
 
         Returns
@@ -185,22 +188,27 @@ class TextGeneration(SlashbotCog):
             The generated response.
 
         """
-        history_id = get_history_id(message)
+        history_id = get_history_id(discord_message)
         conversation = self.conversations[history_id]
-        message_contents = message.clean_content.replace(f"@{self.bot.user.name}", "")
+        message_contents = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
+
+        new_conversation = copy.deepcopy(conversation)
 
         # if the response is a reply, let's find that message and present that as the last
-        if message.reference:
-            conversation, message = await self.get_conversation(message, conversation)
+        if discord_message.reference:
+            conversation, discord_message = await self.get_conversation(discord_message, new_conversation)
 
-        images = await get_attached_images_from_message(message)
-        conversation.add_message(message_contents, "user", images=images)
+        images = await get_attached_images_from_message(discord_message)
+        new_conversation.add_message(message_contents, "user", images=images)
 
         try:
             response, tokens_used = await generate_text(
                 App.get_config("AI_CHAT_CHAT_MODEL"),
-                conversation.get_conversation(),
+                new_conversation.get_messages(),
             )
+            # todo: this doesn't deal with references to the past that well.
+            #       What we need to do is to add a new thread, or something.
+            conversation.add_message(message_contents, "user")
             conversation.add_message(response, "assistant", tokens=tokens_used)
         except Exception:
             LOGGER.exception("Failed to get response from OpenAI, revert to random markov sentence")
