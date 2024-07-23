@@ -99,6 +99,17 @@ class Conversation:
         """
         return len(self._messages[1:])
 
+    def __repr__(self) -> str:
+        """Print the raw conversation.
+
+        Returns
+        -------
+        str
+            The raw conversation, stored in self._messages.
+
+        """
+        repr(self._messages)
+
     def _add_user_message(self, message: str, images: list[str] | None = None) -> None:
         """Add a user message to the conversation.
 
@@ -251,7 +262,7 @@ class Conversation:
             index = self._messages.index(to_find)
             self._messages = self._messages[: index + 1]
         except (ValueError, IndexError):
-            LOGGER.exception("Failed to find `to_find` in conversation")
+            LOGGER.exception("Failed to find message in conversation, so not setting new reference point")
 
     def set_prompt(self, new_prompt: str, new_prompt_tokens: int) -> None:
         """Set a new system prompt for the conversation.
