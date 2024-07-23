@@ -195,7 +195,7 @@ class TextGeneration(SlashbotCog):
         new_conversation = copy.deepcopy(conversation)
 
         # if the response is a reply, let's find that message and present that as the last
-        if discord_message.reference:
+        if discord_message.reference and discord_message.author == self.bot.user:
             conversation, discord_message = await self.get_conversation(discord_message, new_conversation)
 
         images = await get_attached_images_from_message(discord_message)
@@ -267,6 +267,7 @@ class TextGeneration(SlashbotCog):
                         message,
                         dont_tag_user=message_in_dm,
                     )  # In a DM, we won't @ the user
+            LOGGER.debug("Conversation<%s>: %s", history_id, repr(self.conversations[history_id]))
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a
