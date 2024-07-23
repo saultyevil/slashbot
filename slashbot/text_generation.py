@@ -64,7 +64,7 @@ def get_prompts_at_launch() -> tuple[str, dict, int]:
 
     """
     try:
-        prompt = read_in_prompt_json("data/prompts/clyde.json")["prompt"]
+        prompt = read_in_prompt_json("data/prompts/soulless.json")["prompt"]
         choices = create_prompt_dict()
     except json.decoder.JSONDecodeError:
         prompt = """You have no system prompt, so you should keep telling everyone that you have no system

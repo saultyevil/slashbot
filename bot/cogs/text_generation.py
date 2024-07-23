@@ -306,6 +306,7 @@ class TextGeneration(SlashbotCog):
 
         """
         history_id = get_history_id(inter)
+        channel_prompt = self.conversations[history_id].system_prompt
         channel_history = self.channel_histories[history_id]
         if channel_history.tokens == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
@@ -316,7 +317,13 @@ class TextGeneration(SlashbotCog):
             channel_history.get_messages(amount),
         )
         conversation = [
-            {"role": "system", "content": App.get_config("AI_CHAT_SUMMARY_PROMPT")},
+            {
+                "role": "system",
+                "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
+                + channel_prompt
+                + App.get_config("AI_CHAT_SUMMARY_PROMPT")
+                + App.get_config("AI_CHAT_PROMPT_APPEND"),
+            },
             {"role": "user", "content": message},
         ]
         LOGGER.debug("Conversation to summarise: %s", conversation)

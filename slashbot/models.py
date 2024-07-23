@@ -243,7 +243,6 @@ class Conversation:
             The conversation
 
         """
-        a = 1
         to_find = {
             "role": role,
             "content": App.get_config("AI_CHAT_PROMPT_PREPEND") + message + App.get_config("AI_CHAT_PROMPT_APPEND"),
