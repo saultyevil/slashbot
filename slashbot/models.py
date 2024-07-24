@@ -99,6 +99,17 @@ class Conversation:
         """
         return len(self._messages[1:])
 
+    def __str__(self) -> str:
+        """Print the raw conversation.
+
+        Returns
+        -------
+        str
+            The raw conversation, stored in self._messages.
+
+        """
+        return f"{self._messages}"
+
     def __repr__(self) -> str:
         """Print the raw conversation.
 
@@ -108,7 +119,7 @@ class Conversation:
             The raw conversation, stored in self._messages.
 
         """
-        repr(self._messages)
+        return repr(self._messages)
 
     def _add_user_message(self, message: str, images: list[str] | None = None) -> None:
         """Add a user message to the conversation.

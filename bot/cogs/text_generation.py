@@ -267,7 +267,7 @@ class TextGeneration(SlashbotCog):
                         message,
                         dont_tag_user=message_in_dm,
                     )  # In a DM, we won't @ the user
-            LOGGER.debug("Conversation<%s>: %s", history_id, repr(self.conversations[history_id]))
+            LOGGER.debug("Conversation<%s>: %s", history_id, self.conversations[history_id])
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a
