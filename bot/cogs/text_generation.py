@@ -98,7 +98,7 @@ class TextGeneration(SlashbotCog):
         """
         self.conversations[history_id].clear_messages()
 
-    async def get_conversation(
+    async def get_referenced_message(
         self, discord_message: disnake.Message, conversation: Conversation
     ) -> tuple[Conversation, disnake.Message]:
         """Retrieve a list of messages up to a reference point.
@@ -125,6 +125,11 @@ class TextGeneration(SlashbotCog):
                 previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
                 return conversation, discord_message
+
+        # early exit if the message is not from the bot. we still want the
+        # message being referenced so we can, e.g., find images
+        if discord_message.author != self.bot.user:
+            return conversation, previous_message
 
         # the bot will only ever respond to one person, so we can do something
         # vile to remove the first word which is always a mention to the user
@@ -195,11 +200,14 @@ class TextGeneration(SlashbotCog):
         new_conversation = copy.deepcopy(conversation)
 
         # if the response is a reply, let's find that message and present that as the last
-        if discord_message.reference and discord_message.author == self.bot.user:
-            conversation, discord_message = await self.get_conversation(discord_message, new_conversation)
+        if discord_message.reference:
+            conversation, discord_message = await self.get_referenced_message(discord_message, new_conversation)
 
         images = await get_attached_images_from_message(discord_message)
         new_conversation.add_message(message_contents, "user", images=images)
+
+        LOGGER.debug("Found images: %s", images)
+        LOGGER.debug("New conversation: %s", new_conversation.get_messages())
 
         try:
             response, tokens_used = await generate_text(
@@ -252,21 +260,20 @@ class TextGeneration(SlashbotCog):
 
         if bot_mentioned or message_in_dm:
             async with message.channel.typing():
-                # Rate limit
-                if check_if_user_rate_limited(self.cooldowns, message.author.id):
+                rate_limited = check_if_user_rate_limited(self.cooldowns, message.author.id)
+                if not rate_limited:
+                    ai_response = await self.get_message_response(message)
+                    await send_message_to_channel(
+                        ai_response,
+                        message,
+                        dont_tag_user=message_in_dm,  # In a DM, we won't @ the user
+                    )
+                else:
                     await send_message_to_channel(
                         f"Stop abusing me, {message.author.mention}!",
                         message,
                         dont_tag_user=True,
                     )
-                # If not rate limited, then respond in a conversation
-                else:
-                    ai_response = await self.get_message_response(message)
-                    await send_message_to_channel(
-                        ai_response,
-                        message,
-                        dont_tag_user=message_in_dm,
-                    )  # In a DM, we won't @ the user
             LOGGER.debug("Conversation<%s>: %s", history_id, self.conversations[history_id])
             return  # early return to avoid situation of randomly responding to itself
 
