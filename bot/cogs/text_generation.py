@@ -249,7 +249,7 @@ class TextGeneration(SlashbotCog):
         # Respond to a prompt for a Markov sentence.
         # The prompt symbol is '?', followed by the seed word. For example,
         # '?donald' will generate a sentence that includes the word 'donald'.
-        if message.content.startswith("?"):
+        if message.content.startswith("?") and len(message.content) > 1:
             seed_word = message.content.split()[0][1:]
             sentence = await self.async_get_markov_sentence(seed_word)
             await message.channel.send(sentence)
