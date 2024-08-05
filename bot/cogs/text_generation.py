@@ -246,6 +246,15 @@ class TextGeneration(SlashbotCog):
         if message.author.bot:
             return
 
+        # Respond to a prompt for a Markov sentence.
+        # The prompt symbol is '?', followed by the seed word. For example,
+        # '?donald' will generate a sentence that includes the word 'donald'.
+        if message.content.startswith("?"):
+            seed_word = message.content.split()[0][1:]
+            sentence = await self.async_get_markov_sentence(seed_word)
+            await message.channel.send(sentence)
+            return
+
         # only respond when mentioned or in DM. mention_string is used for slash
         # commands
         bot_mentioned = self.bot.user in message.mentions

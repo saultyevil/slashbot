@@ -198,26 +198,6 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
     # Listeners ---------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
-    async def respond_with_markov_response(self, message: disnake.Message) -> None:
-        """Respond to a prompt for a Markov sentence.
-
-        The prompt symbol is '?', followed by the seed word. For example,
-        '?donald' will generate a sentence that includes the word 'donald'.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The Discord message to check for the markov prompt.
-
-        """
-        if not message.content.startswith("?"):
-            return
-
-        seed_word = message.content.split()[0][1:]
-        sentence = await self.async_get_markov_sentence(seed_word)
-        await message.channel.send(sentence)
-
-    @commands.Cog.listener("on_message")
     async def add_message_to_markov_training_sample(self, message: disnake.Message) -> None:
         """Record messages for the Markov chain to learn.
 
