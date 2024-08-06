@@ -224,6 +224,36 @@ class TextGeneration(SlashbotCog):
 
         return response
 
+    async def respond_to_markov_prompt(self, message: disnake.Message) -> bool:
+        """Respond to a prompt for a Markov sentence.
+
+        The prompt symbol is '?', followed by the seed word. For example,
+        '?donald' will generate a sentence that includes the word 'donald'.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to respond to.
+
+        Returns
+        -------
+        bool
+            Whether or not the message was responded to.
+
+        """
+        if not message.content.startswith("?"):
+            return False
+        if len(message.content) == 1:
+            return False
+        if message.content.count("?") > 1:
+            return False
+
+        seed_word = message.content.split()[0][1:]
+        sentence = await self.async_get_markov_sentence(seed_word)
+        await message.channel.send(sentence)
+
+        return True
+
     # Listeners ----------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
@@ -246,13 +276,9 @@ class TextGeneration(SlashbotCog):
         if message.author.bot:
             return
 
-        # Respond to a prompt for a Markov sentence.
-        # The prompt symbol is '?', followed by the seed word. For example,
-        # '?donald' will generate a sentence that includes the word 'donald'.
-        if message.content.startswith("?") and len(message.content) > 1:
-            seed_word = message.content.split()[0][1:]
-            sentence = await self.async_get_markov_sentence(seed_word)
-            await message.channel.send(sentence)
+        # look for ?seed markov prompts
+        markov_response = await self.respond_to_markov_prompt(message)
+        if markov_response:
             return
 
         # only respond when mentioned or in DM. mention_string is used for slash
