@@ -147,11 +147,19 @@ class App:
             "AI_CHAT_PROMPT_APPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
             "AI_CHAT_PROMPT_PREPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_PREPEND"],
             "AI_CHAT_SUMMARY_PROMPT": slash_config["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
-            "AI_CHAT_RANDOM_RESPONSE": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
+            "AI_CHAT_RANDOM_RESPONSE_CHANCE": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
+            "AI_CHAT_RANDOM_RESPONSE_PROMPT": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"],
             "AI_CHAT_RATE_LIMIT": slash_config["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
             "AI_CHAT_RATE_INTERVAL": slash_config["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
         }
         cls._config = _config
+
+        # load json files -- not great, but it'll do. let's think of a better
+        # way to do this.
+        with Path.open(cls._config["AI_CHAT_SUMMARY_PROMPT"], encoding="utf-8") as file_in:
+            cls._config["AI_CHAT_SUMMARY_PROMPT"] = json.load(file_in)["prompt"]
+        with Path.open(cls._config["AI_CHAT_RANDOM_RESPONSE_PROMPT"], encoding="utf-8") as file_in:
+            cls._config["AI_CHAT_RANDOM_RESPONSE_PROMPT"] = json.load(file_in)["prompt"]
 
         return cls._config
 

@@ -377,4 +377,4 @@ class ChannelHistory:
             The last amount messages in the channel history.
 
         """
-        return [f"{message.user}: {message.content}" for message in self.messages[-amount:]]
+        return [f"<{message.user}> {message.content}" for message in self.messages[-amount:]]

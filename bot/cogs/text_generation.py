@@ -171,9 +171,8 @@ class TextGeneration(SlashbotCog):
             The message to respond to.
 
         """
-        history_id = get_history_id(message)
         messages = [
-            {"role": "system", "content": self.conversations[history_id].system_prompt},
+            {"role": "system", "content": App.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")},
             {"role": "user", "content": message.clean_content},
         ]
         response, _ = await generate_text(App.get_config("AI_CHAT_CHAT_MODEL"), messages)
@@ -314,7 +313,7 @@ class TextGeneration(SlashbotCog):
 
         # If we get here, then there's a random chance the bot will respond to a
         # "regular" message
-        if random.random() <= App.get_config("AI_CHAT_RANDOM_RESPONSE"):
+        if random.random() <= App.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
             await self.respond_to_unprompted_message(message)
 
     # Commands -----------------------------------------------------------------
@@ -356,7 +355,7 @@ class TextGeneration(SlashbotCog):
             return
         await inter.response.defer(ephemeral=True)
 
-        message = "Summarise the following conversation between multiple users.\n" + "\n".join(
+        message = "Summarise the following conversation between multiple users: " + "; ".join(
             channel_history.get_messages(amount),
         )
         conversation = [
@@ -364,6 +363,7 @@ class TextGeneration(SlashbotCog):
                 "role": "system",
                 "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
                 + channel_prompt
+                + ". "
                 + App.get_config("AI_CHAT_SUMMARY_PROMPT")
                 + App.get_config("AI_CHAT_PROMPT_APPEND"),
             },

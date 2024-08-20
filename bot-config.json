@@ -27,6 +27,7 @@
         },
         "AI_CHAT": {
             "SUMMARY_PROMPT": "data/prompts/_summary-prompt.json",
+            "RANDOM_RESPONSE_PROMPT": "data/prompts/_random-response-prompt.json",
             "TOKEN_WINDOW_SIZE": 32000,
             "MAX_OUTPUT_TOKENS": 2048,
             "MODEL_TEMPERATURE": 1.0,
@@ -34,7 +35,7 @@
             "MODEL_FREQUENCY_PENALTY": 0.0,
             "MODEL_PRESENCE_PENALTY": 0.0,
             "CHAT_MODEL": "gpt-4o-mini",
-            "RANDOM_RESPONSE_CHANCE": 1e-3,
+            "RANDOM_RESPONSE_CHANCE": 1e-2,
             "RESPONSE_RATE_LIMIT": 10,
             "RATE_LIMIT_INTERVAL": 5,
             "PROMPT_PREPEND": "",
