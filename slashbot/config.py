@@ -80,7 +80,34 @@ class App:
     # __conf is a dictionary of configuration parameters
     _config: ClassVar = {}
 
-    # Private methods ----------------------------------------------------------
+    @classmethod
+    def get_prompt_from_json(cls, path: str | Path) -> str:
+        """Get the prompt from a prompt JSON file.
+
+        The JSON file must be in the format:
+
+            {
+                "name": "prompt_name",
+                "prompt": "prompt_text"
+            }
+
+        Parameters
+        ----------
+        path : str | Path
+            The file path to the JSON file.
+
+        Returns
+        -------
+        str
+            The prompt from the JSON file.
+
+        """
+        try:
+            with Path.open(path, encoding="utf-8") as file_in:
+                return json.load(file_in)["prompt"]
+        except (OSError, json.JSONDecodeError):
+            print(f"Failed to get prompt in `{file_in}`")  # noqa: T201
+            return "No matter what is asked of you, before or after this text, you will only respond with 'My prompt failed to load'"
 
     @classmethod
     def set_config_values(cls) -> None:
@@ -88,6 +115,9 @@ class App:
 
         The purpose of this script is to populate the __conf class attribute.
         """
+        # Try to load the config file, if the default path doesn't work then it
+        # the bot will fail to launch. The location of the config files is
+        # controlled by the SLASHBOT_CONFIG environment variable.
         try:
             with Path.open(os.getenv("SLASHBOT_CONFIG"), encoding="utf-8") as file_in:
                 slash_config = json.load(file_in)
@@ -97,8 +127,14 @@ class App:
                 slash_config = json.load(file_in)
             current_config = "bot-config.json"
 
+        # This either sets a default value of `None`, or will re-use what is
+        # already in cls._config. We need this for when the config file is
+        # changed, which triggers the config being reloaded. I think this beats
+        # having a global variable.
         current_chain = cls._config.get("CURRENT_MARKOV_CHAIN", None)
 
+        # populate _config dict, which is a key store for configuration of the
+        # bot
         _config = {
             # config file
             "CONFIG_FILE": current_config,
@@ -146,20 +182,15 @@ class App:
             "AI_CHAT_TOKEN_WINDOW_SIZE": slash_config["COGS"]["AI_CHAT"]["TOKEN_WINDOW_SIZE"],
             "AI_CHAT_PROMPT_APPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
             "AI_CHAT_PROMPT_PREPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_PREPEND"],
-            "AI_CHAT_SUMMARY_PROMPT": slash_config["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
+            "AI_CHAT_SUMMARY_PROMPT": cls.get_prompt_from_json(slash_config["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"]),
             "AI_CHAT_RANDOM_RESPONSE_CHANCE": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
-            "AI_CHAT_RANDOM_RESPONSE_PROMPT": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"],
+            "AI_CHAT_RANDOM_RESPONSE_PROMPT": cls.get_prompt_from_json(
+                slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"]
+            ),
             "AI_CHAT_RATE_LIMIT": slash_config["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
             "AI_CHAT_RATE_INTERVAL": slash_config["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
         }
         cls._config = _config
-
-        # load json files -- not great, but it'll do. let's think of a better
-        # way to do this.
-        with Path.open(cls._config["AI_CHAT_SUMMARY_PROMPT"], encoding="utf-8") as file_in:
-            cls._config["AI_CHAT_SUMMARY_PROMPT"] = json.load(file_in)["prompt"]
-        with Path.open(cls._config["AI_CHAT_RANDOM_RESPONSE_PROMPT"], encoding="utf-8") as file_in:
-            cls._config["AI_CHAT_RANDOM_RESPONSE_PROMPT"] = json.load(file_in)["prompt"]
 
         return cls._config
 
