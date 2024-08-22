@@ -41,11 +41,13 @@ logger.info("Initializing Slashbot...")
 start = time.time()
 
 if args.development:
+    logger.setLevel(logging.DEBUG)
     logger.debug("Disabling automatic markov generation for development mode")
     args.disable_auto_markov = False
-    logger.setLevel(logging.DEBUG)
 else:
     logger.setLevel(logging.INFO)
+
+logger.info("Config file: %s", App.get_config("CONFIG_FILE"))
 
 # Load the markov model
 
