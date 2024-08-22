@@ -257,7 +257,11 @@ class Spelling(SlashbotCog):
 
                 embeds.append(embed)
 
+            if len(embeds) == 0:
+                continue
+
             channel = await self.bot.fetch_channel(App.get_config("SPELLCHECK_SERVERS")[str(guild_id)]["CHANNEL"])
+
             if len(embeds) < MAX_EMBEDS_AT_ONCE:
                 await channel.send(embeds=embeds)
             else:
