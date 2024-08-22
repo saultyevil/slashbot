@@ -58,7 +58,7 @@ class FileWatcher(FileSystemEventHandler):
 
         """
         if event.event_type == "modified" and event.src_path == App.get_config("CONFIG_FILE"):
-            original_config = copy.copy(App._config)
+            original_config = copy.copy(App._config)  # noqa: SLF001
             new_config = App.set_config_values()
             modified_keys = {
                 key for key in original_config if key in new_config and original_config[key] != new_config[key]
@@ -123,9 +123,9 @@ class App:
                 slash_config = json.load(file_in)
             current_config = os.getenv("SLASHBOT_CONFIG")
         except (OSError, TypeError):
-            with Path.open("bot-config.json", encoding="utf-8") as file_in:
+            with Path.open("./bot-config.json", encoding="utf-8") as file_in:
                 slash_config = json.load(file_in)
-            current_config = "bot-config.json"
+            current_config = "./bot-config.json"
 
         # This either sets a default value of `None`, or will re-use what is
         # already in cls._config. We need this for when the config file is
@@ -137,7 +137,7 @@ class App:
         # bot
         _config = {
             # config file
-            "CONFIG_FILE": current_config,
+            "CONFIG_FILE": str(Path(current_config).resolve()),
             # cooldown parameters
             "COOLDOWN_RATE": int(slash_config["COOLDOWN"]["RATE"]),
             "COOLDOWN_STANDARD": int(slash_config["COOLDOWN"]["STANDARD"]),
