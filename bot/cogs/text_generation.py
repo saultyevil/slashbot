@@ -13,6 +13,7 @@ import json
 import logging
 import random
 from collections import defaultdict
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
@@ -171,8 +172,21 @@ class TextGeneration(SlashbotCog):
             The message to respond to.
 
         """
+        try:
+            with Path.open(App.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
+                prompt = json.load(file_in)["prompt"]
+        except OSError:
+            LOGGER.exception(
+                "Failed to open random response prompt: %s", App.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
+            )
+            return
+        except json.JSONDecodeError:
+            LOGGER.exception(
+                "Failed to decode random response prompt: %s", App.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
+            )
+            return
         messages = [
-            {"role": "system", "content": App.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")},
+            {"role": "system", "content": prompt},
             {"role": "user", "content": message.clean_content},
         ]
         response, _ = await generate_text(App.get_config("AI_CHAT_CHAT_MODEL"), messages)
@@ -355,6 +369,16 @@ class TextGeneration(SlashbotCog):
             return
         await inter.response.defer(ephemeral=True)
 
+        try:
+            with Path.open(App.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
+                summary_prompt = json.load(file_in)["prompt"]
+        except OSError:
+            LOGGER.exception("Failed to open summary prompt: %s", App.get_config("AI_CHAT_SUMMARY_PROMPT"))
+            return
+        except json.JSONDecodeError:
+            LOGGER.exception("Failed to decode summary prompt: %s", App.get_config("AI_CHAT_SUMMARY_PROMPT"))
+            return
+
         message = "Summarise the following conversation between multiple users: " + "; ".join(
             channel_history.get_messages(amount),
         )
@@ -364,7 +388,7 @@ class TextGeneration(SlashbotCog):
                 "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
                 + channel_prompt
                 + ". "
-                + App.get_config("AI_CHAT_SUMMARY_PROMPT")
+                + summary_prompt
                 + App.get_config("AI_CHAT_PROMPT_APPEND"),
             },
             {"role": "user", "content": message},

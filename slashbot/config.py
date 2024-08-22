@@ -182,11 +182,9 @@ class App:
             "AI_CHAT_TOKEN_WINDOW_SIZE": slash_config["COGS"]["AI_CHAT"]["TOKEN_WINDOW_SIZE"],
             "AI_CHAT_PROMPT_APPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
             "AI_CHAT_PROMPT_PREPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_PREPEND"],
-            "AI_CHAT_SUMMARY_PROMPT": cls.get_prompt_from_json(slash_config["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"]),
+            "AI_CHAT_SUMMARY_PROMPT": slash_config["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
             "AI_CHAT_RANDOM_RESPONSE_CHANCE": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
-            "AI_CHAT_RANDOM_RESPONSE_PROMPT": cls.get_prompt_from_json(
-                slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"]
-            ),
+            "AI_CHAT_RANDOM_RESPONSE_PROMPT": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"],
             "AI_CHAT_RATE_LIMIT": slash_config["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
             "AI_CHAT_RATE_INTERVAL": slash_config["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
         }
