@@ -198,7 +198,7 @@ class Weather(SlashbotCog):
 
         content = json.loads(one_call_request.content)
         if isinstance(extract_type, list | tuple):
-            weather_return = {key: value for key, value in content.items() if key in extract_type}
+            weather_return = {key: value for key, value in content.items() if key in extract_type or "timezone" in key}
         else:
             weather_return = content[extract_type]
 
@@ -374,16 +374,20 @@ class Weather(SlashbotCog):
         if weather_alerts:
             now = datetime.datetime.now(tz=datetime.UTC)
             alert_strings = []
+            tz_offset = datetime.timedelta(seconds=weather_return["timezone_offset"])
             for alert in weather_alerts:
                 alert_start = datetime.datetime.fromtimestamp(alert["start"], tz=datetime.UTC)
                 alert_end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.UTC)
                 if alert_start < now < alert_end:
                     alert_strings.append(
-                        f"{alert['event']}: {alert_start.strftime(r'%H:%m')} to {alert_end.strftime(r'%H:%m')} ",
+                        f"{alert['event']}: {(alert_start + tz_offset).strftime(r'%H:%m')} to {(alert_end + tz_offset).strftime(r'%H:%m')} ",
                     )
             if alert_strings:
+                alert_date = (alert_start + tz_offset).strftime(r"%d %B %Y")
                 embed.add_field(
-                    name="Weather Alert" if len(alert_strings) == 0 else "Weather Alerts",
+                    name=f"Weather Alert [{alert_date}]"
+                    if len(alert_strings) == 1
+                    else f"Weather Alerts [{alert_date}]",
                     value="\n".join(alert_strings),
                     inline=False,
                 )
