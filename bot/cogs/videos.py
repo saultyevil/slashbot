@@ -29,7 +29,7 @@ class Videos(SlashbotCog):
 
         """
         super().__init__(bot)
-        self.markov_sentences = ()
+        self.premade_markov_sentences = ()
 
     # Commands -----------------------------------------------------------------
 

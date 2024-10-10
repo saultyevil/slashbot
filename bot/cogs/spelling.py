@@ -46,7 +46,7 @@ class Spelling(SlashbotCog):
         self.spelling_summary.start()  # pylint: disable=no-member
         self.custom_words = self.get_custom_words()
 
-        self.markov_sentences = ()
+        self.premade_markov_sentences = ()
 
     @commands.cooldown(
         App.get_config("COOLDOWN_RATE"),

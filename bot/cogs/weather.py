@@ -62,7 +62,7 @@ class Weather(SlashbotCog):
             domain="maps.google.co.uk",
         )
 
-        self.markov_sentences = ()
+        self.premade_markov_sentences = ()
 
     async def cog_load(self) -> None:
         """Initialise the cog.
@@ -70,7 +70,7 @@ class Weather(SlashbotCog):
         Currently, this does:
             - create markov sentences
         """
-        self.markov_sentences = (
+        self.premade_markov_sentences = (
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["weather", "forecast"],

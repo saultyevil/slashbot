@@ -38,7 +38,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         super().__init__(bot)
         self.attempts = attempts
         self.wolfram_api = wolframalpha.Client(App.get_config("WOLFRAM_API_KEY"))
-        self.markov_sentences = ()
+        self.premade_markov_sentences = ()
 
     # Commands -----------------------------------------------------------------
 
