@@ -1,38 +1,27 @@
 # Slashbot
 
-Slashbot is Discord bot written using the Disnake package, based on my previous
-bot Badbot/Adminbot. It is designed to only work on a few servers which I
-am in, here there are some hardcoded IDs and specifc features.
+Slashbot is a Discord bot using Disnake. It is designed to work in only a few
+servers, so there are some hardcoded values here and there.
 
 ## Deployment
 
-slashbot can be deployed using docker and docker-compose,
+Slashbot is designed to be run using Docker. Slashbot requires multiple API
+keys which should be put in the provided .env file.
+
+Once you have configured your API keys, launch Slashbot using
 
 ```bash
 docker compose up
 ```
 
-For development,
+For development versions of the bot, use
 
 ```bash
 docker compose -f docker-compose.develop.yml up
 ```
 
-## Requirements
+## Development requirements
 
-Python 3.10 or above is required. I use Python 3.11 because it has nicer
-error messages and is faster. Python requirements are in `requirements.txt`
-or can be installed with Poetry.
-
-The following environment variables are required,
-
-```output
-SLASHBOT_CONFIG               # Path to config file
-SLASHBOT_TOKEN                # Token for the bot
-SLASHBOT_DEVELOPMENT_TOKEN    # Optional token for development
-GOOGLE_API_KEY                # API key for Google, used for Geolocating
-WOLFRAM_API_KEY               # Wolfram API key
-OWM_API_KEY                   # OpenWeatherMap API key
-OPENAI_API_KEY                # OpenAI ChatGPT API key for chat
-MONSTER_API_KEY               # Monster AI key for AI image generation
-```
+I'm not sure what the minimum version of Python this works on. I have developed
+the bot mostly using Python 3.10 or 3.11. The package requirements can be
+installed using either poetry of the `requirements.txt` file.

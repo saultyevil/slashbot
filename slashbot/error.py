@@ -2,11 +2,11 @@
 
 """Commands for getting the weather."""
 
-import disnake
+from bot.types import ApplicationCommandInteraction
 
 
 async def deferred_error_message(
-    inter: disnake.ApplicationCommandInteraction,
+    inter: ApplicationCommandInteraction,
     message: str,
     delay: int = 30,
 ) -> None:
@@ -14,7 +14,7 @@ async def deferred_error_message(
 
     Parameters
     ----------
-    inter : disnake.ApplicationCommandInteraction
+    inter : ApplicationCommandInteraction
         The deferred interaction.
     message : str
         An error message to send to chat.

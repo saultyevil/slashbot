@@ -12,9 +12,8 @@ import json
 import logging
 import pathlib
 
-import disnake
-
 from slashbot.config import App
+from bot.types import Member, User
 
 logger = logging.getLogger(App.get_config("LOGGER_NAME"))
 
@@ -113,7 +112,7 @@ def save_database(database: dict, location: str = None) -> dict:
     return database
 
 
-def create_new_user(user: disnake.User | disnake.Member) -> dict:
+def create_new_user(user: User | Member) -> dict:
     """Creates an empty user in the database.
 
     Adds a user to the USERS key. All fields other than the user_name are either
@@ -123,7 +122,7 @@ def create_new_user(user: disnake.User | disnake.Member) -> dict:
 
     Parameters
     ----------
-    user : disnake.User | disnake.Member
+    user : User | Member
         The disnake user to add.
 
     Returns
@@ -163,14 +162,14 @@ def get_users() -> dict:
     return database["USERS"]
 
 
-def get_user(user: disnake.User | disnake.Member) -> dict:
+def get_user(user: User | Member) -> dict:
     """Get a user from the database.
 
     If the user does not exist, it is created first with empty/default values.
 
     Parameters
     ----------
-    user : disnake.User | disnake.Member
+    user : User | Member
         The Disnake class for the user to get.
 
     Returns
@@ -187,12 +186,12 @@ def get_user(user: disnake.User | disnake.Member) -> dict:
     return database["USERS"][str(user.id)]
 
 
-def get_user_location(user: disnake.User | disnake.Member) -> None | str:
+def get_user_location(user: User | Member) -> None | str:
     """Get the location set by a user.
 
     Parameters
     ----------
-    user : disnake.User | disnake.Member
+    user : User | Member
         The Disnake class for the user to get.
 
     Returns
@@ -226,7 +225,7 @@ def get_twitter_convert_users() -> list[int]:
 
 
 # TODO: make this a user to be more consistent
-def update_user(user: disnake.Member | disnake.User, updated_fields: dict) -> None:
+def update_user(user: Member | User, updated_fields: dict) -> None:
     """Update a user in the database.
 
     This function will update the entire dict for a user, instead of an
@@ -234,7 +233,7 @@ def update_user(user: disnake.Member | disnake.User, updated_fields: dict) -> No
 
     Parameters
     ----------
-    user : disnake.Member | disnake.User
+    user : Member | User
         The user to update.
     updated_fields : dict
         A dict containing all the fields with the updated field.

@@ -1,7 +1,10 @@
-#!/usr/bin/env python3
+"""Configure and run the Discord bot.
 
-"""Slashbot is another discord bot using slash commands. The sole purpose of
-this bot is to sometimes annoy Gareth with its useful information.
+This script will create a modified InteractionBot class and run it depending on
+command line arguments. This script is typically called inside the root
+directory of the repository or within the provided docker compose.
+
+Disnake is used as the API client.
 """
 
 import argparse
@@ -9,33 +12,27 @@ import logging
 import os
 import time
 import traceback
-from collections.abc import Coroutine
 
 import disnake
 from disnake.ext import commands
 
+from bot.custom_bot import SlashbotInterationBot
 from slashbot import markov
 from slashbot.config import App
-from slashbot.custom_bot import SlashbotInterationBot
+
+# Parse command line arguments, which configure the bot
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-d",
     "--development",
-    help="Launch to development bot",
+    help="Launch the bot in development mode, which enables debug logging, cog reloading and disables automated markov generation",
     action="store_true",
 )
 parser.add_argument(
     "--disable-auto-markov",
     help="Disable automatic markov sentence generation and revert to on-the-fly generation",
     action="store_false",
-)
-parser.add_argument(
-    "--state-size",
-    default=2,
-    help="The state size of the Markov model to use",
-    choices=[1, 2, 3, 4],
-    type=int,
 )
 args = parser.parse_args()
 
@@ -44,15 +41,17 @@ logger.info("Initializing Slashbot...")
 start = time.time()
 
 if args.development:
+    logger.setLevel(logging.DEBUG)
     logger.debug("Disabling automatic markov generation for development mode")
     args.disable_auto_markov = False
-    logger.setLevel(logging.DEBUG)
 else:
     logger.setLevel(logging.INFO)
 
-# Load the markov model first --------------------------------------------------
+logger.info("Config file: %s", App.get_config("CONFIG_FILE"))
 
-markov.MARKOV_MODEL = markov.load_markov_model(f"data/chains/chain-{args.state_size}.pickle", args.state_size)
+# Load the markov model
+
+markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle", 2)
 
 # Set up the bot and cogs ------------------------------------------------------
 
@@ -62,14 +61,14 @@ intents.messages = True
 intents.members = True
 
 bot = SlashbotInterationBot(
-    markov_gen_on=args.disable_auto_markov,
+    enable_markov_gen=args.disable_auto_markov,
     intents=intents,
-    reload=True if args.development else False,
+    reload=bool(args.development),
 )
 
-bot.load_extensions("slashbot/cogs")
+bot.load_extensions("bot/cogs")
 
-# Bot events -------------------------------------------------------------------
+# Define some global bot events
 
 
 @bot.event
@@ -89,29 +88,32 @@ async def on_ready() -> None:
 
 
 @bot.event
-async def on_error(event, *args, **kwargs):
-    """Print exceptions to the logfile"""
-    logger.error("%s", traceback.print_exc())
+async def on_error(_event, *_args, **_kwargs) -> None:
+    """Print exceptions to the logfile."""
+    logger.exception("on_error:")
 
 
 @bot.event
-async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> Coroutine:
+async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> None:
     """Handle different types of errors.
 
     Parameters
     ----------
+    inter : disnake.ApplicationCommandInteraction
+        The interaction that failed.
     error: Exception
         The error that occurred.
 
     """
     stack = traceback.format_exception(type(error), error, error.__traceback__)
-    logger.error("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
+    logger.exception("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
 
     if isinstance(error, commands.errors.CommandOnCooldown):
-        return await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
-
+        await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
+        return
     if isinstance(error, disnake.NotFound):
-        return await inter.response.send_message("The Discord API failed for some reason.", ephemeral=True)
+        await inter.response.send_message("The Discord API failed for some reason.", ephemeral=True)
+        return
 
 
 # This finally runs the bot
