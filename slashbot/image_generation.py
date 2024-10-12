@@ -5,10 +5,10 @@ import time
 
 import requests
 
-from slashbot.config import App
+from slashbot.config import Bot
 
 MAX_WAIT_TIME_SECONDS = 300
-LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 def check_image_request_status(process_id: str) -> str:
@@ -28,7 +28,7 @@ def check_image_request_status(process_id: str) -> str:
     """
     headers = {
         "accept": "application/json",
-        "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
+        "authorization": f"Bearer {Bot.get_config('MONSTER_API_KEY')}",
     }
     response = requests.request(
         "GET",
@@ -69,7 +69,7 @@ def send_image_request(prompt: str, steps: int, aspect_ratio: str) -> str:
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "authorization": f"Bearer {App.get_config('MONSTER_API_KEY')}",
+        "authorization": f"Bearer {Bot.get_config('MONSTER_API_KEY')}",
     }
     payload = {
         "prompt": prompt,

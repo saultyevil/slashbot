@@ -1,8 +1,8 @@
 from bot.types import ApplicationCommandInteraction, Message
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.util import get_image_from_url, resize_image, split_text_into_chunks
 
-MAX_MESSAGE_LENGTH = App.get_config("MAX_CHARS")
+MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 
 
 async def send_message_to_channel(

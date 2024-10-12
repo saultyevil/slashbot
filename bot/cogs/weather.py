@@ -13,20 +13,20 @@ from disnake.ext import commands
 from geopy import GoogleV3
 
 from bot.custom_cog import SlashbotCog
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.db import get_user_location
 from slashbot.error import deferred_error_message
 from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
 from slashbot.util import convert_radial_to_cardinal_direction
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 COOLDOWN_USER = commands.BucketType.user
 WEATHER_UNITS = ["mixed", "metric", "imperial"]
 WEATHER_UNITS = ["mixed", "metric", "imperial"]
 FORECAST_TYPES = ["hourly", "daily"]
-API_KEY = App.get_config("OWM_API_KEY")
+API_KEY = Bot.get_config("OWM_API_KEY")
 
 
 class GeocodeError(Exception):
@@ -58,7 +58,7 @@ class Weather(SlashbotCog):
         """
         super().__init__(bot)
         self.geolocator = GoogleV3(
-            api_key=App.get_config("GOOGLE_API_KEY"),
+            api_key=Bot.get_config("GOOGLE_API_KEY"),
             domain="maps.google.co.uk",
         )
 
@@ -74,12 +74,12 @@ class Weather(SlashbotCog):
             generate_sentences_for_seed_words(
                 MARKOV_MODEL,
                 ["weather", "forecast"],
-                App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                Bot.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
             )
             if self.bot.markov_gen_enabled
             else {"weather": [], "forecast": []}
         )
-        logger.debug("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
+        logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Private ------------------------------------------------------------------
 
@@ -206,7 +206,7 @@ class Weather(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forecast", description="get the weather forecast")
     async def forecast(  # pylint: disable=too-many-locals, too-many-arguments  # noqa: PLR0913
         self,
@@ -301,7 +301,7 @@ class Weather(SlashbotCog):
 
         await inter.edit_original_message(embed=embed)
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="weather", description="get the current weather")
     async def weather(
         self,

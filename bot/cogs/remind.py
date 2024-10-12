@@ -12,7 +12,7 @@ from prettytable import PrettyTable
 
 from bot.custom_bot import SlashbotInterationBot
 from bot.custom_cog import SlashbotCog
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.db import (
     add_reminder,
     get_all_reminders,
@@ -20,7 +20,7 @@ from slashbot.db import (
     remove_reminder,
 )
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 SECONDS_IN_DAY = 86400
@@ -203,7 +203,7 @@ class Reminders(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_reminder", description="set a reminder for later")
     async def set_reminder(  # pylint: disable=too-many-arguments too-many-return-statements
         self,
@@ -271,7 +271,7 @@ class Reminders(SlashbotCog):
 
         return await inter.response.send_message(f"Reminder set for {date_string}.", ephemeral=True)
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="forget_reminder", description="forget a reminder")
     async def forget_reminder(
         self,
@@ -309,7 +309,7 @@ class Reminders(SlashbotCog):
 
         return await inter.response.send_message("Reminder removed.", ephemeral=True)
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_reminders", description="view your reminders")
     async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Show the reminders set for a user.

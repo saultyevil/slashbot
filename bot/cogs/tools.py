@@ -11,9 +11,9 @@ import wolframalpha
 from disnake.ext import commands
 
 from bot.custom_cog import SlashbotCog
-from slashbot.config import App
+from slashbot.config import Bot
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
@@ -37,12 +37,12 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         """
         super().__init__(bot)
         self.attempts = attempts
-        self.wolfram_api = wolframalpha.Client(App.get_config("WOLFRAM_API_KEY"))
+        self.wolfram_api = wolframalpha.Client(Bot.get_config("WOLFRAM_API_KEY"))
         self.premade_markov_sentences = ()
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="die_roll", description="roll a dice")
     async def die_roll(
         self,
@@ -61,7 +61,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")
     async def wolfram(
         self,
@@ -90,7 +90,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         results = self.wolfram_api.query(question)
 
         if not results["@success"]:
-            async with aiofiles.open(App.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
+            async with aiofiles.open(Bot.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
                 bad_word = (await file_in.readlines())[random.randint(0, num_solutions - 1)].strip()
             embed.add_field(
                 name=f"{question}",

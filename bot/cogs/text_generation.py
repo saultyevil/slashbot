@@ -27,7 +27,7 @@ from bot.custom_cog import SlashbotCog
 from bot.custom_command import cooldown_and_slash_command
 from bot.messages import get_attached_images_from_message, send_message_to_channel
 from bot.responses import is_reply_to_slash_command_response
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.markov import generate_markov_sentence
 from slashbot.models import ChannelHistory, Conversation
 from slashbot.text_generation import (
@@ -42,8 +42,8 @@ if TYPE_CHECKING:
     from bot.custom_bot import SlashbotInterationBot
     from bot.types import ApplicationCommandInteraction, Message
 
-LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
-MAX_MESSAGE_LENGTH = App.get_config("MAX_CHARS")
+LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()
 
 
@@ -156,11 +156,11 @@ class TextGeneration(SlashbotCog):
             The content of the message sent by the user.
 
         """
-        num_tokens = get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), message)
+        num_tokens = get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message)
         self.channel_histories[history_id].add_message(message, escape_markdown(user), num_tokens)
 
         # keep it under the token limit
-        while self.channel_histories[history_id].tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
+        while self.channel_histories[history_id].tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
             self.channel_histories[history_id].remove_message(0)
 
     async def respond_to_unprompted_message(self, message: disnake.Message) -> None:
@@ -173,23 +173,23 @@ class TextGeneration(SlashbotCog):
 
         """
         try:
-            with Path.open(App.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
+            with Path.open(Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
                 prompt = json.load(file_in)["prompt"]
         except OSError:
             LOGGER.exception(
-                "Failed to open random response prompt: %s", App.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
+                "Failed to open random response prompt: %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
             )
             return
         except json.JSONDecodeError:
             LOGGER.exception(
-                "Failed to decode random response prompt: %s", App.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
+                "Failed to decode random response prompt: %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
             )
             return
         messages = [
             {"role": "system", "content": prompt},
             {"role": "user", "content": message.clean_content},
         ]
-        response, _ = await generate_text(App.get_config("AI_CHAT_CHAT_MODEL"), messages)
+        response, _ = await generate_text(Bot.get_config("AI_CHAT_CHAT_MODEL"), messages)
         await send_message_to_channel(response, message, dont_tag_user=True)
 
     async def get_message_response(self, discord_message: disnake.Message) -> str:
@@ -208,27 +208,38 @@ class TextGeneration(SlashbotCog):
         """
         history_id = get_history_id(discord_message)
         conversation = self.conversations[history_id]
-        message_contents = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
 
+        # Take a copy of the conversation, so we don't modify the original. We
+        # need to do this to avoid race conditions when multiple people are
+        # talking to the bot at once
         new_conversation = copy.deepcopy(conversation)
 
-        # if the response is a reply, let's find that message and present that as the last
+        # A referenced message is one which has been replied to using the reply
+        # button. We'll find that message in the conversation history and
+        # try respond to it from there instead
         if discord_message.reference:
-            conversation, discord_message = await self.get_referenced_message(discord_message, new_conversation)
+            new_conversation, discord_message = await self.get_referenced_message(discord_message, new_conversation)
 
-        images = await get_attached_images_from_message(discord_message)
-        new_conversation.add_message(message_contents, "user", images=images)
+        message_images = await get_attached_images_from_message(discord_message)
+        message_contents = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
+        new_conversation.add_message(message_contents, "user", images=message_images)
 
         try:
             response, tokens_used = await generate_text(
-                App.get_config("AI_CHAT_CHAT_MODEL"),
+                Bot.get_config("AI_CHAT_CHAT_MODEL"),
                 new_conversation.get_messages(),
             )
-            conversation.add_message(message_contents, "user", images=images)
+            # todo: if a reference message, we should insert the message in the appropriate place
+            conversation.add_message(message_contents, "user", images=message_images)
             conversation.add_message(response, "assistant", tokens=tokens_used)
         except Exception:
-            LOGGER.exception("Failed to get response from OpenAI, revert to random markov sentence")
+            LOGGER.exception("Failed to get response from OpenAI, reverting to markov sentence with no seed word")
             response = generate_markov_sentence()
+
+        # This is the most helpful way to debug problems with the conversation
+        if LOGGER.level == logging.DEBUG:
+            with Path.open("_debug-conversation.txt", "w", encoding="utf-8") as file:
+                json.dump(conversation.get_messages(), file, indent=4)
 
         return response
 
@@ -322,7 +333,7 @@ class TextGeneration(SlashbotCog):
 
         # If we get here, then there's a random chance the bot will respond to a
         # "regular" message
-        if random.random() <= App.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
+        if random.random() <= Bot.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
             await self.respond_to_unprompted_message(message)
 
     # Commands -----------------------------------------------------------------
@@ -365,13 +376,13 @@ class TextGeneration(SlashbotCog):
         await inter.response.defer(ephemeral=True)
 
         try:
-            with Path.open(App.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
+            with Path.open(Bot.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
                 summary_prompt = json.load(file_in)["prompt"]
         except OSError:
-            LOGGER.exception("Failed to open summary prompt: %s", App.get_config("AI_CHAT_SUMMARY_PROMPT"))
+            LOGGER.exception("Failed to open summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT"))
             return
         except json.JSONDecodeError:
-            LOGGER.exception("Failed to decode summary prompt: %s", App.get_config("AI_CHAT_SUMMARY_PROMPT"))
+            LOGGER.exception("Failed to decode summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT"))
             return
 
         message = "Summarise the following conversation between multiple users: " + "; ".join(
@@ -380,16 +391,16 @@ class TextGeneration(SlashbotCog):
         conversation = [
             {
                 "role": "system",
-                "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
+                "content": Bot.get_config("AI_CHAT_PROMPT_PREPEND")
                 + channel_prompt
                 + ". "
                 + summary_prompt
-                + App.get_config("AI_CHAT_PROMPT_APPEND"),
+                + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
             },
             {"role": "user", "content": message},
         ]
         LOGGER.debug("Conversation to summarise: %s", conversation)
-        summary_message, token_count = await generate_text(App.get_config("AI_CHAT_CHAT_MODEL"), conversation)
+        summary_message, token_count = await generate_text(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
 
         self.conversations[history_id].add_message(
             "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
@@ -447,7 +458,7 @@ class TextGeneration(SlashbotCog):
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), prompt),
+            get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt[:1800]}...",
@@ -479,7 +490,7 @@ class TextGeneration(SlashbotCog):
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), prompt),
+            get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt}",
@@ -534,7 +545,7 @@ class TextGeneration(SlashbotCog):
                 prompt_name = name
 
         response = ""
-        response += f"**Model name**: {App.get_config('AI_CHAT_CHAT_MODEL')}\n"
+        response += f"**Model name**: {Bot.get_config('AI_CHAT_CHAT_MODEL')}\n"
         response += f"**Token usage**: {self.conversations[history_id].tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {prompt[:1800]}...\n"
@@ -551,7 +562,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if App.get_config("OPENAI_API_KEY"):
+    if Bot.get_config("OPENAI_API_KEY"):
         bot.add_cog(TextGeneration(bot))
     else:
         LOGGER.error("No API key found for OpenAI, unable to load AIChatBot cog")

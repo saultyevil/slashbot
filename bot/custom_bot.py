@@ -6,9 +6,9 @@ from typing import Any
 
 from disnake.ext import commands
 
-from slashbot.config import App
+from slashbot.config import Bot
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 class SlashbotInterationBot(commands.InteractionBot):

@@ -18,7 +18,7 @@ from disnake.ext import commands
 
 from bot.custom_bot import SlashbotInterationBot
 from slashbot import markov
-from slashbot.config import App
+from slashbot.config import Bot
 
 # Parse command line arguments, which configure the bot
 
@@ -36,7 +36,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 logger.info("Initializing Slashbot...")
 start = time.time()
 
@@ -47,7 +47,7 @@ if args.development:
 else:
     logger.setLevel(logging.INFO)
 
-logger.info("Config file: %s", App.get_config("CONFIG_FILE"))
+logger.info("Config file: %s", Bot.get_config("CONFIG_FILE"))
 
 # Load the markov model
 
@@ -110,10 +110,9 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
 
     if isinstance(error, commands.errors.CommandOnCooldown):
         await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
-        return
+
     if isinstance(error, disnake.NotFound):
         await inter.response.send_message("The Discord API failed for some reason.", ephemeral=True)
-        return
 
 
 # This finally runs the bot

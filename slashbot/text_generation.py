@@ -8,15 +8,15 @@ from typing import TYPE_CHECKING
 import openai
 import tiktoken
 
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
     from slashbot.models import Conversation
 
-LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
-MAX_MESSAGE_LENGTH = App.get_config("MAX_CHARS")
-OPENAI_CLIENT = openai.AsyncOpenAI(api_key=App.get_config("OPENAI_API_KEY"))
+LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
+OPENAI_CLIENT = openai.AsyncOpenAI(api_key=Bot.get_config("OPENAI_API_KEY"))
 
 
 async def generate_text(model: str, messages: list) -> tuple[str, int]:
@@ -41,11 +41,11 @@ async def generate_text(model: str, messages: list) -> tuple[str, int]:
     response = await OPENAI_CLIENT.chat.completions.create(
         messages=messages,
         model=model,
-        max_tokens=App.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
-        frequency_penalty=App.get_config("AI_CHAT_FREQUENCY_PENALTY"),
-        presence_penalty=App.get_config("AI_CHAT_PRESENCE_PENALTY"),
-        temperature=App.get_config("AI_CHAT_TEMPERATURE"),
-        top_p=App.get_config("AI_CHAT_TOP_P"),
+        max_tokens=Bot.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
+        frequency_penalty=Bot.get_config("AI_CHAT_FREQUENCY_PENALTY"),
+        presence_penalty=Bot.get_config("AI_CHAT_PRESENCE_PENALTY"),
+        temperature=Bot.get_config("AI_CHAT_TEMPERATURE"),
+        top_p=Bot.get_config("AI_CHAT_TOP_P"),
     )
     message = response.choices[0].message.content
     token_usage = response.usage.total_tokens
@@ -73,7 +73,7 @@ def get_prompts_at_launch() -> tuple[str, dict, int]:
         choices = {}
         LOGGER.exception("Error in reading prompt files, going to try and continue without a prompt")
 
-    tokens = get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), prompt)
+    tokens = get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), prompt)
 
     return prompt, choices, tokens
 
@@ -124,9 +124,9 @@ def check_if_user_rate_limited(cooldown: dict[str, datetime.datetime], user_id: 
     time_difference = (current_time - user_cooldown["last_interaction"]).seconds
 
     # Check if exceeded rate limit
-    if user_cooldown["count"] > App.get_config("AI_CHAT_RATE_LIMIT"):
+    if user_cooldown["count"] > Bot.get_config("AI_CHAT_RATE_LIMIT"):
         # If exceeded rate limit, check if cooldown period has passed
-        if time_difference > App.get_config("AI_CHAT_RATE_INTERVAL"):
+        if time_difference > Bot.get_config("AI_CHAT_RATE_INTERVAL"):
             # reset count and update last_interaction time
             user_cooldown["count"] = 1
             user_cooldown["last_interaction"] = current_time

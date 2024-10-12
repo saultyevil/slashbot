@@ -17,11 +17,11 @@ from disnake.ext import commands, tasks
 
 from bot.custom_cog import SlashbotCog
 from slashbot import markov
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.db import get_users
 from slashbot.markov import update_markov_chain_for_model
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 EMPTY_STRING = ""
 
@@ -50,8 +50,8 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.markov_training_sample = {}
         self.rule34_api = r34.Rule34()
         self.user_cooldown = defaultdict(lambda: {"time": 0.0, "count": 0})  # tracks last unix time someone used it
-        self.cooldown_duration = App.get_config("COOLDOWN_STANDARD")
-        self.cooldown_rate = App.get_config("COOLDOWN_RATE")
+        self.cooldown_duration = Bot.get_config("COOLDOWN_STANDARD")
+        self.cooldown_rate = Bot.get_config("COOLDOWN_RATE")
         self.markov_chain_update_loop.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
@@ -59,7 +59,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
     # Slash commands -----------------------------------------------------------
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="bad_word", description="send a naughty word")
     async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a bad word to the chat.
@@ -70,7 +70,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
 
         """
-        async with aiofiles.open(App.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
+        async with aiofiles.open(Bot.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
             bad_words = await file_in.readlines()
 
         bad_word = random.choice(bad_words).strip()  # noqa: S311
@@ -105,7 +105,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
         await inter.response.send_message(content=message, file=file)
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /sentence")
     @commands.default_member_permissions(administrator=True)
     async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction) -> None:
@@ -124,7 +124,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
 
         """
-        if not App.get_config("ENABLE_MARKOV_TRAINING"):
+        if not Bot.get_config("ENABLE_MARKOV_TRAINING"):
             await inter.response.send_message("Updating the Markov Chain has been disabled.")
         else:
             await inter.response.defer(ephemeral=True)
@@ -133,13 +133,13 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             inter,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
-            App.get_config("CURRENT_MARKOV_CHAIN"),
+            Bot.get_config("CURRENT_MARKOV_CHAIN"),
         )
         self.markov_training_sample.clear()
 
         await inter.edit_original_message("Markov chain has been updated.")
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="oracle", description="a message from god")
     async def oracle(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a Terry Davis inspired "God message" to the chat.
@@ -150,14 +150,14 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
 
         """
-        async with aiofiles.open(App.get_config("GOD_WORDS_FILE"), encoding="utf-8") as file_in:
+        async with aiofiles.open(Bot.get_config("GOD_WORDS_FILE"), encoding="utf-8") as file_in:
             oracle_words = await file_in.readlines()
 
         await inter.response.send_message(
             f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",  # noqa: S311
         )
 
-    @commands.cooldown(App.get_config("COOLDOWN_RATE"), App.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="rule34", description="search for a naughty image")
     async def rule34(
         self,
@@ -207,7 +207,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The message to record.
 
         """
-        if not App.get_config("ENABLE_MARKOV_TRAINING"):
+        if not Bot.get_config("ENABLE_MARKOV_TRAINING"):
             return
         if message.author.bot:
             return
@@ -223,7 +223,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The payload containing the message.
 
         """
-        if not App.get_config("ENABLE_MARKOV_TRAINING"):
+        if not Bot.get_config("ENABLE_MARKOV_TRAINING"):
             return
 
         message = payload.cached_message
@@ -316,13 +316,13 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
     @tasks.loop(hours=6)
     async def markov_chain_update_loop(self) -> None:
         """Get the bot to update the chain every 6 hours."""
-        if not App.get_config("ENABLE_MARKOV_TRAINING"):
+        if not Bot.get_config("ENABLE_MARKOV_TRAINING"):
             return
         await update_markov_chain_for_model(
             None,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
-            App.get_config("CURRENT_MARKOV_CHAIN"),
+            Bot.get_config("CURRENT_MARKOV_CHAIN"),
         )
         self.markov_training_sample.clear()
 

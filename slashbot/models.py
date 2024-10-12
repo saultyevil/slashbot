@@ -5,10 +5,10 @@ These classes are used to marshal data
 
 import logging
 
-from .config import App
-from .text_generation import get_token_count
+from slashbot.config import Bot
+from slashbot.text_generation import get_token_count
 
-LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 class Message:
@@ -132,8 +132,11 @@ class Conversation:
             Any images to add, by default None
 
         """
-        message = App.get_config("AI_CHAT_PROMPT_PREPEND") + message + App.get_config("AI_CHAT_PROMPT_APPEND")
-
+        if not message and images:
+            message = "Describe the following images:"
+        if not message:
+            return
+        message = Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND")
         if images:
             message_images = [
                 {
@@ -145,17 +148,7 @@ class Conversation:
             self._messages.append(
                 {
                     "role": "user",
-                    "content": [
-                        *message_images,
-                        {
-                            "type": "text",
-                            "text": message
-                            if message
-                            else App.get_config("AI_CHAT_PROMPT_PREPEND")
-                            + "Describe the following image(s)."
-                            + App.get_config("AI_CHAT_PROMPT_APPEND"),
-                        },
-                    ],
+                    "content": [{"type": "text", "text": message}, *message_images],
                 },
             )
         else:
@@ -174,13 +167,13 @@ class Conversation:
 
     def _shrink_conversation_to_token_size(self) -> None:
         """Shrink the conversation to within the token window."""
-        while self.tokens > App.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self) > 1:
+        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self) > 1:
             try:
                 message = self._messages[1]
             except IndexError:
                 return
             self.remove_message(1)
-            self.tokens -= get_token_count(App.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
+            self.tokens -= get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
 
     def add_message(self, message: str, role: str, *, images: list[str] | None = None, tokens: int = 0) -> list[dict]:
         """Add a new message to the conversation history.
@@ -207,7 +200,7 @@ class Conversation:
             self._add_assistant_message(message)
         self.tokens = tokens
 
-        return self._messages
+        return self._messages[-1]
 
     def clear_messages(self) -> list[dict]:
         """Clear a conversation.
@@ -269,7 +262,7 @@ class Conversation:
         """
         to_find = {
             "role": role,
-            "content": App.get_config("AI_CHAT_PROMPT_PREPEND") + message + App.get_config("AI_CHAT_PROMPT_APPEND"),
+            "content": Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
         }
         try:
             index = self._messages.index(to_find)

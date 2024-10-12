@@ -6,9 +6,9 @@ from pathlib import Path
 import aiofiles
 import git
 
-from slashbot.config import App
+from slashbot.config import Bot
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 async def get_logfile_tail(logfile_path: Path, num_lines: int) -> list[str]:
@@ -38,7 +38,7 @@ async def get_logfile_tail(logfile_path: Path, num_lines: int) -> list[str]:
             num_chars += len(log_lines[-i])
         except IndexError:
             break
-        if num_chars > App.get_config("MAX_CHARS"):
+        if num_chars > Bot.get_config("MAX_CHARS"):
             break
         tail.append(log_lines[-i])
 

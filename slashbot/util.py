@@ -15,7 +15,6 @@ from urllib.parse import urlparse
 import httpx
 from PIL import Image
 
-from slashbot.config import App
 from bot.types import (
     ApplicationCommandInteraction,
     DMChannel,
@@ -23,8 +22,9 @@ from bot.types import (
     TextChannel,
     User,
 )
+from slashbot.config import Bot
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 async def send_cooldown_message(

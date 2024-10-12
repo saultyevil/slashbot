@@ -13,10 +13,10 @@ from watchdog.observers import Observer
 
 from bot.custom_bot import SlashbotInterationBot
 from bot.custom_cog import SlashbotCog
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.util import calculate_seconds_until
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
@@ -108,7 +108,7 @@ class ScheduledPosts(SlashbotCog):
 
     def get_scheduled_posts(self) -> None:
         """Read in the scheduled posts Json file."""
-        with Path.open(App.get_config("SCHEDULED_POST_FILE"), encoding="utf-8") as file_in:
+        with Path.open(Bot.get_config("SCHEDULED_POST_FILE"), encoding="utf-8") as file_in:
             posts_json = json.load(file_in)
 
         self.scheduled_posts = posts_json["SCHEDULED_POSTS"]
@@ -131,7 +131,7 @@ class ScheduledPosts(SlashbotCog):
         logger.info(
             "%d scheduled posts loaded from %s",
             len(self.scheduled_posts),
-            App.get_config("SCHEDULED_POST_FILE"),
+            Bot.get_config("SCHEDULED_POST_FILE"),
         )
         self.order_scheduled_posts_by_soonest()
 
@@ -155,7 +155,7 @@ class ScheduledPosts(SlashbotCog):
                     The event to check.
 
                 """
-                if event.src_path == str(App.get_config("SCHEDULED_POST_FILE").absolute()):
+                if event.src_path == str(Bot.get_config("SCHEDULED_POST_FILE").absolute()):
                     self.parent.get_scheduled_posts()
                     # If the loop is running, we'll restart the task otherwise
                     # start the task. The post should *never* not be running,
@@ -167,7 +167,7 @@ class ScheduledPosts(SlashbotCog):
                         self.parent.post_loop.start()
 
         observer = Observer()
-        observer.schedule(PostWatcher(self), path=str(App.get_config("SCHEDULED_POST_FILE").parent.absolute()))
+        observer.schedule(PostWatcher(self), path=str(Bot.get_config("SCHEDULED_POST_FILE").parent.absolute()))
         observer.start()
 
     # Task ---------------------------------------------------------------------

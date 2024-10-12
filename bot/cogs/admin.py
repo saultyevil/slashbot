@@ -10,12 +10,12 @@ from bot.custom_cog import SlashbotCog
 from bot.custom_command import cooldown_and_slash_command
 from bot.types import ApplicationCommandInteraction
 from slashbot.admin import get_logfile_tail, restart_bot, update_local_repository
-from slashbot.config import App
+from slashbot.config import Bot
 
 COOLDOWN_USER = commands.BucketType.user
-COOLDOWN_STANDARD = App.get_config("COOLDOWN_STANDARD")
-COOLDOWN_RATE = App.get_config("COOLDOWN_RATE")
-LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
+COOLDOWN_STANDARD = Bot.get_config("COOLDOWN_STANDARD")
+COOLDOWN_RATE = Bot.get_config("COOLDOWN_RATE")
+LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 class AdminTools(SlashbotCog):
@@ -52,7 +52,7 @@ class AdminTools(SlashbotCog):
 
         """
         await inter.response.defer(ephemeral=True)
-        tail = await get_logfile_tail(Path(App.get_config("LOGFILE_NAME")), num_lines)
+        tail = await get_logfile_tail(Path(Bot.get_config("LOGFILE_NAME")), num_lines)
         await inter.edit_original_message(f"```{tail}```")
 
     @cooldown_and_slash_command()
@@ -77,7 +77,7 @@ class AdminTools(SlashbotCog):
             input is a string of "Yes" or "No" which is converted into a bool.
 
         """
-        if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != Bot.get_config("ID_USER_SAULTYEVIL"):
             await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
 
@@ -120,7 +120,7 @@ class AdminTools(SlashbotCog):
             input is a string of "Yes" or "No" which is converted into a bool.
 
         """
-        if inter.author.id != App.get_config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != Bot.get_config("ID_USER_SAULTYEVIL"):
             await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
         await inter.response.defer(ephemeral=True)

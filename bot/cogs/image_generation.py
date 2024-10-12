@@ -16,10 +16,10 @@ from disnake.ext import commands
 from bot.custom_cog import SlashbotCog
 from bot.custom_command import cooldown_and_slash_command
 from bot.types import ApplicationCommandInteraction  # noqa: TCH001
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.image_generation import retrieve_image_request, send_image_request
 
-LOGGER = logging.getLogger(App.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 if TYPE_CHECKING:
     from bot.custom_bot import SlashbotInterationBot
@@ -97,7 +97,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    key = App.get_config("MONSTER_API_KEY")
+    key = Bot.get_config("MONSTER_API_KEY")
     if key:
         bot.add_cog(ImageGeneration(bot))
     else:

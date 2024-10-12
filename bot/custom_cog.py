@@ -6,7 +6,7 @@ import disnake
 from disnake.ext import commands, tasks
 
 from bot.custom_bot import SlashbotInterationBot
-from slashbot.config import App
+from slashbot.config import Bot
 from slashbot.markov import (
     MARKOV_MODEL,
     async_generate_list_of_sentences_with_seed_word,
@@ -14,7 +14,7 @@ from slashbot.markov import (
     generate_markov_sentence,
 )
 
-logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 class SlashbotCog(commands.Cog):
@@ -49,10 +49,10 @@ class SlashbotCog(commands.Cog):
 
         """
         # Servers which don't have a cooldown
-        if inter.guild and inter.guild.id not in App.get_config("NO_COOLDOWN_SERVERS"):
+        if inter.guild and inter.guild.id not in Bot.get_config("NO_COOLDOWN_SERVERS"):
             inter.application_command.reset_cooldown(inter)
         # Users which don't have a cooldown
-        if inter.author.id in App.get_config("NO_COOLDOWN_USERS"):
+        if inter.author.id in Bot.get_config("NO_COOLDOWN_USERS"):
             inter.application_command.reset_cooldown(inter)
 
     # Tasks --------------------------------------------------------------------
@@ -64,11 +64,11 @@ class SlashbotCog(commands.Cog):
             return
 
         for seed_word, seed_sentences in self.premade_markov_sentences.items():
-            if len(seed_sentences) <= App.get_config("PREGEN_REGENERATE_LIMIT"):
+            if len(seed_sentences) <= Bot.get_config("PREGEN_REGENERATE_LIMIT"):
                 self.premade_markov_sentences[seed_word] = await async_generate_list_of_sentences_with_seed_word(
                     MARKOV_MODEL,
                     seed_word,
-                    App.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                    Bot.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
                 )
 
     @regenerate_markov_sentences.before_loop

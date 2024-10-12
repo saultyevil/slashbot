@@ -6,6 +6,7 @@ data/chains/*.pickle
 data/chains/*.bak
 scratch/
 data/*.txt
+_debug-conversation.txt
 
 # IDE specific directories
 .DS_Store

@@ -16,12 +16,12 @@ def setup_logging() -> None:
     """Set up logging for Slashbot."""
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
-    logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
     logger.addHandler(console_handler)
 
-    if Path(App.get_config("LOGFILE_NAME")).parent.exists():
+    if Path(Bot.get_config("LOGFILE_NAME")).parent.exists():
         file_handler = RotatingFileHandler(
-            filename=App.get_config("LOGFILE_NAME"),
+            filename=Bot.get_config("LOGFILE_NAME"),
             encoding="utf-8",
             maxBytes=int(5e5),
             backupCount=5,
@@ -42,7 +42,7 @@ def setup_logging() -> None:
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
-    logger.info("Loaded config file %s", App.get_config("CONFIG_FILE"))
+    logger.info("Loaded config file %s", Bot.get_config("CONFIG_FILE"))
 
 
 class FileWatcher(FileSystemEventHandler):
@@ -57,20 +57,20 @@ class FileWatcher(FileSystemEventHandler):
             The event to check.
 
         """
-        if event.event_type == "modified" and event.src_path == App.get_config("CONFIG_FILE"):
-            original_config = copy.copy(App._config)  # noqa: SLF001
-            new_config = App.set_config_values()
+        if event.event_type == "modified" and event.src_path == Bot.get_config("CONFIG_FILE"):
+            original_config = copy.copy(Bot._config)  # noqa: SLF001
+            new_config = Bot.set_config_values()
             modified_keys = {
                 key for key in original_config if key in new_config and original_config[key] != new_config[key]
             }
             if modified_keys:
-                logger = logging.getLogger(App.get_config("LOGGER_NAME"))
+                logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
                 logger.info("App config updated:")
                 for key in modified_keys:
                     logger.info("  %s: %s -> %s", key, original_config[key], new_config[key])
 
 
-class App:
+class Bot:
     """The global configuration class.
 
     Contains shared variables or variables which control the operation
@@ -209,7 +209,7 @@ class App:
             The value of the parameter requested, or None.
 
         """
-        return App._config[name]
+        return Bot._config[name]
 
     @staticmethod
     def set_config(name: str, value: str) -> None:
@@ -223,12 +223,12 @@ class App:
             The value of the parameter.
 
         """
-        App._config[name] = value
+        Bot._config[name] = value
 
 
-App.set_config_values()
+Bot.set_config_values()
 setup_logging()
 
 observer = Observer()
-observer.schedule(FileWatcher(), path=Path(App.get_config("CONFIG_FILE")).parent)
+observer.schedule(FileWatcher(), path=Path(Bot.get_config("CONFIG_FILE")).parent)
 observer.start()
