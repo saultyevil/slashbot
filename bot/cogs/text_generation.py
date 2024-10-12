@@ -219,17 +219,12 @@ class TextGeneration(SlashbotCog):
         images = await get_attached_images_from_message(discord_message)
         new_conversation.add_message(message_contents, "user", images=images)
 
-        LOGGER.debug("Found images: %s", images)
-        LOGGER.debug("New conversation: %s", new_conversation.get_messages())
-
         try:
             response, tokens_used = await generate_text(
                 App.get_config("AI_CHAT_CHAT_MODEL"),
                 new_conversation.get_messages(),
             )
-            # todo: this doesn't deal with references to the past that well.
-            #       What we need to do is to add a new thread, or something.
-            conversation.add_message(message_contents, "user")
+            conversation.add_message(message_contents, "user", images=images)
             conversation.add_message(response, "assistant", tokens=tokens_used)
         except Exception:
             LOGGER.exception("Failed to get response from OpenAI, revert to random markov sentence")

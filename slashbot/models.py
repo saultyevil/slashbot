@@ -132,6 +132,8 @@ class Conversation:
             Any images to add, by default None
 
         """
+        message = App.get_config("AI_CHAT_PROMPT_PREPEND") + message + App.get_config("AI_CHAT_PROMPT_APPEND")
+
         if images:
             message_images = [
                 {
@@ -145,19 +147,19 @@ class Conversation:
                     "role": "user",
                     "content": [
                         *message_images,
-                        {"type": "text", "text": message if message else "describe the following image(s)"},
+                        {
+                            "type": "text",
+                            "text": message
+                            if message
+                            else App.get_config("AI_CHAT_PROMPT_PREPEND")
+                            + "Describe the following image(s)."
+                            + App.get_config("AI_CHAT_PROMPT_APPEND"),
+                        },
                     ],
                 },
             )
         else:
-            self._messages.append(
-                {
-                    "role": "user",
-                    "content": App.get_config("AI_CHAT_PROMPT_PREPEND")
-                    + message
-                    + App.get_config("AI_CHAT_PROMPT_APPEND"),
-                }
-            )
+            self._messages.append({"role": "user", "content": message})
 
     def _add_assistant_message(self, message: str) -> None:
         """Add an assistant message to the conversation.
