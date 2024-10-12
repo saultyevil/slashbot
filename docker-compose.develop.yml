@@ -2,7 +2,7 @@ version: "3.8"
 services:
   bot:
     build: .
-    container_name: slashbot-reborn
+    container_name: slashbot
     env_file:
       - .env
     environment:
