@@ -35,7 +35,7 @@
             "MODEL_FREQUENCY_PENALTY": 0.0,
             "MODEL_PRESENCE_PENALTY": 0.0,
             "CHAT_MODEL": "gpt-4o-mini",
-            "RANDOM_RESPONSE_CHANCE": 1e-2,
+            "RANDOM_RESPONSE_CHANCE": 5e-3,
             "RESPONSE_RATE_LIMIT": 10,
             "RATE_LIMIT_INTERVAL": 5,
             "PROMPT_PREPEND": "",
@@ -72,7 +72,7 @@
     "MARKOV": {
         "ENABLE_MARKOV_TRAINING": false,
         "ENABLE_PREGEN_SENTENCES": true,
-        "NUM_PREGEN_SENTENCES": 3,
+        "NUM_PREGEN_SENTENCES": 4,
         "PREGEN_REGENERATE_LIMIT": 1
     }
 }
