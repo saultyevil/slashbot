@@ -133,8 +133,9 @@ class Conversation:
 
         """
         if not message and images:
-            message = "Describe the following images:"
+            message = "Describe the following image(s):"
         if not message:
+            LOGGER.error("No message to add to the conversation")
             return
         message = Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND")
         if images:
@@ -267,6 +268,7 @@ class Conversation:
         try:
             index = self._messages.index(to_find)
             self._messages = self._messages[: index + 1]
+            LOGGER.debug("set_conversation_point: messages now are: %s", self._messages)
         except (ValueError, IndexError):
             LOGGER.exception("Failed to find message in conversation, so not setting new reference point")
 
