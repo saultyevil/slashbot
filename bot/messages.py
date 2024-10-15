@@ -1,8 +1,8 @@
 from bot.types import ApplicationCommandInteraction, Message
-from slashbot.config import App
-from slashbot.util import get_image_from_url, resize_image, split_text_into_chunks
+from slashbot.config import Bot
+from slashbot.util import split_text_into_chunks
 
-MAX_MESSAGE_LENGTH = App.get_config("MAX_CHARS")
+MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 
 
 async def send_message_to_channel(
@@ -48,12 +48,5 @@ async def get_attached_images_from_message(message: Message) -> list[str]:
     image_urls = [attachment.url for attachment in message.attachments if attachment.content_type.startswith("image/")]
     image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image]
     image_urls += [embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail]
-    num_found = len(image_urls)
 
-    if num_found == 0:
-        return []
-    images = await get_image_from_url(image_urls)
-
-    # If we ever switch to high detail vision, then we will need to resize the
-    # image to keep costs down: resize_image(image["image"], image["type"])
-    return [{"type": image["type"], "image": image["image"]} for image in images]
+    return image_urls

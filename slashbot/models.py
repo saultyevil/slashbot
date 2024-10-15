@@ -141,7 +141,7 @@ class Conversation:
             message_images = [
                 {
                     "type": "image_url",
-                    "image_url": {"url": f"data:image/{image['type']};base64,{image['image']}", "detail": "low"},
+                    "image_url": {"url": f"{image}", "detail": "low"},
                 }
                 for image in images
             ]
