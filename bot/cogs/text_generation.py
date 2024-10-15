@@ -129,7 +129,12 @@ class TextGeneration(SlashbotCog):
 
         # early exit if the message is not from the bot. we still want the
         # message being referenced so we can, e.g., find images
-        if discord_message.author != self.bot.user:
+        if previous_message.author.id != self.bot.user.id:
+            LOGGER.debug(
+                "Message not from the bot: message.author.id = %s, bot.user.id = %s",
+                discord_message.author.id,
+                self.bot.user.id,
+            )
             return conversation, previous_message
 
         # the bot will only ever respond to one person, so we can do something

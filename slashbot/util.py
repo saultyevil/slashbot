@@ -2,18 +2,12 @@
 
 """Various utility functions used through slashbot."""
 
-import base64
 import datetime
 import json
 import logging
 import pathlib
 import re
-from io import BytesIO
 from typing import Any
-from urllib.parse import urlparse
-
-import httpx
-from PIL import Image
 
 from bot.types import (
     ApplicationCommandInteraction,
@@ -348,93 +342,3 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int
         sleep_for_seconds = add_days_to_datetime(now, next_date, frequency)
 
     return sleep_for_seconds
-
-
-async def get_image_from_url(image_urls: str) -> list[dict[str, str]]:
-    """Fetch images from the given URL(s) and return their base64-encoded data.
-
-    Parameters
-    ----------
-    image_urls : str or List[str]
-        A single image URL or a list of image URLs.
-
-    Returns
-    -------
-    List[Dict[str, str]]
-        A list of dictionaries, where each dictionary contains the base64-encoded image data string and the image type (file extension).
-
-    """
-    image_data = []
-    for url in image_urls:
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url)
-                response.raise_for_status()
-                parsed_url = urlparse(url)
-                image_type = parsed_url.path.split(".")[-1]
-                if image_type == "webp" or image_type == "jpg":
-                    image_type = "jpeg"
-                image_data.append(
-                    {
-                        "type": "image/" + image_type,
-                        "image": base64.b64encode(response.content).decode("utf-8"),
-                    },
-                )
-        except (httpx.HTTPError, httpx.HTTPStatusError) as exc:
-            logger.error("Error fetching image from %s: %s", url, exc)
-
-    return image_data
-
-
-def resize_image(image_string: str, image_type: str, target_megapixels: float = 1.15) -> str:
-    """Resizes an image to a target number of megapixels while maintaining the aspect ratio.
-
-    Parameters
-    ----------
-    image_string : str
-        The base64-encoded string representation of the image.
-    image_type : str
-        The MIME type of the image (e.g., "image/jpeg", "image/png").
-    target_megapixels : float, optional
-        The desired number of megapixels for the resized image. Default is 1.12.
-
-    Returns
-    -------
-    str
-        The base64-encoded string representation of the resized image.
-
-    """
-    # Decode the base64-encoded string to a bytes object
-    image_bytes = base64.b64decode(image_string)
-
-    # Open the image from the bytes object
-    image = Image.open(BytesIO(image_bytes))
-
-    # Calculate the target dimensions based on the target megapixels and aspect ratio
-    width, height = image.size
-    aspect_ratio = width / height
-    target_pixels = target_megapixels * 1e6
-    if width * height > target_pixels:
-        if width > height:
-            target_width = int((target_pixels * aspect_ratio) ** 0.5)
-            target_height = int(target_width / aspect_ratio)
-        else:
-            target_height = int((target_pixels / aspect_ratio) ** 0.5)
-            target_width = int(target_height * aspect_ratio)
-    else:
-        target_width = width
-        target_height = height
-
-    # Resize the image to the target dimensions
-    resized_image = image.resize((target_width, target_height), Image.Resampling.LANCZOS)
-
-    # Convert the resized image to a bytes object and encode it as a base64 string
-    buffer = BytesIO()
-    if "webp" in image_type:  # this is a crutch to stop webp crashing the bot
-        resized_image.save(buffer, format="JPEG")
-    else:
-        resized_image.save(buffer, format=image_type.split("/")[1].upper())
-    resized_image_bytes = buffer.getvalue()
-    resized_image_string = base64.b64encode(resized_image_bytes).decode("utf-8")
-
-    return resized_image_string

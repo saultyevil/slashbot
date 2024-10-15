@@ -133,15 +133,16 @@ class Conversation:
 
         """
         if not message and images:
-            message = "Describe the following images:"
+            message = "Describe the following image(s):"
         if not message:
+            LOGGER.error("No message to add to the conversation")
             return
         message = Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND")
         if images:
             message_images = [
                 {
                     "type": "image_url",
-                    "image_url": {"url": f"data:image/{image['type']};base64,{image['image']}", "detail": "low"},
+                    "image_url": {"url": f"{image}", "detail": "low"},
                 }
                 for image in images
             ]
@@ -267,8 +268,10 @@ class Conversation:
         try:
             index = self._messages.index(to_find)
             self._messages = self._messages[: index + 1]
+            LOGGER.debug("set_conversation_point: messages now are: %s", self._messages)
         except (ValueError, IndexError):
-            LOGGER.exception("Failed to find message in conversation, so not setting new reference point")
+            LOGGER.debug("Failed to find message in conversation, so not setting new reference point")
+            return
 
     def set_prompt(self, new_prompt: str, new_prompt_tokens: int) -> None:
         """Set a new system prompt for the conversation.
