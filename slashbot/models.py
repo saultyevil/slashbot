@@ -270,7 +270,8 @@ class Conversation:
             self._messages = self._messages[: index + 1]
             LOGGER.debug("set_conversation_point: messages now are: %s", self._messages)
         except (ValueError, IndexError):
-            LOGGER.exception("Failed to find message in conversation, so not setting new reference point")
+            LOGGER.debug("Failed to find message in conversation, so not setting new reference point")
+            return
 
     def set_prompt(self, new_prompt: str, new_prompt_tokens: int) -> None:
         """Set a new system prompt for the conversation.
