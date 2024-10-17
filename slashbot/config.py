@@ -187,6 +187,7 @@ class Bot:
             "AI_CHAT_RANDOM_RESPONSE_PROMPT": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"],
             "AI_CHAT_RATE_LIMIT": slash_config["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
             "AI_CHAT_RATE_INTERVAL": slash_config["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
+            "AI_CHAT_USE_HISTORIC_REPLIES": bool(slash_config["COGS"]["AI_CHAT"]["USE_HISTORIC_REPLIES"]),
         }
         cls._config = _config
 

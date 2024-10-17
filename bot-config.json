@@ -39,7 +39,8 @@
             "RESPONSE_RATE_LIMIT": 10,
             "RATE_LIMIT_INTERVAL": 5,
             "PROMPT_PREPEND": "",
-            "PROMPT_APPEND": ""
+            "PROMPT_APPEND": "",
+            "USE_HISTORIC_REPLIES": false
         }
     },
     "COOLDOWN": {

@@ -222,7 +222,7 @@ class TextGeneration(SlashbotCog):
         # A referenced message is one which has been replied to using the reply
         # button. We'll find that message in the conversation history and
         # try respond to it from there instead
-        if discord_message.reference:
+        if discord_message.reference and Bot.get_config("AI_CHAT_USE_HISTORIC_REPLIES"):
             new_conversation, discord_message = await self.get_referenced_message(discord_message, new_conversation)
 
         message_images = await get_attached_images_from_message(discord_message)
