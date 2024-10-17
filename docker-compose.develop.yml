@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   bot:
     build: .
@@ -9,4 +8,4 @@ services:
       - DEVELOPMENT_MODE=true
     volumes:
       - .:/bot
-      - ~/.ssh:/home/user/.ssh:ro
+      - ~/.ssh:/home/slashbot/.ssh:ro
