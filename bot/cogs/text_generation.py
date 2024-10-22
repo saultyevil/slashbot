@@ -127,8 +127,15 @@ class TextGeneration(SlashbotCog):
             except disnake.NotFound:
                 return conversation, discord_message
 
+        # early exit if we don't want to go back in time to change the
+        # conversation -- potentially we can combine with the logic below, but
+        # for now this is easier to read and understand
+        if not Bot.get_config("AI_CHAT_USE_HISTORIC_REPLIES"):
+            return conversation, previous_message
+
         # early exit if the message is not from the bot. we still want the
-        # message being referenced so we can, e.g., find images
+        # message being referenced so we can, e.g., find images, but we don't
+        # want to change the conversation history
         if previous_message.author.id != self.bot.user.id:
             LOGGER.debug(
                 "Message not from the bot: message.author.id = %s, bot.user.id = %s",
@@ -222,7 +229,7 @@ class TextGeneration(SlashbotCog):
         # A referenced message is one which has been replied to using the reply
         # button. We'll find that message in the conversation history and
         # try respond to it from there instead
-        if discord_message.reference and Bot.get_config("AI_CHAT_USE_HISTORIC_REPLIES"):
+        if discord_message.reference:
             new_conversation, discord_message = await self.get_referenced_message(discord_message, new_conversation)
 
         message_images = await get_attached_images_from_message(discord_message)
