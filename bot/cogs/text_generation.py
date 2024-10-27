@@ -100,7 +100,7 @@ class TextGeneration(SlashbotCog):
         self.conversations[history_id].clear_messages()
 
     async def get_referenced_message(
-        self, discord_message: disnake.Message, conversation: Conversation
+        self, original_message: disnake.Message, conversation: Conversation
     ) -> tuple[Conversation, disnake.Message]:
         """Retrieve a list of messages up to a reference point.
 
@@ -118,14 +118,14 @@ class TextGeneration(SlashbotCog):
 
         """
         # we need the message first, to find it in the messages list
-        message_reference = discord_message.reference
+        message_reference = original_message.reference
         previous_message = message_reference.cached_message
         if not previous_message:
             try:
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
                 previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
-                return conversation, discord_message
+                return conversation, original_message
 
         # early exit if we don't want to go back in time to change the
         # conversation -- potentially we can combine with the logic below, but
@@ -139,7 +139,7 @@ class TextGeneration(SlashbotCog):
         if previous_message.author.id != self.bot.user.id:
             LOGGER.debug(
                 "Message not from the bot: message.author.id = %s, bot.user.id = %s",
-                discord_message.author.id,
+                original_message.author.id,
                 self.bot.user.id,
             )
             return conversation, previous_message
@@ -227,12 +227,14 @@ class TextGeneration(SlashbotCog):
         new_conversation = copy.deepcopy(conversation)
 
         # A referenced message is one which has been replied to using the reply
-        # button. We'll find that message in the conversation history and
-        # try respond to it from there instead
+        # button. We'll find that message either because we want to get
+        # something from the message (e.g. images) or because we want to go back
+        # in time to the context earlier in the conversation
         if discord_message.reference:
-            new_conversation, discord_message = await self.get_referenced_message(discord_message, new_conversation)
+            new_conversation, referenced_message = await self.get_referenced_message(discord_message, new_conversation)
 
-        message_images = await get_attached_images_from_message(discord_message)
+        message_images = await get_attached_images_from_message(referenced_message)
+        message_images += await get_attached_images_from_message(discord_message)
         message_contents = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         new_conversation.add_message(message_contents, "user", images=message_images)
 
