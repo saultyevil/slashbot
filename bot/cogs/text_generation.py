@@ -225,17 +225,17 @@ class TextGeneration(SlashbotCog):
         # need to do this to avoid race conditions when multiple people are
         # talking to the bot at once
         new_conversation = copy.deepcopy(conversation)
+        message_contents = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
+        message_images = await get_attached_images_from_message(discord_message)
 
         # A referenced message is one which has been replied to using the reply
         # button. We'll find that message either because we want to get
         # something from the message (e.g. images) or because we want to go back
         # in time to the context earlier in the conversation
         if discord_message.reference:
-            new_conversation, referenced_message = await self.get_referenced_message(discord_message, new_conversation)
+            new_conversation, discord_message = await self.get_referenced_message(discord_message, new_conversation)
 
-        message_images = await get_attached_images_from_message(referenced_message)
         message_images += await get_attached_images_from_message(discord_message)
-        message_contents = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         new_conversation.add_message(message_contents, "user", images=message_images)
 
         try:
