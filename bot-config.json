@@ -40,7 +40,7 @@
             "RATE_LIMIT_INTERVAL": 5,
             "PROMPT_PREPEND": "",
             "PROMPT_APPEND": "",
-            "USE_HISTORIC_REPLIES": false
+            "USE_HISTORIC_REPLIES": true
         }
     },
     "COOLDOWN": {
@@ -73,7 +73,7 @@
     "MARKOV": {
         "ENABLE_MARKOV_TRAINING": false,
         "ENABLE_PREGEN_SENTENCES": true,
-        "NUM_PREGEN_SENTENCES": 4,
-        "PREGEN_REGENERATE_LIMIT": 1
+        "NUM_PREGEN_SENTENCES": 5,
+        "PREGEN_REGENERATE_LIMIT": 2
     }
 }

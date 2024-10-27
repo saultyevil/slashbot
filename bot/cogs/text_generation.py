@@ -218,13 +218,15 @@ class TextGeneration(SlashbotCog):
             The generated response.
 
         """
-        history_id = get_history_id(discord_message)
-        conversation = self.conversations[history_id]
-
         # Take a copy of the conversation, so we don't modify the original. We
         # need to do this to avoid race conditions when multiple people are
         # talking to the bot at once
+        conversation = self.conversations[get_history_id(discord_message)]
         new_conversation = copy.deepcopy(conversation)
+
+        # Get the message contents and images from the *original* message. We
+        # do this first to avoid any issues arising from message replies and
+        # previous conversation history
         message_contents = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         message_images = await get_attached_images_from_message(discord_message)
 
@@ -233,11 +235,16 @@ class TextGeneration(SlashbotCog):
         # something from the message (e.g. images) or because we want to go back
         # in time to the context earlier in the conversation
         if discord_message.reference:
-            new_conversation, discord_message = await self.get_referenced_message(discord_message, new_conversation)
+            new_conversation, referenced_message = await self.get_referenced_message(discord_message, new_conversation)
+            message_images += await get_attached_images_from_message(referenced_message)
 
-        message_images += await get_attached_images_from_message(discord_message)
+        # Update the conversation with the *original* message and the images
+        # from the *original* and the *referenced* message
         new_conversation.add_message(message_contents, "user", images=message_images)
 
+        # Now get the actual response from the OpenAI API and return that. There
+        # are a number of exceptions which can be raised, so we'll catch them
+        # all and report the actual error instead of falling over
         try:
             response, tokens_used = await generate_text(
                 Bot.get_config("AI_CHAT_CHAT_MODEL"),

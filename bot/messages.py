@@ -45,7 +45,8 @@ async def get_attached_images_from_message(message: Message) -> list[str]:
         or embedded in the message.
 
     """
-    image_urls = [attachment.url for attachment in message.attachments if attachment.content_type.startswith("image/")]
+    image_urls = []  # Start off with empty list, which makes it clearer we will always returns a list
+    image_urls += [attachment.url for attachment in message.attachments if attachment.content_type.startswith("image/")]
     image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image]
     image_urls += [embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail]
 
