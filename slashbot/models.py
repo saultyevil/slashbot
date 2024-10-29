@@ -215,6 +215,8 @@ class Conversation:
         self.tokens = tokens
         if discord_message:
             self.add_discord_message(message, discord_message, index=-1)
+        else:
+            self._messages[-1].setdefault("discord_messages", []).append(None)
 
         return self._messages[-1]
 
