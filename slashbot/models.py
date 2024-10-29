@@ -5,6 +5,8 @@ These classes are used to marshal data
 
 import logging
 
+import disnake
+
 from slashbot.config import Bot
 from slashbot.text_generation import get_token_count
 
@@ -63,7 +65,7 @@ class Conversation:
 
         """
         self._system_prompt_tokens = system_prompt_tokens
-        self._messages = [{"role": "system", "content": system_prompt}]
+        self._messages = [{"role": "system", "content": system_prompt, "discord_messages": None}]
 
         self.tokens = system_prompt_tokens
         self.system_prompt = system_prompt
@@ -176,7 +178,15 @@ class Conversation:
             self.remove_message(1)
             self.tokens -= get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
 
-    def add_message(self, message: str, role: str, *, images: list[str] | None = None, tokens: int = 0) -> list[dict]:
+    def add_message(  # noqa: PLR0913
+        self,
+        message: str,
+        role: str,
+        *,
+        images: list[str] | None = None,
+        tokens: int = 0,
+        discord_message: disnake.Message | None = None,
+    ) -> list[dict]:
         """Add a new message to the conversation history.
 
         Parameters
@@ -189,19 +199,53 @@ class Conversation:
             Any images to add to the conversation
         tokens : int
             The number of tokens in the conversation, optional
+        discord_message : disnake.Message
+            The Discord message associated with the message, optional
 
         """
         if role not in ("user", "assistant"):
             msg = "unknown role, valid is either 'user' or 'assistant'"
             raise ValueError(msg)
         self._shrink_conversation_to_token_size()
+        message = message.strip()
         if role == "user":
             self._add_user_message(message, images)
         else:
             self._add_assistant_message(message)
         self.tokens = tokens
+        if discord_message:
+            self.add_discord_message(message, discord_message, index=-1)
 
         return self._messages[-1]
+
+    def add_discord_message(
+        self, message: str, discord_message: disnake.Message | list[disnake.Message], *, index: int | None = None
+    ) -> None:
+        """Add a disnake.Message to the conversation history.
+
+        Parameters
+        ----------
+        message : str
+            The message which is associated with the Discord Message.
+        discord_message : disnake.Message | list[disnake.Message]
+            The Discord message.
+        index : int
+            The index of the message associated with the discord message
+
+        """
+        if not index:
+            try:
+                index = next(i for i, d in enumerate(self._messages) if d["content"] == message)
+            except StopIteration:
+                LOGGER.exception("Could not find message to add discord_message to it: %s", message)
+                return
+
+        if isinstance(discord_message, disnake.Message):
+            self._messages[index].setdefault("discord_messages", []).append(discord_message.id)
+        else:
+            for d in discord_message:
+                index = next(i for i, d in enumerate(self._messages) if d["content"] == message)
+                self._messages[index].setdefault("discord_messages", []).append(d.id)
 
     def clear_messages(self) -> list[dict]:
         """Clear a conversation.
@@ -210,7 +254,7 @@ class Conversation:
         the number of tokens.
         """
         self.tokens = self._system_prompt_tokens
-        self._messages = [{"role": "system", "content": self.system_prompt}]
+        self._messages = [{"role": "system", "content": self.system_prompt, "discord_messages": None}]
 
         return self._messages
 

@@ -106,7 +106,7 @@ class TextGeneration(SlashbotCog):
 
         Parameters
         ----------
-        discord_message : disnake.Message
+        original_message : disnake.Message
             The message containing the reference
         conversation : Conversation
             The conversation to retrieve messages from
@@ -240,7 +240,7 @@ class TextGeneration(SlashbotCog):
 
         # Update the conversation with the *original* message and the images
         # from the *original* and the *referenced* message
-        new_conversation.add_message(message_contents, "user", images=message_images)
+        new_conversation.add_message(message_contents, "user", images=message_images, discord_message=discord_message)
 
         # Now get the actual response from the OpenAI API and return that. There
         # are a number of exceptions which can be raised, so we'll catch them
@@ -251,7 +251,7 @@ class TextGeneration(SlashbotCog):
                 new_conversation.get_messages(),
             )
             # todo: if a reference message, we should insert the message in the appropriate place
-            conversation.add_message(message_contents, "user", images=message_images)
+            conversation.add_message(message_contents, "user", images=message_images, discord_message=discord_message)
             conversation.add_message(response, "assistant", tokens=tokens_used)
         except Exception:
             LOGGER.exception("Failed to get response from OpenAI, reverting to markov sentence with no seed word")
@@ -321,6 +321,10 @@ class TextGeneration(SlashbotCog):
         if markov_response:
             return
 
+        if message.clean_content.strip() == f"@{self.bot.user.name}":
+            await send_message_to_channel("?", message)
+            return
+
         # only respond when mentioned or in DM. mention_string is used for slash
         # commands
         bot_mentioned = self.bot.user in message.mentions
@@ -338,17 +342,19 @@ class TextGeneration(SlashbotCog):
                 rate_limited = check_if_user_rate_limited(self.cooldowns, message.author.id)
                 if not rate_limited:
                     ai_response = await self.get_message_response(message)
-                    await send_message_to_channel(
+                    messages = await send_message_to_channel(
                         ai_response,
                         message,
                         dont_tag_user=message_in_dm,  # In a DM, we won't @ the user
                     )
+                    self.conversations[history_id].add_discord_message(ai_response, messages, index=-1)
                 else:
                     await send_message_to_channel(
                         f"Stop abusing me, {message.author.mention}!",
                         message,
                         dont_tag_user=True,
                     )
+            conversation = self.conversations[history_id]
             LOGGER.debug("Conversation<%s>: %s", history_id, self.conversations[history_id])
             return  # early return to avoid situation of randomly responding to itself
 
@@ -358,6 +364,39 @@ class TextGeneration(SlashbotCog):
             await self.respond_to_unprompted_message(message)
 
     # Commands -----------------------------------------------------------------
+
+    @cooldown_and_slash_command(
+        name="clear_chat_messages",
+        description="Delete all messages in AI chat history",
+        dm_permission=False,
+    )
+    async def clear_chat_messages(self, inter: disnake.ApplicationCommandInteraction) -> None:
+        """Remove the conversation history in Discord.
+
+        This only deletes the messages displayed in Discord, but shouldn't clear
+        the conversation history.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interation object representing the user's command interaction.
+
+        """
+        await inter.response.send_message(
+            "Cleaning up the conversation... this may take a while!",
+            ephemeral=True,
+        )
+        messages = self.conversations[get_history_id(inter)].get_messages()
+        discord_message_ids = [
+            item
+            for sublist in [message["discord_messages"] for message in messages if message["discord_messages"]]
+            for item in sublist
+        ]
+        for i in range(0, len(discord_message_ids), 100):
+            messages_to_delete = [
+                inter.channel.get_partial_message(message_id) for message_id in discord_message_ids[i : i + 100]
+            ]
+            await inter.channel.delete_messages(messages_to_delete)
 
     @cooldown_and_slash_command(
         name="summarise_chat_history",

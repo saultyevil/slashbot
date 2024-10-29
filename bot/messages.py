@@ -21,13 +21,18 @@ async def send_message_to_channel(
         False, which would tag the user.
 
     """
+    sent_messages = []
     if len(message) > MAX_MESSAGE_LENGTH:
         response_chunks = split_text_into_chunks(message, MAX_MESSAGE_LENGTH)
         for i, response_chunk in enumerate(response_chunks):
             user_mention = obj.author.mention if not dont_tag_user else ""
-            await obj.channel.send(f"{user_mention if i == 0 else ''} {response_chunk}")
+            sent_message = await obj.channel.send(f"{user_mention if i == 0 else ''} {response_chunk}")
+            sent_messages.append(sent_message)
     else:
-        await obj.channel.send(f"{obj.author.mention if not dont_tag_user else ''} {message}")
+        sent_message = await obj.channel.send(f"{obj.author.mention if not dont_tag_user else ''} {message}")
+        sent_messages.append(sent_message)
+
+    return sent_messages
 
 
 async def get_attached_images_from_message(message: Message) -> list[str]:
