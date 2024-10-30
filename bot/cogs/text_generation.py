@@ -379,7 +379,8 @@ class TextGeneration(SlashbotCog):
 
         """
         await inter.response.send_message(
-            f"{inter.user.name} is clearing up the conversation... this may take a while!",
+            f"{inter.user.name} requested for the AI conversation to be cleaned up", 
+	    delete_after=10,
         )
         messages = self.conversations[get_history_id(inter)].get_messages()
         discord_message_ids = [
