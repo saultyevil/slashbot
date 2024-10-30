@@ -345,7 +345,7 @@ class TextGeneration(SlashbotCog):
             async with discord_message.channel.typing():
                 rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
                 if not rate_limited:
-                    await self.send_response_to_prompt(discord_message, message_in_dm)
+                    await self.send_response_to_prompt(discord_message, send_to_dm=message_in_dm)
                 else:
                     await send_message_to_channel(
                         f"Stop abusing me, {discord_message.author.mention}!",
