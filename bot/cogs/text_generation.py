@@ -384,7 +384,7 @@ class TextGeneration(SlashbotCog):
         messages = self.conversations[get_history_id(inter)].get_messages()
         discord_message_ids = [
             item
-            for sublist in [message["discord_messages"] for message in messages if message["discord_messages"]]
+            for sublist in [message["discord_message_ids"] for message in messages if message["discord_message_ids"]]
             for item in sublist
         ]
         for i in range(0, len(discord_message_ids), 100):
