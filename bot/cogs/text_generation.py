@@ -204,18 +204,15 @@ class TextGeneration(SlashbotCog):
         response, _ = await generate_text(Bot.get_config("AI_CHAT_CHAT_MODEL"), messages)
         await send_message_to_channel(response, message, dont_tag_user=True)
 
-    async def get_message_response(self, discord_message: disnake.Message) -> str:
+    async def send_response_to_prompt(self, discord_message: disnake.Message, *, send_to_dm: bool) -> None:
         """Generate a response to a prompt for a conversation of messages.
 
         Parameters
         ----------
         discord_message : disnake.Message
             The message to generate a response to.
-
-        Returns
-        -------
-        str
-            The generated response.
+        send_to_dm: bool
+            Whether or not the prompt was sent in a direct message, optional
 
         """
         # Take a copy of the conversation, so we don't modify the original. We
@@ -252,7 +249,6 @@ class TextGeneration(SlashbotCog):
             )
             # todo: if a reference message, we should insert the message in the appropriate place
             conversation.add_message(message_contents, "user", images=message_images, discord_message=discord_message)
-            conversation.add_message(response, "assistant", tokens=tokens_used)
         except Exception:
             LOGGER.exception("Failed to get response from OpenAI, reverting to markov sentence with no seed word")
             response = generate_markov_sentence()
@@ -262,7 +258,13 @@ class TextGeneration(SlashbotCog):
             with Path.open("_debug-conversation.txt", "w", encoding="utf-8") as file:
                 json.dump(conversation.get_messages(), file, indent=4)
 
-        return response
+        sent_messages = await send_message_to_channel(
+            response,
+            discord_message,
+            dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
+        )
+
+        conversation.add_message(response, "assistant", tokens=tokens_used, discord_message=sent_messages)
 
     async def respond_to_markov_prompt(self, message: disnake.Message) -> bool:
         """Respond to a prompt for a Markov sentence.
@@ -297,71 +299,65 @@ class TextGeneration(SlashbotCog):
     # Listeners ----------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
-    async def listen_to_messages(self, message: disnake.Message) -> None:
+    async def listen_to_messages(self, discord_message: disnake.Message) -> None:
         """Listen for mentions which are prompts for the AI.
 
         Parameters
         ----------
-        message : str
+        discord_message : str
             The message to process for mentions.
 
         """
-        history_id = get_history_id(message)
+        history_id = get_history_id(discord_message)
 
         # don't record bot interactions
-        if message.type != disnake.MessageType.application_command:
-            await self.update_channel_message_history(history_id, message.author.display_name, message.clean_content)
+        if discord_message.type != disnake.MessageType.application_command:
+            await self.update_channel_message_history(
+                history_id, discord_message.author.display_name, discord_message.clean_content
+            )
 
         # ignore other bot messages and itself
-        if message.author.bot:
+        if discord_message.author.bot:
             return
 
         # look for ?seed markov prompts
-        markov_response = await self.respond_to_markov_prompt(message)
+        markov_response = await self.respond_to_markov_prompt(discord_message)
         if markov_response:
             return
 
-        if message.clean_content.strip() == f"@{self.bot.user.name}":
-            await send_message_to_channel("?", message)
+        if discord_message.clean_content.strip() == f"@{self.bot.user.name}":
+            await send_message_to_channel("?", discord_message)
             return
 
         # only respond when mentioned or in DM. mention_string is used for slash
         # commands
-        bot_mentioned = self.bot.user in message.mentions
-        mention_string = self.bot.user.mention in message.content
-        message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
+        bot_mentioned = self.bot.user in discord_message.mentions
+        mention_string = self.bot.user.mention in discord_message.content
+        message_in_dm = isinstance(discord_message.channel, disnake.channel.DMChannel)
 
         # Don't respond to replies, or mentions, which have a reference to a
         # slash command response or interaction UNLESS explicitly mentioned with
         # an @
-        if await is_reply_to_slash_command_response(message) and not mention_string:
+        if await is_reply_to_slash_command_response(discord_message) and not mention_string:
             return
 
         if bot_mentioned or message_in_dm:
-            async with message.channel.typing():
-                rate_limited = check_if_user_rate_limited(self.cooldowns, message.author.id)
+            async with discord_message.channel.typing():
+                rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
                 if not rate_limited:
-                    ai_response = await self.get_message_response(message)
-                    messages = await send_message_to_channel(
-                        ai_response,
-                        message,
-                        dont_tag_user=message_in_dm,  # In a DM, we won't @ the user
-                    )
-                    self.conversations[history_id].add_discord_message(ai_response, messages, index=-1)
+                    await self.send_response_to_prompt(discord_message, message_in_dm)
                 else:
                     await send_message_to_channel(
-                        f"Stop abusing me, {message.author.mention}!",
-                        message,
+                        f"Stop abusing me, {discord_message.author.mention}!",
+                        discord_message,
                         dont_tag_user=True,
                     )
-            conversation = self.conversations[history_id]
-            LOGGER.debug("Conversation<%s>: %s", history_id, self.conversations[history_id])
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a
         # "regular" message
         if random.random() <= Bot.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
-            await self.respond_to_unprompted_message(message)
+            await self.respond_to_unprompted_message(discord_message)
 
     # Commands -----------------------------------------------------------------
 
@@ -393,7 +389,9 @@ class TextGeneration(SlashbotCog):
         ]
         for i in range(0, len(discord_message_ids), 100):
             messages_to_delete = [
-                inter.channel.get_partial_message(message_id) for message_id in discord_message_ids[i : i + 100]
+                inter.channel.get_partial_message(message_id)
+                for message_id in discord_message_ids[i : i + 100]
+                if message_id is not None
             ]
             await inter.channel.delete_messages(messages_to_delete)
 
