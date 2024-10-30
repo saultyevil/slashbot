@@ -189,6 +189,9 @@ class Conversation:
             The Discord message or messages to add the ID of.
 
         """
+        if not discord_messages:
+            self._messages[index].setdefault("discord_message_ids", [])
+            return
         if isinstance(discord_messages, disnake.Message):
             self._messages[index].setdefault("discord_message_ids", []).append(discord_messages.id)
         else:

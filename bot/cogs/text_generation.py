@@ -442,7 +442,7 @@ class TextGeneration(SlashbotCog):
             LOGGER.exception("Failed to decode summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT"))
             return
 
-        message = "Summarise the following conversation between multiple users: " + "; ".join(
+        sent_messages = "Summarise the following conversation between multiple users: " + "; ".join(
             channel_history.get_messages(amount),
         )
         conversation = [
@@ -454,7 +454,7 @@ class TextGeneration(SlashbotCog):
                 + summary_prompt
                 + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
             },
-            {"role": "user", "content": message},
+            {"role": "user", "content": sent_messages},
         ]
         LOGGER.debug("Conversation to summarise: %s", conversation)
         summary_message, token_count = await generate_text(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
@@ -462,10 +462,11 @@ class TextGeneration(SlashbotCog):
         self.conversations[history_id].add_message(
             "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
             "user",
+            None,
         )
-        self.conversations[history_id].add_message(summary_message, "assistant", tokens=token_count)
 
-        await send_message_to_channel(summary_message, inter, dont_tag_user=True)
+        sent_messages = await send_message_to_channel(summary_message, inter, dont_tag_user=True)
+        self.conversations[history_id].add_message(summary_message, "assistant", sent_messages, tokens=token_count)
         await inter.edit_original_message(content="...")
 
     @cooldown_and_slash_command(name="reset_chat_history", description="Reset the AI conversation history")
