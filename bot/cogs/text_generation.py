@@ -379,8 +379,8 @@ class TextGeneration(SlashbotCog):
 
         """
         await inter.response.send_message(
-            f"{inter.user.name} requested for the AI conversation to be cleaned up", 
-	    delete_after=10,
+            f"{inter.user.name} requested for the AI conversation to be cleaned up",
+            delete_after=10,
         )
         messages = self.conversations[get_history_id(inter)].get_messages()
         discord_message_ids = [
@@ -481,7 +481,7 @@ class TextGeneration(SlashbotCog):
 
         """
         history_id = get_history_id(inter)
-        self.conversations[history_id].clear_conversation()
+        self.conversations[history_id].clear_messages()
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
     @cooldown_and_slash_command(
