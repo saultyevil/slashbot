@@ -251,11 +251,15 @@ class TextGeneration(SlashbotCog):
             conversation.add_message(message_contents, "user", images=message_images, discord_message=discord_message)
         except Exception:
             LOGGER.exception("Failed to get response from OpenAI, reverting to markov sentence with no seed word")
-            sent_messages = await send_message_to_channel(
+            await send_message_to_channel(
                 generate_markov_sentence(),
                 discord_message,
                 dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
             )
+            with Path.open(
+                f"_debug-conversation-{get_history_id(discord_message)}.json", "w", encoding="utf-8"
+            ) as file:
+                json.dump(conversation.get_messages(), file, indent=4)
             return
 
         # This is the most helpful way to debug problems with the conversation
