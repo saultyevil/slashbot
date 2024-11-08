@@ -249,14 +249,14 @@ class TextGeneration(SlashbotCog):
             )
             # todo: if a reference message, we should insert the message in the appropriate place
             conversation.add_message(message_contents, "user", images=message_images, discord_message=discord_message)
-        except Exception:
+        except Exception as exc:
             LOGGER.exception("Failed to get response from OpenAI, reverting to markov sentence with no seed word")
             await send_message_to_channel(
                 generate_markov_sentence(),
                 discord_message,
                 dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
             )
-            LOGGER.info("Response: %s", response)
+            LOGGER.info("The response is: %s", exc.response)
             with Path.open(
                 f"_debug-conversation-{get_history_id(discord_message)}.json", "w", encoding="utf-8"
             ) as file:
