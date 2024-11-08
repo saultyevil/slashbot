@@ -256,6 +256,7 @@ class TextGeneration(SlashbotCog):
                 discord_message,
                 dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
             )
+            LOGGER.info("Response: %s", response)
             with Path.open(
                 f"_debug-conversation-{get_history_id(discord_message)}.json", "w", encoding="utf-8"
             ) as file:
