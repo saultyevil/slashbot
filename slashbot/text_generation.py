@@ -19,7 +19,7 @@ MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 OPENAI_CLIENT = openai.AsyncOpenAI(api_key=Bot.get_config("OPENAI_API_KEY"))
 
 
-async def generate_text(model: str, messages: list) -> tuple[str, int]:
+async def genete_text_from_llm(model: str, messages: list) -> tuple[str, int]:
     """Get the response from an LLM API for a given model and list of messages.
 
     Parameters

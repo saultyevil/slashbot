@@ -144,7 +144,7 @@ class Conversation:
             message_images = [
                 {
                     "type": "image_url",
-                    "image_url": {"url": f"{image}", "detail": "low"},
+                    "image_url": {"url": f"data:{image.mime_type};base64,{image.encoded_image}", "detail": "low"},
                 }
                 for image in images
             ]
@@ -295,17 +295,15 @@ class Conversation:
             The conversation
 
         """
-        to_find = {
-            "role": role,
-            "content": Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
-        }
-        try:
-            index = self._messages.index(to_find)
+        message_to_find = Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND")
+        matching_dict = next((d for d in self._messages if d["content"] == message_to_find), None)
+        if matching_dict:
+            index = self._messages.index(matching_dict)
             self._messages = self._messages[: index + 1]
             LOGGER.debug("set_conversation_point: messages now are: %s", self._messages)
-        except (ValueError, IndexError):
+        else:
             LOGGER.debug("Failed to find message in conversation, so not setting new reference point")
-            return
+        return
 
     def set_prompt(self, new_prompt: str, new_prompt_tokens: int) -> None:
         """Set a new system prompt for the conversation.

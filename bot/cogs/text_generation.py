@@ -28,11 +28,11 @@ from bot.custom_command import cooldown_and_slash_command
 from bot.messages import get_attached_images_from_message, send_message_to_channel
 from bot.responses import is_reply_to_slash_command_response
 from slashbot.config import Bot
-from slashbot.markov import generate_markov_sentence
+from slashbot.markov import async_generate_markov_sentence
 from slashbot.models import ChannelHistory, Conversation
 from slashbot.text_generation import (
     check_if_user_rate_limited,
-    generate_text,
+    genete_text_from_llm,
     get_prompts_at_launch,
     get_token_count,
 )
@@ -147,10 +147,10 @@ class TextGeneration(SlashbotCog):
         # the bot will only ever respond to one person, so we can do something
         # vile to remove the first word which is always a mention to the user
         # it is responding to. This is not included in the prompt history.
-        LOGGER.debug("message to find: %s", previous_message.clean_content)
-        message_to_find = previous_message.clean_content
+        message_to_find = previous_message.clean_content.strip()
         if message_to_find.startswith("@"):
-            message_to_find = " ".join(previous_message.content.split()[1:])
+            message_to_find = " ".join(previous_message.content.split()[1:]).strip()
+        LOGGER.debug("Message to find: %s", message_to_find)
         conversation.set_conversation_point(message_to_find, role="assistant")
 
         return conversation, previous_message
@@ -201,11 +201,15 @@ class TextGeneration(SlashbotCog):
             {"role": "system", "content": prompt},
             {"role": "user", "content": message.clean_content},
         ]
-        response, _ = await generate_text(Bot.get_config("AI_CHAT_CHAT_MODEL"), messages)
+        response, _ = await genete_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), messages)
         await send_message_to_channel(response, message, dont_tag_user=True)
 
     async def send_response_to_prompt(self, discord_message: disnake.Message, *, send_to_dm: bool) -> None:
         """Generate a response to a prompt for a conversation of messages.
+
+        A copy of the conversation is made before updating it with the user
+        prompt and response to avoid a race condition when multiple people are
+        talking to the bot at once.
 
         Parameters
         ----------
@@ -215,66 +219,43 @@ class TextGeneration(SlashbotCog):
             Whether or not the prompt was sent in a direct message, optional
 
         """
-        # Take a copy of the conversation, so we don't modify the original. We
-        # need to do this to avoid race conditions when multiple people are
-        # talking to the bot at once
+        user_prompt = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         conversation = self.conversations[get_history_id(discord_message)]
-        new_conversation = copy.deepcopy(conversation)
+        conversation_copy = copy.deepcopy(conversation)
 
-        # Get the message contents and images from the *original* message. We
-        # do this first to avoid any issues arising from message replies and
-        # previous conversation history
-        message_contents = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         message_images = await get_attached_images_from_message(discord_message)
-
-        # A referenced message is one which has been replied to using the reply
-        # button. We'll find that message either because we want to get
-        # something from the message (e.g. images) or because we want to go back
-        # in time to the context earlier in the conversation
         if discord_message.reference:
-            new_conversation, referenced_message = await self.get_referenced_message(discord_message, new_conversation)
-            message_images += await get_attached_images_from_message(referenced_message)
-
-        # Update the conversation with the *original* message and the images
-        # from the *original* and the *referenced* message
-        new_conversation.add_message(message_contents, "user", images=message_images, discord_message=discord_message)
-
-        # Now get the actual response from the OpenAI API and return that. There
-        # are a number of exceptions which can be raised, so we'll catch them
-        # all and report the actual error instead of falling over
-        try:
-            response, tokens_used = await generate_text(
-                Bot.get_config("AI_CHAT_CHAT_MODEL"),
-                new_conversation.get_messages(),
+            conversation_copy, referenced_message = await self.get_referenced_message(
+                discord_message, conversation_copy
             )
-            # todo: if a reference message, we should insert the message in the appropriate place
-            conversation.add_message(message_contents, "user", images=message_images, discord_message=discord_message)
+            message_images += await get_attached_images_from_message(referenced_message)
+        conversation_copy.add_message(user_prompt, "user", images=message_images, discord_message=discord_message)
+
+        try:
+            bot_response, tokens_used = await genete_text_from_llm(
+                Bot.get_config("AI_CHAT_CHAT_MODEL"),
+                conversation_copy.get_messages(),
+            )
         except Exception as exc:
-            LOGGER.exception("Failed to get response from OpenAI, reverting to markov sentence with no seed word")
+            LOGGER.exception(
+                "Failed to get response from OpenAI, reverting to markov sentence with no seed word: <%s>",
+                exc.response["error"],
+            )
             await send_message_to_channel(
-                generate_markov_sentence(),
+                await async_generate_markov_sentence(),
                 discord_message,
                 dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
             )
-            LOGGER.info("The response is: %s", exc.response)
-            with Path.open(
-                f"_debug-conversation-{get_history_id(discord_message)}.json", "w", encoding="utf-8"
-            ) as file:
-                json.dump(conversation.get_messages(), file, indent=4)
             return
 
-        # This is the most helpful way to debug problems with the conversation
-        if LOGGER.level == logging.DEBUG:
-            with Path.open("_debug-conversation.txt", "w", encoding="utf-8") as file:
-                json.dump(conversation.get_messages(), file, indent=4)
-
         sent_messages = await send_message_to_channel(
-            response,
+            bot_response,
             discord_message,
             dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
         )
 
-        conversation.add_message(response, "assistant", tokens=tokens_used, discord_message=sent_messages)
+        conversation.add_message(user_prompt, "user", images=message_images, discord_message=discord_message)
+        conversation.add_message(bot_response, "assistant", tokens=tokens_used, discord_message=sent_messages)
 
     async def respond_to_markov_prompt(self, message: disnake.Message) -> bool:
         """Respond to a prompt for a Markov sentence.
@@ -468,7 +449,7 @@ class TextGeneration(SlashbotCog):
             {"role": "user", "content": sent_messages},
         ]
         LOGGER.debug("Conversation to summarise: %s", conversation)
-        summary_message, token_count = await generate_text(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
+        summary_message, token_count = await genete_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
 
         self.conversations[history_id].add_message(
             "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",

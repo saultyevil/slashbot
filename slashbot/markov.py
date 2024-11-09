@@ -278,7 +278,9 @@ def generate_sentences_for_seed_words(
     return {seed_word: generate_list_of_sentences_with_seed_word(model, seed_word, amount) for seed_word in seed_words}
 
 
-async def async_generate_sentence(model: markovify.Text = None, seed_word: str | None = None, attempts: int = 5) -> str:
+async def async_generate_markov_sentence(
+    model: markovify.Text = None, seed_word: str | None = None, attempts: int = 5
+) -> str:
     """Generate a sentence using a markov chain.
 
     Parameters

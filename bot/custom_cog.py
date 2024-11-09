@@ -10,7 +10,7 @@ from slashbot.config import Bot
 from slashbot.markov import (
     MARKOV_MODEL,
     async_generate_list_of_sentences_with_seed_word,
-    async_generate_sentence,
+    async_generate_markov_sentence,
     generate_markov_sentence,
 )
 
@@ -127,11 +127,11 @@ class SlashbotCog(commands.Cog):
         if seed_word not in self.premade_markov_sentences:
             if self.bot.markov_gen_enabled:
                 logger.error("Seed word '%s' is missing in pre-made markov sentences", seed_word)
-            return await async_generate_sentence(MARKOV_MODEL, seed_word)
+            return await async_generate_markov_sentence(MARKOV_MODEL, seed_word)
 
         try:
             return self.premade_markov_sentences[seed_word].pop()
         except IndexError:
             if self.bot.markov_gen_enabled:
                 logger.exception("Unable to get pre-made markov sentence for seed word '%s'", seed_word)
-            return await async_generate_sentence(MARKOV_MODEL, seed_word)
+            return await async_generate_markov_sentence(MARKOV_MODEL, seed_word)
