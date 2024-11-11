@@ -11,7 +11,7 @@ attrs==24.2.0 ; python_version >= "3.11" and python_version < "4.0"
 backports-tarfile==1.2.0 ; python_version >= "3.11" and python_version < "3.12"
 certifi==2024.8.30 ; python_version >= "3.11" and python_version < "4"
 charset-normalizer==2.1.1 ; python_version >= "3.11" and python_version < "4"
-colorama==0.4.6 ; python_version >= "3.11" and python_version < "4.0" and (sys_platform == "win32" or platform_system == "Windows")
+colorama==0.4.6 ; python_version >= "3.11" and python_version < "4.0" and sys_platform == "win32" or python_version >= "3.11" and python_version < "4.0" and platform_system == "Windows"
 dateparser==1.2.0 ; python_version >= "3.11" and python_version < "4.0"
 defusedxml==0.7.1 ; python_version >= "3.11" and python_version < "4.0"
 disnake==2.8.1 ; python_version >= "3.11" and python_version < "4.0"

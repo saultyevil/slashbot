@@ -170,13 +170,22 @@ class Conversation:
 
     def _shrink_conversation_to_token_size(self) -> None:
         """Shrink the conversation to within the token window."""
-        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self) > 1:
+        token_start = self.tokens
+        messages_start = len(self)
+        # len(self) does not include the system prompt
+        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self) > 0:
             try:
                 message = self._messages[1]
             except IndexError:
                 return
             self.remove_message(1)
             self.tokens -= get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
+        if self.tokens != token_start:
+            LOGGER.debug(
+                "Removed %d tokens and %d messages from conversation",
+                token_start - self.tokens,
+                messages_start - len(self),
+            )
 
     def _add_discord_message_id(self, index: int, discord_messages: disnake.Message | list[disnake.Message]) -> None:
         """Add a disnake.Message to the conversation history.
@@ -206,6 +215,7 @@ class Conversation:
         *,
         tokens: int = 0,
         images: list[str] | None = None,
+        shrink_conversation: bool = False,
     ) -> list[dict]:
         """Add a new message to the conversation history.
 
@@ -221,12 +231,15 @@ class Conversation:
             The number of tokens in the conversation, optional
         discord_message : disnake.Message
             The Discord message associated with the message, optional
+        shrink_conversation : bool
+            Whether or not to shrink the conversation to within the token window
 
         """
         if role not in ("user", "assistant"):
             msg = "unknown role, valid is either 'user' or 'assistant'"
             raise ValueError(msg)
-        self._shrink_conversation_to_token_size()
+        if shrink_conversation:
+            self._shrink_conversation_to_token_size()
         message = message.strip()
         if role == "user":
             self._add_user_message(message, images)
@@ -303,7 +316,6 @@ class Conversation:
             LOGGER.debug("set_conversation_point: messages now are: %s", self._messages)
         else:
             LOGGER.debug("Failed to find message in conversation, so not setting new reference point")
-        return
 
     def set_prompt(self, new_prompt: str, new_prompt_tokens: int) -> None:
         """Set a new system prompt for the conversation.

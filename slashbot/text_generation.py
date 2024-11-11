@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 OPENAI_CLIENT = openai.AsyncOpenAI(api_key=Bot.get_config("OPENAI_API_KEY"))
+LOW_DETAIL_IMAGE_TOKENS = 85
 
 
 async def genete_text_from_llm(model: str, messages: list) -> tuple[str, int]:
@@ -94,12 +95,25 @@ def get_token_count(model: str, message: str) -> int:
         The count of tokens in the given message for the specified model.
 
     """
-    model = model if model != "gpt-4o-mini" else "gpt-4o"  # hack for tiktoken!!
-    if "gpt-" in model:
-        return len(tiktoken.encoding_for_model(model).encode(message))
+    encoding = tiktoken.encoding_for_model(model)
 
-    # fall back to a simple word count
-    return len(message.split())
+    if not isinstance(message, str) and isinstance(message, list):
+        num_tokens = 0
+        # Handle case where there are images and messages. Images are a fixed
+        # cost of something like 85 tokens so we don't need to encode those
+        # using tiktoken.
+        for content in message:
+            if content["type"] == "text":
+                num_tokens += len(encoding.encode(content["text"]))
+            else:
+                num_tokens += LOW_DETAIL_IMAGE_TOKENS if content["type"] == "image_url" else 0
+    elif isinstance(message, str):
+        num_tokens = len(encoding.encode(message))
+    else:
+        msg = f"Expected a string for encoding, got {type(message)}"
+        raise TypeError(msg)
+
+    return num_tokens
 
 
 def check_if_user_rate_limited(cooldown: dict[str, datetime.datetime], user_id: int) -> bool:

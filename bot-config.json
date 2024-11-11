@@ -28,8 +28,8 @@
         "AI_CHAT": {
             "SUMMARY_PROMPT": "data/prompts/_summary-prompt.json",
             "RANDOM_RESPONSE_PROMPT": "data/prompts/_random-response-prompt.json",
-            "TOKEN_WINDOW_SIZE": 32000,
-            "MAX_OUTPUT_TOKENS": 2048,
+            "TOKEN_WINDOW_SIZE": 4000,
+            "MAX_OUTPUT_TOKENS": 2000,
             "MODEL_TEMPERATURE": 1.0,
             "MODEL_TOP_P": 1.0,
             "MODEL_FREQUENCY_PENALTY": 0.0,

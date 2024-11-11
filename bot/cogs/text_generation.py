@@ -254,8 +254,12 @@ class TextGeneration(SlashbotCog):
             dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
         )
 
-        conversation.add_message(user_prompt, "user", images=message_images, discord_message=discord_message)
-        conversation.add_message(bot_response, "assistant", tokens=tokens_used, discord_message=sent_messages)
+        conversation.add_message(
+            user_prompt, "user", images=message_images, discord_message=discord_message, shrink_conversation=True
+        )
+        conversation.add_message(
+            bot_response, "assistant", tokens=tokens_used, discord_message=sent_messages, shrink_conversation=True
+        )
 
     async def respond_to_markov_prompt(self, message: disnake.Message) -> bool:
         """Respond to a prompt for a Markov sentence.
@@ -455,11 +459,19 @@ class TextGeneration(SlashbotCog):
             "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
             "user",
             None,
+            shrink_conversation=True,
         )
 
         sent_messages = await send_message_to_channel(summary_message, inter, dont_tag_user=True)
-        self.conversations[history_id].add_message(summary_message, "assistant", sent_messages, tokens=token_count)
-        await inter.edit_original_message(content="...")
+        self.conversations[history_id].add_message(
+            summary_message,
+            "assistant",
+            sent_messages,
+            tokens=token_count,
+            shrink_conversation=True,
+        )
+        original_message = await inter.edit_original_message(content="...")
+        await original_message.delete(delay=3)
 
     @cooldown_and_slash_command(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
