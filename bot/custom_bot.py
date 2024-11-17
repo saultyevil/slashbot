@@ -7,6 +7,7 @@ from typing import Any
 from disnake.ext import commands
 
 from slashbot.config import Bot
+from slashbot.markov import MARKOV_MODEL
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
@@ -32,7 +33,7 @@ class SlashbotInterationBot(commands.InteractionBot):
         super().__init__(**kwargs)
         self.cleanup_functions = []
         self.times_connected = 0
-        self.markov_gen_enabled = enable_markov_gen
+        self.markov_gen_enabled = enable_markov_gen and MARKOV_MODEL
         logger.info(
             "Automatic Markov sentence generation is %s",
             "enabled" if self.markov_gen_enabled else "disabled",

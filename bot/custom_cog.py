@@ -7,12 +7,7 @@ from disnake.ext import commands, tasks
 
 from bot.custom_bot import SlashbotInterationBot
 from slashbot.config import Bot
-from slashbot.markov import (
-    MARKOV_MODEL,
-    async_generate_list_of_sentences_with_seed_word,
-    async_generate_markov_sentence,
-    generate_markov_sentence,
-)
+from slashbot.markov import MARKOV_MODEL, generate_markov_sentences
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
@@ -32,7 +27,11 @@ class SlashbotCog(commands.Cog):
         super().__init__()
         self.bot = bot
         self.premade_markov_sentences = {}
-        self.regenerate_markov_sentences.start()
+        # If no model is loaded (e.g. MARKOV_MODEL = None) then we don't want to
+        # start this task. The bot does not support being able to load markov
+        # models after start up
+        if MARKOV_MODEL:
+            self.regenerate_markov_sentences.start()
 
     # Before command invokes ---------------------------------------------------
 
@@ -65,7 +64,7 @@ class SlashbotCog(commands.Cog):
 
         for seed_word, seed_sentences in self.premade_markov_sentences.items():
             if len(seed_sentences) <= Bot.get_config("PREGEN_REGENERATE_LIMIT"):
-                self.premade_markov_sentences[seed_word] = await async_generate_list_of_sentences_with_seed_word(
+                self.premade_markov_sentences[seed_word] = generate_markov_sentences(
                     MARKOV_MODEL,
                     seed_word,
                     Bot.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
@@ -98,40 +97,11 @@ class SlashbotCog(commands.Cog):
         if seed_word not in self.premade_markov_sentences:
             if self.bot.markov_gen_enabled:
                 logger.error("Seed word '%s' is missing in pre-made markov sentences", seed_word)
-            return generate_markov_sentence(MARKOV_MODEL, seed_word)
+            return generate_markov_sentences(MARKOV_MODEL, seed_word, 1)
 
         try:
             return self.premade_markov_sentences[seed_word].pop()
         except IndexError:
             if self.bot.markov_gen_enabled:
                 logger.exception("Unable to get pre-made markov sentence for seed word '%s'", seed_word)
-            return generate_markov_sentence(MARKOV_MODEL, seed_word)
-
-    async def async_get_markov_sentence(self, seed_word: str) -> str:
-        """Retrieve a pre-generated sentence from storage.
-
-        If a sentence for a seed word doesn't exist, then a sentence is created
-        on-the-fly instead.
-
-        Parameters
-        ----------
-        seed_word : str
-            The seed word for the sentence.
-
-        Returns
-        -------
-        str
-            The generated sentence.
-
-        """
-        if seed_word not in self.premade_markov_sentences:
-            if self.bot.markov_gen_enabled:
-                logger.error("Seed word '%s' is missing in pre-made markov sentences", seed_word)
-            return await async_generate_markov_sentence(MARKOV_MODEL, seed_word)
-
-        try:
-            return self.premade_markov_sentences[seed_word].pop()
-        except IndexError:
-            if self.bot.markov_gen_enabled:
-                logger.exception("Unable to get pre-made markov sentence for seed word '%s'", seed_word)
-            return await async_generate_markov_sentence(MARKOV_MODEL, seed_word)
+            return generate_markov_sentences(MARKOV_MODEL, seed_word, 1)

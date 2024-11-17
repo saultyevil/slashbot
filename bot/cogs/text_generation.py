@@ -28,7 +28,7 @@ from bot.custom_command import cooldown_and_slash_command
 from bot.messages import get_attached_images_from_message, send_message_to_channel
 from bot.responses import is_reply_to_slash_command_response
 from slashbot.config import Bot
-from slashbot.markov import async_generate_markov_sentence
+from slashbot.markov import MARKOV_MODEL, generate_markov_sentences
 from slashbot.models import ChannelHistory, Conversation
 from slashbot.text_generation import (
     check_if_user_rate_limited,
@@ -242,7 +242,7 @@ class TextGeneration(SlashbotCog):
                 exc.response["error"],
             )
             await send_message_to_channel(
-                await async_generate_markov_sentence(),
+                generate_markov_sentences(MARKOV_MODEL, "?random", 1),
                 discord_message,
                 dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
             )
@@ -260,36 +260,6 @@ class TextGeneration(SlashbotCog):
         conversation.add_message(
             bot_response, "assistant", tokens=tokens_used, discord_message=sent_messages, shrink_conversation=True
         )
-
-    async def respond_to_markov_prompt(self, message: disnake.Message) -> bool:
-        """Respond to a prompt for a Markov sentence.
-
-        The prompt symbol is '?', followed by the seed word. For example,
-        '?donald' will generate a sentence that includes the word 'donald'.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The message to respond to.
-
-        Returns
-        -------
-        bool
-            Whether or not the message was responded to.
-
-        """
-        if not message.content.startswith("?"):
-            return False
-        if len(message.content) == 1:
-            return False
-        if message.content.count("?") > 1:
-            return False
-
-        seed_word = message.content.split()[0][1:]
-        sentence = await self.async_get_markov_sentence(seed_word)
-        await message.channel.send(sentence)
-
-        return True
 
     # Listeners ----------------------------------------------------------------
 
@@ -313,11 +283,6 @@ class TextGeneration(SlashbotCog):
 
         # ignore other bot messages and itself
         if discord_message.author.bot:
-            return
-
-        # look for ?seed markov prompts
-        markov_response = await self.respond_to_markov_prompt(discord_message)
-        if markov_response:
             return
 
         if discord_message.clean_content.strip() == f"@{self.bot.user.name}":

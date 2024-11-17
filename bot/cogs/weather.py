@@ -16,7 +16,7 @@ from bot.custom_cog import SlashbotCog
 from slashbot.config import Bot
 from slashbot.db import get_user_location
 from slashbot.error import deferred_error_message
-from slashbot.markov import MARKOV_MODEL, generate_sentences_for_seed_words
+from slashbot.markov import MARKOV_MODEL, generate_markov_sentences
 from slashbot.util import convert_radial_to_cardinal_direction
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
@@ -70,21 +70,22 @@ class Weather(SlashbotCog):
         Currently, this does:
             - create markov sentences
         """
-        self.premade_markov_sentences = (
-            generate_sentences_for_seed_words(
-                MARKOV_MODEL,
-                ["weather", "forecast"],
-                Bot.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+        if MARKOV_MODEL:
+            self.premade_markov_sentences = (
+                generate_markov_sentences(
+                    MARKOV_MODEL,
+                    ["weather", "forecast"],
+                    Bot.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
+                )
+                if self.bot.markov_gen_enabled
+                else {"weather": [], "forecast": []}
             )
-            if self.bot.markov_gen_enabled
-            else {"weather": [], "forecast": []}
-        )
-        logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
+            logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Private ------------------------------------------------------------------
 
     @staticmethod
-    def get_weater_icon_url(icon_code: str) -> str:
+    def get_weather_icon_url(icon_code: str) -> str:
         """Get a URL to a weather icon from OpenWeatherMap.
 
         Parameters
@@ -295,9 +296,9 @@ class Weather(SlashbotCog):
             )
 
         embed.set_footer(
-            text=f"{await self.async_get_markov_sentence('forecast')}\n(You can set your location using /set_info)",
+            text=f"{self.get_markov_sentence('forecast')}\n(You can set your location using /set_info)",
         )
-        embed.set_thumbnail(self.get_weater_icon_url(forecast[0]["weather"][0]["icon"]))
+        embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
 
         await inter.edit_original_message(embed=embed)
 
@@ -403,9 +404,9 @@ class Weather(SlashbotCog):
         )
 
         embed.set_footer(
-            text=f"{await self.async_get_markov_sentence('weather')}\n(You can set your location using /set_info)",
+            text=f"{self.get_markov_sentence('weather')}\n(You can set your location using /set_info)",
         )
-        embed.set_thumbnail(self.get_weater_icon_url(current_weather["weather"][0]["icon"]))
+        embed.set_thumbnail(self.get_weather_icon_url(current_weather["weather"][0]["icon"]))
 
         await inter.edit_original_message(embed=embed)
 

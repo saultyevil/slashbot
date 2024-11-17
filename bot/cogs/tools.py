@@ -23,7 +23,6 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
     def __init__(  # pylint: disable=too-many-arguments
         self,
         bot: commands.InteractionBot,
-        attempts: int = 10,
     ) -> None:
         """Initialize the bot.
 
@@ -31,14 +30,10 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         ----------
         bot: commands.InteractionBot
             The bot object.
-        attempts: int
-            The number of attempts to try and generate a sentence for.
 
         """
         super().__init__(bot)
-        self.attempts = attempts
-        self.wolfram_api = wolframalpha.Client(Bot.get_config("WOLFRAM_API_KEY"))
-        self.premade_markov_sentences = ()
+        self.worlfram_alpha_client = wolframalpha.Client(Bot.get_config("WOLFRAM_API_KEY"))
 
     # Commands -----------------------------------------------------------------
 
@@ -87,7 +82,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg",
         )
 
-        results = self.wolfram_api.query(question)
+        results = self.worlfram_alpha_client.query(question)
 
         if not results["@success"]:
             async with aiofiles.open(Bot.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:

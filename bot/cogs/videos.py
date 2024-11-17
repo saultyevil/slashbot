@@ -19,19 +19,6 @@ COOLDOWN_USER = commands.BucketType.user
 class Videos(SlashbotCog):
     """Send short clips to the channel."""
 
-    def __init__(self, bot: commands.InteractionBot) -> None:
-        """Initialize the cog.
-
-        Parameters
-        ----------
-        bot: commands.InteractionBot
-            The bot object.
-
-        """
-        super().__init__(bot)
-
-    # Commands -----------------------------------------------------------------
-
     @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="admin_abuse", description="admin abuse!!! you're the worst admin ever!!!")
     async def admin_abuse(self, inter: disnake.ApplicationCommandInteraction) -> None:

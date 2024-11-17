@@ -63,7 +63,6 @@ class Reminders(SlashbotCog):
         super().__init__(bot)
         self.timezone = datetime.datetime.now(datetime.UTC).astimezone().tzinfo
         self.check_reminders.start()  # pylint: disable=no-member
-        self.premade_markov_sentences = ()
 
     # Private methods ----------------------------------------------------------
 

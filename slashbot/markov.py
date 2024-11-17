@@ -5,8 +5,10 @@ generating sentences using the Markov chain. There is a synchronous and
 asynchronous version of sentence generation functions.
 """
 
+import json
 import logging
 import pickle
+import random
 import re
 import shutil
 import string
@@ -17,11 +19,137 @@ from bot.types import ApplicationCommandInteraction
 from slashbot.config import Bot
 from slashbot.error import deferred_error_message
 
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 MARKOV_MODEL = None
+MARKOV_BANK = None
 
 
-def clean_sentence_for_learning(sentences: list[str]) -> list[str]:
+def _search_for_seed_in_markov_bank(seed_word: str) -> str:
+    """Search for a sentence in the markov bank for a given seed word.
+
+    Parameters
+    ----------
+    seed_word : str
+        The seed word to search for.
+
+    Returns
+    -------
+    str
+        The markov sentence.
+
+    """
+    if seed_word not in MARKOV_BANK:
+        LOGGER.error("Seed word '%s' not found in markov bank", seed_word)
+        sentences = MARKOV_BANK.get(
+            "error", ["An error occured with the markov sentence generation [a seed word is probably missing]"]
+        )
+        return random.choice(sentences)
+
+    return random.choice(MARKOV_BANK[seed_word])
+
+
+def _generate_markov_sentence(model: markovify.Text = None, seed_word: str | None = None, attempts: int = 5) -> str:
+    """Generate a sentence using a markov chain.
+
+    Parameters
+    ----------
+    model : markovify.Text
+        The model to generate the sentence from, by default None
+    seed_word : str, optional
+        A seed word to include in the sentence, by default None
+    attempts : int, optional
+        The number of attempts to generate a sentence with a seed word, by
+        default 5
+
+    Returns
+    -------
+    str
+        The generated sentence
+
+    """
+    sentence = "My Markov Chain sentence generator isn't working!"
+    if not model:
+        model = MARKOV_MODEL
+    if not model or not isinstance(model, markovify.Text):
+        LOGGER.error("An invalid Markov model was passed to sentence generation")
+        return sentence
+
+    for _ in range(attempts):
+        if seed_word:
+            try:
+                if len(seed_word.split()) > 1:
+                    sentence = model.make_sentence_with_start(seed_word)
+                else:
+                    sentence = model.make_sentence_that_contains(seed_word)
+            except (IndexError, KeyError, markovify.text.ParamError):
+                sentence = model.make_sentence()
+        else:
+            sentence = model.make_sentence()
+
+        # fallback case, usually when the chain is too sparse for a seed word
+        if not sentence:
+            sentence = "My Markov chain isn't work properly!"
+
+        # No matter what, don't allow @here and @everyone mentions, but
+        # allow user mentions, if mentions == True
+
+        if "@" not in sentence:
+            break
+
+    if not sentence:
+        sentence = model.make_sentence()
+
+    return sentence.strip()[:1024]
+
+
+def _get_sentence_from_bank(seed_word: str, amount: int = 1) -> str | list[str]:
+    """Get a sentence from the markov bank.
+
+    Parameters
+    ----------
+    seed_word : str
+        The seed word for the sentence.
+    amount : int, optional
+        The number of sentences to generate, by default 1
+
+    Returns
+    -------
+    str | list[str]
+        The generated sentence(s).
+
+    """
+    if amount == 1:
+        return _search_for_seed_in_markov_bank(seed_word)
+    return [_search_for_seed_in_markov_bank(seed_word) for _ in range(amount)]
+
+
+def _get_sentence_from_model(model: markovify.Text, seed_word: str, amount: int = 1) -> str | list[str]:
+    """Get a sentence from the markov model.
+
+    Parameters
+    ----------
+    model : markovify.Text
+        The model to generate the sentence from.
+    seed_word : str
+        The seed word for the sentence.
+    amount : int, optional
+        The number of sentences to generate, by default 1
+
+    Returns
+    -------
+    str | list[str]
+        The generated sentence(s).
+
+    """
+    if not model or not isinstance(model, markovify.Text):
+        msg = "The provided markov model is not valid"
+        raise ValueError(msg)
+    if amount == 1:
+        return _generate_markov_sentence(model, seed_word)
+    return [_generate_markov_sentence(model, seed_word) for _ in range(amount)]
+
+
+def _clean_sentence_for_learning(sentences: list[str]) -> list[str]:
     """Clean up a list of sentences for learning.
 
     This will remove empty strings, messages which start with punctuation
@@ -87,7 +215,7 @@ def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markov
         with Path.open(chain_location, "rb") as file_in:
             try:
                 model.chain = pickle.load(file_in)  # noqa: S301
-                logger.info("Model %s has been loaded", str(chain_location))
+                LOGGER.info("Model %s has been loaded", str(chain_location))
             except EOFError:
                 shutil.copy2(str(chain_location) + ".bak", chain_location)
                 model = load_markov_model(chain_location, state_size)  # the recursion might be a bit spicy here
@@ -100,56 +228,37 @@ def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markov
     return model
 
 
-def generate_markov_sentence(model: markovify.Text = None, seed_word: str | None = None, attempts: int = 5) -> str:
-    """Generate a sentence using a markov chain.
+def load_markov_bank(bank_location: str | Path) -> dict:
+    """Load a pre-generated bank of Markov sentences.
+
+    This file should be a JSON file with the following format:
+
+        {
+            "seed_word": [sentence1, sentence2, ...]
+        }
 
     Parameters
     ----------
-    model : markovify.Text
-        The model to generate the sentence from, by default None
-    seed_word : str, optional
-        A seed word to include in the sentence, by default None
-    attempts : int, optional
-        The number of attempts to generate a sentence with a seed word, by
-        default 5
+    bank_location : str | Path
+        The file path to the bank file.
 
     Returns
     -------
-    str
-        The generated sentence
+    dict
+        The bank of Markov sentences, as a dict.
 
     """
-    if not model:
-        model = MARKOV_MODEL
+    path = Path(bank_location)
+    if not path.exists():
+        msg = f"No bank at {bank_location}"
+        raise OSError(msg)
 
-    sentence = "My Markov chain isn't working properly!"
+    with path.open("r") as file_in:
+        bank = json.load(file_in)
 
-    for _ in range(attempts):
-        if seed_word:
-            try:
-                if len(seed_word.split()) > 1:
-                    sentence = model.make_sentence_with_start(seed_word)
-                else:
-                    sentence = model.make_sentence_that_contains(seed_word)
-            except (IndexError, KeyError, markovify.text.ParamError):
-                sentence = model.make_sentence()
-        else:
-            sentence = model.make_sentence()
+    LOGGER.info("Markov bank %s has been loaded", bank_location)
 
-        # fallback case, usually when the chain is too sparse for a seed word
-        if not sentence:
-            sentence = "My Markov chain isn't work properly!"
-
-        # No matter what, don't allow @here and @everyone mentions, but
-        # allow user mentions, if mentions == True
-
-        if "@" not in sentence:
-            break
-
-    if not sentence:
-        sentence = model.make_sentence()
-
-    return sentence.strip()[:1024]
+    return bank
 
 
 async def update_markov_chain_for_model(  # noqa: PLR0911
@@ -180,6 +289,10 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         when no interaction is passed and a model could not be updated.
 
     """
+    if not model or not isinstance(model, markovify.Text):
+        msg = "The provided markov model is not valid"
+        raise ValueError(msg)
+
     if not isinstance(save_location, Path):
         save_location = Path(save_location)
 
@@ -189,17 +302,17 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         if inter:
             await deferred_error_message(inter, "No new messages to update chain with.")
             return None
-        logger.info("No sentences to update chain with")
+        LOGGER.info("No sentences to update chain with")
         return None
 
-    messages = clean_sentence_for_learning(new_messages)
+    messages = _clean_sentence_for_learning(new_messages)
     num_messages = len(messages)
 
     if num_messages == 0:
         if inter:
             await deferred_error_message(inter, "No new messages to update chain with.")
             return None
-        logger.info("No sentences to update chain with")
+        LOGGER.info("No sentences to update chain with")
         return None
 
     shutil.copy2(save_location, str(save_location) + ".bak")
@@ -209,7 +322,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         if inter:
             await deferred_error_message(inter, "The interim model failed to train.")
             return None
-        logger.exception("The interim model failed to train.")
+        LOGGER.exception("The interim model failed to train.")
         return None
 
     combined_chain = markovify.combine([model.chain, new_model.chain])
@@ -221,7 +334,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         await inter.edit_original_message(content=f"Markov chain updated with {num_messages} new messages.")
 
     # num_messages should already but an int, but sometimes it isn't...
-    logger.info(
+    LOGGER.info(
         "Markov chain (%s) updated with %d new messages",
         str(save_location),
         int(num_messages),
@@ -230,7 +343,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
     return model
 
 
-def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: str, amount: int) -> list[str]:
+def generate_markov_sentences(model: markovify.Text, seed_word: str, amount: int) -> str | list[str]:
     """Generate a list of markov generated sentences for a specific key word.
 
     Parameters
@@ -244,111 +357,13 @@ def generate_list_of_sentences_with_seed_word(model: markovify.Text, seed_word: 
 
     Returns
     -------
-    List[str]
-        The generated sentences.
+    str | list[str]
+        The generated sentence(s), as a str or a list of str.
 
     """
-    return [generate_markov_sentence(model, seed_word) for _ in range(amount)]
+    if model:
+        return _get_sentence_from_model(model, seed_word, amount)
+    if MARKOV_BANK and not MARKOV_MODEL:
+        return _get_sentence_from_bank(seed_word, amount)
 
-
-def generate_sentences_for_seed_words(
-    model: markovify.Text,
-    seed_words: list[str],
-    amount: int,
-) -> dict[str, list[str]]:
-    """Create a dictionary containing markov generated sentences.
-
-    The keys are seed words and the values are a list of sentences.
-
-    Parameters
-    ----------
-    model : markovify.Text
-        The markov sentence to use.
-    seed_words : List[str]
-        A list of seed words to generate sentences for.
-    amount : int
-        The number of sentences to generate for each seed word.
-
-    Returns
-    -------
-    Dict[List[str]]
-        The generated dictionary.
-
-    """
-    return {seed_word: generate_list_of_sentences_with_seed_word(model, seed_word, amount) for seed_word in seed_words}
-
-
-async def async_generate_markov_sentence(
-    model: markovify.Text = None, seed_word: str | None = None, attempts: int = 5
-) -> str:
-    """Generate a sentence using a markov chain.
-
-    Parameters
-    ----------
-    model : markovify.Text
-        The model to generate the sentence from, by default None
-    seed_word : str, optional
-        A seed word to include in the sentence, by default None
-    attempts : int, optional
-        The number of attempts to generate a sentence with a seed word, by
-        default 5
-
-    Returns
-    -------
-    str
-        The generated sentence
-
-    """
-    return generate_markov_sentence(model, seed_word, attempts)
-
-
-async def async_generate_list_of_sentences_with_seed_word(
-    model: markovify.Text,
-    seed_word: str,
-    amount: int,
-) -> list[str]:
-    """Generate a list of markov generated sentences for a specific key word.
-
-    Parameters
-    ----------
-    model : markovify.Text
-        The markov model to use to generate sentences.
-    seed_word : str
-        The seed word to use.
-    amount : int, optional
-        The number of sentences to generate.
-
-    Returns
-    -------
-    List[str]
-        The generated sentences.
-
-    """
-    return generate_list_of_sentences_with_seed_word(model, seed_word, amount)
-
-
-async def async_generate_sentences_for_seed_words(
-    model: markovify.Text,
-    seed_words: list[str],
-    amount: int,
-) -> dict[str, list[str]]:
-    """Create a dictionary containing markov generated sentences.
-
-    The keys are seed words and the values are a list of sentences.
-
-    Parameters
-    ----------
-    model : markovify.Text
-        The markov sentence to use.
-    seed_words : List[str]
-        A list of seed words to generate sentences for.
-    amount : int
-        The number of sentences to generate for each seed word.
-
-    Returns
-    -------
-    Dict[List[str]]
-        The generated dictionary.
-
-    """
-    return await async_generate_sentences_for_seed_words(model, seed_words, amount)
+    return _get_sentence_from_model(MARKOV_MODEL, seed_word, amount)

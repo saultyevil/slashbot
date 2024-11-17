@@ -3,8 +3,6 @@
 import atexit
 import logging
 import random
-import time
-from collections import defaultdict
 from types import coroutine
 
 import aiofiles
@@ -19,7 +17,7 @@ from bot.custom_cog import SlashbotCog
 from slashbot import markov
 from slashbot.config import Bot
 from slashbot.db import get_users
-from slashbot.markov import update_markov_chain_for_model
+from slashbot.markov import MARKOV_MODEL, update_markov_chain_for_model
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -49,10 +47,10 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.attempts = attempts
         self.markov_training_sample = {}
         self.rule34_api = r34.Rule34()
-        self.user_cooldown = defaultdict(lambda: {"time": 0.0, "count": 0})  # tracks last unix time someone used it
-        self.cooldown_duration = Bot.get_config("COOLDOWN_STANDARD")
-        self.cooldown_rate = Bot.get_config("COOLDOWN_RATE")
-        self.markov_chain_update_loop.start()  # pylint: disable=no-member
+
+        # If no markov model, don't start the loop.
+        if MARKOV_MODEL:
+            self.markov_chain_update_loop.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)  # noqa: SLF001
@@ -241,28 +239,6 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.markov_training_sample.pop(message.id, None)
 
     # Utility functions --------------------------------------------------------
-
-    def check_user_on_cooldown(self, user_id: str | int) -> bool:
-        """Check if a user is on cooldown, due to hitting the rate limit.
-
-        Parameters
-        ----------
-        user_id : str | int
-            The ID of the user.
-
-        Returns
-        -------
-        bool
-            Returns True if user on cooldown.
-
-        """
-        if self.user_cooldown[user_id]["count"] > self.cooldown_rate:
-            if time.time() - self.user_cooldown[user_id]["time"] < self.cooldown_duration:
-                return True
-            self.user_cooldown[user_id]["count"] = 0
-            return False
-
-        return False
 
     @staticmethod
     def get_comments_for_rule34_post(post_id: int | str) -> tuple[str, str]:

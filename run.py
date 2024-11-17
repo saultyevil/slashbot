@@ -32,7 +32,8 @@ parser.add_argument(
 parser.add_argument(
     "--disable-auto-markov",
     help="Disable automatic markov sentence generation and revert to on-the-fly generation",
-    action="store_false",
+    action="store_true",
+    dest="enable_auto_markov",
 )
 args = parser.parse_args()
 
@@ -43,17 +44,15 @@ start = time.time()
 if args.development:
     logger.setLevel(logging.DEBUG)
     logger.debug("Disabling automatic markov generation for development mode")
-    args.disable_auto_markov = False
+    args.enable_auto_markov = False
 else:
     logger.setLevel(logging.INFO)
 
 logger.info("Config file: %s", Bot.get_config("CONFIG_FILE"))
 
-# Load the markov model
-
-markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle", 2)
-
 # Set up the bot and cogs ------------------------------------------------------
+
+markov.MARKOV_BANK = markov.load_markov_bank("data/markov/markov-sentences.json")
 
 intents = disnake.Intents.default()
 intents.message_content = True
@@ -61,7 +60,7 @@ intents.messages = True
 intents.members = True
 
 bot = SlashbotInterationBot(
-    enable_markov_gen=args.disable_auto_markov,
+    enable_markov_gen=args.enable_auto_markov,
     intents=intents,
     reload=bool(args.development),
 )

@@ -28,17 +28,6 @@ if TYPE_CHECKING:
 class ImageGeneration(SlashbotCog):
     """Cog for text to image generation using Monster API."""
 
-    def __init__(self, bot: SlashbotInterationBot) -> None:
-        """Initialize the AIImageGeneration cog.
-
-        Parameters
-        ----------
-        bot : SlashbotInterationBot
-            The instance of the SlashbotInterationBot.
-
-        """
-        super().__init__(bot)
-
     @cooldown_and_slash_command(description="Generate an image from a text prompt.")
     async def text_to_image(
         self,

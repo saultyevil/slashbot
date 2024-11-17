@@ -20,7 +20,7 @@ def test_load_model(markov_model: markovify.Text) -> None:
 def test_clean_sentences_for_cleaning() -> None:
     """Test sentence cleaning for training the markov model."""
     sentences = ["", "!test", ">test", "?test", "sentence w/ @mention", "this should be fine", "punctuation.!?"]
-    cleaned = markov.clean_sentence_for_learning(sentences)
+    cleaned = markov._clean_sentence_for_learning(sentences)
     assert len(cleaned) == 2
     assert cleaned[0] == "this should be fine"
     assert cleaned[1] == "punctuation.!?"
@@ -28,9 +28,9 @@ def test_clean_sentences_for_cleaning() -> None:
 
 def test_generate_markov_sentence(markov_model: markovify.Text) -> None:
     """Test single sentence generation."""
-    sentence = markov.generate_markov_sentence(markov_model)
+    sentence = markov._generate_markov_sentence(markov_model)
     assert sentence is not None
-    seeded_sentence = markov.generate_markov_sentence(markov_model, seed_word="hello")
+    seeded_sentence = markov._generate_markov_sentence(markov_model, seed_word="hello")
     assert "hello" in seeded_sentence
 
 
