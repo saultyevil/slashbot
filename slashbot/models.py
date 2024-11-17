@@ -4,6 +4,8 @@ These classes are used to marshal data
 """
 
 import logging
+import sys
+from collections.abc import Iterable
 
 import disnake
 
@@ -207,6 +209,34 @@ class Conversation:
             for message in discord_messages:
                 self._messages[index].setdefault("discord_message_ids", []).append(message.id)
 
+    def _get_byte_size_of_conversation(self) -> int:
+        """Get the byte size of the conversation.
+
+        Returns
+        -------
+        int
+            The byte size of the conversation.
+
+        """
+        seen = set()
+
+        def sizeof(o: any) -> int:
+            if id(o) in seen:
+                return 0
+            seen.add(id(o))
+            size = sys.getsizeof(o)
+            if isinstance(o, dict):
+                size += sum(sizeof(k) + sizeof(v) for k, v in o.items())
+            elif isinstance(o, list | tuple | set):
+                size += sum(sizeof(i) for i in o)
+            elif hasattr(o, "__dict__"):
+                size += sizeof(vars(o))
+            elif hasattr(o, "__slots__"):
+                size += sum(sizeof(getattr(o, slot)) for slot in o.__slots__ if hasattr(o, slot))
+            return size
+
+        return sizeof(self._messages)
+
     def add_message(  # noqa: PLR0913
         self,
         message: str,
@@ -271,6 +301,17 @@ class Conversation:
 
         """
         return self._messages
+
+    def get_size_of_conversation(self) -> int:
+        """Get the size of the conversation.
+
+        Returns
+        -------
+        int
+            The size of the conversation.
+
+        """
+        return self._get_byte_size_of_conversation()
 
     def remove_message(self, index: int) -> Message:
         """Remove a message from the conversation history.

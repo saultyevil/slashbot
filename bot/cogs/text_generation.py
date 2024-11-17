@@ -306,6 +306,11 @@ class TextGeneration(SlashbotCog):
                 rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
                 if not rate_limited:
                     await self.send_response_to_prompt(discord_message, send_to_dm=message_in_dm)
+                    LOGGER.debug(
+                        "Size of Conversation<%d> is %e MB",
+                        history_id,
+                        self.conversations[history_id].get_size_of_conversation() / 1.0e6,
+                    )
                 else:
                     await send_message_to_channel(
                         f"Stop abusing me, {discord_message.author.mention}!",
