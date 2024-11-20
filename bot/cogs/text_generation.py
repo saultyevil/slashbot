@@ -24,7 +24,7 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from bot.custom_cog import SlashbotCog
-from bot.custom_command import cooldown_and_slash_command
+from bot.custom_command import slash_command_with_cooldown
 from bot.messages import get_attached_images_from_message, send_message_to_channel
 from bot.responses import is_reply_to_slash_command_response
 from slashbot.config import Bot
@@ -326,7 +326,7 @@ class TextGeneration(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="clear_chat_messages",
         description="Delete all messages in AI chat history",
         dm_permission=False,
@@ -361,7 +361,7 @@ class TextGeneration(SlashbotCog):
             ]
             await inter.channel.delete_messages(messages_to_delete)
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="summarise_chat_history",
         description="Get a summary of the previous conversation",
         dm_permission=False,
@@ -443,7 +443,7 @@ class TextGeneration(SlashbotCog):
         original_message = await inter.edit_original_message(content="...")
         await original_message.delete(delay=3)
 
-    @cooldown_and_slash_command(name="reset_chat_history", description="Reset the AI conversation history")
+    @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
@@ -457,7 +457,7 @@ class TextGeneration(SlashbotCog):
         self.conversations[history_id].clear_messages()
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="select_chat_prompt",
         description="Set the AI conversation prompt from a list of choices",
     )
@@ -497,7 +497,7 @@ class TextGeneration(SlashbotCog):
             ephemeral=True,
         )
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="set_chat_prompt", description="Change the AI conversation prompt to one you write"
     )
     async def set_chat_prompt(
@@ -529,7 +529,7 @@ class TextGeneration(SlashbotCog):
             ephemeral=True,
         )
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection"
     )
     async def save_prompt(
@@ -556,7 +556,7 @@ class TextGeneration(SlashbotCog):
 
         await inter.edit_original_message(content=f"Your prompt {name} has been saved.")
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="show_chat_prompt", description="Print information about the current AI conversation"
     )
     async def show_chat_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:

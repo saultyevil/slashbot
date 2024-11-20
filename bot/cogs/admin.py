@@ -7,7 +7,7 @@ from disnake.ext import commands
 
 from bot import __version__
 from bot.custom_cog import SlashbotCog
-from bot.custom_command import cooldown_and_slash_command
+from bot.custom_command import slash_command_with_cooldown
 from bot.types import ApplicationCommandInteraction
 from slashbot.admin import get_logfile_tail, restart_bot, update_local_repository
 from slashbot.config import Bot
@@ -25,12 +25,12 @@ class AdminTools(SlashbotCog):
     things are working as intended.
     """
 
-    @cooldown_and_slash_command(name="version")
+    @slash_command_with_cooldown(name="version")
     async def print_bot_version(self, inter: ApplicationCommandInteraction) -> None:
         """Print the current version number of the bot."""
         await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
-    @cooldown_and_slash_command(name="logfile")
+    @slash_command_with_cooldown(name="logfile")
     async def print_logfile_tail(
         self,
         inter: ApplicationCommandInteraction,
@@ -55,7 +55,7 @@ class AdminTools(SlashbotCog):
         tail = await get_logfile_tail(Path(Bot.get_config("LOGFILE_NAME")), num_lines)
         await inter.edit_original_message(f"```{tail}```")
 
-    @cooldown_and_slash_command()
+    @slash_command_with_cooldown()
     async def restart_bot(
         self,
         inter: ApplicationCommandInteraction,
@@ -92,7 +92,7 @@ class AdminTools(SlashbotCog):
 
         restart_bot(arguments)
 
-    @cooldown_and_slash_command(name="update_bot")
+    @slash_command_with_cooldown(name="update_bot")
     async def update_and_restart(
         self,
         inter: ApplicationCommandInteraction,
