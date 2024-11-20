@@ -15,6 +15,8 @@ logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 class SlashbotCog(commands.Cog):
     """A custom cog class which modifies cooldown behaviour."""
 
+    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+
     def __init__(self, bot: SlashbotInterationBot) -> None:
         """Intialise the cog.
 
