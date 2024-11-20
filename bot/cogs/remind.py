@@ -127,7 +127,7 @@ class Reminders(SlashbotCog):
 
             modified_sentence = modified_sentence.replace(f"<@&{mention}>", f"@{name}")
 
-        mentions_str = " ".join(mentions)
+        mentions_str = ", ".join(mentions)
         return mentions_str, modified_sentence
 
     # Tasks --------------------------------------------------------------------
@@ -140,26 +140,20 @@ class Reminders(SlashbotCog):
             return
         now = datetime.datetime.now(tz=datetime.UTC)
 
-        for index, reminder in enumerate(reminders):
+        for reminder in reminders:
             date = datetime.datetime.fromisoformat(reminder["date"]).replace(tzinfo=datetime.UTC)
 
             if date <= now:
+                remove_reminder(reminder)
                 owner = await self.bot.fetch_user(reminder["user_id"])
-                # If we can't fetch the user, then we should remove it now.
-                # Otherwise, the reminder will never leave the database...
-                if not owner:
-                    remove_reminder(index)
-                    continue
-
                 embed = disnake.Embed(title=reminder["reminder"], color=disnake.Color.default())
                 embed.set_thumbnail(url=owner.avatar.url)
                 message = f"{owner.mention}"
                 if reminder["tagged_users"]:
-                    message = f"{reminder['tagged_users']} {message}"
+                    message = f"{message}, {reminder['tagged_users']}"
 
                 channel = await self.bot.fetch_channel(reminder["channel"])
-                await channel.send(message, embed=embed)
-                remove_reminder(index)
+                await channel.send(f"Here's your reminder {message}", embed=embed)
 
     # Commands -----------------------------------------------------------------
 
@@ -168,7 +162,7 @@ class Reminders(SlashbotCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         when: str = commands.Param(
-            description="Time stap for when you want to be reminded (all timestamps will use UK time zone unless specified oterwise)",
+            description="Timestamp for when you want to be reminded (UK time zone unless otherwise specified)",
         ),
         reminder: str = commands.Param(description="Your reminder", max_length=1024),
     ) -> None:

@@ -292,15 +292,16 @@ def add_reminder(reminder: dict) -> None:
     save_database(database)
 
 
-def remove_reminder(index: int) -> None:
+def remove_reminder(reminder: dict) -> None:
     """Remove a reminder from the database.
 
     Parameters
     ----------
-    index : int
-        The index of the reminder in the REMINDERS list.
+    reminder : dict
+        The reminder to remove from the database.
 
     """
     database = load_database()
+    index = database["REMINDERS"].index(reminder)
     database["REMINDERS"].pop(index)
     save_database(database)
