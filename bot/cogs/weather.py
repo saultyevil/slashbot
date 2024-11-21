@@ -1,6 +1,8 @@
-#!/usr/bin/env python3
+"""Commands for querying the current weather and weather forecast.
 
-"""Commands for getting the weather."""
+This uses OpenWeatherMap for the weather and Google to geocode the user provided
+location into a latitude and longitude for OpenWeatherMap.
+"""
 
 import datetime
 import json
@@ -307,19 +309,19 @@ class Weather(SlashbotCog):
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
 
-        for sub in forecast[1 : amount + 1]:
+        for sub in forecast[amount + 1]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC)
-            date_string = f"{date.strftime(r'%a %d %b %Y')}"
-            temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
+            date_string = f"{date.strftime(r'%a, %d %b %Y')}"
             desc_string = f"{sub['weather'][0]['description'].capitalize()}"
+            temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
+            humidity_string = f"({sub['humidity']}% RH)"
             wind_string = (
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} @ {sub['wind_deg']}° "
                 f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
-            humidity_string = f"({sub['humidity']}% RH)"
             embed.add_field(
                 name=date_string,
-                value=f"{desc_string:^30s}\n{temp_string} {humidity_string:^30s}\n{wind_string:^30s}",
+                value=f" {desc_string:^30s}\n {temp_string} {humidity_string:^30s}\n {wind_string:^30s}",
                 inline=False,
             )
 
