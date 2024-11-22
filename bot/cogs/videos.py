@@ -31,9 +31,7 @@ class Videos(SlashbotCog):
 
         """
         await inter.response.defer()
-        seed = random.choice(["admin", "admin abuse"])
         await inter.edit_original_message(
-            content=f"{await self.async_get_markov_sentence(seed)}",
             file=disnake.File("data/videos/admin_abuse.mp4"),
         )
 

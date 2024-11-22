@@ -250,7 +250,6 @@ class Spelling(SlashbotCog):
                 embed.add_field(name="Total words", value=f"{word_count}", inline=True)
                 embed.add_field(name="Mistakes", value=f"{len(mistakes)}", inline=True)
                 embed.add_field(name="Percent wrong", value=f"{percent_wrong:.1f}%", inline=True)
-
                 embed.set_thumbnail(url=user.avatar.url)
 
                 embeds.append(embed)

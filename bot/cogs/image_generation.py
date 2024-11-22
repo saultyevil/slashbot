@@ -8,7 +8,6 @@ text-to-image generation using Monster API.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 import requests
 from disnake.ext import commands
@@ -20,9 +19,6 @@ from slashbot.config import Bot
 from slashbot.image_generation import retrieve_image_request, send_image_request
 
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
-
-if TYPE_CHECKING:
-    from bot.custom_bot import SlashbotInterationBot
 
 
 class ImageGeneration(SlashbotCog):

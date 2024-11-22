@@ -56,24 +56,6 @@ class Weather(SlashbotCog):
             domain="maps.google.co.uk",
         )
 
-    async def cog_load(self) -> None:
-        """Initialise the cog.
-
-        Currently, this does:
-            - create markov sentences
-        """
-        if MARKOV_MODEL:
-            self.premade_markov_sentences = (
-                generate_markov_sentences(
-                    MARKOV_MODEL,
-                    ["weather", "forecast"],
-                    Bot.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
-                )
-                if self.bot.markov_gen_enabled
-                else {"weather": [], "forecast": []}
-            )
-            Weather.logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
-
     # Private ------------------------------------------------------------------
 
     @staticmethod
@@ -305,7 +287,7 @@ class Weather(SlashbotCog):
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
-            text=f"{self.get_markov_sentence('forecast')}\n(You can set your location using /set_info)",
+            text=f"{generate_markov_sentences(MARKOV_MODEL, 'forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
 
@@ -389,7 +371,7 @@ class Weather(SlashbotCog):
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.add_field(name="Conditions", value=current_conditions, inline=False)
         embed.set_footer(
-            text=f"{self.get_markov_sentence('weather')}\n(You can set your location using /set_info)",
+            text=f"{generate_markov_sentences(MARKOV_MODEL, 'weather', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(current_weather["weather"][0]["icon"]))
 
