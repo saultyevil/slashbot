@@ -19,7 +19,7 @@ from bot.custom_command import slash_command_with_cooldown
 from slashbot.config import Bot
 from slashbot.db import get_user_location
 from slashbot.error import deferred_error_message
-from slashbot.markov import MARKOV_MODEL, generate_markov_sentences
+from slashbot.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from slashbot.util import convert_radial_to_cardinal_direction
 
 
@@ -287,7 +287,7 @@ class Weather(SlashbotCog):
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
-            text=f"{generate_markov_sentences(MARKOV_MODEL, 'forecast', 1)}\n(You can set your location using /set_info)",
+            text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
 
@@ -371,7 +371,7 @@ class Weather(SlashbotCog):
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.add_field(name="Conditions", value=current_conditions, inline=False)
         embed.set_footer(
-            text=f"{generate_markov_sentences(MARKOV_MODEL, 'weather', 1)}\n(You can set your location using /set_info)",
+            text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'weather', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(current_weather["weather"][0]["icon"]))
 

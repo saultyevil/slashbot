@@ -69,7 +69,7 @@ def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
 class TextGeneration(SlashbotCog):
     """AI chat features powered by OpenAI."""
 
-    logger = logging.getTextGeneration.logger(Bot.get_config("TextGeneration.logger_NAME"))
+    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
     def __init__(self, bot: SlashbotInterationBot) -> None:
         """Initialize the AIChatbot class.
