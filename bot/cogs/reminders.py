@@ -19,7 +19,7 @@ from slashbot.db import (
 )
 
 
-def forget_reminders_autocompleter(inter: disnake.ApplicationCommandInteraction, _: str) -> str:
+def forget_reminders_autocompleter(inter: disnake.ApplicationCommandInteraction, _: str) -> list[str]:
     """Interface to get reminders for /forget_reminder autocomplete.
 
     Parameters
@@ -38,7 +38,7 @@ def forget_reminders_autocompleter(inter: disnake.ApplicationCommandInteraction,
     return [f"{reminder['date']}: {reminder['reminder']}" for reminder in get_all_reminders_for_user(inter.author.id)]
 
 
-class Reminders(SlashbotCog):
+class RemindMe(SlashbotCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot: SlashbotInterationBot) -> None:
@@ -157,7 +157,7 @@ class Reminders(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @slash_command_with_cooldown(name="set_reminder", description="set a reminder for later")
+    @slash_command_with_cooldown(name="remind_me", description="Set a reminder for later.")
     async def set_reminder(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -172,10 +172,8 @@ class Reminders(SlashbotCog):
         ----------
         inter: disnake.ApplicationCommandInteraction
             The interaction object for the command.
-        time_format : str
-            The time format chosen.
         when: float
-            The amount of time to wait before the reminder.
+            The time stamp for when to be reminded.
         reminder: str
             The reminder to set.
 
@@ -205,7 +203,7 @@ class Reminders(SlashbotCog):
 
         await inter.response.send_message(f"Your reminder has been set for {when}.", ephemeral=True)
 
-    @slash_command_with_cooldown(name="forget_reminder", description="forget a reminder")
+    @slash_command_with_cooldown(name="forget_reminder", description="Forget one of your reminders.")
     async def forget_reminder(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -228,13 +226,13 @@ class Reminders(SlashbotCog):
             filter(lambda r: f"{r['date']}: {r['reminder']}" == reminder, get_all_reminders_for_user(inter.author.id)),
         )
         if not specific_reminder:
-            Reminders.logger.error("Failed to find reminder (%s) in auto-completion field", reminder)
+            RemindMe.logger.error("Failed to find reminder (%s) in auto-completion field", reminder)
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
         try:
             specific_reminder = specific_reminder[0]
         except IndexError:
-            Reminders.logger.exception("Failed to index of reminder when trying to delete it from the database")
+            RemindMe.logger.exception("Failed to index of reminder when trying to delete it from the database")
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
 
@@ -244,7 +242,7 @@ class Reminders(SlashbotCog):
 
         await inter.response.send_message("Your reminder has been removed.", ephemeral=True)
 
-    @slash_command_with_cooldown(name="show_reminders", description="view your reminders")
+    @slash_command_with_cooldown(name="my_reminders", description="View your reminders.")
     async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Show the reminders set for a user.
 
@@ -289,4 +287,4 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    bot.add_cog(Reminders(bot))
+    bot.add_cog(RemindMe(bot))
