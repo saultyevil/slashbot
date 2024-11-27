@@ -38,7 +38,7 @@ def forget_reminders_autocompleter(inter: disnake.ApplicationCommandInteraction,
     return [f"{reminder['date']}: {reminder['reminder']}" for reminder in get_all_reminders_for_user(inter.author.id)]
 
 
-class RemindMe(SlashbotCog):
+class Reminders(SlashbotCog):
     """Commands to set up reminders."""
 
     def __init__(self, bot: SlashbotInterationBot) -> None:
@@ -222,23 +222,20 @@ class RemindMe(SlashbotCog):
             The reminder to forget
 
         """
-        specific_reminder = list(
+        reminder_to_remove = list(
             filter(lambda r: f"{r['date']}: {r['reminder']}" == reminder, get_all_reminders_for_user(inter.author.id)),
         )
-        if not specific_reminder:
-            RemindMe.logger.error("Failed to find reminder (%s) in auto-completion field", reminder)
+        if not reminder_to_remove:
+            Reminders.logger.error("Failed to find reminder (%s) in auto-completion field", reminder)
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
         try:
-            specific_reminder = specific_reminder[0]
+            reminder_to_remove = reminder_to_remove[0]
         except IndexError:
-            RemindMe.logger.exception("Failed to index of reminder when trying to delete it from the database")
+            Reminders.logger.exception("Failed to index of reminder when trying to delete it from the database")
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
-
-        all_reminders = get_all_reminders()
-        index = all_reminders.index(specific_reminder)
-        remove_reminder(index)
+        remove_reminder(reminder_to_remove)
 
         await inter.response.send_message("Your reminder has been removed.", ephemeral=True)
 
@@ -287,4 +284,4 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    bot.add_cog(RemindMe(bot))
+    bot.add_cog(Reminders(bot))

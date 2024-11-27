@@ -5,7 +5,6 @@ These classes are used to marshal data
 
 import logging
 import sys
-from collections.abc import Iterable
 
 import disnake
 
@@ -67,8 +66,7 @@ class Conversation:
 
         """
         self._system_prompt_tokens = system_prompt_tokens
-        self._messages = [{"role": "system", "content": system_prompt, "discord_message_ids": None}]
-
+        self._messages = [{"role": "system", "content": system_prompt}]
         self.tokens = system_prompt_tokens
         self.system_prompt = system_prompt
 
@@ -189,26 +187,6 @@ class Conversation:
                 messages_start - len(self),
             )
 
-    def _add_discord_message_id(self, index: int, discord_messages: disnake.Message | list[disnake.Message]) -> None:
-        """Add a disnake.Message to the conversation history.
-
-        Parameters
-        ----------
-        index : int
-            The index of the message associated with the discord message
-        discord_messages : disnake.Message | list[disnake.Message]
-            The Discord message or messages to add the ID of.
-
-        """
-        if not discord_messages:
-            self._messages[index].setdefault("discord_message_ids", [])
-            return
-        if isinstance(discord_messages, disnake.Message):
-            self._messages[index].setdefault("discord_message_ids", []).append(discord_messages.id)
-        else:
-            for message in discord_messages:
-                self._messages[index].setdefault("discord_message_ids", []).append(message.id)
-
     def _get_byte_size_of_conversation(self) -> int:
         """Get the byte size of the conversation.
 
@@ -241,7 +219,6 @@ class Conversation:
         self,
         message: str,
         role: str,
-        discord_message: disnake.Message | None = None,
         *,
         tokens: int = 0,
         images: list[str] | None = None,
@@ -275,7 +252,6 @@ class Conversation:
             self._add_user_message(message, images)
         else:
             self._add_assistant_message(message)
-        self._add_discord_message_id(-1, discord_message)
         self.tokens = tokens
 
         return self._messages[-1]
@@ -287,7 +263,7 @@ class Conversation:
         the number of tokens.
         """
         self.tokens = self._system_prompt_tokens
-        self._messages = [{"role": "system", "content": self.system_prompt, "discord_message_ids": None}]
+        self._messages = [{"role": "system", "content": self.system_prompt}]
 
         return self._messages
 
@@ -330,7 +306,7 @@ class Conversation:
         message = self._messages.pop(index)
         return Message(message["content"], message["role"])
 
-    def set_conversation_point(self, message: str, role: str = "assistant") -> list[dict]:
+    def set_conversation_point(self, message: str) -> list[dict]:
         """Get the conversation.
 
         Can either get all of the messages, or will return messages up to the
@@ -340,8 +316,6 @@ class Conversation:
         ----------
         message: str, optional
             The last message to retrieve, by default None
-        role : str, optional
-            The role of the last message, by default "assistant"
 
         Returns
         -------

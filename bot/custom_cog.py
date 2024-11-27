@@ -7,7 +7,7 @@ from disnake.ext import commands, tasks
 
 from bot.custom_bot import SlashbotInterationBot
 from slashbot.config import Bot
-from slashbot.markov import MARKOV_MODEL, generate_markov_sentences
+from slashbot.markov import MARKOV_MODEL, generate_text_from_markov_chain
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
