@@ -152,7 +152,7 @@ class TextGeneration(SlashbotCog):
         if message_to_find.startswith("@"):
             message_to_find = " ".join(previous_message.content.split()[1:]).strip()
         TextGeneration.logger.debug("Message to find: %s", message_to_find)
-        conversation.set_conversation_point(message_to_find, role="assistant")
+        conversation.set_conversation_point(message_to_find)
 
         return conversation, previous_message
 
