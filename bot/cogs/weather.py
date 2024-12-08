@@ -291,7 +291,7 @@ class Weather(SlashbotCog):
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
 
-        for sub in forecast[amount + 1]:
+        for sub in forecast[amount + 1 :]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC)
             date_string = f"{date.strftime(r'%a, %d %b %Y')}"
             desc_string = f"{sub['weather'][0]['description'].capitalize()}"
