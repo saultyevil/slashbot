@@ -177,7 +177,7 @@ class Conversation:
         # To remove the prompt and response, we remove 2 messages at index 1.
         # The conversation is kept to least 3 messages so there's always
         # something to go back to in case of long responses
-        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self._messages) > 3:
+        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self._messages) > 4:
             self.remove_message(1)
             self.remove_message(1)
 
