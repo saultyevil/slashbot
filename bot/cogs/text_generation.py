@@ -24,15 +24,15 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from bot.custom_cog import SlashbotCog
-from bot.custom_command import cooldown_and_slash_command
+from bot.custom_command import slash_command_with_cooldown
 from bot.messages import get_attached_images_from_message, send_message_to_channel
 from bot.responses import is_reply_to_slash_command_response
 from slashbot.config import Bot
-from slashbot.markov import MARKOV_MODEL, generate_markov_sentences
+from slashbot.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from slashbot.models import ChannelHistory, Conversation
 from slashbot.text_generation import (
     check_if_user_rate_limited,
-    genete_text_from_llm,
+    generate_text_from_llm,
     get_prompts_at_launch,
     get_token_count,
 )
@@ -42,7 +42,6 @@ if TYPE_CHECKING:
     from bot.custom_bot import SlashbotInterationBot
     from bot.types import ApplicationCommandInteraction, Message
 
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()
 
@@ -69,6 +68,8 @@ def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
 
 class TextGeneration(SlashbotCog):
     """AI chat features powered by OpenAI."""
+
+    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
     def __init__(self, bot: SlashbotInterationBot) -> None:
         """Initialize the AIChatbot class.
@@ -137,7 +138,7 @@ class TextGeneration(SlashbotCog):
         # message being referenced so we can, e.g., find images, but we don't
         # want to change the conversation history
         if previous_message.author.id != self.bot.user.id:
-            LOGGER.debug(
+            TextGeneration.logger.debug(
                 "Message not from the bot: message.author.id = %s, bot.user.id = %s",
                 original_message.author.id,
                 self.bot.user.id,
@@ -150,8 +151,8 @@ class TextGeneration(SlashbotCog):
         message_to_find = previous_message.clean_content.strip()
         if message_to_find.startswith("@"):
             message_to_find = " ".join(previous_message.content.split()[1:]).strip()
-        LOGGER.debug("Message to find: %s", message_to_find)
-        conversation.set_conversation_point(message_to_find, role="assistant")
+        TextGeneration.logger.debug("Message to find: %s", message_to_find)
+        conversation.set_conversation_point(message_to_find)
 
         return conversation, previous_message
 
@@ -188,12 +189,12 @@ class TextGeneration(SlashbotCog):
             with Path.open(Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
                 prompt = json.load(file_in)["prompt"]
         except OSError:
-            LOGGER.exception(
+            TextGeneration.logger.exception(
                 "Failed to open random response prompt: %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
             )
             return
         except json.JSONDecodeError:
-            LOGGER.exception(
+            TextGeneration.logger.exception(
                 "Failed to decode random response prompt: %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
             )
             return
@@ -201,7 +202,7 @@ class TextGeneration(SlashbotCog):
             {"role": "system", "content": prompt},
             {"role": "user", "content": message.clean_content},
         ]
-        response, _ = await genete_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), messages)
+        response, _ = await generate_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), messages)
         await send_message_to_channel(response, message, dont_tag_user=True)
 
     async def send_response_to_prompt(self, discord_message: disnake.Message, *, send_to_dm: bool) -> None:
@@ -229,37 +230,33 @@ class TextGeneration(SlashbotCog):
                 discord_message, conversation_copy
             )
             message_images += await get_attached_images_from_message(referenced_message)
-        conversation_copy.add_message(user_prompt, "user", images=message_images, discord_message=discord_message)
+        conversation_copy.add_message(user_prompt, "user", images=message_images)
 
         try:
-            bot_response, tokens_used = await genete_text_from_llm(
+            bot_response, tokens_used = await generate_text_from_llm(
                 Bot.get_config("AI_CHAT_CHAT_MODEL"),
                 conversation_copy.get_messages(),
             )
         except Exception as exc:
-            LOGGER.exception(
+            TextGeneration.logger.exception(
                 "Failed to get response from OpenAI, reverting to markov sentence with no seed word: <%s>",
                 exc.response["error"],
             )
             await send_message_to_channel(
-                generate_markov_sentences(MARKOV_MODEL, "?random", 1),
+                generate_text_from_markov_chain(MARKOV_MODEL, "?random", 1),
                 discord_message,
                 dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
             )
             return
 
-        sent_messages = await send_message_to_channel(
+        await send_message_to_channel(
             bot_response,
             discord_message,
             dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
         )
 
-        conversation.add_message(
-            user_prompt, "user", images=message_images, discord_message=discord_message, shrink_conversation=True
-        )
-        conversation.add_message(
-            bot_response, "assistant", tokens=tokens_used, discord_message=sent_messages, shrink_conversation=True
-        )
+        conversation.add_message(user_prompt, "user", images=message_images, shrink_conversation=True)
+        conversation.add_message(bot_response, "assistant", tokens=tokens_used, shrink_conversation=True)
 
     # Listeners ----------------------------------------------------------------
 
@@ -306,7 +303,7 @@ class TextGeneration(SlashbotCog):
                 rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
                 if not rate_limited:
                     await self.send_response_to_prompt(discord_message, send_to_dm=message_in_dm)
-                    LOGGER.debug(
+                    TextGeneration.logger.debug(
                         "Size of Conversation<%d> is %e MB",
                         history_id,
                         self.conversations[history_id].get_size_of_conversation() / 1.0e6,
@@ -326,42 +323,7 @@ class TextGeneration(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @cooldown_and_slash_command(
-        name="clear_chat_messages",
-        description="Delete all messages in AI chat history",
-        dm_permission=False,
-    )
-    async def clear_chat_messages(self, inter: disnake.ApplicationCommandInteraction) -> None:
-        """Remove the conversation history in Discord.
-
-        This only deletes the messages displayed in Discord, but shouldn't clear
-        the conversation history.
-
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            The interation object representing the user's command interaction.
-
-        """
-        await inter.response.send_message(
-            f"{inter.user.name} requested for the AI conversation to be cleaned up",
-            delete_after=10,
-        )
-        messages = self.conversations[get_history_id(inter)].get_messages()
-        discord_message_ids = [
-            item
-            for sublist in [message["discord_message_ids"] for message in messages if message["discord_message_ids"]]
-            for item in sublist
-        ]
-        for i in range(0, len(discord_message_ids), 100):
-            messages_to_delete = [
-                inter.channel.get_partial_message(message_id)
-                for message_id in discord_message_ids[i : i + 100]
-                if message_id is not None
-            ]
-            await inter.channel.delete_messages(messages_to_delete)
-
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="summarise_chat_history",
         description="Get a summary of the previous conversation",
         dm_permission=False,
@@ -402,10 +364,14 @@ class TextGeneration(SlashbotCog):
             with Path.open(Bot.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
                 summary_prompt = json.load(file_in)["prompt"]
         except OSError:
-            LOGGER.exception("Failed to open summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT"))
+            TextGeneration.logger.exception(
+                "Failed to open summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT")
+            )
             return
         except json.JSONDecodeError:
-            LOGGER.exception("Failed to decode summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT"))
+            TextGeneration.logger.exception(
+                "Failed to decode summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT")
+            )
             return
 
         sent_messages = "Summarise the following conversation between multiple users: " + "; ".join(
@@ -422,28 +388,26 @@ class TextGeneration(SlashbotCog):
             },
             {"role": "user", "content": sent_messages},
         ]
-        LOGGER.debug("Conversation to summarise: %s", conversation)
-        summary_message, token_count = await genete_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
+        TextGeneration.logger.debug("Conversation to summarise: %s", conversation)
+        summary_message, token_count = await generate_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
 
         self.conversations[history_id].add_message(
             "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
             "user",
-            None,
             shrink_conversation=True,
         )
 
-        sent_messages = await send_message_to_channel(summary_message, inter, dont_tag_user=True)
+        await send_message_to_channel(summary_message, inter, dont_tag_user=True)
         self.conversations[history_id].add_message(
             summary_message,
             "assistant",
-            sent_messages,
             tokens=token_count,
             shrink_conversation=True,
         )
         original_message = await inter.edit_original_message(content="...")
         await original_message.delete(delay=3)
 
-    @cooldown_and_slash_command(name="reset_chat_history", description="Reset the AI conversation history")
+    @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
@@ -457,7 +421,7 @@ class TextGeneration(SlashbotCog):
         self.conversations[history_id].clear_messages()
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="select_chat_prompt",
         description="Set the AI conversation prompt from a list of choices",
     )
@@ -497,7 +461,7 @@ class TextGeneration(SlashbotCog):
             ephemeral=True,
         )
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="set_chat_prompt", description="Change the AI conversation prompt to one you write"
     )
     async def set_chat_prompt(
@@ -518,7 +482,7 @@ class TextGeneration(SlashbotCog):
             The new system prompt to set.
 
         """
-        LOGGER.info("%s set new prompt: %s", inter.author.display_name, prompt)
+        TextGeneration.logger.info("%s set new prompt: %s", inter.author.display_name, prompt)
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
@@ -529,7 +493,7 @@ class TextGeneration(SlashbotCog):
             ephemeral=True,
         )
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection"
     )
     async def save_prompt(
@@ -556,7 +520,7 @@ class TextGeneration(SlashbotCog):
 
         await inter.edit_original_message(content=f"Your prompt {name} has been saved.")
 
-    @cooldown_and_slash_command(
+    @slash_command_with_cooldown(
         name="show_chat_prompt", description="Print information about the current AI conversation"
     )
     async def show_chat_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
@@ -597,7 +561,7 @@ def setup(bot: commands.InteractionBot) -> None:
     if Bot.get_config("OPENAI_API_KEY"):
         bot.add_cog(TextGeneration(bot))
     else:
-        LOGGER.error("No API key found for OpenAI, unable to load AIChatBot cog")
+        TextGeneration.logger.error("No API key found for OpenAI, unable to load AIChatBot cog")
 
 
 class PromptFileWatcher(FileSystemEventHandler):
@@ -626,7 +590,7 @@ class PromptFileWatcher(FileSystemEventHandler):
             if event.event_type == "deleted" and event.src_path.endswith(".json"):
                 AVAILABLE_PROMPTS = create_prompt_dict()
         except json.decoder.JSONDecodeError:
-            LOGGER.exception("Error reading in prompt file %s", event.src_path)
+            TextGeneration.logger.exception("Error reading in prompt file %s", event.src_path)
 
 
 observer = Observer()

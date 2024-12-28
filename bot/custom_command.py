@@ -12,7 +12,7 @@ COOLDOWN_RATE = Bot.get_config("COOLDOWN_RATE")
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
-def cooldown_and_slash_command(
+def slash_command_with_cooldown(
     **kwargs,  # noqa: ANN003
 ) -> Callable[[Callable[..., Coroutine[Any, Any, Any]]], Coroutine[Any, Any, Any]]:
     """Add a cooldown and slash command functionality to a function.

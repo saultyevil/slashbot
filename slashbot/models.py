@@ -5,7 +5,6 @@ These classes are used to marshal data
 
 import logging
 import sys
-from collections.abc import Iterable
 
 import disnake
 
@@ -67,8 +66,7 @@ class Conversation:
 
         """
         self._system_prompt_tokens = system_prompt_tokens
-        self._messages = [{"role": "system", "content": system_prompt, "discord_message_ids": None}]
-
+        self._messages = [{"role": "system", "content": system_prompt}]
         self.tokens = system_prompt_tokens
         self.system_prompt = system_prompt
 
@@ -173,41 +171,22 @@ class Conversation:
     def _shrink_conversation_to_token_size(self) -> None:
         """Shrink the conversation to within the token window."""
         token_start = self.tokens
-        messages_start = len(self)
-        # len(self) does not include the system prompt
-        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self) > 0:
-            try:
-                message = self._messages[1]
-            except IndexError:
-                return
+        messages_start = len(self._messages)
+
+        # Keep removing the 1st message and response until under the token size.
+        # To remove the prompt and response, we remove 2 messages at index 1.
+        # The conversation is kept to least 3 messages so there's always
+        # something to go back to in case of long responses
+        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self._messages) > 4:
             self.remove_message(1)
-            self.tokens -= get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
+            self.remove_message(1)
+
         if self.tokens != token_start:
-            LOGGER.debug(
+            LOGGER.info(
                 "Removed %d tokens and %d messages from conversation",
                 token_start - self.tokens,
                 messages_start - len(self),
             )
-
-    def _add_discord_message_id(self, index: int, discord_messages: disnake.Message | list[disnake.Message]) -> None:
-        """Add a disnake.Message to the conversation history.
-
-        Parameters
-        ----------
-        index : int
-            The index of the message associated with the discord message
-        discord_messages : disnake.Message | list[disnake.Message]
-            The Discord message or messages to add the ID of.
-
-        """
-        if not discord_messages:
-            self._messages[index].setdefault("discord_message_ids", [])
-            return
-        if isinstance(discord_messages, disnake.Message):
-            self._messages[index].setdefault("discord_message_ids", []).append(discord_messages.id)
-        else:
-            for message in discord_messages:
-                self._messages[index].setdefault("discord_message_ids", []).append(message.id)
 
     def _get_byte_size_of_conversation(self) -> int:
         """Get the byte size of the conversation.
@@ -241,7 +220,6 @@ class Conversation:
         self,
         message: str,
         role: str,
-        discord_message: disnake.Message | None = None,
         *,
         tokens: int = 0,
         images: list[str] | None = None,
@@ -275,7 +253,6 @@ class Conversation:
             self._add_user_message(message, images)
         else:
             self._add_assistant_message(message)
-        self._add_discord_message_id(-1, discord_message)
         self.tokens = tokens
 
         return self._messages[-1]
@@ -287,7 +264,7 @@ class Conversation:
         the number of tokens.
         """
         self.tokens = self._system_prompt_tokens
-        self._messages = [{"role": "system", "content": self.system_prompt, "discord_message_ids": None}]
+        self._messages = [{"role": "system", "content": self.system_prompt}]
 
         return self._messages
 
@@ -316,6 +293,8 @@ class Conversation:
     def remove_message(self, index: int) -> Message:
         """Remove a message from the conversation history.
 
+        The token count is also updated.
+
         Parameters
         ----------
         index : int
@@ -328,9 +307,10 @@ class Conversation:
 
         """
         message = self._messages.pop(index)
+        self.tokens -= get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
         return Message(message["content"], message["role"])
 
-    def set_conversation_point(self, message: str, role: str = "assistant") -> list[dict]:
+    def set_conversation_point(self, message: str) -> list[dict]:
         """Get the conversation.
 
         Can either get all of the messages, or will return messages up to the
@@ -340,8 +320,6 @@ class Conversation:
         ----------
         message: str, optional
             The last message to retrieve, by default None
-        role : str, optional
-            The role of the last message, by default "assistant"
 
         Returns
         -------

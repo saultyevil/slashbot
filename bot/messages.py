@@ -1,8 +1,13 @@
+"""Module for general purpose message handling."""
+
+import logging
+
 from bot.types import ApplicationCommandInteraction, Message
 from slashbot.config import Bot
 from slashbot.util import split_text_into_chunks
 from slashbot.vision import Image, download_and_encode_image
 
+LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 
 
@@ -56,4 +61,10 @@ async def get_attached_images_from_message(message: Message) -> list[Image]:
     image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image]
     image_urls += [embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail]
 
-    return [download_and_encode_image(url) for url in image_urls]
+    result = []
+    for url in image_urls:
+        try:
+            result.append(download_and_encode_image(url))
+        except Exception:
+            LOGGER.exception("Failed to download image from %s", url)
+    return result

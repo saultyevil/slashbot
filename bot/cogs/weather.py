@@ -1,6 +1,8 @@
-#!/usr/bin/env python3
+"""Commands for querying the current weather and weather forecast.
 
-"""Commands for getting the weather."""
+This uses OpenWeatherMap for the weather and Google to geocode the user provided
+location into a latitude and longitude for OpenWeatherMap.
+"""
 
 import datetime
 import json
@@ -13,20 +15,12 @@ from disnake.ext import commands
 from geopy import GoogleV3
 
 from bot.custom_cog import SlashbotCog
+from bot.custom_command import slash_command_with_cooldown
 from slashbot.config import Bot
 from slashbot.db import get_user_location
 from slashbot.error import deferred_error_message
-from slashbot.markov import MARKOV_MODEL, generate_markov_sentences
+from slashbot.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from slashbot.util import convert_radial_to_cardinal_direction
-
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
-
-
-COOLDOWN_USER = commands.BucketType.user
-WEATHER_UNITS = ["mixed", "metric", "imperial"]
-WEATHER_UNITS = ["mixed", "metric", "imperial"]
-FORECAST_TYPES = ["hourly", "daily"]
-API_KEY = Bot.get_config("OWM_API_KEY")
 
 
 class GeocodeError(Exception):
@@ -44,10 +38,10 @@ class LocationNotFoundError(Exception):
 class Weather(SlashbotCog):
     """Query information about the weather."""
 
-    def __init__(
-        self,
-        bot: commands.InteractionBot,
-    ) -> None:
+    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+    WEATHER_UNITS: tuple[str] = ("mixed", "metric", "imperial")
+
+    def __init__(self, bot: commands.InteractionBot) -> None:
         """Initialize the cog.
 
         Parameters
@@ -61,26 +55,6 @@ class Weather(SlashbotCog):
             api_key=Bot.get_config("GOOGLE_API_KEY"),
             domain="maps.google.co.uk",
         )
-
-        self.premade_markov_sentences = ()
-
-    async def cog_load(self) -> None:
-        """Initialise the cog.
-
-        Currently, this does:
-            - create markov sentences
-        """
-        if MARKOV_MODEL:
-            self.premade_markov_sentences = (
-                generate_markov_sentences(
-                    MARKOV_MODEL,
-                    ["weather", "forecast"],
-                    Bot.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT"),
-                )
-                if self.bot.markov_gen_enabled
-                else {"weather": [], "forecast": []}
-            )
-            logger.info("Generated Markov sentences for %s cog at cog load", self.__cog_name__)
 
     # Private ------------------------------------------------------------------
 
@@ -116,7 +90,7 @@ class Weather(SlashbotCog):
             Raised when an unknown unit system is passed
 
         """
-        if units not in WEATHER_UNITS:
+        if units not in Weather.WEATHER_UNITS:
             msg = f"Unknown weather units {units}"
             raise ValueError(msg)
 
@@ -130,12 +104,12 @@ class Weather(SlashbotCog):
         return temp_unit, wind_unit, wind_factor
 
     @staticmethod
-    def get_address_from_raw(raw: dict) -> str:
+    def get_address_from_raw_api_response(raw_response: dict) -> str:
         """Convert a Google API address components into an address.
 
         Parameters
         ----------
-        raw : dict
+        raw_response : dict
             A dictionary of address components from the Google API.
 
         Returns
@@ -144,12 +118,62 @@ class Weather(SlashbotCog):
             The processed address.
 
         """
-        locality = next((comp["long_name"] for comp in raw if "locality" in comp["types"]), "")
-        country = next((comp["short_name"] for comp in raw if "country" in comp["types"]), "")
-
+        locality = next((comp["long_name"] for comp in raw_response if "locality" in comp["types"]), "")
+        country = next((comp["short_name"] for comp in raw_response if "country" in comp["types"]), "")
         return f"{locality}, {country}"
 
-    def get_weather_for_location(self, location: str, units: str, extract_type: str | list | tuple) -> tuple[str, dict]:
+    @staticmethod
+    def add_weather_alert_to_embed(
+        embed: disnake.Embed, weather_alerts: list[dict], timezone_offset: int
+    ) -> disnake.Embed:
+        """Add weather alerts to an embed.
+
+        Parameters
+        ----------
+        embed : disnake.Embed
+            The embed to add alerts to.
+        weather_alerts : list[dict]
+            The weather alerts, from the OneCall API.
+        timezone_offset : int
+            The timezone offset from UTC of the location the alerts are for.
+
+        Returns
+        -------
+        disnake.Embed
+            The updated embed.
+
+        """
+        if not weather_alerts:
+            return embed
+
+        now = datetime.datetime.now(tz=datetime.UTC)
+        tz_offset = datetime.timedelta(seconds=timezone_offset)
+
+        # Create alert strings but only for alerts that are active, meaning that
+        # they are today
+        alert_strings = []
+        for alert in weather_alerts:
+            alert_start = datetime.datetime.fromtimestamp(alert["start"], tz=datetime.UTC)
+            alert_end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.UTC)
+            if alert_start < now < alert_end:
+                alert_strings.append(
+                    f"{alert['event']}: {(alert_start + tz_offset).strftime(r'%H:%m')} to {(alert_end + tz_offset).strftime(r'%H:%m')} ",
+                )
+
+        # add the  string to the embed, if
+        if alert_strings:
+            alert_date = (alert_start + tz_offset).strftime(r"%d %B %Y")
+            embed.add_field(
+                name=f"Weather Alert [{alert_date}]" if len(alert_strings) == 1 else f"Weather Alerts [{alert_date}]",
+                value="\n".join(alert_strings),
+                inline=False,
+            )
+
+        return embed
+
+    def get_weather_for_location(
+        self, location: str, units: str, forecast_type: str | list | tuple
+    ) -> tuple[str, dict]:
         """Query the OpenWeatherMap API for the weather.
 
         Parameters
@@ -159,8 +183,8 @@ class Weather(SlashbotCog):
             country code.
         units : str
             The units to return the weather in. Either imperial or metric.
-        extract_type : str | List | Tuple
-            The type of weather to return. Either current, hourly or daily.
+        forecast_type : str | List | Tuple
+            The type of weather forecast to return. Either current, hourly or daily.
 
         Returns
         -------
@@ -170,46 +194,44 @@ class Weather(SlashbotCog):
 
         """
         location = self.geolocator.geocode(location, region="GB")
-
         if not location:
             msg = f"{location} not found in Geocoding API"
             raise LocationNotFoundError(msg)
-
         lat, lon = location.latitude, location.longitude
-        address = self.get_address_from_raw(location.raw["address_components"])
+        location_string = self.get_address_from_raw_api_response(location.raw["address_components"])
 
         # If either the city of country are missing, send the str() of the location
         # instead which may be a bit verbose
-        if address.startswith(",") or address.endswith(","):
-            address = str(location)
-        address += f"\n({lat}, {lon})"
-
+        if location_string.startswith(",") or location_string.endswith(","):
+            location_string = str(location)
+        location_string += f"\n({lat}, {lon})"
         api_units = "metric" if units == "mixed" else units
-        one_call_request = requests.get(
-            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={API_KEY}",
+
+        weather_response = requests.get(
+            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={Bot.get_config('OWM_API_KEY')}",
             timeout=5,
         )
-
-        if one_call_request.status_code != requests.codes.ok:
-            if one_call_request.status_code == requests.codes.not_found:
+        if weather_response.status_code != requests.codes.ok:
+            if weather_response.status_code == requests.codes.not_found:
                 msg = f"{location} could not be found"
                 raise LocationNotFoundError(msg)
             msg = f"OneCall API failed for {location}"
             raise OneCallError(msg)
 
-        content = json.loads(one_call_request.content)
-        if isinstance(extract_type, list | tuple):
-            weather_return = {key: value for key, value in content.items() if key in extract_type or "timezone" in key}
+        response_content = json.loads(weather_response.content)
+        if isinstance(forecast_type, list | tuple):
+            weather = {
+                key: value for key, value in response_content.items() if key in forecast_type or "timezone" in key
+            }
         else:
-            weather_return = content[extract_type]
+            weather = response_content[forecast_type]
 
-        return address, weather_return
+        return location_string, weather
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="forecast", description="get the weather forecast")
-    async def forecast(  # pylint: disable=too-many-locals, too-many-arguments  # noqa: PLR0913
+    @slash_command_with_cooldown(name="forecast", description="get the weather forecast")
+    async def forecast(
         self,
         inter: disnake.ApplicationCommandInteraction,
         user_location: str = commands.Param(
@@ -217,17 +239,14 @@ class Weather(SlashbotCog):
             description="The city to get weather at, default is your saved location.",
             default=None,
         ),
-        forecast_type: str = commands.Param(
-            description="The type of forecast to return.",
-            default="daily",
-            choices=FORECAST_TYPES,
-        ),
         units: str = commands.Param(
             description="The units to return weather readings in.",
             default="mixed",
             choices=WEATHER_UNITS,
         ),
-        amount: int = commands.Param(description="The number of results to return.", default=4, gt=0, lt=7),
+        amount: int = commands.Param(
+            name="days", description="The number of results to return.", default=4, gt=0, lt=8
+        ),
     ) -> None:
         """Send the weather forecast to chat, either daily or hourly.
 
@@ -247,7 +266,6 @@ class Weather(SlashbotCog):
 
         """
         await inter.response.defer()
-
         if not user_location:
             user_location = get_user_location(inter.author)
             if not user_location:
@@ -258,52 +276,40 @@ class Weather(SlashbotCog):
                 return
 
         try:
-            location, forecast = self.get_weather_for_location(user_location, units, forecast_type)
+            location, forecast = self.get_weather_for_location(user_location, units, "daily")
         except (LocationNotFoundError, GeocodeError):
-            await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
+            await deferred_error_message(inter, f"Unable to find '{user_location.capitalize()}'")
             return
-        except OneCallError:
-            await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
-            return
-        except requests.Timeout:
-            await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
+        except (OneCallError, requests.Timeout):
+            await deferred_error_message(inter, "Open Weather Map failed to respond")
             return
 
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
-
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
-        for sub in forecast[1 : amount + 1]:
+        embed.set_footer(
+            text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'forecast', 1)}\n(You can set your location using /set_info)",
+        )
+        embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
+
+        for sub in forecast[amount + 1 :]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC)
-
-            if forecast_type == "hourly":
-                date_string = f"{date.strftime(r'%I:%M %p')}"
-                temp_string = f"{sub['temp']:.0f} °{temp_unit}"
-            else:
-                date_string = f"{date.strftime(r'%a %d %b %Y')}"
-                temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
-
+            date_string = f"{date.strftime(r'%a, %d %b %Y')}"
             desc_string = f"{sub['weather'][0]['description'].capitalize()}"
+            temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
+            humidity_string = f"({sub['humidity']}% RH)"
             wind_string = (
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} @ {sub['wind_deg']}° "
                 f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
             )
-            humidity_string = f"({sub['humidity']}% RH)"
-
             embed.add_field(
                 name=date_string,
-                value=f"{desc_string:^30s}\n{temp_string} {humidity_string:^30s}\n{wind_string:^30s}",
+                value=f" {desc_string:^30s}\n {temp_string} {humidity_string:^30s}\n {wind_string:^30s}",
                 inline=False,
             )
 
-        embed.set_footer(
-            text=f"{self.get_markov_sentence('forecast')}\n(You can set your location using /set_info)",
-        )
-        embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
-
         await inter.edit_original_message(embed=embed)
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="weather", description="get the current weather")
+    @slash_command_with_cooldown(name="weather", description="get the current weather")
     async def weather(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -331,7 +337,6 @@ class Weather(SlashbotCog):
 
         """
         await inter.response.defer()
-
         if not user_location:
             user_location = get_user_location(inter.author)
             if not user_location:
@@ -343,57 +348,34 @@ class Weather(SlashbotCog):
 
         try:
             location, weather_return = self.get_weather_for_location(
-                user_location,
-                units,
-                ("current", "daily", "alerts"),
+                user_location, units, ("current", "daily", "alerts")
             )
         except (LocationNotFoundError, GeocodeError):
-            await deferred_error_message(inter, f"{user_location.capitalize()} was not able to be geolocated.")
+            await deferred_error_message(inter, f"Unable to find '{user_location.capitalize()}'")
             return
-        except OneCallError:
-            await deferred_error_message(inter, "OpenWeatherMap OneCall API has returned an error.")
+        except (OneCallError, requests.Timeout):
+            await deferred_error_message(inter, "Open Weather Map failed to respond")
             return
-        except requests.Timeout:
-            await deferred_error_message(inter, "OpenWeatherMap API has timed out.")
-            return
-
-        logger.debug("Got weather for %s: %s", location, weather_return)
 
         weather_alerts = weather_return.get("alerts") if "alerts" in weather_return else None
         current_weather = weather_return["current"]
         forecast_today = weather_return["daily"][0]
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
-
         temperature = current_weather["temp"]
+        min_temp = forecast_today["temp"]["min"]
+        max_temp = forecast_today["temp"]["max"]
         feels_like = current_weather["feels_like"]
         current_conditions = f"{current_weather['weather'][0]['description'].capitalize()}, "
         current_conditions += f"{temperature:.0f} °{temp_unit} and feels like {feels_like:.0f} °{temp_unit}"
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.add_field(name="Conditions", value=current_conditions, inline=False)
-        # todo: make this a function
-        if weather_alerts:
-            now = datetime.datetime.now(tz=datetime.UTC)
-            alert_strings = []
-            tz_offset = datetime.timedelta(seconds=weather_return["timezone_offset"])
-            for alert in weather_alerts:
-                alert_start = datetime.datetime.fromtimestamp(alert["start"], tz=datetime.UTC)
-                alert_end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.UTC)
-                if alert_start < now < alert_end:
-                    alert_strings.append(
-                        f"{alert['event']}: {(alert_start + tz_offset).strftime(r'%H:%m')} to {(alert_end + tz_offset).strftime(r'%H:%m')} ",
-                    )
-            if alert_strings:
-                alert_date = (alert_start + tz_offset).strftime(r"%d %B %Y")
-                embed.add_field(
-                    name=f"Weather Alert [{alert_date}]"
-                    if len(alert_strings) == 1
-                    else f"Weather Alerts [{alert_date}]",
-                    value="\n".join(alert_strings),
-                    inline=False,
-                )
-        min_temp = forecast_today["temp"]["min"]
-        max_temp = forecast_today["temp"]["max"]
+        embed.set_footer(
+            text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'weather', 1)}\n(You can set your location using /set_info)",
+        )
+        embed.set_thumbnail(self.get_weather_icon_url(current_weather["weather"][0]["icon"]))
+
+        self.add_weather_alert_to_embed(embed, weather_alerts, weather_return["timezone_offset"])
         embed.add_field(name="Temperature", value=f"{min_temp:0.0f} / {max_temp:.0f} °{temp_unit}", inline=False)
         embed.add_field(name="Humidity", value=f"{current_weather['humidity']}%", inline=False)
         embed.add_field(
@@ -402,11 +384,6 @@ class Weather(SlashbotCog):
             f"{current_weather['wind_deg']:.0f}° ({convert_radial_to_cardinal_direction(current_weather['wind_deg'])})",
             inline=False,
         )
-
-        embed.set_footer(
-            text=f"{self.get_markov_sentence('weather')}\n(You can set your location using /set_info)",
-        )
-        embed.set_thumbnail(self.get_weather_icon_url(current_weather["weather"][0]["icon"]))
 
         await inter.edit_original_message(embed=embed)
 

@@ -8,27 +8,23 @@ text-to-image generation using Monster API.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 import requests
 from disnake.ext import commands
 
 from bot.custom_cog import SlashbotCog
-from bot.custom_command import cooldown_and_slash_command
+from bot.custom_command import slash_command_with_cooldown
 from bot.types import ApplicationCommandInteraction  # noqa: TCH001
 from slashbot.config import Bot
 from slashbot.image_generation import retrieve_image_request, send_image_request
 
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
-if TYPE_CHECKING:
-    from bot.custom_bot import SlashbotInterationBot
-
 
 class ImageGeneration(SlashbotCog):
     """Cog for text to image generation using Monster API."""
 
-    @cooldown_and_slash_command(description="Generate an image from a text prompt.")
+    @slash_command_with_cooldown(description="Generate an image from a text prompt.")
     async def text_to_image(
         self,
         inter: ApplicationCommandInteraction,
