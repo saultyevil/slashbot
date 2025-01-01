@@ -270,9 +270,8 @@ class Weather(SlashbotCog):
             return
 
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
-
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
-        for sub in forecast[1 : amount + 1]:
+        for sub in forecast[amount + 1 :]:
             date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC)
 
             if forecast_type == "hourly":
