@@ -14,6 +14,7 @@ from watchdog.observers import Observer
 from bot.custom_bot import SlashbotInterationBot
 from bot.custom_cog import SlashbotCog
 from slashbot.config import Bot
+from slashbot.markov import generate_text_from_markov_chain
 from slashbot.util import calculate_seconds_until
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
@@ -199,7 +200,7 @@ class ScheduledPosts(SlashbotCog):
             )
             await asyncio.sleep(sleep_for)
 
-            markov_sentence = await self.async_get_markov_sentence(post["seed_word"])
+            markov_sentence = generate_text_from_markov_chain(None, post["seed_word"], 1)
             markov_sentence = markov_sentence.replace(
                 post["seed_word"],
                 f"**{post['seed_word']}**",

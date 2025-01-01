@@ -343,7 +343,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
     return model
 
 
-def generate_markov_sentences(model: markovify.Text, seed_word: str, amount: int) -> str | list[str]:
+def generate_text_from_markov_chain(model: markovify.Text, seed_word: str, amount: int) -> str | list[str]:
     """Generate a list of markov generated sentences for a specific key word.
 
     Parameters

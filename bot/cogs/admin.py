@@ -6,8 +6,9 @@ import git
 from disnake.ext import commands
 
 from bot import __version__
+from bot.custom_bot import SlashbotInterationBot
 from bot.custom_cog import SlashbotCog
-from bot.custom_command import cooldown_and_slash_command
+from bot.custom_command import slash_command_with_cooldown
 from bot.types import ApplicationCommandInteraction
 from slashbot.admin import get_logfile_tail, restart_bot, update_local_repository
 from slashbot.config import Bot
@@ -15,7 +16,6 @@ from slashbot.config import Bot
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = Bot.get_config("COOLDOWN_STANDARD")
 COOLDOWN_RATE = Bot.get_config("COOLDOWN_RATE")
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 class AdminTools(SlashbotCog):
@@ -25,12 +25,70 @@ class AdminTools(SlashbotCog):
     things are working as intended.
     """
 
-    @cooldown_and_slash_command(name="version")
+    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+
+    def __init__(self, bot: SlashbotInterationBot) -> None:
+        """Intialise the cog.
+
+        Parameters
+        ----------
+        bot : SlashbotInterationBot
+            The bot the cog will be added to.
+
+        """
+        super().__init__(bot)
+        self.my_messages = []
+
+    @commands.Cog.listener("on_message")
+    async def self_listener(self, message: disnake.Message) -> None:
+        """Listen to bot messages.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to process.
+
+        """
+        if message.author.id == self.bot.user.id or self.bot.user in message.mentions:
+            self.my_messages.append(message)
+
+    @slash_command_with_cooldown(
+        name="remove_bot_messages",
+        description="Remove all of the bot's messages since the last restart.",
+        dm_permission=False,
+    )
+    async def remove_bot_messages(self, inter: disnake.ApplicationCommandInteraction) -> None:
+        """Clean up the bot responses.
+
+        This will delete all of the bot's responses in the chat, since its
+        last restart.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interation object representing the user's command interaction.
+
+        """
+        if len(self.my_messages) == 0:
+            await inter.response.send_message("There is nothing to remove.", ephemeral=True)
+            return
+        await inter.response.defer(ephemeral=True)
+        for i in range(0, len(self.my_messages), 100):
+            messages_to_delete = list(self.my_messages[i : i + 100])
+            await inter.channel.delete_messages(messages_to_delete)
+        self.my_messages.clear()
+        await inter.delete_original_message()
+        await inter.channel.send(
+            f"{inter.user.display_name} requested to remove my responses :frowning2:",
+            delete_after=10,
+        )
+
+    @slash_command_with_cooldown(name="version")
     async def print_bot_version(self, inter: ApplicationCommandInteraction) -> None:
         """Print the current version number of the bot."""
         await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
-    @cooldown_and_slash_command(name="logfile")
+    @slash_command_with_cooldown(name="logfile")
     async def print_logfile_tail(
         self,
         inter: ApplicationCommandInteraction,
@@ -55,7 +113,7 @@ class AdminTools(SlashbotCog):
         tail = await get_logfile_tail(Path(Bot.get_config("LOGFILE_NAME")), num_lines)
         await inter.edit_original_message(f"```{tail}```")
 
-    @cooldown_and_slash_command()
+    @slash_command_with_cooldown()
     async def restart_bot(
         self,
         inter: ApplicationCommandInteraction,
@@ -92,7 +150,7 @@ class AdminTools(SlashbotCog):
 
         restart_bot(arguments)
 
-    @cooldown_and_slash_command(name="update_bot")
+    @slash_command_with_cooldown(name="update_bot")
     async def update_and_restart(
         self,
         inter: ApplicationCommandInteraction,
@@ -127,7 +185,7 @@ class AdminTools(SlashbotCog):
         try:
             update_local_repository(branch)
         except git.exc.GitCommandError:
-            LOGGER.exception("Failed to update repository")
+            AdminTools.logger.exception("Failed to update repository")
             await inter.edit_original_message("Failed to update local repository")
             return
         await self.restart_bot(inter, disable_markov)
