@@ -104,7 +104,7 @@ class Weather(SlashbotCog):
         return temp_unit, wind_unit, wind_factor
 
     @staticmethod
-    def get_address_from_raw_api_response(raw_response: dict) -> str:
+    def get_address_from_raw_response(raw_response: dict) -> str:
         """Convert a Google API address components into an address.
 
         Parameters
@@ -171,9 +171,7 @@ class Weather(SlashbotCog):
 
         return embed
 
-    def get_weather_for_location(
-        self, location: str, units: str, forecast_type: str | list | tuple
-    ) -> tuple[str, dict]:
+    def weather_api(self, location: str, units: str, forecast_type: str | list | tuple) -> tuple[str, dict]:
         """Query the OpenWeatherMap API for the weather.
 
         Parameters
@@ -198,7 +196,7 @@ class Weather(SlashbotCog):
             msg = f"{location} not found in Geocoding API"
             raise LocationNotFoundError(msg)
         lat, lon = location.latitude, location.longitude
-        location_string = self.get_address_from_raw_api_response(location.raw["address_components"])
+        location_string = self.get_address_from_raw_response(location.raw["address_components"])
 
         # If either the city of country are missing, send the str() of the location
         # instead which may be a bit verbose
@@ -217,8 +215,8 @@ class Weather(SlashbotCog):
                 raise LocationNotFoundError(msg)
             msg = f"OneCall API failed for {location}"
             raise OneCallError(msg)
-
         response_content = json.loads(weather_response.content)
+
         if isinstance(forecast_type, list | tuple):
             weather = {
                 key: value for key, value in response_content.items() if key in forecast_type or "timezone" in key
@@ -228,15 +226,158 @@ class Weather(SlashbotCog):
 
         return location_string, weather
 
+    async def get_weather_forecast_for_location(
+        self, inter: disnake.ApplicationCommandInteraction, location: str, units: str, request_type: tuple | list | str
+    ) -> tuple[str, dict]:
+        """Get the weather response for a location.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+        location : str
+            The location to get the weather for.
+        units : str
+            The units to use, either metric or imperial.
+        request_type : tuple | list | str
+            The type of weather request to make, either daily or hourly.
+
+        Returns
+        -------
+        tuple[str, dict]
+            The location, as from the API, and the weather requested as a dict
+            of the key provided in extract_type.
+
+        Raises
+        ------
+        ValueError
+            If the location is invalid, or the request type is invalid.
+
+        """
+        if not location:
+            user_location = get_user_location(inter.author)
+            if not user_location:
+                await deferred_error_message(
+                    inter,
+                    "You need to either specify a city, or set your city and/or country using /set_info.",
+                )
+                msg = "Invalid input for location provided"
+                raise ValueError(msg)
+
+        try:
+            location, forecast = self.weather_api(user_location, units, request_type)
+        except (LocationNotFoundError, GeocodeError) as exc:
+            await deferred_error_message(inter, f"Unable to find '{user_location.capitalize()}'")
+            msg = "Unable to find provided location in weater API"
+            raise ValueError(msg) from exc
+        except (OneCallError, requests.Timeout) as exc:
+            await deferred_error_message(inter, "Open Weather Map failed to respond")
+            msg = "Unable to find provided location in weather API"
+            raise ValueError(msg) from exc
+
+        return location, forecast
+
+    async def add_forecast_to_embed(self, embed: disnake.Embed, forecast: list[dict], units: str) -> disnake.Embed:
+        """Add the weather forecast to the embed.
+
+        Parameters
+        ----------
+        embed : disnake.Embed
+            The embed to add the forecast to.
+        forecast : list[dict]
+            The forecast to add to the embed.
+        units : str
+            The units to use, either "metric" or "imperial".
+
+        Returns
+        -------
+        disnake.Embed
+            The updated embed with the forecast added.
+
+        """
+        temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
+
+        for sub in forecast:
+            date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC)
+            date_string = f"{date.strftime(r'%a, %d %b %Y')}"
+            desc_string = f"{sub['weather'][0]['description'].capitalize()}"
+            temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
+            humidity_string = f"({sub['humidity']}% RH)"
+            wind_string = (
+                f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} @ {sub['wind_deg']}° "
+                f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
+            )
+            embed.add_field(
+                name=date_string,
+                value=f" {desc_string:^30s}\n {temp_string} {humidity_string:^30s}\n {wind_string:^30s}",
+                inline=False,
+            )
+
+        return embed
+
+    async def add_weather_conditions_to_embed(  # noqa: PLR0913
+        self,
+        embed: disnake.Embed,
+        weather: dict,
+        forecast: dict,
+        alerts: list[dict],
+        units: str,
+        tz_offset: int,
+    ) -> disnake.Embed:
+        """Add current weather data to an embed.
+
+        Parameters
+        ----------
+        embed : disnake.Embed
+            The embed to add the weather data to.
+        weather : dict
+            The current weather, from the OneCall API.
+        forecast : dict
+            The forecast, from the OneCall API.
+        alerts: list[dict]
+            The weather alerts, from the OneCall API.
+        units : str
+            The units to use, either metric or imperial.
+        tz_offset : int
+            The timezone offset from UTC of the location the weather is for.
+
+        Returns
+        -------
+        disnake.Embed
+            The updated embed with the weather data added.
+
+        """
+        temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
+        feels_like = weather["feels_like"]
+        temperature = weather["temp"]
+        current_conditions = f"{weather['weather'][0]['description'].capitalize()}, "
+        current_conditions += f"{temperature:.0f} °{temp_unit} and feels like {feels_like:.0f} °{temp_unit}"
+        forecast_today = forecast["daily"][0]
+        min_temp = forecast_today["temp"]["min"]
+        max_temp = forecast_today["temp"]["max"]
+
+        embed.add_field(name="Conditions", value=current_conditions, inline=False)
+        self.add_weather_alert_to_embed(embed, alerts, tz_offset)
+        embed.add_field(name="Temperature", value=f"{min_temp:0.0f} / {max_temp:.0f} °{temp_unit}", inline=False)
+        embed.add_field(name="Humidity", value=f"{weather['humidity']}%", inline=False)
+        embed.add_field(
+            name="Wind",
+            value=f"{float(weather['wind_speed']) * wind_factor:.0f} {wind_unit} @ "
+            f"{weather['wind_deg']:.0f}° ({convert_radial_to_cardinal_direction(weather['wind_deg'])})",
+            inline=False,
+        )
+
+        return embed
+
     # Commands -----------------------------------------------------------------
 
-    @slash_command_with_cooldown(name="forecast", description="get the weather forecast")
-    async def forecast(
+    @slash_command_with_cooldown(name="forecast", description="Get a the weather forecast for a location.")
+    async def weather_forecast(
         self,
         inter: disnake.ApplicationCommandInteraction,
         user_location: str = commands.Param(
             name="location",
-            description="The city to get weather at, default is your saved location.",
+            description="The location to get the forecast for, default is your saved location.",
             default=None,
         ),
         units: str = commands.Param(
@@ -266,56 +407,24 @@ class Weather(SlashbotCog):
 
         """
         await inter.response.defer()
-        if not user_location:
-            user_location = get_user_location(inter.author)
-            if not user_location:
-                await deferred_error_message(
-                    inter,
-                    "You need to either specify a city, or set your city and/or country using /set_info.",
-                )
-                return
+        location, forecast = await self.get_weather_forecast_for_location(inter, user_location, units, "daily")
 
-        try:
-            location, forecast = self.get_weather_for_location(user_location, units, "daily")
-        except (LocationNotFoundError, GeocodeError):
-            await deferred_error_message(inter, f"Unable to find '{user_location.capitalize()}'")
-            return
-        except (OneCallError, requests.Timeout):
-            await deferred_error_message(inter, "Open Weather Map failed to respond")
-            return
-
-        temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
             text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
-
-        for sub in forecast[amount + 1 :]:
-            date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC)
-            date_string = f"{date.strftime(r'%a, %d %b %Y')}"
-            desc_string = f"{sub['weather'][0]['description'].capitalize()}"
-            temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
-            humidity_string = f"({sub['humidity']}% RH)"
-            wind_string = (
-                f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} @ {sub['wind_deg']}° "
-                f"({convert_radial_to_cardinal_direction(sub['wind_deg'])})"
-            )
-            embed.add_field(
-                name=date_string,
-                value=f" {desc_string:^30s}\n {temp_string} {humidity_string:^30s}\n {wind_string:^30s}",
-                inline=False,
-            )
+        embed = self.add_forecast_to_embed(embed, forecast[amount + 1 :], units)
 
         await inter.edit_original_message(embed=embed)
 
-    @slash_command_with_cooldown(name="weather", description="get the current weather")
-    async def weather(
+    @slash_command_with_cooldown(name="weather", description="Get a weather report for a location.")
+    async def weather_report(
         self,
         inter: disnake.ApplicationCommandInteraction,
         user_location: str = commands.Param(
             name="location",
-            description="The city to get weather for, default is your saved location.",
+            description="The location to get the weather for, default is your saved location.",
             default=None,
         ),
         units: str = commands.Param(
@@ -337,52 +446,15 @@ class Weather(SlashbotCog):
 
         """
         await inter.response.defer()
-        if not user_location:
-            user_location = get_user_location(inter.author)
-            if not user_location:
-                await deferred_error_message(
-                    inter,
-                    "You need to specify a city, or set your city and/or country using /set_info.",
-                )
-                return
-
-        try:
-            location, weather_return = self.get_weather_for_location(
-                user_location, units, ("current", "daily", "alerts")
-            )
-        except (LocationNotFoundError, GeocodeError):
-            await deferred_error_message(inter, f"Unable to find '{user_location.capitalize()}'")
-            return
-        except (OneCallError, requests.Timeout):
-            await deferred_error_message(inter, "Open Weather Map failed to respond")
-            return
-
-        weather_alerts = weather_return.get("alerts") if "alerts" in weather_return else None
-        current_weather = weather_return["current"]
-        forecast_today = weather_return["daily"][0]
-        temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
-        temperature = current_weather["temp"]
-        min_temp = forecast_today["temp"]["min"]
-        max_temp = forecast_today["temp"]["max"]
-        feels_like = current_weather["feels_like"]
-        current_conditions = f"{current_weather['weather'][0]['description'].capitalize()}, "
-        current_conditions += f"{temperature:.0f} °{temp_unit} and feels like {feels_like:.0f} °{temp_unit}"
+        location, weather_return = await self.get_weather_forecast_for_location(inter, user_location, units, "daily")
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
-        embed.add_field(name="Conditions", value=current_conditions, inline=False)
         embed.set_footer(
             text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'weather', 1)}\n(You can set your location using /set_info)",
         )
-        embed.set_thumbnail(self.get_weather_icon_url(current_weather["weather"][0]["icon"]))
-
-        self.add_weather_alert_to_embed(embed, weather_alerts, weather_return["timezone_offset"])
-        embed.add_field(name="Temperature", value=f"{min_temp:0.0f} / {max_temp:.0f} °{temp_unit}", inline=False)
-        embed.add_field(name="Humidity", value=f"{current_weather['humidity']}%", inline=False)
-        embed.add_field(
-            name="Wind",
-            value=f"{float(current_weather['wind_speed']) * wind_factor:.0f} {wind_unit} @ "
-            f"{current_weather['wind_deg']:.0f}° ({convert_radial_to_cardinal_direction(current_weather['wind_deg'])})",
-            inline=False,
+        embed.set_thumbnail(self.get_weather_icon_url(weather_return["current"]["weather"][0]["icon"]))
+        embed = self.add_weather_conditions_to_embed(
+            embed, weather_return["current"], weather_return, weather_return.get("alerts")
         )
 
         await inter.edit_original_message(embed=embed)
