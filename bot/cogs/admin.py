@@ -58,6 +58,7 @@ class AdminTools(SlashbotCog):
             return
         try:
             await asyncio.sleep(delay_minutes * 60)
+            await member.unban()
             invite = await member.guild.text_channels[0].create_invite(max_uses=1)
             user = await self.bot.get_user(member.id)
             await user.send(invite.url)
@@ -76,6 +77,14 @@ class AdminTools(SlashbotCog):
             The member which has been removed
 
         """
+        jerma_gifs = (
+            "https://media1.tenor.com/m/XcEBpnPquUMAAAAd/jerma-pog.gif",
+            "https://media1.tenor.com/m/s5OePfXg13AAAAAd/jerma-eat-burger-whopper.gif",
+            "https://media1.tenor.com/m/YOeQ5oo0M_EAAAAd/jerma-jermafood.gif",
+            "https://media1.tenor.com/m/Akk1cG-C_a0AAAAd/jerma-jerma985.gif",
+            "https://media1.tenor.com/m/1Fn-Lhpkfm8AAAAd/jerma985-i-saw-what-you-deleted.gif",
+        )
+
         if member.id != Bot.get_config("ID_USER_ADAM"):
             return
         guild = member.guild
@@ -83,10 +92,13 @@ class AdminTools(SlashbotCog):
             return
         async for entry in guild.audit_logs(action=disnake.AuditLogAction.ban):
             if entry.target.id == member.id and entry.user.id == Bot.get_config("ID_USER_MEGHUN"):
-                await member.unban()
                 random_minutes = random.randrange(3, 600)
                 AdminTools.logger.info("Adam has been unbanned and will be re-invited in %d minutes", random_minutes)
                 self.invite_task = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
+                channel = await self.bot.get_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
+                await channel.send(
+                    f":warning: looks like 72 needs to ZERK off after banning adam again!! :warning: {random.choice(jerma_gifs)}",
+                )
                 return
 
     @commands.Cog.listener("on_member_join")
