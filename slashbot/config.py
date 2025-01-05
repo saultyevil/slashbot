@@ -151,7 +151,9 @@ class Bot:
             "DEVELOPMENT_SERVERS": slash_config["DISCORD"]["DEVELOPMENT_SERVERS"],
             # Define users, roles and channels
             "ID_USER_SAULTYEVIL": 151378138612367360,
+            "ID_USER_ADAM": 261097001301704704,
             "ID_CHANNEL_IDIOTS": 237647756049514498,
+            "ID_SERVER_ADULT_CHILDREN": 237647756049514498,
             # API keys
             "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
             "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
