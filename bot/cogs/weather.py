@@ -277,7 +277,7 @@ class Weather(SlashbotCog):
 
         return location, forecast
 
-    async def add_forecast_to_embed(self, embed: disnake.Embed, forecast: list[dict], units: str) -> disnake.Embed:
+    def add_forecast_to_embed(self, embed: disnake.Embed, forecast: list[dict], units: str) -> disnake.Embed:
         """Add the weather forecast to the embed.
 
         Parameters
@@ -315,7 +315,7 @@ class Weather(SlashbotCog):
 
         return embed
 
-    async def add_weather_conditions_to_embed(  # noqa: PLR0913
+    def add_weather_conditions_to_embed(  # noqa: PLR0913
         self,
         embed: disnake.Embed,
         weather: dict,
@@ -446,7 +446,9 @@ class Weather(SlashbotCog):
 
         """
         await inter.response.defer()
-        location, weather_return = await self.get_weather_forecast_for_location(inter, user_location, units, "daily")
+        location, weather_return = await self.get_weather_forecast_for_location(
+            inter, user_location, units, ["current", "daily", "alerts"]
+        )
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
@@ -454,7 +456,12 @@ class Weather(SlashbotCog):
         )
         embed.set_thumbnail(self.get_weather_icon_url(weather_return["current"]["weather"][0]["icon"]))
         embed = self.add_weather_conditions_to_embed(
-            embed, weather_return["current"], weather_return, weather_return.get("alerts")
+            embed,
+            weather_return["current"],
+            weather_return,
+            weather_return.get("alerts"),
+            units,
+            weather_return["timezone_offset"],
         )
 
         await inter.edit_original_message(embed=embed)
