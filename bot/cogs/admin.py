@@ -63,7 +63,7 @@ class AdminTools(SlashbotCog):
             user = await self.bot.get_user(member.id)
             await user.send(invite.url)
         except asyncio.CancelledError:
-            AdminTools.logger.info("Delayed invite for %s cancelled", member.name)
+            AdminTools.logger.info("Delayed invite for %s cancelled", member.display_name)
         finally:
             self.invite_task = None
 
@@ -92,8 +92,8 @@ class AdminTools(SlashbotCog):
             return
         async for entry in guild.audit_logs(action=disnake.AuditLogAction.ban):
             if entry.target.id == member.id and entry.user.id == Bot.get_config("ID_USER_MEGHUN"):
-                random_minutes = random.randrange(3, 600)
-                AdminTools.logger.info("Adam has been unbanned and will be re-invited in %d minutes", random_minutes)
+                random_minutes = random.uniform(3, 600)
+                AdminTools.logger.info("Adam has been unbanned and will be re-invited in %f minutes", random_minutes)
                 self.invite_task = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
                 channel = await self.bot.get_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
                 await channel.send(
