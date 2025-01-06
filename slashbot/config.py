@@ -152,6 +152,7 @@ class Bot:
             # Define users, roles and channels
             "ID_USER_SAULTYEVIL": 151378138612367360,
             "ID_USER_ADAM": 261097001301704704,
+            "ID_USER_MEGHUN": 176722208243187712,
             "ID_CHANNEL_IDIOTS": 237647756049514498,
             "ID_SERVER_ADULT_CHILDREN": 237647756049514498,
             # API keys
