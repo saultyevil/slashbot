@@ -40,7 +40,7 @@ class AdminTools(SlashbotCog):
         """
         super().__init__(bot)
         self.my_messages = []
-        self.invite_task = None
+        self.invite_tasks = {}
 
     async def delayed_invite_task(self, member: disnake.Member, delay_minutes: float) -> None:
         """Send an invite to a member after a delay.
@@ -53,19 +53,16 @@ class AdminTools(SlashbotCog):
             The number of minutes to wait before sending the invite.
 
         """
-        if self.invite_task:
-            AdminTools.logger.error("Delayed invite already running")
-            return
         try:
             await asyncio.sleep(delay_minutes * 60)
             await member.unban()
             invite = await member.guild.text_channels[0].create_invite(max_uses=1)
-            user = await self.bot.get_user(member.id)
+            user = await self.bot.fetch_user(member.id)
             await user.send(invite.url)
         except asyncio.CancelledError:
             AdminTools.logger.info("Delayed invite for %s cancelled", member.display_name)
         finally:
-            self.invite_task = None
+            self.invite_tasks.pop(member.id)
 
     @commands.Cog.listener("on_member_remove")
     async def unban_user_adam(self, member: disnake.Member) -> None:
@@ -92,10 +89,11 @@ class AdminTools(SlashbotCog):
             return
         async for entry in guild.audit_logs(action=disnake.AuditLogAction.ban):
             if entry.target.id == member.id and entry.user.id == Bot.get_config("ID_USER_MEGHUN"):
-                random_minutes = random.uniform(3, 600)
+                random_minutes = random.uniform(3, 72)
+                random_minutes = 1 / 60
                 AdminTools.logger.info("Adam has been unbanned and will be re-invited in %f minutes", random_minutes)
-                self.invite_task = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
-                channel = await self.bot.get_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
+                self.invite_tasks[member.id] = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
+                channel = await self.bot.fetch(Bot.get_config("ID_CHANNEL_IDIOTS"))
                 await channel.send(
                     f":warning: looks like 72 needs to ZERK off after banning adam again!! :warning: {random.choice(jerma_gifs)}",
                 )
@@ -111,14 +109,16 @@ class AdminTools(SlashbotCog):
             The member which has joined.
 
         """
-        if not self.invite_task or member.id != Bot.get_config("ID_USER_ADAM"):
+        if member.id != Bot.get_config("ID_USER_ADAM"):
             return
         guild = member.guild
         if guild.id != Bot.get_config("ID_SERVER_ADULT_CHILDREN"):
             return
+        if member.id not in self.invite_tasks:
+            return
 
-        self.invite_task.cancel()
-        self.invite_task = None
+        self.invite_tasks[member.id].cancel()
+        self.invite_tasks.pop(member.id)
 
     @commands.Cog.listener("on_message")
     async def self_listener(self, message: disnake.Message) -> None:
