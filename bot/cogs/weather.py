@@ -255,8 +255,8 @@ class Weather(SlashbotCog):
 
         """
         if not location:
-            user_location = get_user_location(inter.author)
-            if not user_location:
+            location = get_user_location(inter.author)
+            if not location:
                 await deferred_error_message(
                     inter,
                     "You need to either specify a city, or set your city and/or country using /set_info.",
@@ -265,9 +265,9 @@ class Weather(SlashbotCog):
                 raise ValueError(msg)
 
         try:
-            location, forecast = self.weather_api(user_location, units, request_type)
+            location, forecast = self.weather_api(location, units, request_type)
         except (LocationNotFoundError, GeocodeError) as exc:
-            await deferred_error_message(inter, f"Unable to find '{user_location.capitalize()}'")
+            await deferred_error_message(inter, f"Unable to find '{location.capitalize()}'")
             msg = "Unable to find provided location in weater API"
             raise ValueError(msg) from exc
         except (OneCallError, requests.Timeout) as exc:
