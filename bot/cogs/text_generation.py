@@ -20,6 +20,7 @@ import aiofiles
 import disnake
 from disnake.ext import commands
 from disnake.utils import escape_markdown
+from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -66,6 +67,15 @@ def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
     return obj.channel.id
 
 
+# Set up logger for profiler
+profile_logger = logging.getLogger("ProfilerLogger")
+profile_logger.handlers.clear()
+file_handler = logging.FileHandler("profile.log")
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+profile_logger.addHandler(file_handler)
+profile_logger.setLevel(logging.INFO)
+
+
 class TextGeneration(SlashbotCog):
     """AI chat features powered by OpenAI."""
 
@@ -88,6 +98,8 @@ class TextGeneration(SlashbotCog):
         self.cooldowns = defaultdict(
             lambda: {"count": 0, "last_interaction": datetime.datetime.now(tz=datetime.UTC)},
         )
+
+        self.profiler = Profiler()
 
     def clear_conversation_history(self, history_id: str | int) -> None:
         """Clear chat history and reset the token counter.
@@ -299,6 +311,7 @@ class TextGeneration(SlashbotCog):
             return
 
         if bot_mentioned or message_in_dm:
+            self.profiler.start()
             async with discord_message.channel.typing():
                 rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
                 if not rate_limited:
@@ -314,6 +327,9 @@ class TextGeneration(SlashbotCog):
                         discord_message,
                         dont_tag_user=True,
                     )
+            self.profiler.stop()
+            profiler_output = self.profiler.output_text()
+            profile_logger.info("\n%s", profiler_output)
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a
