@@ -99,8 +99,6 @@ class TextGeneration(SlashbotCog):
             lambda: {"count": 0, "last_interaction": datetime.datetime.now(tz=datetime.UTC)},
         )
 
-        self.profiler = Profiler()
-
     def clear_conversation_history(self, history_id: str | int) -> None:
         """Clear chat history and reset the token counter.
 
@@ -311,7 +309,8 @@ class TextGeneration(SlashbotCog):
             return
 
         if bot_mentioned or message_in_dm:
-            self.profiler.start()
+            profiler = Profiler(async_mode="enabled")
+            profiler.start()
             async with discord_message.channel.typing():
                 rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
                 if not rate_limited:
@@ -327,8 +326,8 @@ class TextGeneration(SlashbotCog):
                         discord_message,
                         dont_tag_user=True,
                     )
-            self.profiler.stop()
-            profiler_output = self.profiler.output_text()
+            profiler.stop()
+            profiler_output = profiler.output_text()
             profile_logger.info("\n%s", profiler_output)
             return  # early return to avoid situation of randomly responding to itself
 
