@@ -316,7 +316,7 @@ class TextGeneration(SlashbotCog):
                 if not rate_limited:
                     await self.send_response_to_prompt(discord_message, send_to_dm=message_in_dm)
                     TextGeneration.logger.debug(
-                        "Size of Conversation<%d> is %e MB",
+                        "Conversation<%d> is %e MB",
                         history_id,
                         self.conversations[history_id].get_size_of_conversation() / 1.0e6,
                     )
@@ -329,6 +329,11 @@ class TextGeneration(SlashbotCog):
             profiler.stop()
             profiler_output = profiler.output_text()
             profile_logger.info("\n%s", profiler_output)
+            profile_logger.info(
+                "Conversation<%d> is %e MB",
+                history_id,
+                self.conversations[history_id].get_size_of_conversation() / 1.0e6,
+            )
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a
