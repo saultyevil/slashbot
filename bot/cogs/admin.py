@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import random
 from pathlib import Path
@@ -87,15 +88,17 @@ class AdminTools(SlashbotCog):
         guild = member.guild
         if guild.id != Bot.get_config("ID_SERVER_ADULT_CHILDREN"):
             return
-        async for entry in guild.audit_logs(action=disnake.AuditLogAction.ban):
-            if entry.target.id == member.id and entry.user.id == Bot.get_config("ID_USER_MEGHUN"):
-                random_minutes = random.uniform(3, 72)
-                AdminTools.logger.info("Adam has been unbanned and will be re-invited in %f minutes", random_minutes)
-                self.invite_tasks[member.id] = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
+        async for entry in guild.audit_logs(
+            action=disnake.AuditLogAction.ban, after=member.joined_at, user=Bot.get_config("ID_USER_MEGHUN")
+        ):
+            if entry.target.id == member.id:
                 channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
                 await channel.send(
                     f":warning: looks like 72 needs to ZERK off after banning adam again!! :warning: {random.choice(jerma_gifs)}",
                 )
+                random_minutes = random.uniform(5, 240)
+                self.invite_tasks[member.id] = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
+                AdminTools.logger.info("Adam has been unbanned and will be re-invited in %f minutes", random_minutes)
                 return
 
     @commands.Cog.listener("on_member_join")
