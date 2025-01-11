@@ -92,7 +92,7 @@ class AdminTools(SlashbotCog):
                 random_minutes = random.uniform(3, 72)
                 AdminTools.logger.info("Adam has been unbanned and will be re-invited in %f minutes", random_minutes)
                 self.invite_tasks[member.id] = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
-                channel = await self.bot.fetch(Bot.get_config("ID_CHANNEL_IDIOTS"))
+                channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
                 await channel.send(
                     f":warning: looks like 72 needs to ZERK off after banning adam again!! :warning: {random.choice(jerma_gifs)}",
                 )
