@@ -88,8 +88,9 @@ class AdminTools(SlashbotCog):
         guild = member.guild
         if guild.id != Bot.get_config("ID_SERVER_ADULT_CHILDREN"):
             return
+        filter_user = await self.bot.fetch_user(Bot.get_config("ID_USER_MEGHUN"))
         async for entry in guild.audit_logs(
-            action=disnake.AuditLogAction.ban, after=member.joined_at, user=Bot.get_config("ID_USER_MEGHUN")
+            action=disnake.AuditLogAction.ban, after=member.joined_at, user=filter_user
         ):
             if entry.target.id == member.id:
                 channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
