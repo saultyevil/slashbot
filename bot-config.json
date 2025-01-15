@@ -40,7 +40,9 @@
             "RATE_LIMIT_INTERVAL": 5,
             "PROMPT_PREPEND": "",
             "PROMPT_APPEND": "",
-            "USE_HISTORIC_REPLIES": true
+            "USE_HISTORIC_REPLIES": true,
+            "ENABLE_PROFILING": true,
+            "PREFER_IMAGE_URLS": true
         }
     },
     "COOLDOWN": {

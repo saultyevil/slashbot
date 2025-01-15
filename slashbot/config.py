@@ -191,6 +191,8 @@ class Bot:
             "AI_CHAT_RATE_LIMIT": slash_config["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
             "AI_CHAT_RATE_INTERVAL": slash_config["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
             "AI_CHAT_USE_HISTORIC_REPLIES": bool(slash_config["COGS"]["AI_CHAT"]["USE_HISTORIC_REPLIES"]),
+            "AI_CHAT_PROFILE_RESPONSE_TIME": bool(slash_config["COGS"]["AI_CHAT"]["ENABLE_PROFILING"]),
+            "AI_CHAT_PREFER_IMAGE_URLS": bool(slash_config["COGS"]["AI_CHAT"]["PREFER_IMAGE_URLS"]),
         }
         cls._config = _config
 

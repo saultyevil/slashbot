@@ -141,12 +141,18 @@ class Conversation:
             return
         message = Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND")
         if images:
+            image_urls = []
+            for image in images:
+                if image.encoded_image:
+                    image_urls.append(f"data:{image.mime_type};base64,{image.encoded_image}")
+                else:
+                    image_urls.append(image.url)
             message_images = [
                 {
                     "type": "image_url",
-                    "image_url": {"url": f"data:{image.mime_type};base64,{image.encoded_image}", "detail": "low"},
+                    "image_url": {"url": url, "detail": "low"},
                 }
-                for image in images
+                for url in image_urls
             ]
             self._messages.append(
                 {
