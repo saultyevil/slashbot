@@ -4,14 +4,11 @@ The functions in this module are designed for OpenAI's API.
 """
 
 import base64
-import logging
 from dataclasses import dataclass
 
 import requests
 
 from slashbot.config import Bot
-
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 @dataclass
@@ -22,7 +19,7 @@ class Image:
     encoded_image: str
     mime_type: str
 
-    def __init__(self, url: str, encoded_image: str, mime_type: str) -> None:
+    def __init__(self, url: str, encoded_image: str | None, mime_type: str | None) -> None:
         """Initialise the dataclass instance.
 
         Parameters
@@ -38,7 +35,6 @@ class Image:
         self.url = url
         self.encoded_image = encoded_image
         self.mime_type = mime_type
-        LOGGER.debug("<Image> %s %s", self.url, self.mime_type)
 
 
 def download_and_encode_image(url: str) -> Image:
@@ -57,10 +53,12 @@ def download_and_encode_image(url: str) -> Image:
         The MIME type of the image.
 
     """
-    response = requests.get(url, timeout=5)
-    response.raise_for_status()  # Ensure the request was successful
-
-    mime_type = response.headers["Content-Type"]
-    encoded_image = base64.b64encode(response.content).decode("utf-8")
+    if Bot.get_config("AI_CHAT_PREFER_IMAGE_URLS"):
+        encoded_image = mime_type = None
+    else:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        mime_type = response.headers["Content-Type"]
+        encoded_image = base64.b64encode(response.content).decode("utf-8")
 
     return Image(url, encoded_image, mime_type)

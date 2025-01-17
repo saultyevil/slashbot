@@ -41,6 +41,7 @@ ruff = "^0.3.7"
 pytest = "^8.2.2"
 tqdm = "^4.67.0"
 memory-profiler = "^0.61.0"
+pyinstrument = "^5.0.0"
 
 [tool.isort]
 profile = "ruff"

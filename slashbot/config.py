@@ -151,7 +151,10 @@ class Bot:
             "DEVELOPMENT_SERVERS": slash_config["DISCORD"]["DEVELOPMENT_SERVERS"],
             # Define users, roles and channels
             "ID_USER_SAULTYEVIL": 151378138612367360,
+            "ID_USER_ADAM": 261097001301704704,
+            "ID_USER_MEGHUN": 176722208243187712,
             "ID_CHANNEL_IDIOTS": 237647756049514498,
+            "ID_SERVER_ADULT_CHILDREN": 237647756049514498,
             # API keys
             "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
             "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
@@ -188,6 +191,8 @@ class Bot:
             "AI_CHAT_RATE_LIMIT": slash_config["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
             "AI_CHAT_RATE_INTERVAL": slash_config["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
             "AI_CHAT_USE_HISTORIC_REPLIES": bool(slash_config["COGS"]["AI_CHAT"]["USE_HISTORIC_REPLIES"]),
+            "AI_CHAT_PROFILE_RESPONSE_TIME": bool(slash_config["COGS"]["AI_CHAT"]["ENABLE_PROFILING"]),
+            "AI_CHAT_PREFER_IMAGE_URLS": bool(slash_config["COGS"]["AI_CHAT"]["PREFER_IMAGE_URLS"]),
         }
         cls._config = _config
 

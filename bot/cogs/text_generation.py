@@ -20,6 +20,7 @@ import aiofiles
 import disnake
 from disnake.ext import commands
 from disnake.utils import escape_markdown
+from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -64,6 +65,15 @@ def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
 
     """
     return obj.channel.id
+
+
+# Set up logger for profiler
+profile_logger = logging.getLogger("ProfilerLogger")
+profile_logger.handlers.clear()
+file_handler = logging.FileHandler("profile.log")
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+profile_logger.addHandler(file_handler)
+profile_logger.setLevel(logging.INFO)
 
 
 class TextGeneration(SlashbotCog):
@@ -282,10 +292,6 @@ class TextGeneration(SlashbotCog):
         if discord_message.author.bot:
             return
 
-        if discord_message.clean_content.strip() == f"@{self.bot.user.name}":
-            await send_message_to_channel("?", discord_message)
-            return
-
         # only respond when mentioned or in DM. mention_string is used for slash
         # commands
         bot_mentioned = self.bot.user in discord_message.mentions
@@ -299,21 +305,28 @@ class TextGeneration(SlashbotCog):
             return
 
         if bot_mentioned or message_in_dm:
+            if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
+                profiler = Profiler(async_mode="enabled")
+                profiler.start()
             async with discord_message.channel.typing():
                 rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
                 if not rate_limited:
                     await self.send_response_to_prompt(discord_message, send_to_dm=message_in_dm)
-                    TextGeneration.logger.debug(
-                        "Size of Conversation<%d> is %e MB",
-                        history_id,
-                        self.conversations[history_id].get_size_of_conversation() / 1.0e6,
-                    )
                 else:
                     await send_message_to_channel(
                         f"Stop abusing me, {discord_message.author.mention}!",
                         discord_message,
                         dont_tag_user=True,
                     )
+            if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
+                profiler.stop()
+                profiler_output = profiler.output_text()
+                profile_logger.info("\n%s", profiler_output)
+                profile_logger.info(
+                    "Conversation<%d> is %e MB",
+                    history_id,
+                    self.conversations[history_id].get_size_of_conversation() / 1.0e6,
+                )
             return  # early return to avoid situation of randomly responding to itself
 
         # If we get here, then there's a random chance the bot will respond to a

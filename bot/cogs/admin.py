@@ -1,4 +1,7 @@
+import asyncio
+import datetime
 import logging
+import random
 from pathlib import Path
 
 import disnake
@@ -38,6 +41,92 @@ class AdminTools(SlashbotCog):
         """
         super().__init__(bot)
         self.my_messages = []
+        self.invite_tasks = {}
+
+    async def delayed_invite_task(self, member: disnake.Member, delay_minutes: float) -> None:
+        """Send an invite to a member after a delay.
+
+        Parameters
+        ----------
+        member : disnake.Member
+            The member to invite.
+        delay_minutes : float
+            The number of minutes to wait before sending the invite.
+
+        """
+        try:
+            await asyncio.sleep(delay_minutes * 60)
+            try:
+                await member.unban(reason="why not?")
+            except disnake.NotFound:
+                AdminTools.logger.info("A good samaritan already unbanned %s", member.display_name)
+                self.invite_tasks.pop(member.id)
+                return
+            invite = await member.guild.text_channels[0].create_invite(max_uses=1)
+            user = await self.bot.fetch_user(member.id)
+            await user.send(invite.url)
+        except asyncio.CancelledError:
+            AdminTools.logger.info("Delayed invite for %s cancelled", member.display_name)
+        finally:
+            self.invite_tasks.pop(member.id)
+
+    @commands.Cog.listener("on_member_remove")
+    async def unban_user_adam(self, member: disnake.Member) -> None:
+        """Unban and re-invite Adam, if removed by Meghun.
+
+        Parameters
+        ----------
+        member : disnake.Member
+            The member which has been removed
+
+        """
+        jerma_gifs = (
+            "https://media1.tenor.com/m/XcEBpnPquUMAAAAd/jerma-pog.gif",
+            "https://media1.tenor.com/m/s5OePfXg13AAAAAd/jerma-eat-burger-whopper.gif",
+            "https://media1.tenor.com/m/YOeQ5oo0M_EAAAAd/jerma-jermafood.gif",
+            "https://media1.tenor.com/m/Akk1cG-C_a0AAAAd/jerma-jerma985.gif",
+            "https://media1.tenor.com/m/1Fn-Lhpkfm8AAAAd/jerma985-i-saw-what-you-deleted.gif",
+        )
+
+        if member.id != Bot.get_config("ID_USER_ADAM"):
+            return
+        guild = member.guild
+        if guild.id != Bot.get_config("ID_SERVER_ADULT_CHILDREN"):
+            return
+        filter_user = await self.bot.fetch_user(Bot.get_config("ID_USER_MEGHUN"))
+        async for entry in guild.audit_logs(
+            action=disnake.AuditLogAction.ban, after=member.joined_at, user=filter_user
+        ):
+            if entry.target.id == member.id:
+                channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
+                await channel.send(
+                    f":warning: looks like 72 needs to ZERK off after banning adam again!! :warning: {random.choice(jerma_gifs)}",
+                )
+                random_minutes = random.uniform(5, 240)
+                self.invite_tasks[member.id] = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
+                AdminTools.logger.info("Adam has been unbanned and will be re-invited in %f minutes", random_minutes)
+                return
+
+    @commands.Cog.listener("on_member_join")
+    async def cancel_delayed_invite_task(self, member: disnake.Member) -> None:
+        """Cancel the delayed invite for Adam.
+
+        Parameters
+        ----------
+        member : disnake.Member
+            The member which has joined.
+
+        """
+        if member.id != Bot.get_config("ID_USER_ADAM"):
+            return
+        guild = member.guild
+        if guild.id != Bot.get_config("ID_SERVER_ADULT_CHILDREN"):
+            return
+        if member.id not in self.invite_tasks:
+            return
+
+        self.invite_tasks[member.id].cancel()
+        self.invite_tasks.pop(member.id)
 
     @commands.Cog.listener("on_message")
     async def self_listener(self, message: disnake.Message) -> None:
