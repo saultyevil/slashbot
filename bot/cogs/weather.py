@@ -407,7 +407,10 @@ class Weather(SlashbotCog):
 
         """
         await inter.response.defer()
-        location, forecast = await self.get_weather_forecast_for_location(inter, user_location, units, "daily")
+        try:
+            location, forecast = await self.get_weather_forecast_for_location(inter, user_location, units, "daily")
+        except ValueError:
+            return
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
@@ -446,9 +449,12 @@ class Weather(SlashbotCog):
 
         """
         await inter.response.defer()
-        location, weather_return = await self.get_weather_forecast_for_location(
-            inter, user_location, units, ["current", "daily", "alerts"]
-        )
+        try:
+            location, weather_return = await self.get_weather_forecast_for_location(
+                inter, user_location, units, ["current", "daily", "alerts"]
+            )
+        except ValueError:
+            return
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
