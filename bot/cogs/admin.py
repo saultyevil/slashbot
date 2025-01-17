@@ -56,7 +56,12 @@ class AdminTools(SlashbotCog):
         """
         try:
             await asyncio.sleep(delay_minutes * 60)
-            await member.unban()
+            try:
+                await member.unban(reason="why not?")
+            except disnake.NotFound:
+                AdminTools.logger.info("A good samaritan already unbanned %s", member.display_name)
+                self.invite_tasks.pop(member.id)
+                return
             invite = await member.guild.text_channels[0].create_invite(max_uses=1)
             user = await self.bot.fetch_user(member.id)
             await user.send(invite.url)
