@@ -414,7 +414,7 @@ class Weather(SlashbotCog):
             text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
-        embed = self.add_forecast_to_embed(embed, forecast[amount + 1 :], units)
+        embed = self.add_forecast_to_embed(embed, forecast[: amount + 1], units)
 
         await inter.edit_original_message(embed=embed)
 
