@@ -82,7 +82,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    key = Bot.get_config("MONSTER_API_KEY")
+    key = ""  # Bot.get_config("MONSTER_API_KEY")
     if key:
         bot.add_cog(ImageGeneration(bot))
     else:
