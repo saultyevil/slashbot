@@ -248,14 +248,14 @@ class TextGeneration(SlashbotCog):
                 conversation_copy.get_messages(),
             )
         except Exception as exc:
-            TextGeneration.logger.exception(
-                "Failed to get response from OpenAI, reverting to markov sentence with no seed word: <%s>",
-                exc.response["error"],
-            )
             await send_message_to_channel(
                 generate_text_from_markov_chain(MARKOV_MODEL, "?random", 1),
                 discord_message,
                 dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
+            )
+            TextGeneration.logger.exception(
+                "Failed to get response from OpenAI, reverting to markov sentence with no seed word: <%s>",
+                exc.response,
             )
             return
 
