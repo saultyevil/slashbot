@@ -56,6 +56,10 @@ async def get_attached_images_from_message(message: Message) -> list[Image]:
         data and the MIME type of the image.
 
     """
+    # DeepSeek doesn't support vision as of current implementation 28/01/2025
+    if "deepseek" in Bot.get_config("AI_CHAT_BASE_URL"):
+        return []
+
     image_urls = []  # Start off with empty list, which makes it clearer we will always returns a list
     image_urls += [attachment.url for attachment in message.attachments if attachment.content_type.startswith("image/")]
     image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image]

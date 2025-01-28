@@ -159,9 +159,8 @@ class Bot:
             "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
             "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
             "OWM_API_KEY": os.getenv("OWM_API_KEY"),
-            "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
+            "DEEPSEEK_API_KEY": os.getenv("DEEPSEEK_API_KEY"),
             "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-            "MONSTER_API_KEY": os.getenv("MONSTER_API_KEY"),
             # File locations
             "DATABASE_LOCATION": Path(slash_config["FILES"]["DATABASE"]),
             "BAD_WORDS_FILE": Path(slash_config["FILES"]["BAD_WORDS"]),
@@ -176,6 +175,7 @@ class Bot:
             "SPELLCHECK_ENABLED": bool(slash_config["COGS"]["SPELLCHECK"]["ENABLED"]),
             "SPELLCHECK_SERVERS": slash_config["COGS"]["SPELLCHECK"]["SERVERS"],
             "SPELLCHECK_CUSTOM_DICTIONARY": slash_config["COGS"]["SPELLCHECK"]["CUSTOM_DICTIONARY"],
+            "AI_CHAT_BASE_URL": slash_config["COGS"]["AI_CHAT"]["API_BASE_URL"],
             "AI_CHAT_CHAT_MODEL": slash_config["COGS"]["AI_CHAT"]["CHAT_MODEL"],
             "AI_CHAT_TEMPERATURE": slash_config["COGS"]["AI_CHAT"]["MODEL_TEMPERATURE"],
             "AI_CHAT_TOP_P": slash_config["COGS"]["AI_CHAT"]["MODEL_TOP_P"],
@@ -215,7 +215,7 @@ class Bot:
             The value of the parameter requested, or None.
 
         """
-        return Bot._config[name]
+        return Bot._config.get(name, None)
 
     @staticmethod
     def set_config(name: str, value: str) -> None:

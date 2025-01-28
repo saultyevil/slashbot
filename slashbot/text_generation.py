@@ -16,8 +16,33 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
-OPENAI_CLIENT = openai.AsyncOpenAI(api_key=Bot.get_config("OPENAI_API_KEY"))
+CACHED_CLIENT = None
 LOW_DETAIL_IMAGE_TOKENS = 85
+
+
+def get_client() -> openai.AsyncOpenAI:
+    """Set the LLM API client.
+
+    The client used is OpenAI's async client, which can be used with both
+    OpenAI and DeepSeek depending on the base url.
+
+    Returns
+    -------
+    openai.AsyncOpenAI
+        The OpenAI LLM client.
+
+    """
+    base_url = Bot.get_config("AI_CHAT_BASE_URL")
+
+    if CACHED_CLIENT and base_url == CACHED_CLIENT.base_url:
+        return CACHED_CLIENT
+
+    if "deepseek" in base_url:  # noqa: SIM108
+        api_key = Bot.get_config("DEEPSEEK_API_KEY")
+    else:
+        api_key = Bot.get_config("OPENAI_API_KEY")
+
+    return openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
 
 
 async def generate_text_from_llm(model: str, messages: list) -> tuple[str, int]:
@@ -39,7 +64,7 @@ async def generate_text_from_llm(model: str, messages: list) -> tuple[str, int]:
         The number of tokens in the conversation
 
     """
-    response = await OPENAI_CLIENT.chat.completions.create(
+    response = await get_client().chat.completions.create(
         messages=messages,
         model=model,
         max_tokens=Bot.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
