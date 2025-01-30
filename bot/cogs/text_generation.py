@@ -16,9 +16,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import openai
 import aiofiles
 import disnake
+import openai
 from disnake.ext import commands
 from disnake.utils import escape_markdown
 from pyinstrument import Profiler
