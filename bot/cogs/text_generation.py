@@ -16,6 +16,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import openai
 import aiofiles
 import disnake
 from disnake.ext import commands
@@ -97,6 +98,24 @@ class TextGeneration(SlashbotCog):
         self.channel_histories: dict[ChannelHistory] = defaultdict(lambda: ChannelHistory())
         self.cooldowns = defaultdict(
             lambda: {"count": 0, "last_interaction": datetime.datetime.now(tz=datetime.UTC)},
+        )
+
+    @staticmethod
+    async def send_fallback_response_to_prompt(message: disnake.Message, *, dont_tag_user: bool = False) -> None:
+        """Send a fallback response using the markov chain.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to respond to.
+        dont_tag_user: bool
+            Whether or not to tag the user or not, optional
+
+        """
+        await send_message_to_channel(
+            generate_text_from_markov_chain(MARKOV_MODEL, "?random", 1),
+            message,
+            dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )
 
     def clear_conversation_history(self, history_id: str | int) -> None:
@@ -247,16 +266,29 @@ class TextGeneration(SlashbotCog):
                 Bot.get_config("AI_CHAT_CHAT_MODEL"),
                 conversation_copy.get_messages(),
             )
-        except Exception as exc:
-            await send_message_to_channel(
-                generate_text_from_markov_chain(MARKOV_MODEL, "?random", 1),
-                discord_message,
-                dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
-            )
+        except openai.BadRequestError as exc:
+            if "invalid_image_url" in str(exc):
+                conversation_copy.remove_images_from_messages()
+                conversation.remove_images_from_messages()
+                try:
+                    bot_response, tokens_used = await generate_text_from_llm(
+                        Bot.get_config("AI_CHAT_CHAT_MODEL"),
+                        conversation_copy.get_messages(),
+                    )
+                except openai.APIError:
+                    TextGeneration.logger.exception(
+                        "Failed to get response from OpenAI, reverting to markov sentence with no seed word",
+                    )
+                    await self.send_fallback_response_to_prompt(discord_message, dont_tag_user=send_to_dm)
+                    return
+            else:
+                await self.send_fallback_response_to_prompt(discord_message, dont_tag_user=send_to_dm)
+                return
+        except openai.APIError:
             TextGeneration.logger.exception(
-                "Failed to get response from OpenAI, reverting to markov sentence with no seed word: <%s>",
-                exc.response,
+                "Failed to get response from OpenAI, reverting to markov sentence with no seed word",
             )
+            await self.send_fallback_response_to_prompt(discord_message, dont_tag_user=send_to_dm)
             return
 
         await send_message_to_channel(

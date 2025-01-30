@@ -179,11 +179,14 @@ class Conversation:
         token_start = self.tokens
         messages_start = len(self._messages)
 
+        # Minimum number of messages to keep. This takes into account the system
+        # prompt and keeps at least one assistant -> user sequence
+        min_messages = 3
+
         # Keep removing the 1st message and response until under the token size.
-        # To remove the prompt and response, we remove 2 messages at index 1.
-        # The conversation is kept to least 3 messages so there's always
-        # something to go back to in case of long responses
-        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self._messages) > 4:
+        # To remove the prompt and response, we remove 2 messages at index 1 as
+        # the message at index 0 is the system prompt
+        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self._messages) > min_messages:
             self.remove_message(1)
             self.remove_message(1)
 
@@ -312,9 +315,47 @@ class Conversation:
             The removed message.
 
         """
+        if self._messages[index]["role"] == "system":
+            msg = "Trying to remove system prompt"
+            raise ValueError(msg)
         message = self._messages.pop(index)
         self.tokens -= get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
         return Message(message["content"], message["role"])
+
+    def remove_images_from_messages(self) -> list[dict]:
+        """Remove image URLs from the conversation.
+
+        This is generally most useful when the OpenAI API is complaining that it
+        can't open the URL for some reason. Could also be useful when switching
+        between DeepSeek and OpenAI, for example.
+
+        Returns
+        -------
+        list[dict]
+            List containing a dict with the message index, item index, and the
+            item inside the "content" window
+
+        """
+        removed_images = []
+
+        for i, message in enumerate(self._messages):
+            content = message["content"]
+            # if content is a list, then it has images attached
+            if not isinstance(content, list):
+                continue
+            # remove any image urls, but not base64 encoded strings. in theory,
+            # we could also try converting image urls to base64 strings...
+            for j, item in enumerate(content):
+                if item["type"] == "image_url" and ";base64," not in item["image_url"]:
+                    removed_images.append(
+                        {
+                            "message_index": i,
+                            "item_index": j,
+                            "image": self._messages[i]["content"].pop(j),
+                        }
+                    )
+
+        return removed_images
 
     def set_conversation_point(self, message: str) -> list[dict]:
         """Get the conversation.
