@@ -232,7 +232,7 @@ class Conversation:
         *,
         tokens: int = 0,
         images: list[str] | None = None,
-        shrink_conversation: bool = False,
+        shrink_conversation: bool = True,
     ) -> list[dict]:
         """Add a new message to the conversation history.
 

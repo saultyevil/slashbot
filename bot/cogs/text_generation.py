@@ -185,6 +185,48 @@ class TextGeneration(SlashbotCog):
 
         return conversation, previous_message
 
+    async def get_response_from_llm(
+        self,
+        conversation: Conversation,
+        conversation_copy: Conversation,
+    ) -> tuple[str, int]:
+        """Get the response from the LLM and update the conversation history.
+
+        Parameters
+        ----------
+        conversation : Conversation
+            The conversation to update with the response.
+        conversation_copy : Conversation
+            The copy of the conversation that the LLM is being asked to generate
+            a response for. This is used to avoid a race condition when multiple
+            people are talking to the bot at once.
+
+        Returns
+        -------
+        str
+            The response from the LLM.
+        int
+            The number of tokens in the conversation.
+
+        """
+        try:
+            bot_response, tokens_used = await generate_text_from_llm(
+                Bot.get_config("AI_CHAT_CHAT_MODEL"),
+                conversation_copy.get_messages(),
+            )
+        except openai.BadRequestError as exc:
+            if "invalid_image_url" in str(exc):
+                conversation_copy.remove_images_from_messages()
+                conversation.remove_images_from_messages()
+                bot_response, tokens_used = await generate_text_from_llm(
+                    Bot.get_config("AI_CHAT_CHAT_MODEL"),
+                    conversation_copy.get_messages(),
+                )
+            else:
+                raise
+
+        return bot_response, tokens_used
+
     async def update_channel_message_history(self, history_id: int, user: str, message: str) -> None:
         """Record the history of messages in a channel.
 
@@ -205,7 +247,7 @@ class TextGeneration(SlashbotCog):
         while self.channel_histories[history_id].tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
             self.channel_histories[history_id].remove_message(0)
 
-    async def respond_to_unprompted_message(self, message: disnake.Message) -> None:
+    async def respond_with_random_llm_message(self, message: disnake.Message) -> None:
         """Respond to a single message with no context.
 
         Parameters
@@ -217,14 +259,9 @@ class TextGeneration(SlashbotCog):
         try:
             with Path.open(Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
                 prompt = json.load(file_in)["prompt"]
-        except OSError:
+        except (OSError, json.JJSONDecodeError):
             TextGeneration.logger.exception(
-                "Failed to open random response prompt: %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
-            )
-            return
-        except json.JSONDecodeError:
-            TextGeneration.logger.exception(
-                "Failed to decode random response prompt: %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
+                "Failed to process random response prompt %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
             )
             return
         messages = [
@@ -259,31 +296,13 @@ class TextGeneration(SlashbotCog):
                 discord_message, conversation_copy
             )
             message_images += await get_attached_images_from_message(referenced_message)
-        conversation_copy.add_message(user_prompt, "user", images=message_images)
+        conversation_copy.add_message(user_prompt, "user", images=message_images, shrink_conversation=False)
 
         try:
-            bot_response, tokens_used = await generate_text_from_llm(
-                Bot.get_config("AI_CHAT_CHAT_MODEL"),
-                conversation_copy.get_messages(),
+            bot_response, tokens_used = await self.get_response_from_llm(
+                conversation,
+                conversation_copy,
             )
-        except openai.BadRequestError as exc:
-            if "invalid_image_url" in str(exc):
-                conversation_copy.remove_images_from_messages()
-                conversation.remove_images_from_messages()
-                try:
-                    bot_response, tokens_used = await generate_text_from_llm(
-                        Bot.get_config("AI_CHAT_CHAT_MODEL"),
-                        conversation_copy.get_messages(),
-                    )
-                except openai.APIError:
-                    TextGeneration.logger.exception(
-                        "Failed to get response from OpenAI, reverting to markov sentence with no seed word",
-                    )
-                    await self.send_fallback_response_to_prompt(discord_message, dont_tag_user=send_to_dm)
-                    return
-            else:
-                await self.send_fallback_response_to_prompt(discord_message, dont_tag_user=send_to_dm)
-                return
         except openai.APIError:
             TextGeneration.logger.exception(
                 "Failed to get response from OpenAI, reverting to markov sentence with no seed word",
@@ -291,14 +310,50 @@ class TextGeneration(SlashbotCog):
             await self.send_fallback_response_to_prompt(discord_message, dont_tag_user=send_to_dm)
             return
 
-        await send_message_to_channel(
-            bot_response,
-            discord_message,
-            dont_tag_user=send_to_dm,  # In a DM, we won't @ the user
-        )
+        await send_message_to_channel(bot_response, discord_message, dont_tag_user=send_to_dm)
+        conversation.add_message(user_prompt, "user", images=message_images)
+        conversation.add_message(bot_response, "assistant", tokens=tokens_used)
 
-        conversation.add_message(user_prompt, "user", images=message_images, shrink_conversation=True)
-        conversation.add_message(bot_response, "assistant", tokens=tokens_used, shrink_conversation=True)
+    async def respond_to_prompt(
+        self, history_id: int, discord_message: disnake.Message, *, message_in_dm: bool = False
+    ) -> None:
+        """Respond to a user's message prompt.
+
+        This method handles user prompts by checking for rate limits,
+        sending responses, and logging response time if profiling is enabled.
+
+        Parameters
+        ----------
+        history_id : int
+            The ID used to track the conversation history.
+        discord_message : disnake.Message
+            The Discord message containing the user's prompt.
+        message_in_dm : bool, optional
+            Whether the prompt was sent in a direct message (default is False).
+
+        """
+        if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
+            profiler = Profiler(async_mode="enabled")
+            profiler.start()
+        async with discord_message.channel.typing():
+            rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
+            if not rate_limited:
+                await self.send_response_to_prompt(discord_message, send_to_dm=message_in_dm)
+            else:
+                await send_message_to_channel(
+                    f"Stop abusing me, {discord_message.author.mention}!",
+                    discord_message,
+                    dont_tag_user=True,
+                )
+        if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
+            profiler.stop()
+            profiler_output = profiler.output_text()
+            profile_logger.info("\n%s", profiler_output)
+            profile_logger.info(
+                "Conversation<%d> is %e MB",
+                history_id,
+                self.conversations[history_id].get_size_of_conversation() / 1.0e6,
+            )
 
     # Listeners ----------------------------------------------------------------
 
@@ -336,35 +391,15 @@ class TextGeneration(SlashbotCog):
         if await is_reply_to_slash_command_response(discord_message) and not mention_string:
             return
 
+        # If the bot was mentioned or the message was in a DM, respond
         if bot_mentioned or message_in_dm:
-            if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
-                profiler = Profiler(async_mode="enabled")
-                profiler.start()
-            async with discord_message.channel.typing():
-                rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
-                if not rate_limited:
-                    await self.send_response_to_prompt(discord_message, send_to_dm=message_in_dm)
-                else:
-                    await send_message_to_channel(
-                        f"Stop abusing me, {discord_message.author.mention}!",
-                        discord_message,
-                        dont_tag_user=True,
-                    )
-            if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
-                profiler.stop()
-                profiler_output = profiler.output_text()
-                profile_logger.info("\n%s", profiler_output)
-                profile_logger.info(
-                    "Conversation<%d> is %e MB",
-                    history_id,
-                    self.conversations[history_id].get_size_of_conversation() / 1.0e6,
-                )
-            return  # early return to avoid situation of randomly responding to itself
+            await self.respond_to_prompt(history_id, discord_message, message_in_dm=message_in_dm)
+            return
 
         # If we get here, then there's a random chance the bot will respond to a
         # "regular" message
         if random.random() <= Bot.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
-            await self.respond_to_unprompted_message(discord_message)
+            await self.respond_with_random_llm_message(discord_message)
 
     # Commands -----------------------------------------------------------------
 
@@ -398,7 +433,6 @@ class TextGeneration(SlashbotCog):
 
         """
         history_id = get_history_id(inter)
-        channel_prompt = self.conversations[history_id].system_prompt
         channel_history = self.channel_histories[history_id]
         if channel_history.tokens == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
@@ -419,15 +453,13 @@ class TextGeneration(SlashbotCog):
             )
             return
 
-        sent_messages = "Summarise the following conversation between multiple users: " + "; ".join(
+        sent_messages = "Summarise the following conversation between multiple users: " + "\n".join(
             channel_history.get_messages(amount),
         )
         conversation = [
             {
                 "role": "system",
                 "content": Bot.get_config("AI_CHAT_PROMPT_PREPEND")
-                + channel_prompt
-                + ". "
                 + summary_prompt
                 + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
             },
@@ -435,20 +467,17 @@ class TextGeneration(SlashbotCog):
         ]
         TextGeneration.logger.debug("Conversation to summarise: %s", conversation)
         summary_message, token_count = await generate_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
-
+        # We don't want to add the entire conversation to the history, so for
+        # context put <HISTORY REDACTED>
         self.conversations[history_id].add_message(
-            "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]",
+            Bot.get_config("AI_CHAT_PROMPT_PREPEND")
+            + "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]"
+            + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
             "user",
-            shrink_conversation=True,
         )
+        self.conversations[history_id].add_message(summary_message, "assistant", tokens=token_count)
 
         await send_message_to_channel(summary_message, inter, dont_tag_user=True)
-        self.conversations[history_id].add_message(
-            summary_message,
-            "assistant",
-            tokens=token_count,
-            shrink_conversation=True,
-        )
         original_message = await inter.edit_original_message(content="...")
         await original_message.delete(delay=3)
 
