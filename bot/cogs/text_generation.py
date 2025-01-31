@@ -632,7 +632,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if Bot.get_config("OPENAI_API_KEY"):
+    if Bot.get_config("OPENAI_API_KEY") or Bot.get_config("DEEPSEEK_API_KEY"):
         bot.add_cog(TextGeneration(bot))
     else:
         TextGeneration.logger.error("No API key found for OpenAI, unable to load AIChatBot cog")

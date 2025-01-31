@@ -6,8 +6,6 @@ These classes are used to marshal data
 import logging
 import sys
 
-import disnake
-
 from slashbot.config import Bot
 from slashbot.text_generation import get_token_count
 
