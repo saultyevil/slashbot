@@ -67,7 +67,7 @@ async def generate_text_from_llm(model: str, messages: list) -> tuple[str, int]:
     response = await get_client().chat.completions.create(
         messages=messages,
         model=model,
-        max_tokens=Bot.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
+        max_completion_tokens=Bot.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
         frequency_penalty=Bot.get_config("AI_CHAT_FREQUENCY_PENALTY"),
         presence_penalty=Bot.get_config("AI_CHAT_PRESENCE_PENALTY"),
         temperature=Bot.get_config("AI_CHAT_TEMPERATURE"),
@@ -120,9 +120,12 @@ def get_token_count(model: str, message: str) -> int:
         The count of tokens in the given message for the specified model.
 
     """
-    encoding = tiktoken.encoding_for_model(model)
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        encoding = tiktoken.get_encoding("o200k_base")  # Fallback to this base
 
-    if not isinstance(message, str) and isinstance(message, list):
+    if isinstance(message, list):
         num_tokens = 0
         # Handle case where there are images and messages. Images are a fixed
         # cost of something like 85 tokens so we don't need to encode those
@@ -135,7 +138,7 @@ def get_token_count(model: str, message: str) -> int:
     elif isinstance(message, str):
         num_tokens = len(encoding.encode(message))
     else:
-        msg = f"Expected a string for encoding, got {type(message)}"
+        msg = f"Expected a string or list of strings for encoding, got {type(message)}"
         raise TypeError(msg)
 
     return num_tokens
