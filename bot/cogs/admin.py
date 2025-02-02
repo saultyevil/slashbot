@@ -99,8 +99,9 @@ class AdminTools(SlashbotCog):
         ):
             if entry.target.id == member.id:
                 channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
+                reason = f'"{entry.reason}"' if entry.reason else "no reason"
                 await channel.send(
-                    f":warning: looks like 72 needs to ZERK off after banning adam again!! :warning: {random.choice(jerma_gifs)}",
+                    f":warning: looks like 72 needs to ZERK off after banning adam again for {reason}!! :warning: {random.choice(jerma_gifs)}",
                 )
                 random_minutes = random.uniform(5, 240)
                 self.invite_tasks[member.id] = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
