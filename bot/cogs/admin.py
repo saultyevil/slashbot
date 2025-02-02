@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import logging
 import random
 from pathlib import Path
@@ -13,7 +12,13 @@ from bot.custom_bot import SlashbotInterationBot
 from bot.custom_cog import SlashbotCog
 from bot.custom_command import slash_command_with_cooldown
 from bot.types import ApplicationCommandInteraction
-from slashbot.admin import get_logfile_tail, restart_bot, update_local_repository
+from slashbot.admin import (
+    get_logfile_tail,
+    get_modifiable_config_keys,
+    restart_bot,
+    set_config_value,
+    update_local_repository,
+)
 from slashbot.config import Bot
 
 COOLDOWN_USER = commands.BucketType.user
@@ -279,6 +284,32 @@ class AdminTools(SlashbotCog):
             await inter.edit_original_message("Failed to update local repository")
             return
         await self.restart_bot(inter, disable_markov)
+
+    @slash_command_with_cooldown(name="set_config_value", guild_ids=Bot.get_config("DEVELOPMENT_SERVERS"))
+    async def set_config_value(
+        self,
+        inter: ApplicationCommandInteraction,
+        key: str = commands.Param(description="The config setting to update.", choices=get_modifiable_config_keys()),
+        new_value: str = commands.Param(description="The new value of the config setting."),
+    ) -> None:
+        """Change the value of a configuration parameter.
+
+        Parameters
+        ----------
+        inter : ApplicationCommandInteraction
+            The slash command interaction.
+        key : str
+            The key of the config setting to update.
+        new_value : str
+            The new value of the config setting.
+
+        """
+        if inter.author.id != Bot.get_config("ID_USER_SAULTYEVIL"):
+            await inter.response.send_message("You aren't allowed to use this command.", ephemeral=True)
+            return
+
+        old_value = set_config_value(key, new_value)
+        await inter.response.send_message(f"Updated {key} from {old_value} to {new_value}", ephemeral=True)
 
 
 def setup(bot: commands.InteractionBot) -> None:
