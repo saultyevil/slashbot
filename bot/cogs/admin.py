@@ -13,8 +13,8 @@ from bot.custom_cog import SlashbotCog
 from bot.custom_command import slash_command_with_cooldown
 from bot.types import ApplicationCommandInteraction
 from slashbot.admin import (
-    config_key_autocomplete,
     get_logfile_tail,
+    get_modifiable_config_keys,
     restart_bot,
     set_config_value,
     update_local_repository,
@@ -284,11 +284,11 @@ class AdminTools(SlashbotCog):
             return
         await self.restart_bot(inter, disable_markov)
 
-    @slash_command_with_cooldown(name="update_config_value", guild_ids=Bot.get_config("DEVELOPMENT_SERVERS"))
-    async def update_config_value(
+    @slash_command_with_cooldown(name="set_config_value", guild_ids=Bot.get_config("DEVELOPMENT_SERVERS"))
+    async def set_config_value(
         self,
         inter: ApplicationCommandInteraction,
-        key: str = commands.Param(description="The config setting to update.", autocomplete=config_key_autocomplete),
+        key: str = commands.Param(description="The config setting to update.", choices=get_modifiable_config_keys()),
         new_value: str = commands.Param(description="The new value of the config setting."),
     ) -> None:
         """Change the value of a configuration parameter.
@@ -304,11 +304,11 @@ class AdminTools(SlashbotCog):
 
         """
         if inter.author.id != Bot.get_config("ID_USER_SAULTYEVIL"):
-            await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
+            await inter.response.send_message("You aren't allowed to use this command.", ephemeral=True)
             return
 
         old_value = set_config_value(key, new_value)
-        await inter.response.send_message(f"Updated {key}: {old_value} -> {new_value}")
+        await inter.response.send_message(f"Updated {key} from {old_value} to {new_value}", ephemeral=True)
 
 
 def setup(bot: commands.InteractionBot) -> None:
