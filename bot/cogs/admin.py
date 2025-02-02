@@ -285,7 +285,7 @@ class AdminTools(SlashbotCog):
             return
         await self.restart_bot(inter, disable_markov)
 
-    @slash_command_with_cooldown(name="set_config_value", guild_ids=Bot.get_config("DEVELOPMENT_SERVERS"))
+    @slash_command_with_cooldown(name="set_config_value")
     async def set_config_value(
         self,
         inter: ApplicationCommandInteraction,
