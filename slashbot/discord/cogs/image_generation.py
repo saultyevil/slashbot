@@ -12,10 +12,10 @@ import logging
 import requests
 from disnake.ext import commands
 
-from bot.custom_cog import SlashbotCog
-from bot.custom_command import slash_command_with_cooldown
-from bot.types import ApplicationCommandInteraction  # noqa: TCH001
 from slashbot.config import Bot
+from slashbot.discord.custom_cog import SlashbotCog
+from slashbot.discord.custom_command import slash_command_with_cooldown
+from slashbot.discord.types import ApplicationCommandInteraction  # noqa: TCH001
 from slashbot.image_generation import retrieve_image_request, send_image_request
 
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))

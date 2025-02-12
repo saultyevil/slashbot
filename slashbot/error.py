@@ -2,7 +2,7 @@
 
 """Commands for getting the weather."""
 
-from bot.types import ApplicationCommandInteraction
+from slashbot.discord.types import ApplicationCommandInteraction
 
 
 async def deferred_error_message(

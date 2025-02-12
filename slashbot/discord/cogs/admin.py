@@ -7,11 +7,6 @@ import disnake
 import git
 from disnake.ext import commands
 
-from bot import __version__
-from bot.custom_bot import SlashbotInterationBot
-from bot.custom_cog import SlashbotCog
-from bot.custom_command import slash_command_with_cooldown
-from bot.types import ApplicationCommandInteraction
 from slashbot.admin import (
     get_logfile_tail,
     get_modifiable_config_keys,
@@ -20,6 +15,11 @@ from slashbot.admin import (
     update_local_repository,
 )
 from slashbot.config import Bot
+from slashbot.discord import __version__
+from slashbot.discord.custom_bot import SlashbotInterationBot
+from slashbot.discord.custom_cog import SlashbotCog
+from slashbot.discord.custom_command import slash_command_with_cooldown
+from slashbot.discord.types import ApplicationCommandInteraction
 
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = Bot.get_config("COOLDOWN_STANDARD")

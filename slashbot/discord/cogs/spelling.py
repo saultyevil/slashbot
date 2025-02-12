@@ -11,8 +11,8 @@ import disnake
 from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
 
-from bot.custom_cog import SlashbotCog
 from slashbot.config import Bot
+from slashbot.discord.custom_cog import SlashbotCog
 from slashbot.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user

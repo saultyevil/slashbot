@@ -9,8 +9,8 @@ import random
 import disnake
 from disnake.ext import commands
 
-from bot.custom_cog import SlashbotCog
 from slashbot.config import Bot
+from slashbot.discord.custom_cog import SlashbotCog
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

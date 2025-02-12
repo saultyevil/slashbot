@@ -3,11 +3,10 @@
 import logging
 
 import disnake
-from disnake.ext import commands, tasks
+from disnake.ext import commands
 
-from bot.custom_bot import SlashbotInterationBot
 from slashbot.config import Bot
-from slashbot.markov import MARKOV_MODEL, generate_text_from_markov_chain
+from slashbot.discord.custom_bot import SlashbotInterationBot
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 

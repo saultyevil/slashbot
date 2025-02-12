@@ -14,10 +14,10 @@ import requests
 from disnake.ext import commands
 from geopy import GoogleV3
 
-from bot.custom_cog import SlashbotCog
-from bot.custom_command import slash_command_with_cooldown
 from slashbot.config import Bot
 from slashbot.db import get_user_location
+from slashbot.discord.custom_cog import SlashbotCog
+from slashbot.discord.custom_command import slash_command_with_cooldown
 from slashbot.error import deferred_error_message
 from slashbot.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from slashbot.util import convert_radial_to_cardinal_direction

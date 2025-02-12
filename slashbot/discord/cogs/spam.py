@@ -13,10 +13,10 @@ import requests
 import rule34 as r34
 from disnake.ext import commands, tasks
 
-from bot.custom_cog import SlashbotCog
 from slashbot import markov
 from slashbot.config import Bot
 from slashbot.db import get_users
+from slashbot.discord.custom_cog import SlashbotCog
 from slashbot.markov import MARKOV_MODEL, update_markov_chain_for_model
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))

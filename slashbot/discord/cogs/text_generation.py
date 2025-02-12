@@ -25,11 +25,11 @@ from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from bot.custom_cog import SlashbotCog
-from bot.custom_command import slash_command_with_cooldown
-from bot.messages import get_attached_images_from_message, send_message_to_channel
-from bot.responses import is_reply_to_slash_command_response
 from slashbot.config import Bot
+from slashbot.discord.custom_cog import SlashbotCog
+from slashbot.discord.custom_command import slash_command_with_cooldown
+from slashbot.discord.messages import get_attached_images_from_message, send_message_to_channel
+from slashbot.discord.responses import is_reply_to_slash_command_response
 from slashbot.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from slashbot.models import ChannelHistory, Conversation
 from slashbot.text_generation import (
@@ -41,8 +41,8 @@ from slashbot.text_generation import (
 from slashbot.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
-    from bot.custom_bot import SlashbotInterationBot
-    from bot.types import ApplicationCommandInteraction, Message
+    from slashbot.discord.custom_bot import SlashbotInterationBot
+    from slashbot.discord.types import ApplicationCommandInteraction, Message
 
 MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()

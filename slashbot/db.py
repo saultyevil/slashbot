@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""This module contains functions for accessing and modifying the slashbot
-database.
+"""Contains functions for accessing and modifying the slashbot database.
 
 The functions in here are basically just wrappers around a dictionary and JSON.
 The database is saved to disk as a JSON. This should be performant enough, as
@@ -12,8 +11,8 @@ import json
 import logging
 import pathlib
 
-from bot.types import Member, User
 from slashbot.config import Bot
+from slashbot.discord.types import Member, User
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
@@ -22,7 +21,7 @@ logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
 
 def create_empty_database(location: str) -> None:
-    """Create an empty database
+    """Create an empty database.
 
     The keys and their types are in the database are:
         - USERS: dict
@@ -52,7 +51,7 @@ def check_database_exists(location: str) -> None:
         create_empty_database(location)
 
 
-def load_database(location: str = None) -> dict:
+def load_database(location: str | None = None) -> dict:
     """Load a database.
 
     If no location is provided, the location defined in the config file will be
@@ -113,7 +112,7 @@ def save_database(database: dict, location: str = None) -> dict:
 
 
 def create_new_user(user: User | Member) -> dict:
-    """Creates an empty user in the database.
+    """Create an empty user in the database.
 
     Adds a user to the USERS key. All fields other than the user_name are either
     unpopulated or given a default value.
@@ -220,11 +219,10 @@ def get_twitter_convert_users() -> list[int]:
     return [
         int(user_id)
         for user_id, user_settings in database["USERS"].items()
-        if user_settings["convert_twitter_url"] == True  # pylint: disable=C0121
+        if user_settings["convert_twitter_url"] == True  # pylint: disable=C0121  # noqa: E712
     ]
 
 
-# TODO: make this a user to be more consistent
 def update_user(user: Member | User, updated_fields: dict) -> None:
     """Update a user in the database.
 

@@ -17,9 +17,9 @@ import traceback
 import disnake
 from disnake.ext import commands
 
-from bot.custom_bot import SlashbotInterationBot
 from slashbot import markov
 from slashbot.config import Bot
+from slashbot.discord.custom_bot import SlashbotInterationBot
 
 # Parse command line arguments, which configure the bot
 
@@ -66,7 +66,7 @@ bot = SlashbotInterationBot(
     reload=bool(args.development),
 )
 
-bot.load_extensions("bot/cogs")
+bot.load_extensions("slashbot/discord/cogs")
 
 # Define some global bot events
 

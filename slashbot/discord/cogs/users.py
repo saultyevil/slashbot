@@ -9,9 +9,9 @@ from types import coroutine
 import disnake
 from disnake.ext import commands
 
-from bot.custom_cog import SlashbotCog
 from slashbot.config import Bot
 from slashbot.db import get_twitter_convert_users, get_user, update_user
+from slashbot.discord.custom_cog import SlashbotCog
 from slashbot.error import deferred_error_message
 from slashbot.util import convert_string_to_lower
 

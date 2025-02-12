@@ -11,9 +11,9 @@ from disnake.ext import commands, tasks
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from bot.custom_bot import SlashbotInterationBot
-from bot.custom_cog import SlashbotCog
 from slashbot.config import Bot
+from slashbot.discord.custom_bot import SlashbotInterationBot
+from slashbot.discord.custom_cog import SlashbotCog
 from slashbot.markov import generate_text_from_markov_chain
 from slashbot.util import calculate_seconds_until
 

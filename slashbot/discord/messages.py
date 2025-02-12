@@ -2,8 +2,8 @@
 
 import logging
 
-from bot.types import ApplicationCommandInteraction, Message
 from slashbot.config import Bot
+from slashbot.discord.types import ApplicationCommandInteraction, Message
 from slashbot.util import split_text_into_chunks
 from slashbot.vision import Image, download_and_encode_image
 
