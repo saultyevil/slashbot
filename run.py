@@ -8,6 +8,7 @@ Disnake is used as the API client.
 """
 
 import argparse
+import datetime
 import logging
 import os
 import time
@@ -107,11 +108,21 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
     stack = traceback.format_exception(type(error), error, error.__traceback__)
     logger.exception("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
 
+    # Delete the original response if it's older than 2.5 seconds and respond
+    # to the follow up instead
+    time_since_created = datetime.datetime.now(datetime.UTC) - inter.created_at
+    if time_since_created > datetime.timedelta(seconds=2.5):
+        inter = inter.followup
+        try:
+            original_message = await inter.original_response()
+            await original_message.delete()
+        except disnake.HTTPException:
+            pass
+
     if isinstance(error, commands.errors.CommandOnCooldown):
         await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
-
     if isinstance(error, disnake.NotFound):
-        await inter.response.send_message("The Discord API failed for some reason.", ephemeral=True)
+        await inter.response.send_message("Failed to communicate with the Discord API.", ephemeral=True)
 
 
 # This finally runs the bot
