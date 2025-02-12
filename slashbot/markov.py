@@ -14,7 +14,7 @@ import shutil
 import string
 from pathlib import Path
 
-import markovify
+from slashbot import markovify
 from slashbot.config import Bot
 from slashbot.discord.types import ApplicationCommandInteraction
 from slashbot.error import deferred_error_message
