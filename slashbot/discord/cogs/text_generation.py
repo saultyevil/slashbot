@@ -296,6 +296,8 @@ class TextGeneration(SlashbotCog):
                 discord_message, conversation_copy
             )
             message_images += await get_attached_images_from_message(referenced_message)
+            user_prompt = 'Previous message: "' + referenced_message.clean_content + '"\n' + user_prompt
+            TextGeneration.logger.debug("Updated prompt: %s", user_prompt)
         conversation_copy.add_message(user_prompt, "user", images=message_images, shrink_conversation=False)
 
         try:
