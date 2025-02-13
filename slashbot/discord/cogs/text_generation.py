@@ -131,7 +131,7 @@ class TextGeneration(SlashbotCog):
 
     async def get_referenced_message(
         self, original_message: disnake.Message, conversation: Conversation
-    ) -> tuple[Conversation, disnake.Message]:
+    ) -> tuple[Conversation, disnake.Message, bool]:
         """Retrieve a list of messages up to a reference point.
 
         Parameters
@@ -143,8 +143,13 @@ class TextGeneration(SlashbotCog):
 
         Returns
         -------
-        list
-            List of messages up to the reference point.
+        Conversation:
+            The conversation either at the latest message or put back in time
+            to the reference point
+        disnake.Message:
+            The associated meassage in Discord
+        bool:
+            A flag to indicate if the conversation was set back
 
         """
         # we need the message first, to find it in the messages list
@@ -155,13 +160,13 @@ class TextGeneration(SlashbotCog):
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
                 previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
-                return conversation, original_message
+                return conversation, original_message, False
 
         # early exit if we don't want to go back in time to change the
         # conversation -- potentially we can combine with the logic below, but
         # for now this is easier to read and understand
         if not Bot.get_config("AI_CHAT_USE_HISTORIC_REPLIES"):
-            return conversation, previous_message
+            return conversation, previous_message, False
 
         # early exit if the message is not from the bot. we still want the
         # message being referenced so we can, e.g., find images, but we don't
@@ -172,7 +177,7 @@ class TextGeneration(SlashbotCog):
                 original_message.author.id,
                 self.bot.user.id,
             )
-            return conversation, previous_message
+            return conversation, previous_message, False
 
         # the bot will only ever respond to one person, so we can do something
         # vile to remove the first word which is always a mention to the user
@@ -183,7 +188,7 @@ class TextGeneration(SlashbotCog):
         TextGeneration.logger.debug("Message to find: %s", message_to_find)
         conversation.set_conversation_point(message_to_find)
 
-        return conversation, previous_message
+        return conversation, previous_message, True
 
     async def get_response_from_llm(
         self,
@@ -292,12 +297,12 @@ class TextGeneration(SlashbotCog):
 
         message_images = await get_attached_images_from_message(discord_message)
         if discord_message.reference:
-            conversation_copy, referenced_message = await self.get_referenced_message(
+            conversation_copy, referenced_message, changed_reference = await self.get_referenced_message(
                 discord_message, conversation_copy
             )
             message_images += await get_attached_images_from_message(referenced_message)
-            user_prompt = 'Previous message: "' + referenced_message.clean_content + '"\n' + user_prompt
-            TextGeneration.logger.debug("Updated prompt: %s", user_prompt)
+            if not changed_reference:
+                user_prompt = 'Previous message: "' + referenced_message.clean_content + '"\n' + user_prompt
         conversation_copy.add_message(user_prompt, "user", images=message_images, shrink_conversation=False)
 
         try:
