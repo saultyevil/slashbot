@@ -57,7 +57,8 @@ async def get_attached_images_from_message(message: Message) -> list[Image]:
 
     """
     # DeepSeek doesn't support vision as of current implementation 28/01/2025
-    if "deepseek" in Bot.get_config("AI_CHAT_BASE_URL"):
+    if Bot.get_config("AI_CHAT_CHAT_MODEL") in ["deepseek-chat", "deepseek-reasoner", "o3-mini"]:
+        LOGGER.debug("Vision not supported in current model %s", Bot.get_config("AI_CHAT_CHAT_MODEL"))
         return []
 
     image_urls = []  # Start off with empty list, which makes it clearer we will always returns a list

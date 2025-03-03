@@ -64,9 +64,8 @@ class Conversation:
 
         """
         self._system_prompt_tokens = system_prompt_tokens
-        self._messages = [{"role": "system", "content": system_prompt}]
-        self.tokens = system_prompt_tokens
         self.system_prompt = system_prompt
+        self._set_first_message_as_system_prompt()
 
     def __getitem__(self, index: int) -> dict[str, str]:
         """Get a message at index in the conversation history.
@@ -223,6 +222,14 @@ class Conversation:
 
         return sizeof(self._messages)
 
+    def _set_first_message_as_system_prompt(self) -> None:
+        self.tokens = self._system_prompt_tokens
+        if Bot.get_config("AI_CHAT_CHAT_MODEL") in ["o1"]:  # noqa: SIM108
+            role = "user"
+        else:
+            role = "system"
+        self._messages = [{"role": role, "content": self.system_prompt}]
+
     def add_message(  # noqa: PLR0913
         self,
         message: str,
@@ -270,9 +277,7 @@ class Conversation:
         This resets the conversation back to just the system prompt, including
         the number of tokens.
         """
-        self.tokens = self._system_prompt_tokens
-        self._messages = [{"role": "system", "content": self.system_prompt}]
-
+        self._set_first_message_as_system_prompt()
         return self._messages
 
     def get_messages(self) -> list[dict]:
@@ -313,7 +318,7 @@ class Conversation:
             The removed message.
 
         """
-        if self._messages[index]["role"] == "system":
+        if self._messages[index]["role"] == "system" or index == 0:
             msg = "Trying to remove system prompt"
             raise ValueError(msg)
         message = self._messages.pop(index)
