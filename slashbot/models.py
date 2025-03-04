@@ -224,7 +224,7 @@ class Conversation:
 
     def _set_first_message_as_system_prompt(self) -> None:
         self.tokens = self._system_prompt_tokens
-        if Bot.get_config("AI_CHAT_CHAT_MODEL") in ["o1"]:  # noqa: SIM108
+        if Bot.get_config("AI_CHAT_CHAT_MODEL") in ["o1", "o1-mini"]:  # noqa: SIM108
             role = "user"
         else:
             role = "system"
