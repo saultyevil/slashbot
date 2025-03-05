@@ -123,7 +123,7 @@ class AdminTools(SlashbotCog):
 
         return times_happened
 
-    async def _invite_user(self, member: disnake.Memeber | disnake.User) -> None:
+    async def _invite_user(self, member: disnake.Member | disnake.User) -> None:
         """Send an invite to a member.
 
         Parameters
