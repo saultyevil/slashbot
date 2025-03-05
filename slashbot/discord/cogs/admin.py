@@ -25,6 +25,13 @@ from slashbot.discord.types import ApplicationCommandInteraction
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = Bot.get_config("COOLDOWN_STANDARD")
 COOLDOWN_RATE = Bot.get_config("COOLDOWN_RATE")
+JERMA_GIFS = (
+    "https://media1.tenor.com/m/XcEBpnPquUMAAAAd/jerma-pog.gif",
+    "https://media1.tenor.com/m/s5OePfXg13AAAAAd/jerma-eat-burger-whopper.gif",
+    "https://media1.tenor.com/m/YOeQ5oo0M_EAAAAd/jerma-jermafood.gif",
+    "https://media1.tenor.com/m/Akk1cG-C_a0AAAAd/jerma-jerma985.gif",
+    "https://media1.tenor.com/m/1Fn-Lhpkfm8AAAAd/jerma985-i-saw-what-you-deleted.gif",
+)
 
 
 class AdminTools(SlashbotCog):
@@ -49,8 +56,88 @@ class AdminTools(SlashbotCog):
         self.my_messages = []
         self.invite_tasks = {}
 
-    async def delayed_invite_task(self, member: disnake.Member, delay_minutes: float) -> None:
-        """Send an invite to a member after a delay.
+    async def _check_audit_log_for_action_and_invite(
+        self,
+        guild: disnake.Guild,
+        member: disnake.Member | disnake.User,
+        filter_user: disnake.Member | disnake.User,
+        action: disnake.AuditLogAction,
+    ) -> None:
+        """Check audit logs for specific actions and send invites.
+
+        Parameters
+        ----------
+        guild : disnake.Guild
+            The guild where the action occurred.
+        member : disnake.Member or disnake.User
+            The member who was the target of the action.
+        filter_user : disnake.Member or disnake.User
+            The user who initiated the action.
+        action : disnake.AuditLogAction
+            The action to check in the audit log. Must be ban or kick.
+
+        Returns
+        -------
+        int
+            The number of times the action has been recorded in the last month.
+
+        """
+        if action not in (disnake.AuditLogAction.ban, disnake.AuditLogAction.kick):
+            msg = "action must be ban or kick"
+            raise ValueError(msg)
+
+        if action is disnake.AuditLogAction.ban:
+            action_present = "banning"
+            action_past = "banned"
+        else:
+            action_present = "kicking"
+            action_past = "kicked"
+
+        async for entry in guild.audit_logs(action=action, after=member.joined_at, user=filter_user):
+            if entry.target.id == member.id:
+                channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
+                reason = f'"{entry.reason}"' if entry.reason else "no reason"
+                await channel.send(
+                    f":warning: looks like 72 needs to ZERK off after {action_present} adam again for {reason}!! :warning: {random.choice(JERMA_GIFS)}",
+                )
+                random_seconds = random.uniform(60, 3600)  # 1 minute to 1 hour
+                random_minutes = random_seconds / 60
+                self.invite_tasks[member.id] = asyncio.create_task(
+                    self.invite_after_delay_task(member, random_minutes, action == disnake.AuditLogAction.ban)
+                )
+                AdminTools.logger.info("Adam has been will be re-invited in %f minutes", random_minutes)
+                break
+
+        times_happened = 0
+        month_ago = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=30)
+        async for entry in guild.audit_logs(action=action, after=month_ago, limit=None):
+            if entry.target.id == member.id:
+                times_happened += 1
+        if times_happened > 1:
+            channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
+            await channel.send(
+                f":warning: 72 has {action_past}adam {times_happened} times in the last month!! :warning:",
+            )
+
+        return times_happened
+
+    async def _invite_user(self, member: disnake.Memeber | disnake.User) -> None:
+        """Send an invite to a member.
+
+        Parameters
+        ----------
+        member : disnake.Member | disnake.User
+            The member to invite.
+
+        """
+        invite = await member.guild.text_channels[0].create_invite(max_uses=1)
+        user = await self.bot.fetch_user(member.id)
+        await user.send(invite.url)
+
+    async def invite_after_delay_task(
+        self, member: disnake.Member, delay_minutes: float, *, unban_user: bool = False
+    ) -> None:
+        """Send an invite to a banned member after a delay.
 
         Parameters
         ----------
@@ -58,19 +145,21 @@ class AdminTools(SlashbotCog):
             The member to invite.
         delay_minutes : float
             The number of minutes to wait before sending the invite.
+        unban_user : bool
+            Whether to unban the user before inviting them, use False if the
+            user has already been unbanned or kicked.
 
         """
         try:
             await asyncio.sleep(delay_minutes * 60)
-            try:
-                await member.unban(reason="why not?")
-            except disnake.NotFound:
-                AdminTools.logger.info("A good samaritan already unbanned %s", member.display_name)
-                self.invite_tasks.pop(member.id)
-                return
-            invite = await member.guild.text_channels[0].create_invite(max_uses=1)
-            user = await self.bot.fetch_user(member.id)
-            await user.send(invite.url)
+            if unban_user:
+                try:
+                    await member.unban(reason="why not?")
+                except disnake.NotFound:
+                    AdminTools.logger.info("A good samaritan already unbanned %s", member.display_name)
+                    self.invite_tasks.pop(member.id)
+                    return
+            self._invite_user(member)
         except asyncio.CancelledError:
             AdminTools.logger.info("Delayed invite for %s cancelled", member.display_name)
         finally:
@@ -86,44 +175,27 @@ class AdminTools(SlashbotCog):
             The member which has been removed
 
         """
-        jerma_gifs = (
-            "https://media1.tenor.com/m/XcEBpnPquUMAAAAd/jerma-pog.gif",
-            "https://media1.tenor.com/m/s5OePfXg13AAAAAd/jerma-eat-burger-whopper.gif",
-            "https://media1.tenor.com/m/YOeQ5oo0M_EAAAAd/jerma-jermafood.gif",
-            "https://media1.tenor.com/m/Akk1cG-C_a0AAAAd/jerma-jerma985.gif",
-            "https://media1.tenor.com/m/1Fn-Lhpkfm8AAAAd/jerma985-i-saw-what-you-deleted.gif",
-        )
-
         if member.id != Bot.get_config("ID_USER_ADAM"):
             return
         guild = member.guild
         if guild.id != Bot.get_config("ID_SERVER_ADULT_CHILDREN"):
             return
         filter_user = await self.bot.fetch_user(Bot.get_config("ID_USER_MEGHUN"))
-        async for entry in guild.audit_logs(
-            action=disnake.AuditLogAction.ban, after=member.joined_at, user=filter_user
-        ):
-            if entry.target.id == member.id:
-                channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
-                reason = f'"{entry.reason}"' if entry.reason else "no reason"
-                await channel.send(
-                    f":warning: looks like 72 needs to ZERK off after banning adam again for {reason}!! :warning: {random.choice(jerma_gifs)}",
-                )
-                random_minutes = random.uniform(5, 240)
-                self.invite_tasks[member.id] = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
-                AdminTools.logger.info("Adam has been unbanned and will be re-invited in %f minutes", random_minutes)
-                break
 
-        times_banned = 0
-        month_ago = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=30)
-        async for entry in guild.audit_logs(action=disnake.AuditLogAction.ban, after=month_ago, limit=None):
-            if entry.target.id == member.id:
-                times_banned += 1
-        if times_banned > 1:
-            channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
-            await channel.send(
-                f":warning: 72 has banned adam {times_banned} times in the last month!! :warning:",
-            )
+        # First check if he has been banned
+        times_banned = await self._check_audit_log_for_action_and_invite(
+            guild, member, filter_user, disnake.AuditLogAction.ban
+        )
+        # If he has been banned, then we don't need to check for being kicked.
+        if times_banned > 0:
+            return
+        # If not banned, check for kicked...
+        await self._check_audit_log_for_action_and_invite(
+            guild,
+            member,
+            filter_user,
+            disnake.AuditLogAction.kick,
+        )
 
     @commands.Cog.listener("on_member_join")
     async def cancel_delayed_invite_task(self, member: disnake.Member) -> None:
