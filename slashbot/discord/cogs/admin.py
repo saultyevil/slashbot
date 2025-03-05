@@ -103,7 +103,9 @@ class AdminTools(SlashbotCog):
                 random_seconds = random.uniform(60, 3600)  # 1 minute to 1 hour
                 random_minutes = random_seconds / 60
                 self.invite_tasks[member.id] = asyncio.create_task(
-                    self.invite_after_delay_task(member, random_minutes, action == disnake.AuditLogAction.ban)
+                    self.invite_after_delay_task(
+                        member, random_minutes, unban_user=action == disnake.AuditLogAction.ban
+                    )
                 )
                 AdminTools.logger.info("Adam has been will be re-invited in %f minutes", random_minutes)
                 break
