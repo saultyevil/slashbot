@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import random
 from pathlib import Path
@@ -111,7 +112,18 @@ class AdminTools(SlashbotCog):
                 random_minutes = random.uniform(5, 240)
                 self.invite_tasks[member.id] = asyncio.create_task(self.delayed_invite_task(member, random_minutes))
                 AdminTools.logger.info("Adam has been unbanned and will be re-invited in %f minutes", random_minutes)
-                return
+                break
+
+        times_banned = 0
+        month_ago = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=30)
+        async for entry in guild.audit_logs(action=disnake.AuditLogAction.ban, after=month_ago, limit=None):
+            if entry.target.id == member.id:
+                times_banned += 1
+        if times_banned > 1:
+            channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
+            await channel.send(
+                f":warning: 72 has banned adam {times_banned} times in the last month!! :warning:",
+            )
 
     @commands.Cog.listener("on_member_join")
     async def cancel_delayed_invite_task(self, member: disnake.Member) -> None:
