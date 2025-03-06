@@ -152,6 +152,12 @@ def convert_yes_no_to_bool(_inter: ApplicationCommandInteraction, choice: str) -
     return True if choice.lower() == "yes" else False
 
 
+def ordinal_suffix(n):
+    if 11 <= (n % 100) <= 13:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
 def remove_emojis_from_string(string: str) -> str:
     """Remove emojis from a string.
 

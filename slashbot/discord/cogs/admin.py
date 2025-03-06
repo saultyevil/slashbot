@@ -21,6 +21,7 @@ from slashbot.discord.custom_bot import SlashbotInterationBot
 from slashbot.discord.custom_cog import SlashbotCog
 from slashbot.discord.custom_command import slash_command_with_cooldown
 from slashbot.discord.types import ApplicationCommandInteraction
+from slashbot.util import ordinal_suffix
 
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = Bot.get_config("COOLDOWN_STANDARD")
@@ -56,13 +57,33 @@ class AdminTools(SlashbotCog):
         self.my_messages = []
         self.invite_tasks = {}
 
+    async def _find_entry(
+        self, guild: disnake.Guild, member: disnake.Member, filter_user: disnake.Member, action: disnake.AuditLogAction
+    ) -> str:
+        async for entry in guild.audit_logs(action=action, after=member.joined_at, user=filter_user):
+            if entry.target.id == member.id:
+                return f'"{entry.reason}"' if entry.reason else "no reason"
+
+        return None
+
+    async def _count_times(
+        self, guild: disnake.Guild, member: disnake.Member | disnake.User, action: disnake.AuditLogAction
+    ) -> int:
+        times_happened = 0
+        month_ago = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=30)
+        async for entry in guild.audit_logs(action=action, after=month_ago, limit=None):
+            if entry.target.id == member.id:
+                times_happened += 1
+
+        return times_happened
+
     async def _check_audit_log_for_action_and_invite(
         self,
         guild: disnake.Guild,
         member: disnake.Member | disnake.User,
-        filter_user: disnake.Member | disnake.User,
+        action_user: disnake.Member | disnake.User,
         action: disnake.AuditLogAction,
-    ) -> None:
+    ) -> str:
         """Check audit logs for specific actions and send invites.
 
         Parameters
@@ -71,57 +92,37 @@ class AdminTools(SlashbotCog):
             The guild where the action occurred.
         member : disnake.Member or disnake.User
             The member who was the target of the action.
-        filter_user : disnake.Member or disnake.User
+        action_user: disnake.Member or disnake.User
             The user who initiated the action.
         action : disnake.AuditLogAction
             The action to check in the audit log. Must be ban or kick.
 
         Returns
         -------
-        int
-            The number of times the action has been recorded in the last month.
+        str
+            The reason for "action" happening
 
         """
         if action not in (disnake.AuditLogAction.ban, disnake.AuditLogAction.kick):
             msg = "action must be ban or kick"
             raise ValueError(msg)
-
-        if action is disnake.AuditLogAction.ban:
-            action_present = "banning"
-            action_past = "banned"
-        else:
-            action_present = "kicking"
-            action_past = "kicked"
-
-        async for entry in guild.audit_logs(action=action, after=member.joined_at, user=filter_user):
-            if entry.target.id == member.id:
-                channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
-                reason = f'"{entry.reason}"' if entry.reason else "no reason"
-                await channel.send(
-                    f":warning: looks like 72 needs to ZERK off after {action_present} adam again for {reason}!! :warning: {random.choice(JERMA_GIFS)}",
-                )
-                random_seconds = random.uniform(60, 3600)  # 1 minute to 1 hour
-                random_minutes = random_seconds / 60
-                self.invite_tasks[member.id] = asyncio.create_task(
-                    self.invite_after_delay_task(
-                        member, random_minutes, unban_user=action == disnake.AuditLogAction.ban
-                    )
-                )
-                AdminTools.logger.info("Adam has been will be re-invited in %f minutes", random_minutes)
-                break
-
-        times_happened = 0
-        month_ago = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=30)
-        async for entry in guild.audit_logs(action=action, after=month_ago, limit=None):
-            if entry.target.id == member.id:
-                times_happened += 1
-        if times_happened > 1:
+        action_present = "banning" if action == disnake.AuditLogAction.ban else "kicking"
+        reason = self._find_entry(guild, member, action_user, action)
+        if reason:
+            num_times = await self._count_times(guild, member, action)
             channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
             await channel.send(
-                f":warning: 72 has {action_past} adam {times_happened} times in the last month!! :warning:",
+                f":warning: looks like {action_user.display_name} needs to zerk off after {action_present} "
+                f"{member.display_name} for {reason}!! This is the {num_times}{ordinal_suffix(num_times)} "
+                f"in the past month!! :warning: {random.choice(JERMA_GIFS)}",
             )
+            random_minutes = random.uniform(60, 3600) / 60  # 1 minute to 1 hour
+            self.invite_tasks[member.id] = asyncio.create_task(
+                self.invite_after_delay_task(member, random_minutes, unban_user=action == disnake.AuditLogAction.ban)
+            )
+            AdminTools.logger.info("Adam will be re-invited in %f minutes", random_minutes)
 
-        return times_happened
+        return reason
 
     async def _invite_user(self, member: disnake.Member | disnake.User) -> None:
         """Send an invite to a member.
@@ -156,14 +157,13 @@ class AdminTools(SlashbotCog):
             await asyncio.sleep(delay_minutes * 60)
             if unban_user:
                 try:
-                    await member.unban(reason="why not?")
+                    await member.unban()
                 except disnake.NotFound:
-                    AdminTools.logger.info("A good samaritan already unbanned %s", member.display_name)
                     self.invite_tasks.pop(member.id)
                     return
             self._invite_user(member)
         except asyncio.CancelledError:
-            AdminTools.logger.info("Delayed invite for %s cancelled", member.display_name)
+            AdminTools.logger.info("Invite for %s cancelled by asyncio", member.display_name)
         finally:
             self.invite_tasks.pop(member.id)
 
@@ -185,11 +185,11 @@ class AdminTools(SlashbotCog):
         filter_user = await self.bot.fetch_user(Bot.get_config("ID_USER_MEGHUN"))
 
         # First check if he has been banned
-        times_banned = await self._check_audit_log_for_action_and_invite(
+        banned = await self._check_audit_log_for_action_and_invite(
             guild, member, filter_user, disnake.AuditLogAction.ban
         )
         # If he has been banned, then we don't need to check for being kicked.
-        if times_banned > 0:
+        if banned:
             return
         # If not banned, check for kicked...
         await self._check_audit_log_for_action_and_invite(
