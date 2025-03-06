@@ -118,7 +118,7 @@ class AdminTools(SlashbotCog):
         if times_happened > 1:
             channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
             await channel.send(
-                f":warning: 72 has {action_past}adam {times_happened} times in the last month!! :warning:",
+                f":warning: 72 has {action_past} adam {times_happened} times in the last month!! :warning:",
             )
 
         return times_happened
