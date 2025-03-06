@@ -129,30 +129,20 @@ class TextGeneration(SlashbotCog):
         """
         self.conversations[history_id].clear_messages()
 
-    async def get_referenced_message(
-        self, original_message: disnake.Message, conversation: Conversation
-    ) -> tuple[Conversation, disnake.Message, bool]:
-        """Retrieve a list of messages up to a reference point.
+    async def get_referenced_message(self, original_message: disnake.Message) -> disnake.Message:
+        """Retrieve a message from a message reply.
 
         Parameters
         ----------
         original_message : disnake.Message
             The message containing the reference
-        conversation : Conversation
-            The conversation to retrieve messages from
 
         Returns
         -------
-        Conversation:
-            The conversation either at the latest message or put back in time
-            to the reference point
         disnake.Message:
             The associated meassage in Discord
-        bool:
-            A flag to indicate if the conversation was set back
 
         """
-        # we need the message first, to find it in the messages list
         message_reference = original_message.reference
         previous_message = message_reference.cached_message
         if not previous_message:
@@ -160,35 +150,9 @@ class TextGeneration(SlashbotCog):
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
                 previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
-                return conversation, original_message, False
+                return original_message
 
-        # early exit if we don't want to go back in time to change the
-        # conversation -- potentially we can combine with the logic below, but
-        # for now this is easier to read and understand
-        if not Bot.get_config("AI_CHAT_USE_HISTORIC_REPLIES"):
-            return conversation, previous_message, False
-
-        # early exit if the message is not from the bot. we still want the
-        # message being referenced so we can, e.g., find images, but we don't
-        # want to change the conversation history
-        if previous_message.author.id != self.bot.user.id:
-            TextGeneration.logger.debug(
-                "Message not from the bot: message.author.id = %s, bot.user.id = %s",
-                original_message.author.id,
-                self.bot.user.id,
-            )
-            return conversation, previous_message, False
-
-        # the bot will only ever respond to one person, so we can do something
-        # vile to remove the first word which is always a mention to the user
-        # it is responding to. This is not included in the prompt history.
-        message_to_find = previous_message.clean_content.strip()
-        if message_to_find.startswith("@"):
-            message_to_find = " ".join(previous_message.content.split()[1:]).strip()
-        TextGeneration.logger.debug("Message to find: %s", message_to_find)
-        conversation.set_conversation_point(message_to_find)
-
-        return conversation, previous_message, True
+        return previous_message
 
     async def get_response_from_llm(
         self,
@@ -297,12 +261,20 @@ class TextGeneration(SlashbotCog):
 
         message_images = await get_attached_images_from_message(discord_message)
         if discord_message.reference:
-            conversation_copy, referenced_message, changed_reference = await self.get_referenced_message(
-                discord_message, conversation_copy
-            )
-            message_images += await get_attached_images_from_message(referenced_message)
-            if not changed_reference:
-                user_prompt = 'Previous message: "' + referenced_message.clean_content + '"\n' + user_prompt
+            referenced_message = await self.get_referenced_message(discord_message)
+            if referenced_message != discord_message:
+                message_images += await get_attached_images_from_message(referenced_message)
+                user_prompt = (
+                    'Previous message to respond to with the prompt: "'
+                    + referenced_message.clean_content
+                    + '"\nPrompt: '
+                    + user_prompt
+                )
+            else:
+                TextGeneration.logger.error(
+                    "Failed to get the message referenced in %s",
+                    discord_message,
+                )
         conversation_copy.add_message(user_prompt, "user", images=message_images, shrink_conversation=False)
 
         try:
