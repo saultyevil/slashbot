@@ -1,5 +1,5 @@
 #!/bin/bash
-poetry install > /dev/null
+poetry install
 if [ "$DEVELOPMENT_MODE" = true ]; then
     exec poetry run slashbot --debug
 else
