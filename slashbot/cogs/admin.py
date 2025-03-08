@@ -15,13 +15,13 @@ from slashlib.admin import (
     update_local_repository,
 )
 from slashlib.config import Bot
+from slashlib.types import ApplicationCommandInteraction
 from slashlib.util import ordinal_suffix
 
 from slashbot import __version__
 from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog
 from slashbot.custom_command import slash_command_with_cooldown
-from slashbot.types import ApplicationCommandInteraction
 
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = Bot.get_config("COOLDOWN_STANDARD")

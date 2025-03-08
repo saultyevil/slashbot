@@ -7,14 +7,14 @@ import pathlib
 import re
 from typing import Any
 
-from slashbot.types import (
+from slashlib.config import Bot
+from slashlib.types import (
     ApplicationCommandInteraction,
     DMChannel,
     Member,
     TextChannel,
     User,
 )
-from slashlib.config import Bot
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 

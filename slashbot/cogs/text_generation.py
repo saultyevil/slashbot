@@ -41,8 +41,9 @@ from slashbot.messages import get_attached_images_from_message, send_message_to_
 from slashbot.responses import is_reply_to_slash_command_response
 
 if TYPE_CHECKING:
+    from slashlib.types import ApplicationCommandInteraction, Message
+
     from slashbot.custom_bot import SlashbotInterationBot
-    from slashbot.types import ApplicationCommandInteraction, Message
 
 MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
 DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()
