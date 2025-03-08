@@ -6,3 +6,5 @@ services:
       - .env
     environment:
       - DEVELOPMENT_MODE=true
+    volumes:
+      - .:/bot

@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import aiofiles
+import git
 
 from botlib.config import Bot
 
@@ -116,6 +117,22 @@ def get_modifiable_config_keys() -> tuple[str]:
         "PROMPT_PREPEND",
         "PROMPT_APPEND",
     )
+
+
+def update_local_repository(branch: str) -> None:
+    """Update the local git repository to `branch` and pull in changes.
+
+    Parameters
+    ----------
+    branch : str
+        The branch to switch to.
+
+    """
+    repo = git.Repo(".", search_parent_directories=True)
+    if repo.active_branch != branch:
+        branch = repo.branches[branch]
+        branch.checkout()
+    repo.remotes.origin.pull()
 
 
 def set_config_value(key: str, value: str) -> None:  # noqa: C901
