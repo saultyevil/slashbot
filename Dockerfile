@@ -10,9 +10,5 @@ WORKDIR /bot
 COPY poetry.lock pyproject.toml README.md ./
 RUN poetry install --no-interaction --no-ansi --no-root
 
-# Now copy the rest of the files and install the package
-# COPY . .
-# RUN poetry install
-
 # Run the bot
 CMD ["./entrypoint.sh"]
