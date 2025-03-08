@@ -16,12 +16,10 @@ import traceback
 
 import disnake
 from disnake.ext import commands
+from slashlib import markov
+from slashlib.config import Bot
 
-from slashbot import markov
-from slashbot.config import Bot
-from slashbot.discord.custom_bot import SlashbotInterationBot
-
-# Parse command line arguments, which configure the bot
+from slashbot.custom_bot import SlashbotInterationBot
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -65,10 +63,6 @@ bot = SlashbotInterationBot(
     intents=intents,
     reload=bool(args.development),
 )
-
-bot.load_extensions("slashbot/discord/cogs")
-
-# Define some global bot events
 
 
 @bot.event
@@ -125,7 +119,7 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
         await inter.response.send_message("Failed to communicate with the Discord API.", ephemeral=True)
 
 
-# This finally runs the bot
+bot.load_extensions("slashbot/cogs")
 
 if args.development:
     bot.run(os.getenv("SLASHBOT_DEVELOPMENT_TOKEN"))

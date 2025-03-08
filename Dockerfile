@@ -8,6 +8,7 @@ SHELL ["/bin/bash", "-c"]
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PYTHONPATH="${PYTHONPATH}:/bot/lib"
 
 RUN apt update && apt install -y git openssh-client
 

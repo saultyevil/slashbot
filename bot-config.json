@@ -71,7 +71,7 @@
     },
     "LOGFILE": {
         "LOG_NAME": "slashbot",
-        "LOG_LOCATION": "slashbot.log"
+        "LOG_LOCATION": "logs/slashbot.log"
     },
     "MARKOV": {
         "ENABLE_MARKOV_TRAINING": false,
