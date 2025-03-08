@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import requests
 
-from slashlib.config import Bot
+from botlib.config import Bot
 
 
 @dataclass

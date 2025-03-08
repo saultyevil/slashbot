@@ -8,7 +8,7 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from slashlib import _generate_markov_sentence, load_markov_model
+from botlib import _generate_markov_sentence, load_markov_model
 
 markov_file = Path("data/markov/markov-sentences.json")
 if not markov_file.exists():

@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 import openai
 import tiktoken
 
-from slashlib.config import Bot
-from slashlib.util import create_prompt_dict, read_in_prompt_json
+from botlib.config import Bot
+from botlib.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
-    from slashlib.models import Conversation
+    from botlib.models import Conversation
 
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")

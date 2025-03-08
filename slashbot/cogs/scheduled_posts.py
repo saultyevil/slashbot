@@ -7,10 +7,10 @@ import threading
 from pathlib import Path
 
 import disnake
+from botlib.config import Bot
+from botlib.markov import generate_text_from_markov_chain
+from botlib.util import calculate_seconds_until
 from disnake.ext import commands, tasks
-from slashlib.config import Bot
-from slashlib.markov import generate_text_from_markov_chain
-from slashlib.util import calculate_seconds_until
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 

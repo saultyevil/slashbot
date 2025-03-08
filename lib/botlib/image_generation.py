@@ -5,7 +5,7 @@ import time
 
 import requests
 
-from slashlib.config import Bot
+from botlib.config import Bot
 
 MAX_WAIT_TIME_SECONDS = 300
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))

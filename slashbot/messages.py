@@ -2,10 +2,10 @@
 
 import logging
 
-from slashlib.config import Bot
-from slashlib.types import ApplicationCommandInteraction, Message
-from slashlib.util import split_text_into_chunks
-from slashlib.vision import Image, download_and_encode_image
+from botlib.config import Bot
+from botlib.types import ApplicationCommandInteraction, Message
+from botlib.util import split_text_into_chunks
+from botlib.vision import Image, download_and_encode_image
 
 LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")

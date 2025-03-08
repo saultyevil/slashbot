@@ -3,8 +3,8 @@
 import logging
 
 import disnake
+from botlib.config import Bot
 from disnake.ext import commands
-from slashlib.config import Bot
 
 from slashbot.custom_bot import SlashbotInterationBot
 

@@ -10,10 +10,10 @@ from __future__ import annotations
 import logging
 
 import requests
+from botlib.config import Bot
+from botlib.image_generation import retrieve_image_request, send_image_request
+from botlib.types import ApplicationCommandInteraction
 from disnake.ext import commands
-from slashlib.config import Bot
-from slashlib.image_generation import retrieve_image_request, send_image_request
-from slashlib.types import ApplicationCommandInteraction  # noqa: TCH001
 
 from slashbot.custom_cog import SlashbotCog
 from slashbot.custom_command import slash_command_with_cooldown

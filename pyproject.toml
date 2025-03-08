@@ -6,7 +6,7 @@ authors = ["Edward J. Parkinson"]
 readme = "README.md"
 packages = [
     { include = "slashbot" },
-    { include = "slashlib", from = "lib" },
+    { include = "botlib", from = "lib" },
     { include = "markovify", from = "lib" }
 ]
 
@@ -26,7 +26,6 @@ dateparser = "^1.1.8"
 tiktoken = "0.7.0"
 watchdog = "^3.0.0"
 geopy = "^2.3.0"
-gitpython = "^3.1.37"
 pyspellchecker = "^0.7.2"
 async-timeout = "^4.0.3"
 httpx = "^0.27.0"
@@ -42,7 +41,6 @@ isort = "^5.12.0"
 ruff = "^0.9.9"
 pytest = "^8.2.2"
 pytest-asyncio = "^0.23.7"
-tqdm = "^4.67.0"
 
 [tool.isort]
 profile = "ruff"

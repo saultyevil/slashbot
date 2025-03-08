@@ -6,8 +6,8 @@ import random
 import aiofiles
 import disnake
 import wolframalpha
+from botlib.config import Bot
 from disnake.ext import commands
-from slashlib.config import Bot
 
 from slashbot.custom_cog import SlashbotCog
 

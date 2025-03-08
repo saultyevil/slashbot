@@ -6,9 +6,8 @@ import sys
 from pathlib import Path
 
 import aiofiles
-import git
 
-from slashlib.config import Bot
+from botlib.config import Bot
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 
@@ -90,22 +89,6 @@ def restart_bot(arguments: list[str]) -> None:
     """
     logger.info("Restarting with new process with arguments %s", arguments)
     os.execv(sys.executable, ["python", *arguments])  # noqa: S606
-
-
-def update_local_repository(branch: str) -> None:
-    """Update the local git repository to `branch` and pull in changes.
-
-    Parameters
-    ----------
-    branch : str
-        The branch to switch to.
-
-    """
-    repo = git.Repo(".", search_parent_directories=True)
-    if repo.active_branch != branch:
-        branch = repo.branches[branch]
-        branch.checkout()
-    repo.remotes.origin.pull()
 
 
 def get_modifiable_config_keys() -> tuple[str]:

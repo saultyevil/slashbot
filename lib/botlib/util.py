@@ -7,8 +7,8 @@ import pathlib
 import re
 from typing import Any
 
-from slashlib.config import Bot
-from slashlib.types import (
+from botlib.config import Bot
+from botlib.types import (
     ApplicationCommandInteraction,
     DMChannel,
     Member,

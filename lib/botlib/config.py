@@ -18,21 +18,19 @@ def setup_logging() -> None:
     console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
     logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
     logger.addHandler(console_handler)
-
-    if Path(Bot.get_config("LOGFILE_NAME")).parent.exists():
-        file_handler = RotatingFileHandler(
-            filename=Bot.get_config("LOGFILE_NAME"),
-            encoding="utf-8",
-            maxBytes=int(5e5),
-            backupCount=5,
-        )
-        file_handler.setFormatter(
-            logging.Formatter(
-                "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)",
-                "%Y-%m-%d %H:%M:%S",
-            ),
-        )
-        logger.addHandler(file_handler)
+    file_handler = RotatingFileHandler(
+        filename=Bot.get_config("LOGFILE_NAME"),
+        encoding="utf-8",
+        maxBytes=int(5e5),
+        backupCount=5,
+    )
+    file_handler.setFormatter(
+        logging.Formatter(
+            "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)",
+            "%Y-%m-%d %H:%M:%S",
+        ),
+    )
+    logger.addHandler(file_handler)
 
     logger = logging.getLogger("disnake")
     logger.setLevel(logging.DEBUG)
@@ -123,6 +121,8 @@ class Bot:
                 slash_config = json.load(file_in)
             current_config = os.getenv("SLASHBOT_CONFIG")
         except (OSError, TypeError):
+            print(f"Failed to load config file defined in $SLASHBOT_CONFIG: {os.getenv('SLASHBOT_CONFIG')}")  # noqa: T201
+            print("Trying to load default config file: ./bot-config.json")  # noqa: T201
             with Path.open("./bot-config.json", encoding="utf-8") as file_in:
                 slash_config = json.load(file_in)
             current_config = "./bot-config.json"

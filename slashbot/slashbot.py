@@ -14,9 +14,9 @@ import time
 import traceback
 
 import disnake
+from botlib import markov
+from botlib.config import Bot
 from disnake.ext import commands
-from slashlib import markov
-from slashlib.config import Bot
 
 from slashbot.custom_bot import SlashbotInterationBot
 

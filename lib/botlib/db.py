@@ -9,8 +9,8 @@ import json
 import logging
 import pathlib
 
-from slashlib.config import Bot
-from slashlib.types import Member, User
+from botlib.config import Bot
+from botlib.types import Member, User
 
 logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
 

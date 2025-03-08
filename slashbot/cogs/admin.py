@@ -5,18 +5,16 @@ import random
 from pathlib import Path
 
 import disnake
-import git
-from disnake.ext import commands
-from slashlib.admin import (
+from botlib.admin import (
     get_logfile_tail,
     get_modifiable_config_keys,
     restart_bot,
     set_config_value,
-    update_local_repository,
 )
-from slashlib.config import Bot
-from slashlib.types import ApplicationCommandInteraction
-from slashlib.util import ordinal_suffix
+from botlib.config import Bot
+from botlib.types import ApplicationCommandInteraction
+from botlib.util import ordinal_suffix
+from disnake.ext import commands
 
 from slashbot import __version__
 from slashbot.custom_bot import SlashbotInterationBot
@@ -330,46 +328,6 @@ class AdminTools(SlashbotCog):
             await inter.response.send_message("Restarting the bot...", ephemeral=True)
 
         restart_bot(arguments)
-
-    @slash_command_with_cooldown(name="update_bot")
-    async def update_and_restart(
-        self,
-        inter: ApplicationCommandInteraction,
-        branch: str = commands.Param(
-            default="main",
-            description="The branch to update to",
-        ),
-        disable_markov: str = commands.Param(
-            choices=["Yes", "No"],
-            default=False,
-            description="Disable Markov sentence generation for faster load times",
-            converter=lambda _, arg: arg == "Yes",
-        ),
-    ) -> None:
-        """Update and restart the bot.
-
-        Parameters
-        ----------
-        inter : ApplicationCommandInteraction
-            The slash command interaction.
-        branch : str
-            The name of the git branch to use
-        disable_markov : str / bool
-            A bool to indicate if we should disable cached markov sentences. The
-            input is a string of "Yes" or "No" which is converted into a bool.
-
-        """
-        if inter.author.id != Bot.get_config("ID_USER_SAULTYEVIL"):
-            await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
-            return
-        await inter.response.defer(ephemeral=True)
-        try:
-            update_local_repository(branch)
-        except git.exc.GitCommandError:
-            AdminTools.logger.exception("Failed to update repository")
-            await inter.edit_original_message("Failed to update local repository")
-            return
-        await self.restart_bot(inter, disable_markov)
 
     @slash_command_with_cooldown(name="set_config_value")
     async def set_config_value(

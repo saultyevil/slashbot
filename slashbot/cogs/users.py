@@ -5,11 +5,11 @@ import re
 from types import coroutine
 
 import disnake
+from botlib.config import Bot
+from botlib.db import get_twitter_convert_users, get_user, update_user
+from botlib.error import deferred_error_message
+from botlib.util import convert_string_to_lower
 from disnake.ext import commands
-from slashlib.config import Bot
-from slashlib.db import get_twitter_convert_users, get_user, update_user
-from slashlib.error import deferred_error_message
-from slashlib.util import convert_string_to_lower
 
 from slashbot.custom_cog import SlashbotCog
 

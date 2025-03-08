@@ -8,9 +8,9 @@ from pathlib import Path
 
 import aiofiles
 import disnake
+from botlib.config import Bot
+from botlib.util import calculate_seconds_until, join_list_max_chars
 from disnake.ext import commands, tasks
-from slashlib.config import Bot
-from slashlib.util import calculate_seconds_until, join_list_max_chars
 from spellchecker import SpellChecker
 
 from slashbot.custom_cog import SlashbotCog

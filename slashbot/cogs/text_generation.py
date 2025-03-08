@@ -19,19 +19,19 @@ from typing import TYPE_CHECKING
 import aiofiles
 import disnake
 import openai
-from disnake.ext import commands
-from disnake.utils import escape_markdown
-from pyinstrument import Profiler
-from slashlib.config import Bot
-from slashlib.markov import MARKOV_MODEL, generate_text_from_markov_chain
-from slashlib.models import ChannelHistory, Conversation
-from slashlib.text_generation import (
+from botlib.config import Bot
+from botlib.markov import MARKOV_MODEL, generate_text_from_markov_chain
+from botlib.models import ChannelHistory, Conversation
+from botlib.text_generation import (
     check_if_user_rate_limited,
     generate_text_from_llm,
     get_prompts_at_launch,
     get_token_count,
 )
-from slashlib.util import create_prompt_dict, read_in_prompt_json
+from botlib.util import create_prompt_dict, read_in_prompt_json
+from disnake.ext import commands
+from disnake.utils import escape_markdown
+from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -41,7 +41,7 @@ from slashbot.messages import get_attached_images_from_message, send_message_to_
 from slashbot.responses import is_reply_to_slash_command_response
 
 if TYPE_CHECKING:
-    from slashlib.types import ApplicationCommandInteraction, Message
+    from botlib.types import ApplicationCommandInteraction, Message
 
     from slashbot.custom_bot import SlashbotInterationBot
 

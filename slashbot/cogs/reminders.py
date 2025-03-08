@@ -5,14 +5,14 @@ import re
 
 import dateparser
 import disnake
-from disnake.ext import commands, tasks
-from prettytable import PrettyTable
-from slashlib.db import (
+from botlib.db import (
     add_reminder,
     get_all_reminders,
     get_all_reminders_for_user,
     remove_reminder,
 )
+from disnake.ext import commands, tasks
+from prettytable import PrettyTable
 
 from slashbot.custom_bot import SlashbotInterationBot
 from slashbot.custom_cog import SlashbotCog

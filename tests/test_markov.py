@@ -2,7 +2,7 @@
 
 import pytest
 
-from slashlib import markov
+from botlib import markov
 from lib import markovify
 
 

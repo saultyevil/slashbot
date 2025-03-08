@@ -1,6 +1,6 @@
 #!/bin/bash
 if [ "$DEVELOPMENT_MODE" = true ]; then
-    exec python run.py --debug
+    exec poetry run slashbot --debug
 else
-    exec python run.py
+    exec poetry run slashbot
 fi

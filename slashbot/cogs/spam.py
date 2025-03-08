@@ -11,11 +11,11 @@ import defusedxml.ElementTree
 import disnake
 import requests
 import rule34 as r34
+from botlib import markov
+from botlib.config import Bot
+from botlib.db import get_users
+from botlib.markov import MARKOV_MODEL, update_markov_chain_for_model
 from disnake.ext import commands, tasks
-from slashlib import markov
-from slashlib.config import Bot
-from slashlib.db import get_users
-from slashlib.markov import MARKOV_MODEL, update_markov_chain_for_model
 
 from slashbot.custom_cog import SlashbotCog
 
