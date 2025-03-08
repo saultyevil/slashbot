@@ -1,11 +1,17 @@
-
 [tool.poetry]
 name = "slashbot"
-version = "5.0.0a"
-description = ""
+version = "2.4.0"
+description = "A (useless) discord bot designed around slash commands."
 authors = ["Edward J. Parkinson"]
 readme = "README.md"
-packages = [{ include = "slashbot" }]
+packages = [
+    { include = "slashbot" },
+    { include = "botlib", from = "lib" },
+    { include = "markovify", from = "lib" }
+]
+
+[tool.poetry.scripts]
+slashbot = "slashbot.slashbot:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -20,28 +26,22 @@ dateparser = "^1.1.8"
 tiktoken = "0.7.0"
 watchdog = "^3.0.0"
 geopy = "^2.3.0"
-gitpython = "^3.1.37"
 pyspellchecker = "^0.7.2"
 async-timeout = "^4.0.3"
-anthropic = "^0.21.3"
-pillow = "^10.2.0"
 httpx = "^0.27.0"
-openai = "1.36.0"
+openai = "1.61.0"
 aiofiles = "^23.2.1"
 defusedxml = "^0.7.1"
-pytest = "^8.2.2"
-pytest-asyncio = "^0.23.7"
+pyinstrument = "^5.0.0"
+gitpython = "^3.1.44"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.3.0"
 ipython = "^8.13.2"
 pre-commit = "^3.3.3"
 isort = "^5.12.0"
-ruff = "^0.3.7"
+ruff = "^0.9.9"
 pytest = "^8.2.2"
-tqdm = "^4.67.0"
-memory-profiler = "^0.61.0"
-pyinstrument = "^5.0.0"
+pytest-asyncio = "^0.23.7"
 
 [tool.isort]
 profile = "ruff"
@@ -88,4 +88,4 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.pytest.ini_options]
-pythonpath = [".", "lib", "lib/markovify"]
+pythonpath = [".", "lib", "lib/markovify", "lib/slashlib"]

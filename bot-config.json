@@ -28,14 +28,15 @@
         "AI_CHAT": {
             "SUMMARY_PROMPT": "data/prompts/_summary-prompt.json",
             "RANDOM_RESPONSE_PROMPT": "data/prompts/_random-response-prompt.json",
-            "TOKEN_WINDOW_SIZE": 4000,
+            "TOKEN_WINDOW_SIZE": 10000,
             "MAX_OUTPUT_TOKENS": 2000,
             "MODEL_TEMPERATURE": 1.0,
             "MODEL_TOP_P": 1.0,
             "MODEL_FREQUENCY_PENALTY": 0.0,
             "MODEL_PRESENCE_PENALTY": 0.0,
             "CHAT_MODEL": "gpt-4o-mini",
-            "RANDOM_RESPONSE_CHANCE": 5e-3,
+            "API_BASE_URL": "https://api.openai.com/v1",
+            "RANDOM_RESPONSE_CHANCE": 0.005,
             "RESPONSE_RATE_LIMIT": 10,
             "RATE_LIMIT_INTERVAL": 5,
             "PROMPT_PREPEND": "",
@@ -70,7 +71,7 @@
     },
     "LOGFILE": {
         "LOG_NAME": "slashbot",
-        "LOG_LOCATION": "slashbot.log"
+        "LOG_LOCATION": "logs/slashbot.log"
     },
     "MARKOV": {
         "ENABLE_MARKOV_TRAINING": false,

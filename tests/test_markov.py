@@ -2,7 +2,8 @@
 
 import pytest
 
-from slashbot import markov, markovify
+from botlib import markov
+from lib import markovify
 
 
 @pytest.fixture()

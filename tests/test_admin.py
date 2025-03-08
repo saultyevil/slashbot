@@ -1,8 +1,3 @@
-import pytest
-
-from slashbot import admin
-
-
 def test_get_logfile_tail() -> None:
     pass
 

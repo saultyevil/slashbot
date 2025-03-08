@@ -1,6 +1,7 @@
 #!/bin/bash
+poetry install
 if [ "$DEVELOPMENT_MODE" = true ]; then
-    exec python run.py --development
+    exec poetry run slashbot --debug
 else
-    exec python run.py
+    exec poetry run slashbot
 fi
