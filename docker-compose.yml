@@ -7,3 +7,6 @@ services:
       - .env
     environment:
       - DEVELOPMENT_MODE=false
+    volumes:
+      - .:/bot
+      - ~/.ssh:/home/slashbot/.ssh:ro
