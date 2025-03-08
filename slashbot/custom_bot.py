@@ -17,12 +17,12 @@ class SlashbotInterationBot(commands.InteractionBot):
     This is a modified version of disnake.ext.commands.InteractionBot.
     """
 
-    def __init__(self, *, enable_markov_gen: bool = False, **kwargs: int) -> None:
+    def __init__(self, *, enable_markov_cache: bool = False, **kwargs: int) -> None:
         """Initialise the bot.
 
         Parameters
         ----------
-        enable_markov_gen : bool
+        enable_markov_cache: bool
             Whether or not to enable automatic Markov sentence generation,
             default is False.
         **kwargs : int
@@ -32,10 +32,10 @@ class SlashbotInterationBot(commands.InteractionBot):
         super().__init__(**kwargs)
         self.cleanup_functions = []
         self.times_connected = 0
-        self.markov_gen_enabled = enable_markov_gen and MARKOV_MODEL
+        self.markov_pregenerate_sentences = enable_markov_cache and MARKOV_MODEL
         logger.info(
             "Automatic Markov sentence generation is %s",
-            "enabled" if self.markov_gen_enabled else "disabled",
+            "enabled" if self.markov_pregenerate_sentences else "disabled",
         )
 
     def add_function_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:

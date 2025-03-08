@@ -136,6 +136,9 @@ class Bot:
         # populate _config dict, which is a key store for configuration of the
         # bot
         _config = {
+            # tokens
+            "DEVELOPMENT_TOKEN": os.getenv("SLASHBOT_DEVELOPMENT_TOKEN"),
+            "RUN_TOKEN": os.getenv("SLASHBOT_RUN_TOKEN"),
             # config file
             "CONFIG_FILE": str(Path(current_config).resolve()),
             # cooldown parameters
@@ -156,11 +159,11 @@ class Bot:
             "ID_CHANNEL_IDIOTS": 237647756049514498,
             "ID_SERVER_ADULT_CHILDREN": 237647756049514498,
             # API keys
-            "GOOGLE_API_KEY": os.getenv("GOOGLE_API_KEY"),
-            "WOLFRAM_API_KEY": os.getenv("WOLFRAM_API_KEY"),
-            "OWM_API_KEY": os.getenv("OWM_API_KEY"),
-            "DEEPSEEK_API_KEY": os.getenv("DEEPSEEK_API_KEY"),
-            "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+            "GOOGLE_API_KEY": os.getenv("SLASHBOT_GOOGLE_API_KEY"),
+            "WOLFRAM_API_KEY": os.getenv("SLASHBOT_WOLFRAM_API_KEY"),
+            "OWM_API_KEY": os.getenv("SLASHBOT_OWM_API_KEY"),
+            "DEEPSEEK_API_KEY": os.getenv("SLASHBOT_DEEPSEEK_API_KEY"),
+            "OPENAI_API_KEY": os.getenv("SLASHBOT_OPENAI_API_KEY"),
             # File locations
             "DATABASE_LOCATION": Path(slash_config["FILES"]["DATABASE"]),
             "BAD_WORDS_FILE": Path(slash_config["FILES"]["BAD_WORDS"]),

@@ -1,4 +1,3 @@
-
 [tool.poetry]
 name = "slashbot"
 version = "2.4.0"
@@ -10,6 +9,9 @@ packages = [
     { include = "slashlib", from = "lib" },
     { include = "markovify", from = "lib" }
 ]
+
+[tool.poetry.scripts]
+slashbot = "slashbot.slashbot:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"

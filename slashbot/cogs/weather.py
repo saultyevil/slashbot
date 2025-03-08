@@ -482,4 +482,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    bot.add_cog(Weather(bot))
+    if Bot.get_config("GOOGLE_API_KEY"):
+        bot.add_cog(Weather(bot))
+    else:
+        Weather.logger.error("No Google API key found, weather cog not loaded.")
