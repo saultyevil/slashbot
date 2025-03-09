@@ -6,10 +6,10 @@ These classes are used to marshal data
 import logging
 import sys
 
-from botlib.config import Bot
+from botlib.config import BotConfig
 from botlib.text_generation import get_token_count
 
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
 class Message:
@@ -136,7 +136,9 @@ class Conversation:
         if not message:
             LOGGER.error("No message to add to the conversation")
             return
-        message = Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND")
+        message = (
+            BotConfig.get_config("AI_CHAT_PROMPT_PREPEND") + message + BotConfig.get_config("AI_CHAT_PROMPT_APPEND")
+        )
         if images:
             image_urls = []
             for image in images:
@@ -183,7 +185,7 @@ class Conversation:
         # Keep removing the 1st message and response until under the token size.
         # To remove the prompt and response, we remove 2 messages at index 1 as
         # the message at index 0 is the system prompt
-        while self.tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self._messages) > min_messages:
+        while self.tokens > BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE") and len(self._messages) > min_messages:
             self.remove_message(1)
             self.remove_message(1)
 
@@ -224,7 +226,7 @@ class Conversation:
 
     def _set_first_message_as_system_prompt(self) -> None:
         self.tokens = self._system_prompt_tokens
-        if Bot.get_config("AI_CHAT_CHAT_MODEL") in ["o1", "o1-mini"]:  # noqa: SIM108
+        if BotConfig.get_config("AI_CHAT_CHAT_MODEL") in ["o1", "o1-mini"]:  # noqa: SIM108
             role = "user"
         else:
             role = "system"
@@ -322,7 +324,7 @@ class Conversation:
             msg = "Trying to remove system prompt"
             raise ValueError(msg)
         message = self._messages.pop(index)
-        self.tokens -= get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
+        self.tokens -= get_token_count(BotConfig.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
         return Message(message["content"], message["role"])
 
     def remove_images_from_messages(self) -> list[dict]:
@@ -377,7 +379,9 @@ class Conversation:
             The conversation
 
         """
-        message_to_find = Bot.get_config("AI_CHAT_PROMPT_PREPEND") + message + Bot.get_config("AI_CHAT_PROMPT_APPEND")
+        message_to_find = (
+            BotConfig.get_config("AI_CHAT_PROMPT_PREPEND") + message + BotConfig.get_config("AI_CHAT_PROMPT_APPEND")
+        )
         matching_dict = next((d for d in self._messages if d["content"] == message_to_find), None)
         if matching_dict:
             index = self._messages.index(matching_dict)

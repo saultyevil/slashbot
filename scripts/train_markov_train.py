@@ -1,14 +1,11 @@
-#!/usr/bin/env python3
-
-"""This module contains functions for modifying the slashbot database."""
+"""Contains functions for modifying the slashbot database."""
 
 import pickle
 from multiprocessing import Pool
 
+import markovify
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, relationship
-
-import markovify
 
 # Models -----------------------------------------------------------------------
 
@@ -18,66 +15,31 @@ class Base(DeclarativeBase):
 
 
 class ChannelMessage(Base):
-    """_summary_
-
-    Parameters
-    ----------
-    Base : _type_
-        _description_
-
-    """
-
     __tablename__ = "channel_messages"
-
     id = Column(Integer, primary_key=True, autoincrement=True)
-
     user_id = Column(Integer, index=True)
     message_id = Column(Integer, index=True)
     channel_id = Column(Integer, nullable=True)
     server_id = Column(Integer, nullable=True)
-
     date = Column(DateTime, index=True)
     user_name = Column(String(64))
     message = Column(String(2048))
-
     attachments = relationship("MessageAttachment")
 
 
 class MessageAttachment(Base):
-    """_summary_
-
-    Parameters
-    ----------
-    Base : _type_
-        _description_
-
-    """
-
     __tablename__ = "message_attachments"
     id = Column(Integer, primary_key=True, autoincrement=True)
-
     message_id = Column(Integer, ForeignKey("channel_messages.message_id"), index=True)
     content_type = Column(String(64))
     url = Column(String(256))
-
     message = relationship("ChannelMessage", back_populates="attachments")
 
 
 # Functions --------------------------------------------------------------------
 
 
-def connect_to_database_engine(location: str = None):
-    """Create a database engine.
-
-    Creates an Engine object which is used to create a database session.
-
-    Parameters
-    ----------
-    location : str
-        The location of the SQLite database to load, default is None where the
-        value is then taken from App.config.
-
-    """
+def connect_to_database_engine(location):
     engine = create_engine(f"sqlite:///{location}")
     Base.metadata.create_all(bind=engine)
 
@@ -85,16 +47,6 @@ def connect_to_database_engine(location: str = None):
 
 
 def train_model(state_size, messages):
-    """Train a markov model for a given state size.
-
-    Parameters
-    ----------
-    state_size : int
-        The state size.
-    messages: list
-        The messages to train the chain on.
-
-    """
     print("Starting state size:", state_size)
     new_model = markovify.NewlineText(messages, state_size=state_size)
     with open(f"chain-{state_size}.pickle", "wb") as chain_out:

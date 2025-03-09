@@ -9,10 +9,10 @@ import json
 import logging
 import pathlib
 
-from botlib.config import Bot
-from botlib.types import Member, User
+from botlib.config import BotConfig
+from botlib.custom_types import Member, User
 
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
 # Database functions -----------------------------------------------------------
@@ -68,7 +68,7 @@ def load_database(location: str | None = None) -> dict:
 
     """
     if not location:
-        location = Bot.get_config("DATABASE_LOCATION")
+        location = BotConfig.get_config("DATABASE_LOCATION")
 
     check_database_exists(location)
 
@@ -101,7 +101,7 @@ def save_database(database: dict, location: str = None) -> dict:
 
     """
     if not location:
-        location = Bot.get_config("DATABASE_LOCATION")
+        location = BotConfig.get_config("DATABASE_LOCATION")
 
     with open(location, "w", encoding="utf-8") as file_out:
         json.dump(database, file_out)

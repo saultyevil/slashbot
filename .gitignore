@@ -1,12 +1,9 @@
 .env
-*.db
-log/
-data/*.json
-data/chains/*.pickle
-data/chains/*.bak
-scratch/
+.venv
+logs/*.log
+data/*.db.json
 data/*.txt
-_debug-conversation.txt
+**/chain*.pickle
 
 # IDE specific directories
 .DS_Store

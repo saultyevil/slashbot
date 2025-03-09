@@ -15,13 +15,11 @@ import traceback
 
 import disnake
 from botlib import markov
-from botlib.config import Bot
+from botlib.config import BotConfig
+from botlib.custom_bot import CustomInteractionBot
 from disnake.ext import commands
 
-from slashbot.custom_bot import SlashbotInterationBot
-
-LAUNCH_TIME = time.time()
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,7 +54,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def create_on_ready(bot: SlashbotInterationBot) -> None:
+def create_on_ready(bot: CustomInteractionBot) -> None:
     """Closure for the on_ready event.
 
     Parameters
@@ -65,6 +63,7 @@ def create_on_ready(bot: SlashbotInterationBot) -> None:
         The bot.
 
     """
+    launch_time = time.time()
 
     async def on_ready() -> None:
         """Information to print on bot launch."""
@@ -72,11 +71,9 @@ def create_on_ready(bot: SlashbotInterationBot) -> None:
 
         if bot.times_connected == 1:
             LOGGER.info("Logged in as %s in the current servers:", bot.user)
-
             for n_server, server in enumerate(bot.guilds):
                 LOGGER.info("\t%d). %s (%d)", n_server, server.name, server.id)
-
-            LOGGER.info("Started in %.2f seconds", time.time() - LAUNCH_TIME)
+            LOGGER.info("Started in %.2f seconds", time.time() - launch_time)
         else:
             LOGGER.info("Bot reconnected")
 
@@ -119,7 +116,7 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
         await inter.response.send_message("Failed to communicate with the Discord API.", ephemeral=True)
 
 
-def initialise_bot(args: argparse.Namespace) -> SlashbotInterationBot:
+def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
     """Initialise the bot instance.
 
     Parameters
@@ -141,7 +138,7 @@ def initialise_bot(args: argparse.Namespace) -> SlashbotInterationBot:
     else:
         LOGGER.setLevel(logging.INFO)
 
-    LOGGER.info("Config file: %s", Bot.get_config("CONFIG_FILE"))
+    LOGGER.info("Config file: %s", BotConfig.get_config("CONFIG_FILE"))
 
     if args.on_the_fly_markov:
         markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle")
@@ -153,7 +150,7 @@ def initialise_bot(args: argparse.Namespace) -> SlashbotInterationBot:
     intents.messages = True
     intents.members = True
 
-    bot = SlashbotInterationBot(
+    bot = CustomInteractionBot(
         enable_markov_cache=args.enable_markov_cache,
         intents=intents,
         reload=bool(args.debug),
@@ -174,9 +171,9 @@ def main() -> None:
 
     try:
         if args.debug:
-            bot.run(Bot.get_config("DEVELOPMENT_TOKEN"))
+            bot.run(BotConfig.get_config("DEVELOPMENT_TOKEN"))
         else:
-            bot.run(Bot.get_config("RUN_TOKEN"))
+            bot.run(BotConfig.get_config("RUN_TOKEN"))
     except TypeError:
         LOGGER.error("No Discord token provided.")  # noqa: TRY400
         return 1

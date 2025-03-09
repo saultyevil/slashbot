@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING
 import openai
 import tiktoken
 
-from botlib.config import Bot
+from botlib.config import BotConfig
 from botlib.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
     from botlib.models import Conversation
 
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
-MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
+LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
 CACHED_CLIENT = None
 LOW_DETAIL_IMAGE_TOKENS = 85
 
@@ -32,15 +32,15 @@ def get_client() -> openai.AsyncOpenAI:
         The OpenAI LLM client.
 
     """
-    base_url = Bot.get_config("AI_CHAT_BASE_URL")
+    base_url = BotConfig.get_config("AI_CHAT_BASE_URL")
 
     if CACHED_CLIENT and base_url == CACHED_CLIENT.base_url:
         return CACHED_CLIENT
 
     if "deepseek" in base_url:  # noqa: SIM108
-        api_key = Bot.get_config("DEEPSEEK_API_KEY")
+        api_key = BotConfig.get_config("DEEPSEEK_API_KEY")
     else:
-        api_key = Bot.get_config("OPENAI_API_KEY")
+        api_key = BotConfig.get_config("OPENAI_API_KEY")
 
     return openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
 
@@ -67,11 +67,11 @@ async def generate_text_from_llm(model: str, messages: list) -> tuple[str, int]:
     response = await get_client().chat.completions.create(
         messages=messages,
         model=model,
-        max_completion_tokens=Bot.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
-        frequency_penalty=Bot.get_config("AI_CHAT_FREQUENCY_PENALTY"),
-        presence_penalty=Bot.get_config("AI_CHAT_PRESENCE_PENALTY"),
-        temperature=Bot.get_config("AI_CHAT_TEMPERATURE"),
-        top_p=Bot.get_config("AI_CHAT_TOP_P"),
+        max_completion_tokens=BotConfig.get_config("AI_CHAT_MAX_OUTPUT_TOKENS"),
+        frequency_penalty=BotConfig.get_config("AI_CHAT_FREQUENCY_PENALTY"),
+        presence_penalty=BotConfig.get_config("AI_CHAT_PRESENCE_PENALTY"),
+        temperature=BotConfig.get_config("AI_CHAT_TEMPERATURE"),
+        top_p=BotConfig.get_config("AI_CHAT_TOP_P"),
     )
     message = response.choices[0].message.content
     token_usage = response.usage.total_tokens
@@ -99,7 +99,7 @@ def get_prompts_at_launch() -> tuple[str, dict, int]:
         choices = {}
         LOGGER.exception("Error in reading prompt files, going to try and continue without a prompt")
 
-    tokens = get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), prompt)
+    tokens = get_token_count(BotConfig.get_config("AI_CHAT_CHAT_MODEL"), prompt)
 
     return prompt, choices, tokens
 
@@ -166,9 +166,9 @@ def check_if_user_rate_limited(cooldown: dict[str, datetime.datetime], user_id: 
     time_difference = (current_time - user_cooldown["last_interaction"]).seconds
 
     # Check if exceeded rate limit
-    if user_cooldown["count"] > Bot.get_config("AI_CHAT_RATE_LIMIT"):
+    if user_cooldown["count"] > BotConfig.get_config("AI_CHAT_RATE_LIMIT"):
         # If exceeded rate limit, check if cooldown period has passed
-        if time_difference > Bot.get_config("AI_CHAT_RATE_INTERVAL"):
+        if time_difference > BotConfig.get_config("AI_CHAT_RATE_INTERVAL"):
             # reset count and update last_interaction time
             user_cooldown["count"] = 1
             user_cooldown["last_interaction"] = current_time

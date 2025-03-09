@@ -7,8 +7,8 @@ import pathlib
 import re
 from typing import Any
 
-from botlib.config import Bot
-from botlib.types import (
+from botlib.config import BotConfig
+from botlib.custom_types import (
     ApplicationCommandInteraction,
     DMChannel,
     Member,
@@ -16,7 +16,7 @@ from botlib.types import (
     User,
 )
 
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
 async def send_cooldown_message(
