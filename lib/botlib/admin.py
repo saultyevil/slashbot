@@ -88,8 +88,13 @@ def restart_bot(arguments: list[str]) -> None:
         Additional arguments to pass to the new process.
 
     """
-    logger.info("Restarting with new process with arguments %s", arguments)
-    os.execv(sys.executable, ["python", *arguments])  # noqa: S606
+    poetry_executable = shutil.which("poetry")
+    if poetry_executable is None:
+        logger.error("Could not find the poetry executable")
+        return
+    command = [poetry_executable, "run", *arguments]
+    logger.info("Restarting with command %s", command)
+    os.execv(command[0], command)  # noqa: S606
 
 
 def get_modifiable_config_keys() -> tuple[str]:
