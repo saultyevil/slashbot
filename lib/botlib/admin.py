@@ -8,9 +8,9 @@ from pathlib import Path
 import aiofiles
 import git
 
-from botlib.config import Bot
+from botlib.config import BotConfig
 
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
 def _open_config_file() -> dict:
@@ -22,7 +22,7 @@ def _open_config_file() -> dict:
         The contents of the config file.
 
     """
-    with Path(Bot.get_config("CONFIG_FILE")).open(encoding="utf-8") as file_in:
+    with Path(BotConfig.get_config("CONFIG_FILE")).open(encoding="utf-8") as file_in:
         return json.load(file_in)
 
 
@@ -35,7 +35,7 @@ def _save_modified_config(updated_config: dict) -> None:
         The updated config file.
 
     """
-    file = Path(Bot.get_config("CONFIG_FILE"))
+    file = Path(BotConfig.get_config("CONFIG_FILE"))
     shutil.copy(file, file.with_suffix(".bak"))
     try:
         with file.open("w", encoding="utf-8") as file_out:
@@ -72,7 +72,7 @@ async def get_logfile_tail(logfile_path: Path, num_lines: int) -> list[str]:
             num_chars += len(log_lines[-i])
         except IndexError:
             break
-        if num_chars > Bot.get_config("MAX_CHARS"):
+        if num_chars > BotConfig.get_config("MAX_CHARS"):
             break
         tail.append(log_lines[-i])
 

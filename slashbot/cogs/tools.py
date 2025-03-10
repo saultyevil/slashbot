@@ -6,16 +6,15 @@ import random
 import aiofiles
 import disnake
 import wolframalpha
-from botlib.config import Bot
+from botlib.config import BotConfig
+from botlib.custom_cog import CustomCog
 from disnake.ext import commands
 
-from slashbot.custom_cog import SlashbotCog
-
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
-class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
+class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -31,11 +30,11 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
 
         """
         super().__init__(bot)
-        self.worlfram_alpha_client = wolframalpha.Client(Bot.get_config("WOLFRAM_API_KEY"))
+        self.worlfram_alpha_client = wolframalpha.Client(BotConfig.get_config("WOLFRAM_API_KEY"))
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="die_roll", description="roll a dice")
     async def die_roll(
         self,
@@ -54,7 +53,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")
     async def wolfram(
         self,
@@ -83,7 +82,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         results = self.worlfram_alpha_client.query(question)
 
         if not results["@success"]:
-            async with aiofiles.open(Bot.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
+            async with aiofiles.open(BotConfig.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
                 bad_word = (await file_in.readlines())[random.randint(0, num_solutions - 1)].strip()
             embed.add_field(
                 name=f"{question}",

@@ -7,17 +7,16 @@ import threading
 from pathlib import Path
 
 import disnake
-from botlib.config import Bot
+from botlib.config import BotConfig
+from botlib.custom_bot import CustomInteractionBot
+from botlib.custom_cog import CustomCog
 from botlib.markov import generate_text_from_markov_chain
 from botlib.util import calculate_seconds_until
 from disnake.ext import commands, tasks
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from slashbot.custom_bot import SlashbotInterationBot
-from slashbot.custom_cog import SlashbotCog
-
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
@@ -59,7 +58,7 @@ def check_post_has_iterable(post: dict, key: str) -> bool:
     return hasattr(post[key], "__iter__")
 
 
-class ScheduledPosts(SlashbotCog):
+class ScheduledPosts(CustomCog):
     """Scheduled post cog.
 
     Scheduled posts should be added to self.scheduled_posts using a Post
@@ -68,7 +67,7 @@ class ScheduledPosts(SlashbotCog):
 
     # Special methods ----------------------------------------------------------
 
-    def __init__(self, bot: SlashbotInterationBot) -> None:
+    def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialise the cog.
 
         Parameters
@@ -109,7 +108,7 @@ class ScheduledPosts(SlashbotCog):
 
     def get_scheduled_posts(self) -> None:
         """Read in the scheduled posts Json file."""
-        with Path.open(Bot.get_config("SCHEDULED_POST_FILE"), encoding="utf-8") as file_in:
+        with Path.open(BotConfig.get_config("SCHEDULED_POST_FILE"), encoding="utf-8") as file_in:
             posts_json = json.load(file_in)
 
         self.scheduled_posts = posts_json["SCHEDULED_POSTS"]
@@ -132,7 +131,7 @@ class ScheduledPosts(SlashbotCog):
         logger.info(
             "%d scheduled posts loaded from %s",
             len(self.scheduled_posts),
-            Bot.get_config("SCHEDULED_POST_FILE"),
+            BotConfig.get_config("SCHEDULED_POST_FILE"),
         )
         self.order_scheduled_posts_by_soonest()
 
@@ -156,7 +155,7 @@ class ScheduledPosts(SlashbotCog):
                     The event to check.
 
                 """
-                if event.src_path == str(Bot.get_config("SCHEDULED_POST_FILE").absolute()):
+                if event.src_path == str(BotConfig.get_config("SCHEDULED_POST_FILE").absolute()):
                     self.parent.get_scheduled_posts()
                     # If the loop is running, we'll restart the task otherwise
                     # start the task. The post should *never* not be running,
@@ -168,7 +167,7 @@ class ScheduledPosts(SlashbotCog):
                         self.parent.post_loop.start()
 
         observer = Observer()
-        observer.schedule(PostWatcher(self), path=str(Bot.get_config("SCHEDULED_POST_FILE").parent.absolute()))
+        observer.schedule(PostWatcher(self), path=str(BotConfig.get_config("SCHEDULED_POST_FILE").parent.absolute()))
         observer.start()
 
     # Task ---------------------------------------------------------------------

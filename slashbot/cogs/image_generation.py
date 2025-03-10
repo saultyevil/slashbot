@@ -10,18 +10,17 @@ from __future__ import annotations
 import logging
 
 import requests
-from botlib.config import Bot
+from botlib.config import BotConfig
+from botlib.custom_cog import CustomCog
+from botlib.custom_command import slash_command_with_cooldown
+from botlib.custom_types import ApplicationCommandInteraction
 from botlib.image_generation import retrieve_image_request, send_image_request
-from botlib.types import ApplicationCommandInteraction
 from disnake.ext import commands
 
-from slashbot.custom_cog import SlashbotCog
-from slashbot.custom_command import slash_command_with_cooldown
-
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
-class ImageGeneration(SlashbotCog):
+class ImageGeneration(CustomCog):
     """Cog for text to image generation using Monster API."""
 
     @slash_command_with_cooldown(description="Generate an image from a text prompt.")

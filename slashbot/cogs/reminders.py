@@ -5,6 +5,9 @@ import re
 
 import dateparser
 import disnake
+from botlib.custom_bot import CustomInteractionBot
+from botlib.custom_cog import CustomCog
+from botlib.custom_command import slash_command_with_cooldown
 from botlib.db import (
     add_reminder,
     get_all_reminders,
@@ -13,10 +16,6 @@ from botlib.db import (
 )
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
-
-from slashbot.custom_bot import SlashbotInterationBot
-from slashbot.custom_cog import SlashbotCog
-from slashbot.custom_command import slash_command_with_cooldown
 
 
 def forget_reminders_autocompleter(inter: disnake.ApplicationCommandInteraction, _: str) -> list[str]:
@@ -38,10 +37,10 @@ def forget_reminders_autocompleter(inter: disnake.ApplicationCommandInteraction,
     return [f"{reminder['date']}: {reminder['reminder']}" for reminder in get_all_reminders_for_user(inter.author.id)]
 
 
-class Reminders(SlashbotCog):
+class Reminders(CustomCog):
     """Commands to set up reminders."""
 
-    def __init__(self, bot: SlashbotInterationBot) -> None:
+    def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialise the cog.
 
         Parameters

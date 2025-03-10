@@ -19,9 +19,13 @@ from typing import TYPE_CHECKING
 import aiofiles
 import disnake
 import openai
-from botlib.config import Bot
+from botlib.config import BotConfig
+from botlib.custom_cog import CustomCog
+from botlib.custom_command import slash_command_with_cooldown
 from botlib.markov import MARKOV_MODEL, generate_text_from_markov_chain
+from botlib.messages import get_attached_images_from_message, send_message_to_channel
 from botlib.models import ChannelHistory, Conversation
+from botlib.responses import is_reply_to_slash_command_response
 from botlib.text_generation import (
     check_if_user_rate_limited,
     generate_text_from_llm,
@@ -35,17 +39,11 @@ from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from slashbot.custom_cog import SlashbotCog
-from slashbot.custom_command import slash_command_with_cooldown
-from slashbot.messages import get_attached_images_from_message, send_message_to_channel
-from slashbot.responses import is_reply_to_slash_command_response
-
 if TYPE_CHECKING:
-    from botlib.types import ApplicationCommandInteraction, Message
+    from botlib.custom_bot import CustomInteractionBot
+    from botlib.custom_types import ApplicationCommandInteraction, Message
 
-    from slashbot.custom_bot import SlashbotInterationBot
-
-MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
+MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
 DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()
 
 
@@ -78,12 +76,12 @@ profile_logger.addHandler(file_handler)
 profile_logger.setLevel(logging.INFO)
 
 
-class TextGeneration(SlashbotCog):
+class TextGeneration(CustomCog):
     """AI chat features powered by OpenAI."""
 
-    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
-    def __init__(self, bot: SlashbotInterationBot) -> None:
+    def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialize the AIChatbot class.
 
         Parameters
@@ -181,7 +179,7 @@ class TextGeneration(SlashbotCog):
         """
         try:
             bot_response, tokens_used = await generate_text_from_llm(
-                Bot.get_config("AI_CHAT_CHAT_MODEL"),
+                BotConfig.get_config("AI_CHAT_CHAT_MODEL"),
                 conversation_copy.get_messages(),
             )
         except openai.BadRequestError as exc:
@@ -189,7 +187,7 @@ class TextGeneration(SlashbotCog):
                 conversation_copy.remove_images_from_messages()
                 conversation.remove_images_from_messages()
                 bot_response, tokens_used = await generate_text_from_llm(
-                    Bot.get_config("AI_CHAT_CHAT_MODEL"),
+                    BotConfig.get_config("AI_CHAT_CHAT_MODEL"),
                     conversation_copy.get_messages(),
                 )
             else:
@@ -210,11 +208,11 @@ class TextGeneration(SlashbotCog):
             The content of the message sent by the user.
 
         """
-        num_tokens = get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message)
+        num_tokens = get_token_count(BotConfig.get_config("AI_CHAT_CHAT_MODEL"), message)
         self.channel_histories[history_id].add_message(message, escape_markdown(user), num_tokens)
 
         # keep it under the token limit
-        while self.channel_histories[history_id].tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
+        while self.channel_histories[history_id].tokens > BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
             self.channel_histories[history_id].remove_message(0)
 
     async def respond_with_random_llm_message(self, message: disnake.Message) -> None:
@@ -227,18 +225,18 @@ class TextGeneration(SlashbotCog):
 
         """
         try:
-            with Path.open(Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
+            with Path.open(BotConfig.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
                 prompt = json.load(file_in)["prompt"]
         except (OSError, json.JJSONDecodeError):
             TextGeneration.logger.exception(
-                "Failed to process random response prompt %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
+                "Failed to process random response prompt %s", BotConfig.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
             )
             return
         messages = [
             {"role": "system", "content": prompt},
             {"role": "user", "content": message.clean_content},
         ]
-        response, _ = await generate_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), messages)
+        response, _ = await generate_text_from_llm(BotConfig.get_config("AI_CHAT_CHAT_MODEL"), messages)
         await send_message_to_channel(response, message, dont_tag_user=True)
 
     async def send_response_to_prompt(self, discord_message: disnake.Message, *, send_to_dm: bool) -> None:
@@ -312,7 +310,7 @@ class TextGeneration(SlashbotCog):
             Whether the prompt was sent in a direct message (default is False).
 
         """
-        if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
+        if BotConfig.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
             profiler = Profiler(async_mode="enabled")
             profiler.start()
         async with discord_message.channel.typing():
@@ -325,7 +323,7 @@ class TextGeneration(SlashbotCog):
                     discord_message,
                     dont_tag_user=True,
                 )
-        if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
+        if BotConfig.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
             profiler.stop()
             profiler_output = profiler.output_text()
             profile_logger.info("\n%s", profiler_output)
@@ -378,7 +376,7 @@ class TextGeneration(SlashbotCog):
 
         # If we get here, then there's a random chance the bot will respond to a
         # "regular" message
-        if random.random() <= Bot.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
+        if random.random() <= BotConfig.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
             await self.respond_with_random_llm_message(discord_message)
 
     # Commands -----------------------------------------------------------------
@@ -420,16 +418,16 @@ class TextGeneration(SlashbotCog):
         await inter.response.defer(ephemeral=True)
 
         try:
-            with Path.open(Bot.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
+            with Path.open(BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
                 summary_prompt = json.load(file_in)["prompt"]
         except OSError:
             TextGeneration.logger.exception(
-                "Failed to open summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT")
+                "Failed to open summary prompt: %s", BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT")
             )
             return
         except json.JSONDecodeError:
             TextGeneration.logger.exception(
-                "Failed to decode summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT")
+                "Failed to decode summary prompt: %s", BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT")
             )
             return
 
@@ -439,20 +437,22 @@ class TextGeneration(SlashbotCog):
         conversation = [
             {
                 "role": "system",
-                "content": Bot.get_config("AI_CHAT_PROMPT_PREPEND")
+                "content": BotConfig.get_config("AI_CHAT_PROMPT_PREPEND")
                 + summary_prompt
-                + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
+                + BotConfig.get_config("AI_CHAT_PROMPT_APPEND"),
             },
             {"role": "user", "content": sent_messages},
         ]
         TextGeneration.logger.debug("Conversation to summarise: %s", conversation)
-        summary_message, token_count = await generate_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
+        summary_message, token_count = await generate_text_from_llm(
+            BotConfig.get_config("AI_CHAT_CHAT_MODEL"), conversation
+        )
         # We don't want to add the entire conversation to the history, so for
         # context put <HISTORY REDACTED>
         self.conversations[history_id].add_message(
-            Bot.get_config("AI_CHAT_PROMPT_PREPEND")
+            BotConfig.get_config("AI_CHAT_PROMPT_PREPEND")
             + "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]"
-            + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
+            + BotConfig.get_config("AI_CHAT_PROMPT_APPEND"),
             "user",
         )
         self.conversations[history_id].add_message(summary_message, "assistant", tokens=token_count)
@@ -508,7 +508,7 @@ class TextGeneration(SlashbotCog):
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), prompt),
+            get_token_count(BotConfig.get_config("AI_CHAT_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt[:1800]}...",
@@ -540,7 +540,7 @@ class TextGeneration(SlashbotCog):
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
-            get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), prompt),
+            get_token_count(BotConfig.get_config("AI_CHAT_CHAT_MODEL"), prompt),
         )
         await inter.response.send_message(
             f"History cleared and system prompt changed to:\n\n{prompt}",
@@ -595,7 +595,7 @@ class TextGeneration(SlashbotCog):
                 prompt_name = name
 
         response = ""
-        response += f"**Model name**: {Bot.get_config('AI_CHAT_CHAT_MODEL')}\n"
+        response += f"**Model name**: {BotConfig.get_config('AI_CHAT_CHAT_MODEL')}\n"
         response += f"**Token usage**: {self.conversations[history_id].tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {prompt[:1800]}...\n"
@@ -612,7 +612,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if Bot.get_config("OPENAI_API_KEY") or Bot.get_config("DEEPSEEK_API_KEY"):
+    if BotConfig.get_config("OPENAI_API_KEY") or BotConfig.get_config("DEEPSEEK_API_KEY"):
         bot.add_cog(TextGeneration(bot))
     else:
         TextGeneration.logger.error("No API key found for OpenAI, unable to load AIChatBot cog")

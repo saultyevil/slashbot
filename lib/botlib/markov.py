@@ -16,11 +16,11 @@ from pathlib import Path
 
 import markovify
 
-from botlib.config import Bot
+from botlib.config import BotConfig
+from botlib.custom_types import ApplicationCommandInteraction
 from botlib.error import deferred_error_message
-from botlib.types import ApplicationCommandInteraction
 
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 MARKOV_MODEL = None
 MARKOV_BANK = None
 
@@ -224,7 +224,7 @@ def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markov
         msg = f"No chain at {chain_location}"
         raise OSError(msg)
 
-    Bot.set_config("CURRENT_MARKOV_CHAIN", chain_location)
+    BotConfig.set_config("CURRENT_MARKOV_CHAIN", chain_location)
 
     return model
 

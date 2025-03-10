@@ -11,16 +11,15 @@ from types import coroutine
 
 import disnake
 import requests
-from botlib.config import Bot
+from botlib.config import BotConfig
+from botlib.custom_cog import CustomCog
+from botlib.custom_command import slash_command_with_cooldown
 from botlib.db import get_user_location
 from botlib.error import deferred_error_message
 from botlib.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from botlib.util import convert_radial_to_cardinal_direction
 from disnake.ext import commands
 from geopy import GoogleV3
-
-from slashbot.custom_cog import SlashbotCog
-from slashbot.custom_command import slash_command_with_cooldown
 
 
 class GeocodeError(Exception):
@@ -35,10 +34,10 @@ class LocationNotFoundError(Exception):
     """Raise when OWM cannot find the provided location."""
 
 
-class Weather(SlashbotCog):
+class Weather(CustomCog):
     """Query information about the weather."""
 
-    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
     WEATHER_UNITS: tuple[str] = ("mixed", "metric", "imperial")
 
     def __init__(self, bot: commands.InteractionBot) -> None:
@@ -52,7 +51,7 @@ class Weather(SlashbotCog):
         """
         super().__init__(bot)
         self.geolocator = GoogleV3(
-            api_key=Bot.get_config("GOOGLE_API_KEY"),
+            api_key=BotConfig.get_config("GOOGLE_API_KEY"),
             domain="maps.google.co.uk",
         )
 
@@ -206,7 +205,7 @@ class Weather(SlashbotCog):
         api_units = "metric" if units == "mixed" else units
 
         weather_response = requests.get(
-            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={Bot.get_config('OWM_API_KEY')}",
+            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={BotConfig.get_config('OWM_API_KEY')}",
             timeout=5,
         )
         if weather_response.status_code != requests.codes.ok:
@@ -482,7 +481,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if Bot.get_config("GOOGLE_API_KEY"):
+    if BotConfig.get_config("GOOGLE_API_KEY"):
         bot.add_cog(Weather(bot))
     else:
         Weather.logger.error("No Google API key found, weather cog not loaded.")

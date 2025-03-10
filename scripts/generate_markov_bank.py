@@ -6,9 +6,8 @@ Generated sentences are stored in a JSON file with the keyword as the key.
 import json
 from pathlib import Path
 
-from tqdm import tqdm
-
 from botlib import _generate_markov_sentence, load_markov_model
+from tqdm import tqdm
 
 markov_file = Path("data/markov/markov-sentences.json")
 if not markov_file.exists():

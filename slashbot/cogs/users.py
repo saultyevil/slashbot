@@ -5,15 +5,14 @@ import re
 from types import coroutine
 
 import disnake
-from botlib.config import Bot
+from botlib.config import BotConfig
+from botlib.custom_cog import CustomCog
 from botlib.db import get_twitter_convert_users, get_user, update_user
 from botlib.error import deferred_error_message
 from botlib.util import convert_string_to_lower
 from disnake.ext import commands
 
-from slashbot.custom_cog import SlashbotCog
-
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 USER_OPTIONS = [
     "City",
@@ -35,7 +34,7 @@ def press(inter: disnake.ApplicationCommandInteraction, _: str) -> list[str]:
     return []
 
 
-class Users(SlashbotCog):
+class Users(CustomCog):
     """Cog for commands used to save user data."""
 
     def __init__(self, bot: commands.InteractionBot) -> None:
@@ -52,7 +51,7 @@ class Users(SlashbotCog):
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="set_info", description="set info to remember about you")
     async def set_info(
         self,
@@ -111,7 +110,7 @@ class Users(SlashbotCog):
 
         await inter.edit_original_message(content=f"{thing.capitalize()} has been set to '{value}'.")
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
     @commands.slash_command(name="show_info", description="view info you set to remember")
     async def query_info(
         self,

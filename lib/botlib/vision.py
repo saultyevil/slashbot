@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import requests
 
-from botlib.config import Bot
+from botlib.config import BotConfig
 
 
 @dataclass
@@ -53,7 +53,7 @@ def download_and_encode_image(url: str) -> Image:
         The MIME type of the image.
 
     """
-    if Bot.get_config("AI_CHAT_PREFER_IMAGE_URLS"):
+    if BotConfig.get_config("AI_CHAT_PREFER_IMAGE_URLS"):
         encoded_image = mime_type = None
     else:
         response = requests.get(url, timeout=5)

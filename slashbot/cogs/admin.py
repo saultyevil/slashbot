@@ -13,19 +13,19 @@ from botlib.admin import (
     set_config_value,
     update_local_repository,
 )
-from botlib.config import Bot
-from botlib.types import ApplicationCommandInteraction
+from botlib.config import BotConfig
+from botlib.custom_bot import CustomInteractionBot
+from botlib.custom_cog import CustomCog
+from botlib.custom_command import slash_command_with_cooldown
+from botlib.custom_types import ApplicationCommandInteraction
 from botlib.util import ordinal_suffix
 from disnake.ext import commands
 
 from slashbot import __version__
-from slashbot.custom_bot import SlashbotInterationBot
-from slashbot.custom_cog import SlashbotCog
-from slashbot.custom_command import slash_command_with_cooldown
 
 COOLDOWN_USER = commands.BucketType.user
-COOLDOWN_STANDARD = Bot.get_config("COOLDOWN_STANDARD")
-COOLDOWN_RATE = Bot.get_config("COOLDOWN_RATE")
+COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")
+COOLDOWN_RATE = BotConfig.get_config("COOLDOWN_RATE")
 JERMA_GIFS = (
     "https://media1.tenor.com/m/XcEBpnPquUMAAAAd/jerma-pog.gif",
     "https://media1.tenor.com/m/s5OePfXg13AAAAAd/jerma-eat-burger-whopper.gif",
@@ -35,16 +35,16 @@ JERMA_GIFS = (
 )
 
 
-class AdminTools(SlashbotCog):
+class AdminTools(CustomCog):
     """Admin commands and tools for Slashbot.
 
     The purpose of this cog is to manage Slashbot remotely, or to check that
     things are working as intended.
     """
 
-    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
-    def __init__(self, bot: SlashbotInterationBot) -> None:
+    def __init__(self, bot: CustomInteractionBot) -> None:
         """Intialise the cog.
 
         Parameters
@@ -110,7 +110,7 @@ class AdminTools(SlashbotCog):
         reason = await self._find_entry(guild, member, action_user, action)
         if reason:
             num_times = await self._count_times(guild, member, action)
-            channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
+            channel = await self.bot.fetch_channel(BotConfig.get_config("ID_CHANNEL_IDIOTS"))
             await channel.send(
                 f":warning: looks like {action_user.display_name} needs to zerk off after {action_present} "
                 f"{member.display_name} for {reason}!! This is the {num_times}{ordinal_suffix(num_times)} "
@@ -177,12 +177,12 @@ class AdminTools(SlashbotCog):
             The member which has been removed
 
         """
-        if member.id != Bot.get_config("ID_USER_ADAM"):
+        if member.id != BotConfig.get_config("ID_USER_ADAM"):
             return
         guild = member.guild
-        if guild.id != Bot.get_config("ID_SERVER_ADULT_CHILDREN"):
+        if guild.id != BotConfig.get_config("ID_SERVER_ADULT_CHILDREN"):
             return
-        filter_user = await self.bot.fetch_user(Bot.get_config("ID_USER_MEGHUN"))
+        filter_user = await self.bot.fetch_user(BotConfig.get_config("ID_USER_MEGHUN"))
 
         # First check if he has been banned
         banned = await self._check_audit_log_for_action_and_invite(
@@ -209,10 +209,10 @@ class AdminTools(SlashbotCog):
             The member which has joined.
 
         """
-        if member.id != Bot.get_config("ID_USER_ADAM"):
+        if member.id != BotConfig.get_config("ID_USER_ADAM"):
             return
         guild = member.guild
-        if guild.id != Bot.get_config("ID_SERVER_ADULT_CHILDREN"):
+        if guild.id != BotConfig.get_config("ID_SERVER_ADULT_CHILDREN"):
             return
         if member.id not in self.invite_tasks:
             return
@@ -291,7 +291,7 @@ class AdminTools(SlashbotCog):
 
         """
         await inter.response.defer(ephemeral=True)
-        tail = await get_logfile_tail(Path(Bot.get_config("LOGFILE_NAME")), num_lines)
+        tail = await get_logfile_tail(Path(BotConfig.get_config("LOGFILE_NAME")), num_lines)
         await inter.edit_original_message(f"```{tail}```")
 
     @slash_command_with_cooldown()
@@ -316,7 +316,7 @@ class AdminTools(SlashbotCog):
             input is a string of "Yes" or "No" which is converted into a bool.
 
         """
-        if inter.author.id != Bot.get_config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != BotConfig.get_config("ID_USER_SAULTYEVIL"):
             await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
 
@@ -359,7 +359,7 @@ class AdminTools(SlashbotCog):
             input is a string of "Yes" or "No" which is converted into a bool.
 
         """
-        if inter.author.id != Bot.get_config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != BotConfig.get_config("ID_USER_SAULTYEVIL"):
             await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
         await inter.response.defer(ephemeral=True)
@@ -390,7 +390,7 @@ class AdminTools(SlashbotCog):
             The new value of the config setting.
 
         """
-        if inter.author.id != Bot.get_config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != BotConfig.get_config("ID_USER_SAULTYEVIL"):
             await inter.response.send_message("You aren't allowed to use this command.", ephemeral=True)
             return
 

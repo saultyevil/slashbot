@@ -16,10 +16,10 @@ def setup_logging() -> None:
     """Set up logging for Slashbot."""
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
-    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
     logger.addHandler(console_handler)
     file_handler = RotatingFileHandler(
-        filename=Bot.get_config("LOGFILE_NAME"),
+        filename=BotConfig.get_config("LOGFILE_NAME"),
         encoding="utf-8",
         maxBytes=int(5e5),
         backupCount=5,
@@ -40,7 +40,7 @@ def setup_logging() -> None:
 
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
-    logger.info("Loaded config file %s", Bot.get_config("CONFIG_FILE"))
+    logger.info("Loaded config file %s", BotConfig.get_config("CONFIG_FILE"))
 
 
 class FileWatcher(FileSystemEventHandler):
@@ -55,20 +55,20 @@ class FileWatcher(FileSystemEventHandler):
             The event to check.
 
         """
-        if event.event_type == "modified" and event.src_path == Bot.get_config("CONFIG_FILE"):
-            original_config = copy.copy(Bot._config)  # noqa: SLF001
-            new_config = Bot.set_config_values()
+        if event.event_type == "modified" and event.src_path == BotConfig.get_config("CONFIG_FILE"):
+            original_config = copy.copy(BotConfig._config)  # noqa: SLF001
+            new_config = BotConfig.set_config_values()
             modified_keys = {
                 key for key in original_config if key in new_config and original_config[key] != new_config[key]
             }
             if modified_keys:
-                logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
+                logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
                 logger.info("App config updated:")
                 for key in modified_keys:
                     logger.info("  %s: %s -> %s", key, original_config[key], new_config[key])
 
 
-class Bot:
+class BotConfig:
     """The global configuration class.
 
     Contains shared variables or variables which control the operation
@@ -115,16 +115,16 @@ class Bot:
         """
         # Try to load the config file, if the default path doesn't work then it
         # the bot will fail to launch. The location of the config files is
-        # controlled by the SLASHBOT_CONFIG environment variable.
+        # controlled by the BOT_CONFIG environment variable.
         try:
-            with Path.open(os.getenv("SLASHBOT_CONFIG"), encoding="utf-8") as file_in:
-                slash_config = json.load(file_in)
-            current_config = os.getenv("SLASHBOT_CONFIG")
+            with Path.open(os.getenv("BOT_CONFIG"), encoding="utf-8") as file_in:
+                config_json = json.load(file_in)
+            current_config = os.getenv("BOT_CONFIG")
         except (OSError, TypeError):
-            print(f"Failed to load config file defined in $SLASHBOT_CONFIG: {os.getenv('SLASHBOT_CONFIG')}")  # noqa: T201
+            print(f"Failed to load config file defined in $BOT_CONFIG: {os.getenv('BOT_CONFIG')}")  # noqa: T201
             print("Trying to load default config file: ./bot-config.json")  # noqa: T201
             with Path.open("./bot-config.json", encoding="utf-8") as file_in:
-                slash_config = json.load(file_in)
+                config_json = json.load(file_in)
             current_config = "./bot-config.json"
 
         # This either sets a default value of `None`, or will re-use what is
@@ -137,21 +137,21 @@ class Bot:
         # bot
         _config = {
             # tokens
-            "DEVELOPMENT_TOKEN": os.getenv("SLASHBOT_DEVELOPMENT_TOKEN"),
-            "RUN_TOKEN": os.getenv("SLASHBOT_RUN_TOKEN"),
+            "DEVELOPMENT_TOKEN": os.getenv("BOT_DEVELOPMENT_TOKEN"),
+            "RUN_TOKEN": os.getenv("BOT_RUN_TOKEN"),
             # config file
             "CONFIG_FILE": str(Path(current_config).resolve()),
             # cooldown parameters
-            "COOLDOWN_RATE": int(slash_config["COOLDOWN"]["RATE"]),
-            "COOLDOWN_STANDARD": int(slash_config["COOLDOWN"]["STANDARD"]),
-            "COOLDOWN_EXTENDED": int(slash_config["COOLDOWN"]["EXTENDED"]),
-            "NO_COOLDOWN_SERVERS": slash_config["COOLDOWN"]["NO_COOLDOWN_SERVERS"],
-            "NO_COOLDOWN_USERS": slash_config["COOLDOWN"]["NO_COOLDOWN_USERS"],
+            "COOLDOWN_RATE": int(config_json["COOLDOWN"]["RATE"]),
+            "COOLDOWN_STANDARD": int(config_json["COOLDOWN"]["STANDARD"]),
+            "COOLDOWN_EXTENDED": int(config_json["COOLDOWN"]["EXTENDED"]),
+            "NO_COOLDOWN_SERVERS": config_json["COOLDOWN"]["NO_COOLDOWN_SERVERS"],
+            "NO_COOLDOWN_USERS": config_json["COOLDOWN"]["NO_COOLDOWN_USERS"],
             # general things
             "MAX_CHARS": 1800,
-            "LOGGER_NAME": slash_config["LOGFILE"]["LOG_NAME"],
-            "LOGFILE_NAME": slash_config["LOGFILE"]["LOG_LOCATION"],
-            "DEVELOPMENT_SERVERS": slash_config["DISCORD"]["DEVELOPMENT_SERVERS"],
+            "LOGGER_NAME": config_json["LOGFILE"]["LOG_NAME"],
+            "LOGFILE_NAME": config_json["LOGFILE"]["LOG_LOCATION"],
+            "DEVELOPMENT_SERVERS": config_json["DISCORD"]["DEVELOPMENT_SERVERS"],
             # Define users, roles and channels
             "ID_USER_SAULTYEVIL": 151378138612367360,
             "ID_USER_ADAM": 261097001301704704,
@@ -159,43 +159,43 @@ class Bot:
             "ID_CHANNEL_IDIOTS": 237647756049514498,
             "ID_SERVER_ADULT_CHILDREN": 237647756049514498,
             # API keys
-            "GOOGLE_API_KEY": os.getenv("SLASHBOT_GOOGLE_API_KEY"),
-            "WOLFRAM_API_KEY": os.getenv("SLASHBOT_WOLFRAM_API_KEY"),
-            "OWM_API_KEY": os.getenv("SLASHBOT_OWM_API_KEY"),
-            "DEEPSEEK_API_KEY": os.getenv("SLASHBOT_DEEPSEEK_API_KEY"),
-            "OPENAI_API_KEY": os.getenv("SLASHBOT_OPENAI_API_KEY"),
+            "GOOGLE_API_KEY": os.getenv("BOT_GOOGLE_API_KEY"),
+            "WOLFRAM_API_KEY": os.getenv("BOT_WOLFRAM_API_KEY"),
+            "OWM_API_KEY": os.getenv("BOT_OWM_API_KEY"),
+            "DEEPSEEK_API_KEY": os.getenv("BOT_DEEPSEEK_API_KEY"),
+            "OPENAI_API_KEY": os.getenv("BOT_OPENAI_API_KEY"),
             # File locations
-            "DATABASE_LOCATION": Path(slash_config["FILES"]["DATABASE"]),
-            "BAD_WORDS_FILE": Path(slash_config["FILES"]["BAD_WORDS"]),
-            "GOD_WORDS_FILE": Path(slash_config["FILES"]["GOD_WORDS"]),
-            "SCHEDULED_POST_FILE": Path(slash_config["FILES"]["SCHEDULED_POSTS"]),
+            "DATABASE_LOCATION": Path(config_json["FILES"]["DATABASE"]),
+            "BAD_WORDS_FILE": Path(config_json["FILES"]["BAD_WORDS"]),
+            "GOD_WORDS_FILE": Path(config_json["FILES"]["GOD_WORDS"]),
+            "SCHEDULED_POST_FILE": Path(config_json["FILES"]["SCHEDULED_POSTS"]),
             # Markov Chain configuration
-            "ENABLE_MARKOV_TRAINING": bool(slash_config["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
+            "ENABLE_MARKOV_TRAINING": bool(config_json["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
             "CURRENT_MARKOV_CHAIN": current_chain,
-            "PREGEN_MARKOV_SENTENCES_AMOUNT": int(slash_config["MARKOV"]["NUM_PREGEN_SENTENCES"]),
-            "PREGEN_REGENERATE_LIMIT": int(slash_config["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
+            "PREGEN_MARKOV_SENTENCES_AMOUNT": int(config_json["MARKOV"]["NUM_PREGEN_SENTENCES"]),
+            "PREGEN_REGENERATE_LIMIT": int(config_json["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
             # Cog settings
-            "SPELLCHECK_ENABLED": bool(slash_config["COGS"]["SPELLCHECK"]["ENABLED"]),
-            "SPELLCHECK_SERVERS": slash_config["COGS"]["SPELLCHECK"]["SERVERS"],
-            "SPELLCHECK_CUSTOM_DICTIONARY": slash_config["COGS"]["SPELLCHECK"]["CUSTOM_DICTIONARY"],
-            "AI_CHAT_BASE_URL": slash_config["COGS"]["AI_CHAT"]["API_BASE_URL"],
-            "AI_CHAT_CHAT_MODEL": slash_config["COGS"]["AI_CHAT"]["CHAT_MODEL"],
-            "AI_CHAT_TEMPERATURE": slash_config["COGS"]["AI_CHAT"]["MODEL_TEMPERATURE"],
-            "AI_CHAT_TOP_P": slash_config["COGS"]["AI_CHAT"]["MODEL_TOP_P"],
-            "AI_CHAT_FREQUENCY_PENALTY": slash_config["COGS"]["AI_CHAT"]["MODEL_FREQUENCY_PENALTY"],
-            "AI_CHAT_PRESENCE_PENALTY": slash_config["COGS"]["AI_CHAT"]["MODEL_PRESENCE_PENALTY"],
-            "AI_CHAT_MAX_OUTPUT_TOKENS": slash_config["COGS"]["AI_CHAT"]["MAX_OUTPUT_TOKENS"],
-            "AI_CHAT_TOKEN_WINDOW_SIZE": slash_config["COGS"]["AI_CHAT"]["TOKEN_WINDOW_SIZE"],
-            "AI_CHAT_PROMPT_APPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
-            "AI_CHAT_PROMPT_PREPEND": slash_config["COGS"]["AI_CHAT"]["PROMPT_PREPEND"],
-            "AI_CHAT_SUMMARY_PROMPT": slash_config["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
-            "AI_CHAT_RANDOM_RESPONSE_CHANCE": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
-            "AI_CHAT_RANDOM_RESPONSE_PROMPT": slash_config["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"],
-            "AI_CHAT_RATE_LIMIT": slash_config["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
-            "AI_CHAT_RATE_INTERVAL": slash_config["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
-            "AI_CHAT_USE_HISTORIC_REPLIES": bool(slash_config["COGS"]["AI_CHAT"]["USE_HISTORIC_REPLIES"]),
-            "AI_CHAT_PROFILE_RESPONSE_TIME": bool(slash_config["COGS"]["AI_CHAT"]["ENABLE_PROFILING"]),
-            "AI_CHAT_PREFER_IMAGE_URLS": bool(slash_config["COGS"]["AI_CHAT"]["PREFER_IMAGE_URLS"]),
+            "SPELLCHECK_ENABLED": bool(config_json["COGS"]["SPELLCHECK"]["ENABLED"]),
+            "SPELLCHECK_SERVERS": config_json["COGS"]["SPELLCHECK"]["SERVERS"],
+            "SPELLCHECK_CUSTOM_DICTIONARY": config_json["COGS"]["SPELLCHECK"]["CUSTOM_DICTIONARY"],
+            "AI_CHAT_BASE_URL": config_json["COGS"]["AI_CHAT"]["API_BASE_URL"],
+            "AI_CHAT_CHAT_MODEL": config_json["COGS"]["AI_CHAT"]["CHAT_MODEL"],
+            "AI_CHAT_TEMPERATURE": config_json["COGS"]["AI_CHAT"]["MODEL_TEMPERATURE"],
+            "AI_CHAT_TOP_P": config_json["COGS"]["AI_CHAT"]["MODEL_TOP_P"],
+            "AI_CHAT_FREQUENCY_PENALTY": config_json["COGS"]["AI_CHAT"]["MODEL_FREQUENCY_PENALTY"],
+            "AI_CHAT_PRESENCE_PENALTY": config_json["COGS"]["AI_CHAT"]["MODEL_PRESENCE_PENALTY"],
+            "AI_CHAT_MAX_OUTPUT_TOKENS": config_json["COGS"]["AI_CHAT"]["MAX_OUTPUT_TOKENS"],
+            "AI_CHAT_TOKEN_WINDOW_SIZE": config_json["COGS"]["AI_CHAT"]["TOKEN_WINDOW_SIZE"],
+            "AI_CHAT_PROMPT_APPEND": config_json["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
+            "AI_CHAT_PROMPT_PREPEND": config_json["COGS"]["AI_CHAT"]["PROMPT_PREPEND"],
+            "AI_CHAT_SUMMARY_PROMPT": config_json["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
+            "AI_CHAT_RANDOM_RESPONSE_CHANCE": config_json["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
+            "AI_CHAT_RANDOM_RESPONSE_PROMPT": config_json["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"],
+            "AI_CHAT_RATE_LIMIT": config_json["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
+            "AI_CHAT_RATE_INTERVAL": config_json["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
+            "AI_CHAT_USE_HISTORIC_REPLIES": bool(config_json["COGS"]["AI_CHAT"]["USE_HISTORIC_REPLIES"]),
+            "AI_CHAT_PROFILE_RESPONSE_TIME": bool(config_json["COGS"]["AI_CHAT"]["ENABLE_PROFILING"]),
+            "AI_CHAT_PREFER_IMAGE_URLS": bool(config_json["COGS"]["AI_CHAT"]["PREFER_IMAGE_URLS"]),
         }
         cls._config = _config
 
@@ -218,7 +218,7 @@ class Bot:
             The value of the parameter requested, or None.
 
         """
-        return Bot._config.get(name, None)
+        return BotConfig._config.get(name, None)
 
     @staticmethod
     def set_config(name: str, value: str) -> None:
@@ -232,12 +232,12 @@ class Bot:
             The value of the parameter.
 
         """
-        Bot._config[name] = value
+        BotConfig._config[name] = value
 
 
-Bot.set_config_values()
+BotConfig.set_config_values()
 setup_logging()
 
 observer = Observer()
-observer.schedule(FileWatcher(), path=Path(Bot.get_config("CONFIG_FILE")).parent)
+observer.schedule(FileWatcher(), path=Path(BotConfig.get_config("CONFIG_FILE")).parent)
 observer.start()
