@@ -107,7 +107,7 @@ class AdminTools(SlashbotCog):
             msg = "action must be ban or kick"
             raise ValueError(msg)
         action_present = "banning" if action == disnake.AuditLogAction.ban else "kicking"
-        reason = self._find_entry(guild, member, action_user, action)
+        reason = await self._find_entry(guild, member, action_user, action)
         if reason:
             num_times = await self._count_times(guild, member, action)
             channel = await self.bot.fetch_channel(Bot.get_config("ID_CHANNEL_IDIOTS"))
