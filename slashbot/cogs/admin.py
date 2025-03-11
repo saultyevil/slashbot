@@ -26,13 +26,7 @@ from slashbot import __version__
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")
 COOLDOWN_RATE = BotConfig.get_config("COOLDOWN_RATE")
-JERMA_GIFS = (
-    "https://media1.tenor.com/m/XcEBpnPquUMAAAAd/jerma-pog.gif",
-    "https://media1.tenor.com/m/s5OePfXg13AAAAAd/jerma-eat-burger-whopper.gif",
-    "https://media1.tenor.com/m/YOeQ5oo0M_EAAAAd/jerma-jermafood.gif",
-    "https://media1.tenor.com/m/Akk1cG-C_a0AAAAd/jerma-jerma985.gif",
-    "https://media1.tenor.com/m/1Fn-Lhpkfm8AAAAd/jerma985-i-saw-what-you-deleted.gif",
-)
+JERMA_GIFS = list(Path("data/images").glob("jerma*.gif"))
 
 
 class AdminTools(CustomCog):
@@ -107,14 +101,15 @@ class AdminTools(CustomCog):
             msg = "action must be ban or kick"
             raise ValueError(msg)
         action_present = "banning" if action == disnake.AuditLogAction.ban else "kicking"
-        reason = self._find_entry(guild, member, action_user, action)
+        reason = await self._find_entry(guild, member, action_user, action)
         if reason:
             num_times = await self._count_times(guild, member, action)
             channel = await self.bot.fetch_channel(BotConfig.get_config("ID_CHANNEL_IDIOTS"))
             await channel.send(
                 f":warning: looks like {action_user.display_name} needs to zerk off after {action_present} "
                 f"{member.display_name} for {reason}!! This is the {num_times}{ordinal_suffix(num_times)} "
-                f"in the past month!! :warning: {random.choice(JERMA_GIFS)}",
+                f"time in the past month!! :warning:",
+                file=disnake.File(random.choice(JERMA_GIFS)),
             )
             random_minutes = random.uniform(60, 3600) / 60  # 1 minute to 1 hour
             self.invite_tasks[member.id] = asyncio.create_task(
@@ -298,10 +293,10 @@ class AdminTools(CustomCog):
     async def restart_bot(
         self,
         inter: ApplicationCommandInteraction,
-        disable_markov: str = commands.Param(
+        on_the_fly_markov: str = commands.Param(
             choices=["Yes", "No"],
             default=False,
-            description="Disable Markov sentence generation for faster load times",
+            description="Use on-the-fly Markov sentence generation for slower load times but more flexibility",
             converter=lambda _, arg: arg == "Yes",
         ),
     ) -> None:
@@ -311,18 +306,19 @@ class AdminTools(CustomCog):
         ----------
         inter : ApplicationCommandInteraction
             The slash command interaction.
-        disable_markov : str / bool
-            A bool to indicate if we should disable cached markov sentences. The
-            input is a string of "Yes" or "No" which is converted into a bool.
+        on_the_fly_markov: str / bool
+            A bool to indicate if we should use on-the-fly markov generation
+            or not. The input is a string of "Yes" or "No" which is converted
+            into a bool.
 
         """
         if inter.author.id != BotConfig.get_config("ID_USER_SAULTYEVIL"):
             await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
 
-        arguments = ["run.py"]
-        if disable_markov:
-            arguments.append("--disable-auto-markov")
+        arguments = ["slashbot"]
+        if on_the_fly_markov:
+            arguments.append("--only-the-fly-markov")
 
         if inter.response.type == disnake.InteractionResponseType.deferred_channel_message:
             await inter.edit_original_message("Restarting the bot...")
@@ -339,10 +335,10 @@ class AdminTools(CustomCog):
             default="main",
             description="The branch to update to",
         ),
-        disable_markov: str = commands.Param(
+        on_the_fly_markov: str = commands.Param(
             choices=["Yes", "No"],
             default=False,
-            description="Disable Markov sentence generation for faster load times",
+            description="Use on-the-fly Markov sentence generation for slower load times but more flexibility",
             converter=lambda _, arg: arg == "Yes",
         ),
     ) -> None:
@@ -354,9 +350,10 @@ class AdminTools(CustomCog):
             The slash command interaction.
         branch : str
             The name of the git branch to use
-        disable_markov : str / bool
-            A bool to indicate if we should disable cached markov sentences. The
-            input is a string of "Yes" or "No" which is converted into a bool.
+        on_the_fly_markov: str / bool
+            A bool to indicate if we should use on-the-fly markov generation
+            or not. The input is a string of "Yes" or "No" which is converted
+            into a bool.
 
         """
         if inter.author.id != BotConfig.get_config("ID_USER_SAULTYEVIL"):
@@ -369,7 +366,7 @@ class AdminTools(CustomCog):
             AdminTools.logger.exception("Failed to update repository")
             await inter.edit_original_message("Failed to update local repository")
             return
-        await self.restart_bot(inter, disable_markov)
+        await self.restart_bot(inter, on_the_fly_markov)
 
     @slash_command_with_cooldown(name="set_config_value")
     async def set_config_value(
