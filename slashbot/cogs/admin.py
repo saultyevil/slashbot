@@ -161,7 +161,7 @@ class AdminTools(CustomCog):
                 except disnake.NotFound:
                     self.invite_tasks.pop(member.id)
                     return
-            self._invite_user(member)
+            await self._invite_user(member)
         except asyncio.CancelledError:
             AdminTools.logger.info("Invite for %s cancelled by asyncio", member.display_name)
         finally:
