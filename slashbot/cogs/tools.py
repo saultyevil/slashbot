@@ -7,8 +7,9 @@ import aiofiles
 import disnake
 import wolframalpha
 from disnake.ext import commands
-from lib.config import BotConfig
-from lib.custom_cog import CustomCog
+
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_cog import CustomCog
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING
 
 import openai
 import tiktoken
-from lib.config import BotConfig
-from lib.util import create_prompt_dict, read_in_prompt_json
+
+from slashbot.lib.config import BotConfig
+from slashbot.lib.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
-    from lib.models import Conversation
+    from slashbot.lib.models import Conversation
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")

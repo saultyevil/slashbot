@@ -15,9 +15,10 @@ import traceback
 
 import disnake
 from disnake.ext import commands
-from lib import markov
-from lib.config import BotConfig
-from lib.custom_bot import CustomInteractionBot
+
+from slashbot.lib import markov
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_bot import CustomInteractionBot
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

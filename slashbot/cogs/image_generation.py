@@ -11,11 +11,12 @@ import logging
 
 import requests
 from disnake.ext import commands
-from lib.config import BotConfig
-from lib.custom_cog import CustomCog
-from lib.custom_command import slash_command_with_cooldown
-from lib.custom_types import ApplicationCommandInteraction
-from lib.image_generation import retrieve_image_request, send_image_request
+
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_cog import CustomCog
+from slashbot.lib.custom_command import slash_command_with_cooldown
+from slashbot.lib.custom_types import ApplicationCommandInteraction
+from slashbot.lib.image_generation import retrieve_image_request, send_image_request
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

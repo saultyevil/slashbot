@@ -12,11 +12,12 @@ import disnake
 import requests
 import rule34 as r34
 from disnake.ext import commands, tasks
-from lib import markov
-from lib.config import BotConfig
-from lib.custom_cog import CustomCog
-from lib.db import get_users
-from lib.markov import MARKOV_MODEL, update_markov_chain_for_model
+
+from slashbot.lib import markov
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_cog import CustomCog
+from slashbot.lib.db import get_users
+from slashbot.lib.markov import MARKOV_MODEL, update_markov_chain_for_model
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

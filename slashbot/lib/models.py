@@ -6,8 +6,8 @@ These classes are used to marshal data
 import logging
 import sys
 
-from lib.config import BotConfig
-from lib.text_generation import get_token_count
+from slashbot.lib.config import BotConfig
+from slashbot.lib.text_generation import get_token_count
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

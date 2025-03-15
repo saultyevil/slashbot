@@ -1,4 +1,4 @@
-from lib.custom_types import InteractionReference, Message
+from slashbot.lib.custom_types import InteractionReference, Message
 
 
 async def is_reply_to_slash_command_response(message: Message) -> bool:

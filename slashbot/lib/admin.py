@@ -6,7 +6,8 @@ from pathlib import Path
 
 import aiofiles
 import git
-from lib.config import BotConfig
+
+from slashbot.lib.config import BotConfig
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

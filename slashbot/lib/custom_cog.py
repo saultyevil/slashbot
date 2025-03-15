@@ -4,8 +4,9 @@ import logging
 
 import disnake
 from disnake.ext import commands
-from lib.config import BotConfig
-from lib.custom_bot import CustomInteractionBot
+
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_bot import CustomInteractionBot
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

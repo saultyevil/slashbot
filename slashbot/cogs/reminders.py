@@ -6,16 +6,17 @@ import re
 import dateparser
 import disnake
 from disnake.ext import commands, tasks
-from lib.custom_bot import CustomInteractionBot
-from lib.custom_cog import CustomCog
-from lib.custom_command import slash_command_with_cooldown
-from lib.db import (
+from prettytable import PrettyTable
+
+from slashbot.lib.custom_bot import CustomInteractionBot
+from slashbot.lib.custom_cog import CustomCog
+from slashbot.lib.custom_command import slash_command_with_cooldown
+from slashbot.lib.db import (
     add_reminder,
     get_all_reminders,
     get_all_reminders_for_user,
     remove_reminder,
 )
-from prettytable import PrettyTable
 
 
 def forget_reminders_autocompleter(inter: disnake.ApplicationCommandInteraction, _: str) -> list[str]:

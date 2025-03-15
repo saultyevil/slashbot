@@ -7,21 +7,21 @@ from pathlib import Path
 import disnake
 import git
 from disnake.ext import commands
-from lib.admin import (
+
+from slashbot import __version__
+from slashbot.lib.admin import (
     get_logfile_tail,
     get_modifiable_config_keys,
     restart_bot,
     set_config_value,
     update_local_repository,
 )
-from lib.config import BotConfig
-from lib.custom_bot import CustomInteractionBot
-from lib.custom_cog import CustomCog
-from lib.custom_command import slash_command_with_cooldown
-from lib.custom_types import ApplicationCommandInteraction
-from lib.util import ordinal_suffix
-
-from slashbot import __version__
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_bot import CustomInteractionBot
+from slashbot.lib.custom_cog import CustomCog
+from slashbot.lib.custom_command import slash_command_with_cooldown
+from slashbot.lib.custom_types import ApplicationCommandInteraction
+from slashbot.lib.util import ordinal_suffix
 
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")

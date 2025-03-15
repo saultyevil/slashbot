@@ -3,7 +3,8 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 from disnake.ext import commands
-from lib.config import BotConfig
+
+from slashbot.lib.config import BotConfig
 
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")

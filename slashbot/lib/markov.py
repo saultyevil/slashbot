@@ -15,9 +15,10 @@ import string
 from pathlib import Path
 
 import markovify
-from lib.config import BotConfig
-from lib.custom_types import ApplicationCommandInteraction
-from lib.error import deferred_error_message
+
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_types import ApplicationCommandInteraction
+from slashbot.lib.error import deferred_error_message
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 MARKOV_MODEL = None

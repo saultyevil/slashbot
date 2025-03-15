@@ -5,8 +5,9 @@ from collections.abc import Iterable
 from typing import Any
 
 from disnake.ext import commands
-from lib.config import BotConfig
-from lib.markov import MARKOV_MODEL
+
+from slashbot.lib.config import BotConfig
+from slashbot.lib.markov import MARKOV_MODEL
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

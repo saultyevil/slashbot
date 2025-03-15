@@ -8,13 +8,14 @@ from pathlib import Path
 
 import disnake
 from disnake.ext import commands, tasks
-from lib.config import BotConfig
-from lib.custom_bot import CustomInteractionBot
-from lib.custom_cog import CustomCog
-from lib.markov import generate_text_from_markov_chain
-from lib.util import calculate_seconds_until
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_bot import CustomInteractionBot
+from slashbot.lib.custom_cog import CustomCog
+from slashbot.lib.markov import generate_text_from_markov_chain
+from slashbot.lib.util import calculate_seconds_until
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

@@ -7,7 +7,8 @@ import base64
 from dataclasses import dataclass
 
 import requests
-from lib.config import BotConfig
+
+from slashbot.lib.config import BotConfig
 
 
 @dataclass

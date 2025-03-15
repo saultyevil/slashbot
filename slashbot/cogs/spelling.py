@@ -9,10 +9,11 @@ from pathlib import Path
 import aiofiles
 import disnake
 from disnake.ext import commands, tasks
-from lib.config import BotConfig
-from lib.custom_cog import CustomCog
-from lib.util import calculate_seconds_until, join_list_max_chars
 from spellchecker import SpellChecker
+
+from slashbot.lib.config import BotConfig
+from slashbot.lib.custom_cog import CustomCog
+from slashbot.lib.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))

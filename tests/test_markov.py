@@ -1,9 +1,9 @@
 """Unit tests for markov.py."""
 
 import pytest
-
 from botlib import markov
-from lib import markovify
+
+from slashbot.lib import markovify
 
 
 @pytest.fixture()
