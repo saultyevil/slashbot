@@ -25,10 +25,10 @@ from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+from slashbot.lib import markov
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.custom_command import slash_command_with_cooldown
-from slashbot.lib.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from slashbot.lib.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.lib.models import ChannelHistory, Conversation
 from slashbot.lib.responses import is_reply_to_slash_command_response
@@ -113,7 +113,7 @@ class TextGeneration(CustomCog):
 
         """
         await send_message_to_channel(
-            generate_text_from_markov_chain(MARKOV_MODEL, "?random", 1),
+            markov.generate_text_from_markov_chain(markov.MARKOV_MODEL, "?random", 1),
             message,
             dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )

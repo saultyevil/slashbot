@@ -131,14 +131,12 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
         The initialised bot instance.
 
     """
-    LOGGER.info("Initializing...")
-
     if args.debug:
-        args.enable_markov_cache = False
         LOGGER.setLevel(logging.DEBUG)
     else:
         LOGGER.setLevel(logging.INFO)
 
+    LOGGER.info("Initializing... %s", args)
     LOGGER.info("Config file: %s", BotConfig.get_config("CONFIG_FILE"))
 
     if args.on_the_fly_markov:

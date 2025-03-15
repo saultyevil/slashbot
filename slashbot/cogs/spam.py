@@ -17,7 +17,6 @@ from slashbot.lib import markov
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.db import get_users
-from slashbot.lib.markov import MARKOV_MODEL, update_markov_chain_for_model
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
@@ -49,7 +48,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         self.rule34_api = r34.Rule34()
 
         # If no markov model, don't start the loop.
-        if MARKOV_MODEL:
+        if markov.MARKOV_MODEL:
             self.markov_chain_update_loop.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
@@ -127,7 +126,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         else:
             await inter.response.defer(ephemeral=True)
 
-        await update_markov_chain_for_model(
+        await markov.update_markov_chain_for_model(
             inter,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
@@ -294,7 +293,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         """Get the bot to update the chain every 6 hours."""
         if not BotConfig.get_config("ENABLE_MARKOV_TRAINING"):
             return
-        await update_markov_chain_for_model(
+        await markov.update_markov_chain_for_model(
             None,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),

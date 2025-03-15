@@ -42,7 +42,7 @@ def _search_for_seed_in_markov_bank(seed_word: str) -> str:
     if seed_word not in MARKOV_BANK:
         LOGGER.error("Seed word '%s' not found in markov bank", seed_word)
         sentences = MARKOV_BANK.get(
-            "error", ["An error occured with the markov sentence generation [a seed word is probably missing]"]
+            "error", ["An error occurred with the markov sentence generation [a seed word is probably missing]"]
         )
         return random.choice(sentences)
 
@@ -103,7 +103,7 @@ def _generate_markov_sentence(model: markovify.Text = None, seed_word: str | Non
     return sentence.strip()[:1024]
 
 
-def _get_sentence_from_bank(seed_word: str, amount: int = 1) -> str | list[str]:
+def _get_sentence_from_bank(seed_word: str | None, amount: int = 1) -> str | list[str]:
     """Get a sentence from the markov bank.
 
     Parameters
@@ -119,12 +119,14 @@ def _get_sentence_from_bank(seed_word: str, amount: int = 1) -> str | list[str]:
         The generated sentence(s).
 
     """
+    if not seed_word:
+        seed_word = "?random"
     if amount == 1:
         return _search_for_seed_in_markov_bank(seed_word)
     return [_search_for_seed_in_markov_bank(seed_word) for _ in range(amount)]
 
 
-def _get_sentence_from_model(model: markovify.Text, seed_word: str, amount: int = 1) -> str | list[str]:
+def _get_sentence_from_model(model: markovify.Text, seed_word: str | None, amount: int = 1) -> str | list[str]:
     """Get a sentence from the markov model.
 
     Parameters
@@ -344,14 +346,14 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
     return model
 
 
-def generate_text_from_markov_chain(model: markovify.Text, seed_word: str, amount: int) -> str | list[str]:
+def generate_text_from_markov_chain(model: markovify.Text, seed_word: str | None, amount: int) -> str | list[str]:
     """Generate a list of markov generated sentences for a specific key word.
 
     Parameters
     ----------
     model : markovify.Text
         The markov model to use to generate sentences.
-    seed_word : str
+    seed_word : str | None
         The seed word to use.
     amount : int, optional
         The number of sentences to generate.
@@ -362,9 +364,8 @@ def generate_text_from_markov_chain(model: markovify.Text, seed_word: str, amoun
         The generated sentence(s), as a str or a list of str.
 
     """
-    if model:
+    if model and isinstance(model, markovify.Text):
         return _get_sentence_from_model(model, seed_word, amount)
-    if MARKOV_BANK and not MARKOV_MODEL:
-        return _get_sentence_from_bank(seed_word, amount)
-
-    return _get_sentence_from_model(MARKOV_MODEL, seed_word, amount)
+    if MARKOV_MODEL:
+        return _get_sentence_from_model(MARKOV_MODEL, seed_word, amount)
+    return _get_sentence_from_bank(seed_word, amount)
