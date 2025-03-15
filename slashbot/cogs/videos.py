@@ -5,9 +5,9 @@ import logging
 import random
 
 import disnake
-from botlib.config import BotConfig
-from botlib.custom_cog import CustomCog
 from disnake.ext import commands
+from lib.config import BotConfig
+from lib.custom_cog import CustomCog
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user

@@ -6,7 +6,6 @@ authors = ["Edward J. Parkinson"]
 readme = "README.md"
 packages = [
     { include = "slashbot" },
-    { include = "botlib", from = "lib" },
 ]
 
 [tool.poetry.scripts]

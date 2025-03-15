@@ -10,12 +10,12 @@ from __future__ import annotations
 import logging
 
 import requests
-from botlib.config import BotConfig
-from botlib.custom_cog import CustomCog
-from botlib.custom_command import slash_command_with_cooldown
-from botlib.custom_types import ApplicationCommandInteraction
-from botlib.image_generation import retrieve_image_request, send_image_request
 from disnake.ext import commands
+from lib.config import BotConfig
+from lib.custom_cog import CustomCog
+from lib.custom_command import slash_command_with_cooldown
+from lib.custom_types import ApplicationCommandInteraction
+from lib.image_generation import retrieve_image_request, send_image_request
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

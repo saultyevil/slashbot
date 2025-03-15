@@ -7,12 +7,12 @@ import threading
 from pathlib import Path
 
 import disnake
-from botlib.config import BotConfig
-from botlib.custom_bot import CustomInteractionBot
-from botlib.custom_cog import CustomCog
-from botlib.markov import generate_text_from_markov_chain
-from botlib.util import calculate_seconds_until
 from disnake.ext import commands, tasks
+from lib.config import BotConfig
+from lib.custom_bot import CustomInteractionBot
+from lib.custom_cog import CustomCog
+from lib.markov import generate_text_from_markov_chain
+from lib.util import calculate_seconds_until
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 

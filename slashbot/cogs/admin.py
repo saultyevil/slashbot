@@ -6,20 +6,20 @@ from pathlib import Path
 
 import disnake
 import git
-from botlib.admin import (
+from disnake.ext import commands
+from lib.admin import (
     get_logfile_tail,
     get_modifiable_config_keys,
     restart_bot,
     set_config_value,
     update_local_repository,
 )
-from botlib.config import BotConfig
-from botlib.custom_bot import CustomInteractionBot
-from botlib.custom_cog import CustomCog
-from botlib.custom_command import slash_command_with_cooldown
-from botlib.custom_types import ApplicationCommandInteraction
-from botlib.util import ordinal_suffix
-from disnake.ext import commands
+from lib.config import BotConfig
+from lib.custom_bot import CustomInteractionBot
+from lib.custom_cog import CustomCog
+from lib.custom_command import slash_command_with_cooldown
+from lib.custom_types import ApplicationCommandInteraction
+from lib.util import ordinal_suffix
 
 from slashbot import __version__
 

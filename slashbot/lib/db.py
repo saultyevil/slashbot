@@ -9,8 +9,8 @@ import json
 import logging
 import pathlib
 
-from botlib.config import BotConfig
-from botlib.custom_types import Member, User
+from lib.config import BotConfig
+from lib.custom_types import Member, User
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

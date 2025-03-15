@@ -8,10 +8,10 @@ from pathlib import Path
 
 import aiofiles
 import disnake
-from botlib.config import BotConfig
-from botlib.custom_cog import CustomCog
-from botlib.util import calculate_seconds_until, join_list_max_chars
 from disnake.ext import commands, tasks
+from lib.config import BotConfig
+from lib.custom_cog import CustomCog
+from lib.util import calculate_seconds_until, join_list_max_chars
 from spellchecker import SpellChecker
 
 COOLDOWN_USER = commands.BucketType.user

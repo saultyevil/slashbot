@@ -19,29 +19,29 @@ from typing import TYPE_CHECKING
 import aiofiles
 import disnake
 import openai
-from botlib.config import BotConfig
-from botlib.custom_cog import CustomCog
-from botlib.custom_command import slash_command_with_cooldown
-from botlib.markov import MARKOV_MODEL, generate_text_from_markov_chain
-from botlib.messages import get_attached_images_from_message, send_message_to_channel
-from botlib.models import ChannelHistory, Conversation
-from botlib.responses import is_reply_to_slash_command_response
-from botlib.text_generation import (
+from disnake.ext import commands
+from disnake.utils import escape_markdown
+from lib.config import BotConfig
+from lib.custom_cog import CustomCog
+from lib.custom_command import slash_command_with_cooldown
+from lib.markov import MARKOV_MODEL, generate_text_from_markov_chain
+from lib.messages import get_attached_images_from_message, send_message_to_channel
+from lib.models import ChannelHistory, Conversation
+from lib.responses import is_reply_to_slash_command_response
+from lib.text_generation import (
     check_if_user_rate_limited,
     generate_text_from_llm,
     get_prompts_at_launch,
     get_token_count,
 )
-from botlib.util import create_prompt_dict, read_in_prompt_json
-from disnake.ext import commands
-from disnake.utils import escape_markdown
+from lib.util import create_prompt_dict, read_in_prompt_json
 from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 if TYPE_CHECKING:
-    from botlib.custom_bot import CustomInteractionBot
-    from botlib.custom_types import ApplicationCommandInteraction, Message
+    from lib.custom_bot import CustomInteractionBot
+    from lib.custom_types import ApplicationCommandInteraction, Message
 
 MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
 DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()

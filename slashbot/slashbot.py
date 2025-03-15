@@ -14,10 +14,10 @@ import time
 import traceback
 
 import disnake
-from botlib import markov
-from botlib.config import BotConfig
-from botlib.custom_bot import CustomInteractionBot
 from disnake.ext import commands
+from lib import markov
+from lib.config import BotConfig
+from lib.custom_bot import CustomInteractionBot
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

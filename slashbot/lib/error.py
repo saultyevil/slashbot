@@ -1,6 +1,6 @@
 """Commands for getting the weather."""
 
-from botlib.custom_types import ApplicationCommandInteraction
+from lib.custom_types import ApplicationCommandInteraction
 
 
 async def deferred_error_message(

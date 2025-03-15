@@ -11,15 +11,15 @@ from types import coroutine
 
 import disnake
 import requests
-from botlib.config import BotConfig
-from botlib.custom_cog import CustomCog
-from botlib.custom_command import slash_command_with_cooldown
-from botlib.db import get_user_location
-from botlib.error import deferred_error_message
-from botlib.markov import MARKOV_MODEL, generate_text_from_markov_chain
-from botlib.util import convert_radial_to_cardinal_direction
 from disnake.ext import commands
 from geopy import GoogleV3
+from lib.config import BotConfig
+from lib.custom_cog import CustomCog
+from lib.custom_command import slash_command_with_cooldown
+from lib.db import get_user_location
+from lib.error import deferred_error_message
+from lib.markov import MARKOV_MODEL, generate_text_from_markov_chain
+from lib.util import convert_radial_to_cardinal_direction
 
 
 class GeocodeError(Exception):

@@ -2,13 +2,11 @@ import json
 import logging
 import os
 import shutil
-import sys
 from pathlib import Path
 
 import aiofiles
 import git
-
-from botlib.config import BotConfig
+from lib.config import BotConfig
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 

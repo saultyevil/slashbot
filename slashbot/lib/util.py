@@ -7,8 +7,8 @@ import pathlib
 import re
 from typing import Any
 
-from botlib.config import BotConfig
-from botlib.custom_types import (
+from lib.config import BotConfig
+from lib.custom_types import (
     ApplicationCommandInteraction,
     DMChannel,
     Member,

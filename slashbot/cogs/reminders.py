@@ -5,16 +5,16 @@ import re
 
 import dateparser
 import disnake
-from botlib.custom_bot import CustomInteractionBot
-from botlib.custom_cog import CustomCog
-from botlib.custom_command import slash_command_with_cooldown
-from botlib.db import (
+from disnake.ext import commands, tasks
+from lib.custom_bot import CustomInteractionBot
+from lib.custom_cog import CustomCog
+from lib.custom_command import slash_command_with_cooldown
+from lib.db import (
     add_reminder,
     get_all_reminders,
     get_all_reminders_for_user,
     remove_reminder,
 )
-from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 
 

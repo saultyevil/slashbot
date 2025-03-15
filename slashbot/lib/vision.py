@@ -7,8 +7,7 @@ import base64
 from dataclasses import dataclass
 
 import requests
-
-from botlib.config import BotConfig
+from lib.config import BotConfig
 
 
 @dataclass
