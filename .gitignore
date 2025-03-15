@@ -4,6 +4,7 @@ logs/*.log
 data/*.db.json
 data/*.txt
 **/chain*.pickle
+*.sqlite.db
 
 # IDE specific directories
 .DS_Store

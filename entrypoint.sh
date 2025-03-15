@@ -13,5 +13,5 @@ fi
 if [ "$DEVELOPMENT_MODE" = true ]; then
     exec poetry run slashbot --debug
 else
-    exec poetry run slashbot
+    exec poetry run slashbot --on-the-fly-markov
 fi

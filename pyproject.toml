@@ -7,7 +7,6 @@ readme = "README.md"
 packages = [
     { include = "slashbot" },
     { include = "botlib", from = "lib" },
-    { include = "markovify", from = "lib" }
 ]
 
 [tool.poetry.scripts]
@@ -34,6 +33,7 @@ aiofiles = "^23.2.1"
 defusedxml = "^0.7.1"
 pyinstrument = "^5.0.0"
 gitpython = "^3.1.44"
+markovify = {git = "https://github.com/saultyevil/markovify.git"}
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
