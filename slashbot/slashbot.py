@@ -20,6 +20,7 @@ from slashbot.lib import markov
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_bot import CustomInteractionBot
 
+LAUNCH_TIME = time.time()
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
@@ -64,7 +65,6 @@ def create_on_ready(bot: CustomInteractionBot) -> None:
         The bot.
 
     """
-    launch_time = time.time()
 
     async def on_ready() -> None:
         """Information to print on bot launch."""
@@ -74,7 +74,7 @@ def create_on_ready(bot: CustomInteractionBot) -> None:
             LOGGER.info("Logged in as %s in the current servers:", bot.user)
             for n_server, server in enumerate(bot.guilds):
                 LOGGER.info("\t%d). %s (%d)", n_server, server.name, server.id)
-            LOGGER.info("Started in %.2f seconds", time.time() - launch_time)
+            LOGGER.info("Started in %.2f seconds", time.time() - LAUNCH_TIME)
         else:
             LOGGER.info("Bot reconnected")
 
