@@ -1,7 +1,6 @@
 """Commands for sending videos, and scheduled videos."""
 
 import datetime
-import logging
 import random
 
 import disnake
@@ -10,7 +9,6 @@ from disnake.ext import commands
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_cog import CustomCog
 
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 

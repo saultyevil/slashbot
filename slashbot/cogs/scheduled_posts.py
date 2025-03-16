@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import logging
 import threading
 from pathlib import Path
 
@@ -17,7 +16,6 @@ from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.markov import generate_text_from_markov_chain
 from slashbot.lib.util import calculate_seconds_until
 
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
@@ -121,15 +119,15 @@ class ScheduledPosts(CustomCog):
                 post,
                 ("title", "files", "channels", "users", "day", "hour", "minute", "seed_word", "message"),
             ):
-                logger.warning("Post '%s' is missing some keys", post.get("title", "unknown"))
+                self.log_warning("Post '%s' is missing some keys", post.get("title", "unknown"))
             if not check_post_has_iterable(post, "files"):
-                logger.warning("Post '%s' has non-iterable files", post["title"])
+                self.log_warning("Post '%s' has non-iterable files", post["title"])
             if not check_post_has_iterable(post, "users"):
-                logger.warning("Post '%s' has non-iterable users", post["title"])
+                self.log_warning("Post '%s' has non-iterable users", post["title"])
             if not check_post_has_iterable(post, "channels"):
-                logger.warning("Post '%s' has non-iterable channels", post["title"])
+                self.log_warning("Post '%s' has non-iterable channels", post["title"])
 
-        logger.info(
+        self.log_info(
             "%d scheduled posts loaded from %s",
             len(self.scheduled_posts),
             BotConfig.get_config("SCHEDULED_POST_FILE"),
@@ -191,7 +189,7 @@ class ScheduledPosts(CustomCog):
             # when read in is no longer valid as it is a static, and not
             # dynamic, value
             sleep_for = calculate_seconds_until(int(post["day"]), int(post["hour"]), int(post["minute"]), 7)
-            logger.info(
+            self.log_info(
                 "Waiting %d seconds/%d minutes/%.1f hours until posting %s",
                 sleep_for,
                 int(sleep_for / 60),

@@ -6,7 +6,6 @@ location into a latitude and longitude for OpenWeatherMap.
 
 import datetime
 import json
-import logging
 from types import coroutine
 
 import disnake
@@ -37,7 +36,6 @@ class LocationNotFoundError(Exception):
 class Weather(CustomCog):
     """Query information about the weather."""
 
-    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
     WEATHER_UNITS: tuple[str] = ("mixed", "metric", "imperial")
 
     def __init__(self, bot: commands.InteractionBot) -> None:
@@ -485,4 +483,4 @@ def setup(bot: commands.InteractionBot) -> None:
     if BotConfig.get_config("GOOGLE_API_KEY"):
         bot.add_cog(Weather(bot))
     else:
-        Weather.logger.error("No Google API key found, weather cog not loaded.")
+        Weather.log_error(Weather, "No Google API key found, weather cog not loaded.")

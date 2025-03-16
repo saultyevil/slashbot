@@ -168,7 +168,7 @@ class CustomCog(commands.Cog):
             The arguments to pass to the message.
 
         """
-        CustomCog.logger.debug("<%s>%s", self.__cog_name__, msg % args)
+        CustomCog.logger.debug("%s [%s]", msg % args, self.__cog_name__)
 
     def log_error(self, msg: str, *args: any) -> None:
         """Log an error message.
@@ -181,7 +181,7 @@ class CustomCog(commands.Cog):
             The arguments to pass to the message.
 
         """
-        CustomCog.logger.error("<%s>%s", self.__cog_name__, msg % args)
+        CustomCog.logger.error("%s [%s]", msg % args, self.__cog_name__)
 
     def log_exception(self, msg: str, *args: any) -> None:
         """Log a exception message.
@@ -194,7 +194,7 @@ class CustomCog(commands.Cog):
             The arguments to pass to the message.
 
         """
-        CustomCog.logger.exception("<%s>%s", self.__cog_name__, msg % args)
+        CustomCog.logger.exception("%s [%s]", msg % args, self.__cog_name__)
 
     def log_info(self, msg: str, *args: any) -> None:
         """Log an info message.
@@ -207,4 +207,4 @@ class CustomCog(commands.Cog):
             The arguments to pass to the message.
 
         """
-        CustomCog.logger.info("<%s>%s", self.__cog_name__, msg % args)
+        CustomCog.logger.info("%s [%s]", msg % args, self.__cog_name__)

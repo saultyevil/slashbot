@@ -5,20 +5,13 @@ currently implements AI chat/vision using ChatGPT and Claude, as well as
 text-to-image generation using Monster API.
 """
 
-from __future__ import annotations
-
-import logging
-
 import requests
 from disnake.ext import commands
 
-from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.custom_command import slash_command_with_cooldown
 from slashbot.lib.custom_types import ApplicationCommandInteraction
 from slashbot.lib.image_generation import retrieve_image_request, send_image_request
-
-LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
 class ImageGeneration(CustomCog):
@@ -61,7 +54,7 @@ class ImageGeneration(CustomCog):
             await inter.edit_original_message(content="The image generation API took too long to respond.")
             return
         if not process_id:
-            LOGGER.error("Image generation request did not return a process ID: %s", response)
+            self.log_error("Image generation request did not return a process ID: %s", response)
             await inter.edit_original_message(f"There was an error when submitting your request: {response}.")
             return
         await inter.edit_original_message(content=f"Request submitted with process ID {process_id}")
@@ -86,4 +79,4 @@ def setup(bot: commands.InteractionBot) -> None:
     if key:
         bot.add_cog(ImageGeneration(bot))
     else:
-        LOGGER.error("No API key for Monster AI, not loading image generation cog")
+        ImageGeneration.log_error(ImageGeneration, "No API key for Monster AI, not loading image generation cog")
