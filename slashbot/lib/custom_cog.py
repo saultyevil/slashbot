@@ -9,8 +9,6 @@ from slashbot.lib import markov
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_bot import CustomInteractionBot
 
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
-
 
 class CustomCog(commands.Cog):
     """A custom cog class which modifies cooldown behaviour."""
@@ -34,6 +32,25 @@ class CustomCog(commands.Cog):
     # --------------------------------------------------------------------------
 
     def _get_random_sentence(self, seed_word: str | None, amount: int) -> str | list[str]:
+        """Get a random markov generated sentence.
+
+        If the markov cache is enabled, the sentence will be taken from the
+        cache if there are not in there. If not, the sentence will be generated
+        on-the-fly or taken directly from the markov bank.
+
+        Parameters
+        ----------
+        seed_word : str
+            The seed word to use.
+        amount : int
+            The number of sentences to generate.
+
+        Returns
+        -------
+        str
+            The generated sentence.
+
+        """
         if self.bot.use_markov_cache:
             sentence_cache = self._markov_sentences.get(seed_word, [])
             if amount > len(sentence_cache):
@@ -52,14 +69,23 @@ class CustomCog(commands.Cog):
         return sentences
 
     def _populate_markov_cache(self, *, seed_words: list[str] | None = None) -> None:
+        """Populate the markov cache for the given seed words.
+
+        If no seed words are provided, the seed words in the class attribute
+        will be used.
+
+        Parameters
+        ----------
+        seed_words : list[str] | None, optional
+           The seed words to generate sentences for, by default None
+
+        """
         for seed_word in seed_words or self.markov_seed_words:
             current_amount = len(self._markov_sentences.get(seed_word, []))
             self._markov_sentences[seed_word] = self.get_random_sentence(
                 seed_word, amount=BotConfig.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT") - current_amount
             )
-        CustomCog.logger.info(
-            "<%s>Generated markov sentences for seed words: %s", self.__cog_name__, self.markov_seed_words
-        )
+        self.log_info("Generated markov sentences for seed words: %s", self.markov_seed_words)
 
     # --------------------------------------------------------------------------
 
@@ -89,10 +115,7 @@ class CustomCog(commands.Cog):
             - Pre-generated markov sentences, if enabled
         """
         if self.bot.use_markov_cache and self.markov_seed_words:
-            CustomCog.logger.info(
-                "<%s>Generating markov sentence cache",
-                self.__cog_name__,
-            )
+            self.log_info("Generating markov sentence cache")
             self._populate_markov_cache()
             self.check_markov_cache_size.start()
 
@@ -131,3 +154,57 @@ class CustomCog(commands.Cog):
         for seed_word in self.markov_seed_words:
             if len(self._markov_sentences[seed_word]) < BotConfig.get_config("PREGEN_REGENERATE_LIMIT"):
                 self._populate_markov_cache(seed_words=[seed_word])
+
+    # --------------------------------------------------------------------------
+
+    def log_debug(self, msg: str, *args: any) -> None:
+        """Log a debug message.
+
+        Parameters
+        ----------
+        msg : str
+            The message to log.
+        args : any
+            The arguments to pass to the message.
+
+        """
+        CustomCog.logger.debug("<%s>%s", self.__cog_name__, msg % args)
+
+    def log_error(self, msg: str, *args: any) -> None:
+        """Log an error message.
+
+        Parameters
+        ----------
+        msg : str
+            The message to log.
+        args : any
+            The arguments to pass to the message.
+
+        """
+        CustomCog.logger.error("<%s>%s", self.__cog_name__, msg % args)
+
+    def log_exception(self, msg: str, *args: any) -> None:
+        """Log a exception message.
+
+        Parameters
+        ----------
+        msg : str
+            The message to log.
+        args : any
+            The arguments to pass to the message.
+
+        """
+        CustomCog.logger.exception("<%s>%s", self.__cog_name__, msg % args)
+
+    def log_info(self, msg: str, *args: any) -> None:
+        """Log an info message.
+
+        Parameters
+        ----------
+        msg : str
+            The message to log.
+        args : any
+            The arguments to pass to the message.
+
+        """
+        CustomCog.logger.info("<%s>%s", self.__cog_name__, msg % args)

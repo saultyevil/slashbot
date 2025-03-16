@@ -1,6 +1,5 @@
 """Modified InteractionBot class."""
 
-import importlib
 import logging
 from collections.abc import Iterable
 from typing import Any
