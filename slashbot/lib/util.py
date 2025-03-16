@@ -5,6 +5,7 @@ import json
 import logging
 import pathlib
 import re
+from typing import Any
 
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_types import (
@@ -107,7 +108,7 @@ def join_list_max_chars(words: list[str], max_chars: int) -> str:
     return result.removesuffix(", ")
 
 
-def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: any) -> any:
+def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any) -> Any:  # noqa: ANN401
     """Slash command convertor to transform a string into all lower case.
 
     Parameters
