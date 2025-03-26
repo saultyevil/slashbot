@@ -1,21 +1,19 @@
 """Custom Cog class."""
 
-import logging
-
 import disnake
-from disnake.ext import commands, tasks
+from disnake.ext import tasks
+from disnake.ext.commands import Cog
 
 from slashbot.lib import markov
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_bot import CustomInteractionBot
+from slashbot.lib.logger import Logger
 
 
-class CustomCog(commands.Cog):
+class CustomCog(Cog, Logger):
     """A custom cog class which modifies cooldown behaviour."""
 
-    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
-
-    def __init__(self, bot: CustomInteractionBot) -> None:
+    def __init__(self, bot: CustomInteractionBot, **kwargs) -> None:
         """Intialise the cog.
 
         Parameters
@@ -24,7 +22,8 @@ class CustomCog(commands.Cog):
             The bot the cog will be added to.
 
         """
-        super().__init__()
+        super().__init__(**kwargs)
+        Logger.__init__(self)
         self.bot = bot
         self.markov_seed_words = None
         self._markov_sentences = {}
@@ -154,57 +153,3 @@ class CustomCog(commands.Cog):
         for seed_word in self.markov_seed_words:
             if len(self._markov_sentences[seed_word]) < BotConfig.get_config("PREGEN_REGENERATE_LIMIT"):
                 self._populate_markov_cache(seed_words=[seed_word])
-
-    # --------------------------------------------------------------------------
-
-    def log_debug(self, msg: str, *args: any) -> None:
-        """Log a debug message.
-
-        Parameters
-        ----------
-        msg : str
-            The message to log.
-        args : any
-            The arguments to pass to the message.
-
-        """
-        CustomCog.logger.debug("%s [%s]", msg % args, self.__cog_name__)
-
-    def log_error(self, msg: str, *args: any) -> None:
-        """Log an error message.
-
-        Parameters
-        ----------
-        msg : str
-            The message to log.
-        args : any
-            The arguments to pass to the message.
-
-        """
-        CustomCog.logger.error("%s [%s]", msg % args, self.__cog_name__)
-
-    def log_exception(self, msg: str, *args: any) -> None:
-        """Log a exception message.
-
-        Parameters
-        ----------
-        msg : str
-            The message to log.
-        args : any
-            The arguments to pass to the message.
-
-        """
-        CustomCog.logger.exception("%s [%s]", msg % args, self.__cog_name__)
-
-    def log_info(self, msg: str, *args: any) -> None:
-        """Log an info message.
-
-        Parameters
-        ----------
-        msg : str
-            The message to log.
-        args : any
-            The arguments to pass to the message.
-
-        """
-        CustomCog.logger.info("%s [%s]", msg % args, self.__cog_name__)

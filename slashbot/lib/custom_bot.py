@@ -1,18 +1,15 @@
 """Modified InteractionBot class."""
 
-import logging
 from collections.abc import Iterable
 from typing import Any
 
-from disnake.ext import commands
+from disnake.ext.commands import InteractionBot
 
 from slashbot.lib import markov
-from slashbot.lib.config import BotConfig
-
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+from slashbot.lib.logger import Logger
 
 
-class CustomInteractionBot(commands.InteractionBot):
+class CustomInteractionBot(InteractionBot, Logger):
     """InteractionBot class for Slashbot.
 
     This is a modified version of disnake.ext.commands.InteractionBot.
@@ -31,11 +28,12 @@ class CustomInteractionBot(commands.InteractionBot):
 
         """
         super().__init__(**kwargs)
+        Logger.__init__(self)
         self.cleanup_functions = []
         self.times_connected = 0
         self.use_markov_cache = enable_markov_cache and markov.MARKOV_MODEL
         if markov.MARKOV_MODEL:
-            logger.info(
+            self.log_info(
                 "Automatic Markov sentence generation is %s",
                 "enabled" if self.use_markov_cache else "disabled",
             )
@@ -59,7 +57,7 @@ class CustomInteractionBot(commands.InteractionBot):
         """Clean up things on close."""
         for function in self.cleanup_functions:
             if function["message"]:
-                logger.info("%s", function["message"])
+                self.log_info("%s", function["message"])
 
             if function["args"]:
                 await function["function"](*function["args"])

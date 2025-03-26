@@ -30,7 +30,8 @@ from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.custom_command import slash_command_with_cooldown
 from slashbot.lib.messages import get_attached_images_from_message, send_message_to_channel
-from slashbot.lib.models.conversation import ChannelHistory, Conversation
+from slashbot.lib.models.channel_history import ChannelHistory
+from slashbot.lib.models.conversation import Conversation
 from slashbot.lib.responses import is_reply_to_slash_command_response
 from slashbot.lib.text_generation import (
     check_if_user_rate_limited,

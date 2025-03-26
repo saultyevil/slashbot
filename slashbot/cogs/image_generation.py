@@ -79,4 +79,4 @@ def setup(bot: commands.InteractionBot) -> None:
     if key:
         bot.add_cog(ImageGeneration(bot))
     else:
-        ImageGeneration.log_error(ImageGeneration, "No API key for Monster AI, not loading image generation cog")
+        bot.log_error("No API key for Monster AI, not loading image generation cog")
