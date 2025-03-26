@@ -1,0 +1,148 @@
+import asyncio
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
+
+import openai
+import tiktoken
+
+from slashbot.lib.config import BotConfig
+
+
+@dataclass
+class TextGenerationResponse:
+    """Response object for text generation."""
+
+    message: str
+    tokens: int
+
+
+class TextGeneratorLLM:
+    """Base class for text generation using LLMs."""
+
+    OPENAI_LOW_DETAIL_IMAGE_TOKENS = 85
+    SUPPORTED_OPENAI_MODELS = ("gpt-4o-mini",)
+    SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS
+    VISION_MODELS = ("gpt-4o-mini",)
+
+    def __init__(self) -> None:
+        """Initialise a TextGeneratorLLM with default values."""
+        self.model = "gpt-4o-mini"
+        self.client = None
+        self.base_url = None
+        self.text_generator = None
+
+        self._init_for_model(self.model)
+
+    def _init_for_model(self, model: str) -> None:
+        if model not in self.SUPPORTED_MODELS:
+            msg = f"Model {model} is not supported."
+            raise ValueError(msg)
+
+        self.model = model
+        self.base_url = self._get_base_url_for_model(model)
+        self.client = self._get_client()
+        self.text_generator = self._set_generator_function()
+
+    def _get_base_url_for_model(self, model: str) -> str:
+        if model in TextGeneratorLLM.SUPPORTED_OPENAI_MODELS:
+            return "https://api.openai.com/v1"
+
+        msg = f"Model {model} is not supported."
+        raise ValueError(msg)
+
+    def _get_client(self) -> openai.AsyncClient:
+        if self.client:
+            return self.client
+        api_key = BotConfig.get_config("OPENAI_API_KEY")
+
+        return openai.AsyncOpenAI(api_key=api_key, base_url=self.base_url)
+
+    def _set_generator_function(self) -> Callable[..., Any]:
+        return self.client.chat.completions.create
+
+    def count_tokens_for_message(self, message: list[str] | str) -> int:
+        """Get the token count for a given message for the current LLM model.
+
+        Parameters
+        ----------
+        message : list[str] | str
+            The message for which the token count needs to be computed.
+
+        Returns
+        -------
+        int
+            The count of tokens in the given message for the current model.
+
+        """
+        try:
+            encoding = tiktoken.encoding_for_model(self.model)
+        except KeyError:
+            encoding = tiktoken.get_encoding("o200k_base")  # Fallback to this base
+
+        if isinstance(message, list):
+            num_tokens = 0
+            # Handle case where there are images and messages. Images are a fixed
+            # cost of something like 85 tokens so we don't need to encode those
+            # using tiktoken.
+            for content in message:
+                if content["type"] == "text":
+                    num_tokens += len(encoding.encode(content["text"]))
+                else:
+                    num_tokens += (
+                        TextGeneratorLLM.OPENAI_LOW_DETAIL_IMAGE_TOKENS if content["type"] == "image_url" else 0
+                    )
+        elif isinstance(message, str):
+            num_tokens = len(encoding.encode(message))
+        else:
+            msg = f"Expected a string or list of strings for encoding, got {type(message)}"
+            raise TypeError(msg)
+
+        return num_tokens
+
+    def set_llm_model(self, model: str) -> None:
+        """Set the current LLM model.
+
+        Parameters
+        ----------
+        model : str
+            The name of the model to use.
+
+        """
+        self._init_for_model(model)
+
+    async def generate_text(self, messages: list[dict]) -> TextGenerationResponse:
+        """Generate text from the current LLM model.
+
+        Parameters
+        ----------
+        messages: list[dict]
+            A list of messages to provide to the LLM, in the format similar to
+            the following:
+                [
+                    {"role": "user", "content": "Hello world"},
+                ]
+
+        """
+        response = await self.text_generator(
+            messages=messages,
+            model=self.model,
+        )
+        message = response.choices[0].message.content
+        token_usage = response.usage.total_tokens
+        return TextGenerationResponse(message, token_usage)
+
+
+if __name__ == "__main__":
+
+    async def _main() -> None:
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "What is the age of the universe?"},
+        ]
+        text_generator = TextGeneratorLLM()
+        response = await text_generator.generate_text(messages)
+        print(response.message)
+        print(response.tokens)
+
+    asyncio.run(_main())
