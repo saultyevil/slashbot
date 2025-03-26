@@ -7,6 +7,7 @@ import openai
 import tiktoken
 
 from slashbot.lib.config import BotConfig
+from slashbot.lib.logger import Logger
 
 
 @dataclass
@@ -14,24 +15,33 @@ class TextGenerationResponse:
     """Response object for text generation."""
 
     message: str
-    tokens: int
+    tokens_used: int
 
 
-class TextGeneratorLLM:
+class TextGeneratorLLM(Logger):
     """Base class for text generation using LLMs."""
 
     OPENAI_LOW_DETAIL_IMAGE_TOKENS = 85
-    SUPPORTED_OPENAI_MODELS = ("gpt-4o-mini",)
+    SUPPORTED_OPENAI_MODELS = (
+        "gpt-3.5-turbo",
+        "gpt-4o-mini",
+        "gpt-4o-mini-search-preview",
+        "gpt-4o-mini-audio-preview",
+        "o1-mini",
+        "o3-mini",
+    )
     SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS
     VISION_MODELS = ("gpt-4o-mini",)
+    SEARCH_MODELS = ("gpt-4o-mini-search-preview",)
+    AUDIO_MODELS = ("gpt-4o-mini-audio-preview",)
 
     def __init__(self) -> None:
         """Initialise a TextGeneratorLLM with default values."""
+        super().__init__()
         self.model = "gpt-4o-mini"
-        self.client = None
-        self.base_url = None
-        self.text_generator = None
-
+        self._client = None
+        self._base_url = None
+        self._text_generator = None
         self._init_for_model(self.model)
 
     def _init_for_model(self, model: str) -> None:
@@ -40,9 +50,10 @@ class TextGeneratorLLM:
             raise ValueError(msg)
 
         self.model = model
-        self.base_url = self._get_base_url_for_model(model)
-        self.client = self._get_client()
-        self.text_generator = self._set_generator_function()
+        self._base_url = self._get_base_url_for_model(model)
+        self._client = self._get_client()
+        self._text_generator = self._set_generator_function()
+        self.log_info("Model set to %s with base url %s", self.model, self._base_url)
 
     def _get_base_url_for_model(self, model: str) -> str:
         if model in TextGeneratorLLM.SUPPORTED_OPENAI_MODELS:
@@ -52,14 +63,16 @@ class TextGeneratorLLM:
         raise ValueError(msg)
 
     def _get_client(self) -> openai.AsyncClient:
-        if self.client:
-            return self.client
+        if self._client:
+            return self._client
         api_key = BotConfig.get_config("OPENAI_API_KEY")
 
-        return openai.AsyncOpenAI(api_key=api_key, base_url=self.base_url)
+        return openai.AsyncOpenAI(api_key=api_key, base_url=self._base_url)
 
     def _set_generator_function(self) -> Callable[..., Any]:
-        return self.client.chat.completions.create
+        return self._client.chat.completions.create
+
+    # --------------------------------------------------------------------------
 
     def count_tokens_for_message(self, message: list[str] | str) -> int:
         """Get the token count for a given message for the current LLM model.
@@ -100,7 +113,7 @@ class TextGeneratorLLM:
 
         return num_tokens
 
-    def set_llm_model(self, model: str) -> None:
+    def set_model(self, model: str) -> None:
         """Set the current LLM model.
 
         Parameters
@@ -111,7 +124,7 @@ class TextGeneratorLLM:
         """
         self._init_for_model(model)
 
-    async def generate_text(self, messages: list[dict]) -> TextGenerationResponse:
+    async def generate_text_from_llm(self, messages: list[dict]) -> TextGenerationResponse:
         """Generate text from the current LLM model.
 
         Parameters
@@ -124,7 +137,7 @@ class TextGeneratorLLM:
                 ]
 
         """
-        response = await self.text_generator(
+        response = await self._text_generator(
             messages=messages,
             model=self.model,
         )
@@ -141,8 +154,8 @@ if __name__ == "__main__":
             {"role": "user", "content": "What is the age of the universe?"},
         ]
         text_generator = TextGeneratorLLM()
-        response = await text_generator.generate_text(messages)
+        response = await text_generator.generate_text_from_llm(messages)
         print(response.message)
-        print(response.tokens)
+        print(response.tokens_used)
 
     asyncio.run(_main())

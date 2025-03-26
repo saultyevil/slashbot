@@ -7,8 +7,8 @@ import logging
 import sys
 
 from slashbot.lib.config import BotConfig
-from slashbot.lib.text_generation import get_token_count
 from slashbot.lib.models import Message
+from slashbot.lib.text_generation import get_token_count
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
