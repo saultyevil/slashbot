@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "slashbot"
-version = "2.4.0"
+version = "2.6.0"
 description = "A (useless) discord bot designed around slash commands."
 authors = ["Edward J. Parkinson"]
 readme = "README.md"
@@ -9,7 +9,7 @@ packages = [
 ]
 
 [tool.poetry.scripts]
-slashbot = "slashbot.slashbot:main"
+slashbot = "slashbot.run_slashbot:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -88,4 +88,4 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.pytest.ini_options]
-pythonpath = [".", "lib", "lib/markovify", "lib/slashlib"]
+pythonpath = ["."]

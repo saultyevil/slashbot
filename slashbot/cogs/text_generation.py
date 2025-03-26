@@ -25,10 +25,10 @@ from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+from slashbot.lib import markov
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.custom_command import slash_command_with_cooldown
-from slashbot.lib.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from slashbot.lib.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.lib.models.conversation import ChannelHistory, Conversation
 from slashbot.lib.responses import is_reply_to_slash_command_response
@@ -80,8 +80,6 @@ profile_logger.setLevel(logging.INFO)
 class TextGeneration(CustomCog):
     """AI chat features powered by OpenAI."""
 
-    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
-
     def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialize the AIChatbot class.
 
@@ -113,7 +111,7 @@ class TextGeneration(CustomCog):
 
         """
         await send_message_to_channel(
-            generate_text_from_markov_chain(MARKOV_MODEL, "?random", 1),
+            markov.generate_text_from_markov_chain(markov.MARKOV_MODEL, "?random", 1),
             message,
             dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )
@@ -229,7 +227,7 @@ class TextGeneration(CustomCog):
             with Path.open(BotConfig.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
                 prompt = json.load(file_in)["prompt"]
         except (OSError, json.JJSONDecodeError):
-            TextGeneration.logger.exception(
+            self.log_exception(
                 "Failed to process random response prompt %s", BotConfig.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
             )
             return
@@ -271,7 +269,7 @@ class TextGeneration(CustomCog):
                     + user_prompt
                 )
             else:
-                TextGeneration.logger.error(
+                self.log_error(
                     "Failed to get the message referenced in %s",
                     discord_message,
                 )
@@ -283,7 +281,7 @@ class TextGeneration(CustomCog):
                 conversation_copy,
             )
         except openai.APIError:
-            TextGeneration.logger.exception(
+            self.log_exception(
                 "Failed to get response from OpenAI, reverting to markov sentence with no seed word",
             )
             await self.send_fallback_response_to_prompt(discord_message, dont_tag_user=send_to_dm)
@@ -422,14 +420,10 @@ class TextGeneration(CustomCog):
             with Path.open(BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
                 summary_prompt = json.load(file_in)["prompt"]
         except OSError:
-            TextGeneration.logger.exception(
-                "Failed to open summary prompt: %s", BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT")
-            )
+            self.log_exception("Failed to open summary prompt: %s", BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT"))
             return
         except json.JSONDecodeError:
-            TextGeneration.logger.exception(
-                "Failed to decode summary prompt: %s", BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT")
-            )
+            self.log_exception("Failed to decode summary prompt: %s", BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT"))
             return
 
         sent_messages = "Summarise the following conversation between multiple users: " + "\n".join(
@@ -444,7 +438,7 @@ class TextGeneration(CustomCog):
             },
             {"role": "user", "content": sent_messages},
         ]
-        TextGeneration.logger.debug("Conversation to summarise: %s", conversation)
+        self.log_debug("Conversation to summarise: %s", conversation)
         summary_message, token_count = await generate_text_from_llm(
             BotConfig.get_config("AI_CHAT_CHAT_MODEL"), conversation
         )
@@ -537,7 +531,7 @@ class TextGeneration(CustomCog):
             The new system prompt to set.
 
         """
-        TextGeneration.logger.info("%s set new prompt: %s", inter.author.display_name, prompt)
+        self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         history_id = get_history_id(inter)
         self.conversations[history_id].set_prompt(
             prompt,
@@ -616,7 +610,7 @@ def setup(bot: commands.InteractionBot) -> None:
     if BotConfig.get_config("OPENAI_API_KEY") or BotConfig.get_config("DEEPSEEK_API_KEY"):
         bot.add_cog(TextGeneration(bot))
     else:
-        TextGeneration.logger.error("No API key found for OpenAI, unable to load AIChatBot cog")
+        TextGeneration.log_error(TextGeneration, "No API key found for OpenAI, unable to load AIChatBot cog")
 
 
 class PromptFileWatcher(FileSystemEventHandler):
@@ -645,7 +639,7 @@ class PromptFileWatcher(FileSystemEventHandler):
             if event.event_type == "deleted" and event.src_path.endswith(".json"):
                 AVAILABLE_PROMPTS = create_prompt_dict()
         except json.decoder.JSONDecodeError:
-            TextGeneration.logger.exception("Error reading in prompt file %s", event.src_path)
+            self.log_exception("Error reading in prompt file %s", event.src_path)
 
 
 observer = Observer()

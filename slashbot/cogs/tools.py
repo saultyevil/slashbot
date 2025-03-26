@@ -1,6 +1,5 @@
 """Commands for searching for stuff on the internet, and etc."""
 
-import logging
 import random
 
 import aiofiles
@@ -11,7 +10,6 @@ from disnake.ext import commands
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_cog import CustomCog
 
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 
 
@@ -96,8 +94,7 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
         # only go through the first N results to add to embed
         results = list(results.pods)
         num_solutions += 1
-        if num_solutions > len(results):
-            num_solutions = len(results)
+        num_solutions = min(num_solutions, len(results))
 
         # The first result is the question, and the rest are the results
         for n_sol, result in enumerate(results[1:num_solutions]):

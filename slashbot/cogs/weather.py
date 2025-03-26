@@ -6,7 +6,6 @@ location into a latitude and longitude for OpenWeatherMap.
 
 import datetime
 import json
-import logging
 from types import coroutine
 
 import disnake
@@ -19,7 +18,6 @@ from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.custom_command import slash_command_with_cooldown
 from slashbot.lib.db import get_user_location
 from slashbot.lib.error import deferred_error_message
-from slashbot.lib.markov import MARKOV_MODEL, generate_text_from_markov_chain
 from slashbot.lib.util import convert_radial_to_cardinal_direction
 
 
@@ -38,7 +36,6 @@ class LocationNotFoundError(Exception):
 class Weather(CustomCog):
     """Query information about the weather."""
 
-    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
     WEATHER_UNITS: tuple[str] = ("mixed", "metric", "imperial")
 
     def __init__(self, bot: commands.InteractionBot) -> None:
@@ -55,6 +52,7 @@ class Weather(CustomCog):
             api_key=BotConfig.get_config("GOOGLE_API_KEY"),
             domain="maps.google.co.uk",
         )
+        self.markov_seed_words = ["weather", "forecast"]
 
     # Private ------------------------------------------------------------------
 
@@ -414,7 +412,7 @@ class Weather(CustomCog):
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
-            text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'forecast', 1)}\n(You can set your location using /set_info)",
+            text=f"{self.get_random_sentence('forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
         embed = self.add_forecast_to_embed(embed, forecast[: amount + 1], units)
@@ -458,7 +456,7 @@ class Weather(CustomCog):
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
-            text=f"{generate_text_from_markov_chain(MARKOV_MODEL, 'weather', 1)}\n(You can set your location using /set_info)",
+            text=f"{self.get_random_sentence('weather', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(weather_return["current"]["weather"][0]["icon"]))
         embed = self.add_weather_conditions_to_embed(
@@ -485,4 +483,4 @@ def setup(bot: commands.InteractionBot) -> None:
     if BotConfig.get_config("GOOGLE_API_KEY"):
         bot.add_cog(Weather(bot))
     else:
-        Weather.logger.error("No Google API key found, weather cog not loaded.")
+        Weather.log_error(Weather, "No Google API key found, weather cog not loaded.")

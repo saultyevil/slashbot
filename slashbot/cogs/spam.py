@@ -1,7 +1,7 @@
 """Commands designed to spam the chat with various things."""
 
+import asyncio
 import atexit
-import logging
 import random
 from types import coroutine
 
@@ -17,9 +17,8 @@ from slashbot.lib import markov
 from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.db import get_users
-from slashbot.lib.markov import MARKOV_MODEL, update_markov_chain_for_model
+from slashbot.lib.util import calculate_seconds_until
 
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 EMPTY_STRING = ""
 
@@ -49,7 +48,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         self.rule34_api = r34.Rule34()
 
         # If no markov model, don't start the loop.
-        if MARKOV_MODEL:
+        if markov.MARKOV_MODEL:
             self.markov_chain_update_loop.start()  # pylint: disable=no-member
 
         # if we don't unregister this, the bot is weird on close down
@@ -127,7 +126,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         else:
             await inter.response.defer(ephemeral=True)
 
-        await update_markov_chain_for_model(
+        await markov.update_markov_chain_for_model(
             inter,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
@@ -233,15 +232,14 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             try:
                 message = await channel.fetch_message(int(payload.message_id))
             except disnake.NotFound:
-                logger.exception("Unable to fetch message %d", payload.message_id)
+                self.log_exception("Unable to fetch message %d", payload.message_id)
                 return
 
         self.markov_training_sample.pop(message.id, None)
 
     # Utility functions --------------------------------------------------------
 
-    @staticmethod
-    def get_comments_for_rule34_post(post_id: int | str) -> tuple[str, str]:
+    def get_comments_for_rule34_post(self, post_id: int | str) -> tuple[str, str]:
         """Get a random comment from a rule34.xxx post.
 
         Parameters
@@ -259,42 +257,51 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         """
         try:
             request_url = f"https://api.rule34.xxx/index.php?page=dapi&s=comment&q=index&post_id={post_id}"
-            logger.debug("Rule34 API request to %s", request_url)
+            self.log_debug("Rule34 API request to %s", request_url)
             response = requests.get(request_url, timeout=5)
             response.raise_for_status()
         except requests.exceptions.Timeout:
-            logger.exception("Request to Rule34 API timed out")
+            self.log_exception("Request to Rule34 API timed out")
             return EMPTY_STRING, EMPTY_STRING
         except requests.exceptions.RequestException:
-            logger.exception("Rule34 API returned %d: unable to get comments for post", response.status_code)
+            self.log_exception("Rule34 API returned %d: unable to get comments for post", response.status_code)
             return EMPTY_STRING, EMPTY_STRING
 
         # the response from the rule34 api is XML, so we have to try and parse that
         try:
             parsed_comment_xml = defusedxml.ElementTree.fromstring(response.content)
         except defusedxml.ElementTree.ParseError:
-            logger.exception("Unable to parse Rule34 comment API return from string into XML")
-            logger.debug("%s", response.content)
+            self.log_exception("Unable to parse Rule34 comment API return from string into XML")
+            self.log_debug("%s", response.content)
             return EMPTY_STRING, EMPTY_STRING
 
         post_comments = [
             (element.get("body"), element.get("creator")) for element in parsed_comment_xml.iter("comment")
         ]
         if not post_comments:
-            logger.error("Unable to find any comments in parsed XML comments")
-            logger.debug("%s", response.content)
+            self.log_error("Unable to find any comments in parsed XML comments")
+            self.log_debug("%s", response.content)
             return EMPTY_STRING, EMPTY_STRING
 
-        return random.choice(post_comments)  # noqa: S311
+        return random.choice(post_comments)
 
     # Scheduled tasks ----------------------------------------------------------
 
-    @tasks.loop(hours=6)
+    @tasks.loop(seconds=1)
     async def markov_chain_update_loop(self) -> None:
         """Get the bot to update the chain every 6 hours."""
         if not BotConfig.get_config("ENABLE_MARKOV_TRAINING"):
             return
-        await update_markov_chain_for_model(
+        sleep_time = calculate_seconds_until(-1, 3, 0, 1)
+        self.log_info(
+            "Waiting %d seconds/%d minutes/%.1f hours till markov chain update",
+            sleep_time,
+            sleep_time // 60,
+            sleep_time / 3600,
+        )
+        await asyncio.sleep(sleep_time)
+
+        await markov.update_markov_chain_for_model(
             None,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),

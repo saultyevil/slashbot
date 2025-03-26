@@ -105,13 +105,10 @@ def join_list_max_chars(words: list[str], max_chars: int) -> str:
         current_length += len(word)
 
     # Remove the trailing ", " if there's anything in the result
-    if result.endswith(", "):
-        result = result[:-2]
-
-    return result
+    return result.removesuffix(", ")
 
 
-def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any) -> Any:
+def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any) -> Any:  # noqa: ANN401
     """Slash command convertor to transform a string into all lower case.
 
     Parameters
@@ -132,7 +129,7 @@ def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any
 
 
 def convert_yes_no_to_bool(_inter: ApplicationCommandInteraction, choice: str) -> bool:
-    """_summary_
+    """Convert a yes/no input to a boolean.
 
     Parameters
     ----------
@@ -147,10 +144,23 @@ def convert_yes_no_to_bool(_inter: ApplicationCommandInteraction, choice: str) -
         True or False depending on yes or no.
 
     """
-    return True if choice.lower() == "yes" else False
+    return choice.lower() == "yes"
 
 
-def ordinal_suffix(n):
+def ordinal_suffix(n: int) -> str:
+    """Return the ordinal suffix for a given number.
+
+    Parameters
+    ----------
+    n : int
+        The number to get the ordinal suffix for.
+
+    Returns
+    -------
+    str
+        The ordinal suffix for the given number.
+
+    """
     if 11 <= (n % 100) <= 13:
         return "th"
     return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
@@ -238,16 +248,17 @@ def read_in_prompt_json(filepath: str | pathlib.Path) -> dict:
         "prompt",
     )
 
-    with open(filepath, encoding="utf-8") as prompt_in:
+    with pathlib.Path(filepath).open(encoding="utf-8") as prompt_in:
         prompt = json.load(prompt_in)
         if not all(key in prompt for key in required_keys):
-            raise OSError(f"{filepath} is missing either 'name' or 'prompt' key")
+            msg = f"{filepath} is missing either 'name' or 'prompt' key"
+            raise OSError(msg)
 
     return prompt
 
 
 def create_prompt_dict() -> dict:
-    """Creates a dict of prompt_name: prompt."""
+    """Create a dict of prompt_name: prompt."""
     return {
         prompt_dict["name"]: prompt_dict["prompt"]
         for prompt_dict in [
@@ -280,9 +291,11 @@ def add_days_to_datetime(
 
     """
     if days_to_add < 0:
-        raise ValueError("Invalid value for days_to_add, cannot be < 0")
+        msg = "Invalid value for days_to_add, cannot be < 0"
+        raise ValueError(msg)
     if not isinstance(original_date, datetime.datetime):
-        raise ValueError("Need to pass time as a datetime.datetime")
+        msg = "Need to pass time as a datetime.datetime"
+        raise TypeError(msg)
 
     time_delta = original_date + datetime.timedelta(days=days_to_add)
     next_date = datetime.datetime(
@@ -292,13 +305,13 @@ def add_days_to_datetime(
         hour=original_date.hour,
         minute=original_date.minute,
         second=original_date.second,
+        tzinfo=original_date.tzinfo,
     )
-    sleep_for_seconds = (next_date - now).total_seconds()
 
-    return sleep_for_seconds
+    return (next_date - now).total_seconds()
 
 
-def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int) -> int:
+def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency_days: int) -> int:
     """Calculate how long to sleep till a hour:minute time for a given weekday.
 
     If the requested moment is time is beyond the current time, the number of
@@ -307,13 +320,14 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int
     Parameters
     ----------
     weekday : int
-        An integer representing the weekday, where Monday is 0.
+        An integer representing the weekday, where Monday is 0. If < 0, the
+        current day is used.
     hour : int
         The hour for the requested time.
     minute : int
         The minute for the requested time.
-    frequency : Frequency
-        The frequency at which to repeat this.
+    frequency_days : Frequency
+        The frequency at which to repeat this, in days.
 
     Returns
     -------
@@ -321,12 +335,14 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int
         The time to sleep for in seconds.
 
     """
-    if frequency < 0:
-        raise ValueError("Invalid value for frequency, cannot be < 0")
+    if frequency_days < 0:
+        msg = "Invalid value for frequency, cannot be < 0"
+        raise ValueError(msg)
     if not isinstance(weekday, int) or weekday > 6:
-        raise ValueError("Invalid value for weekday: 0 <= weekday <= 6 and must be int")
+        msg = "Invalid value for weekday: 0 <= weekday <= 6 and must be int"
+        raise ValueError(msg)
 
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(tz=datetime.UTC)
 
     if weekday < 0:
         weekday = now.weekday()
@@ -339,10 +355,11 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency: int
         hour=hour,
         minute=minute,
         second=0,
+        tzinfo=now.tzinfo,
     )
     sleep_for_seconds = (next_date - now).total_seconds()
 
     if sleep_for_seconds <= 0:
-        sleep_for_seconds = add_days_to_datetime(now, next_date, frequency)
+        sleep_for_seconds = add_days_to_datetime(now, next_date, frequency_days)
 
     return sleep_for_seconds

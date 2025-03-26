@@ -1,6 +1,5 @@
 """Commands for remembering user info."""
 
-import logging
 import re
 from types import coroutine
 
@@ -13,7 +12,6 @@ from slashbot.lib.db import get_twitter_convert_users, get_user, update_user
 from slashbot.lib.error import deferred_error_message
 from slashbot.lib.util import convert_string_to_lower
 
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 COOLDOWN_USER = commands.BucketType.user
 USER_OPTIONS = [
     "City",
@@ -79,7 +77,7 @@ class Users(CustomCog):
         await inter.response.defer(ephemeral=True)
 
         if not isinstance(value, str):
-            logger.error("Disnake somehow passed something which isn't a str for value: %s (%s)", value, type(value))
+            self.log_error("Disnake somehow passed something which isn't a str for value: %s (%s)", value, type(value))
             await inter.edit_original_message(content="An error has occured with Disnake :-(")
             return
 
@@ -102,7 +100,7 @@ class Users(CustomCog):
                 user_fields["convert_twitter_url"] = not user_fields["convert_twitter_url"]
                 value = "enabled" if user_fields["convert_twitter_url"] else "disabled"
             case _:
-                logger.error("Disnake somehow allowed an unknown choice %s", thing)
+                self.log_error("Disnake somehow allowed an unknown choice %s", thing)
                 await inter.edit_original_message(content="An error has occurred with Disnake :-(")
                 return
 
@@ -142,7 +140,7 @@ class Users(CustomCog):
             case "Twitter URL":
                 value = "enabled" if user["convert_twitter_url"] else "disabled"
             case _:
-                logger.error("Disnake somehow allowed an unknown choice %s", thing)
+                self.log_error("Disnake somehow allowed an unknown choice %s", thing)
                 deferred_error_message(inter, "An error has occurred with Disnake :-(")
                 return
 

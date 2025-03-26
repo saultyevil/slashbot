@@ -6,8 +6,8 @@ from typing import Any
 
 from disnake.ext import commands
 
+from slashbot.lib import markov
 from slashbot.lib.config import BotConfig
-from slashbot.lib.markov import MARKOV_MODEL
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
@@ -33,11 +33,12 @@ class CustomInteractionBot(commands.InteractionBot):
         super().__init__(**kwargs)
         self.cleanup_functions = []
         self.times_connected = 0
-        self.markov_pregenerate_sentences = enable_markov_cache and MARKOV_MODEL
-        logger.info(
-            "Automatic Markov sentence generation is %s",
-            "enabled" if self.markov_pregenerate_sentences else "disabled",
-        )
+        self.use_markov_cache = enable_markov_cache and markov.MARKOV_MODEL
+        if markov.MARKOV_MODEL:
+            logger.info(
+                "Automatic Markov sentence generation is %s",
+                "enabled" if self.use_markov_cache else "disabled",
+            )
 
     def add_function_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:
         """Add a function to the cleanup list.

@@ -1,7 +1,6 @@
 """Cog for bullying people about their spelling mistakes."""
 
 import asyncio
-import logging
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -16,8 +15,6 @@ from slashbot.lib.custom_cog import CustomCog
 from slashbot.lib.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
-
 MAX_EMBEDS_AT_ONCE = 5
 
 
@@ -130,8 +127,7 @@ class Spelling(CustomCog):
 
         await inter.response.send_message(f"Removed '{word_lower}' from dictionary.", ephemeral=True)
 
-    @staticmethod
-    def get_custom_words() -> list[str]:
+    def get_custom_words(self) -> list[str]:
         """Get a list of custom dictionary words.
 
         These are checked in addition to the unknown words in spellchecker.
@@ -146,7 +142,7 @@ class Spelling(CustomCog):
             with Path.open(BotConfig.get_config("SPELLCHECK_CUSTOM_DICTIONARY"), encoding="utf-8") as file_in:
                 return list({line.strip() for line in file_in.readlines()})
         except OSError:
-            logger.exception("No dictionary found at %s", BotConfig.get_config("SPELLCHECK_CUSTOM_DICTIONARY"))
+            self.log_exception("No dictionary found at %s", BotConfig.get_config("SPELLCHECK_CUSTOM_DICTIONARY"))
             return []
 
     @staticmethod
@@ -217,7 +213,7 @@ class Spelling(CustomCog):
 
         sleep_time = calculate_seconds_until(-1, 17, 0, 1)
 
-        logger.info(
+        self.log_info(
             "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",
             sleep_time,
             sleep_time // 60,

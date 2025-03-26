@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import logging
 import random
 from pathlib import Path
 
@@ -35,8 +34,6 @@ class AdminTools(CustomCog):
     The purpose of this cog is to manage Slashbot remotely, or to check that
     things are working as intended.
     """
-
-    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
     def __init__(self, bot: CustomInteractionBot) -> None:
         """Intialise the cog.
@@ -115,7 +112,7 @@ class AdminTools(CustomCog):
             self.invite_tasks[member.id] = asyncio.create_task(
                 self.invite_after_delay_task(member, random_minutes, unban_user=action == disnake.AuditLogAction.ban)
             )
-            AdminTools.logger.info("Adam will be re-invited in %f minutes", random_minutes)
+            self.log_info("Adam will be re-invited in %f minutes", random_minutes)
 
         return reason
 
@@ -158,7 +155,7 @@ class AdminTools(CustomCog):
                     return
             await self._invite_user(member)
         except asyncio.CancelledError:
-            AdminTools.logger.info("Invite for %s cancelled by asyncio", member.display_name)
+            self.log_info("Invite for %s cancelled by asyncio", member.display_name)
         finally:
             self.invite_tasks.pop(member.id)
 
@@ -363,7 +360,7 @@ class AdminTools(CustomCog):
         try:
             update_local_repository(branch)
         except git.exc.GitCommandError:
-            AdminTools.logger.exception("Failed to update repository")
+            self.log_exception("Failed to update repository")
             await inter.edit_original_message("Failed to update local repository")
             return
         await self.restart_bot(inter, on_the_fly_markov)
