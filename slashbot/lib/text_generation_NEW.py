@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -30,7 +29,9 @@ class TextGeneratorLLM(Logger):
         "o1-mini",
         "o3-mini",
     )
-    SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS
+    SUPPORTED_CLAUDE_MODELS = ()
+    SUPPORTED_GOOGLE_MODELS = ()
+    SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS + SUPPORTED_CLAUDE_MODELS + SUPPORTED_GOOGLE_MODELS
     VISION_MODELS = ("gpt-4o-mini",)
     SEARCH_MODELS = ("gpt-4o-mini-search-preview",)
     AUDIO_MODELS = ("gpt-4o-mini-audio-preview",)
@@ -52,7 +53,7 @@ class TextGeneratorLLM(Logger):
         self.model = model
         self._base_url = self._get_base_url_for_model(model)
         self._client = self._get_client()
-        self._text_generator = self._set_generator_function()
+        self._text_generator = self._get_generator_function()
         self.log_info("Model set to %s with base url %s", self.model, self._base_url)
 
     def _get_base_url_for_model(self, model: str) -> str:
@@ -69,7 +70,7 @@ class TextGeneratorLLM(Logger):
 
         return openai.AsyncOpenAI(api_key=api_key, base_url=self._base_url)
 
-    def _set_generator_function(self) -> Callable[..., Any]:
+    def _get_generator_function(self) -> Callable[..., Any]:
         return self._client.chat.completions.create
 
     # --------------------------------------------------------------------------
@@ -140,6 +141,7 @@ class TextGeneratorLLM(Logger):
         response = await self._text_generator(
             messages=messages,
             model=self.model,
+            max_completion_tokens=2048,  # TODO(EP): Make this configurable
         )
         message = response.choices[0].message.content
         token_usage = response.usage.total_tokens
@@ -147,6 +149,7 @@ class TextGeneratorLLM(Logger):
 
 
 if __name__ == "__main__":
+    import asyncio
 
     async def _main() -> None:
         messages = [
