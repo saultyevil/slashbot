@@ -12,6 +12,7 @@ import datetime
 import logging
 import time
 import traceback
+from collections.abc import Callable
 
 import disnake
 from disnake.ext import commands
@@ -21,7 +22,6 @@ from slashbot.lib.config import BotConfig
 from slashbot.lib.custom_bot import CustomInteractionBot
 
 LAUNCH_TIME = time.time()
-LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,7 +56,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def create_on_ready(bot: CustomInteractionBot) -> None:
+def create_on_ready(bot: CustomInteractionBot) -> Callable:
     """Closure for the on_ready event.
 
     Parameters
@@ -67,54 +67,66 @@ def create_on_ready(bot: CustomInteractionBot) -> None:
     """
 
     async def on_ready() -> None:
-        """Information to print on bot launch."""
         bot.times_connected += 1
 
         if bot.times_connected == 1:
-            LOGGER.info("Logged in as %s in the current servers:", bot.user)
+            bot.log_info("Logged in as %s in the current servers:", bot.user)
             for n_server, server in enumerate(bot.guilds):
-                LOGGER.info("\t%d). %s (%d)", n_server, server.name, server.id)
-            LOGGER.info("Started in %.2f seconds", time.time() - LAUNCH_TIME)
+                bot.log_info("\t%d). %s (%d)", n_server, server.name, server.id)
+            bot.log_info("Started in %.2f seconds", time.time() - LAUNCH_TIME)
         else:
-            LOGGER.info("Bot reconnected")
+            bot.log_info("Bot reconnected")
 
     return on_ready
 
 
-async def on_error(_event: any, *_args: any, **_kwargs: any) -> None:
-    """Print exceptions to the logfile."""
-    LOGGER.exception("on_error:")
-
-
-async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> None:
-    """Handle different types of errors.
+def create_on_error(bot: CustomInteractionBot) -> Callable:
+    """Closure for on_error event.
 
     Parameters
     ----------
-    inter : disnake.ApplicationCommandInteraction
-        The interaction that failed.
-    error: Exception
-        The error that occurred.
+    bot : SlashbotInterationBot
+        The bot.
 
     """
-    stack = traceback.format_exception(type(error), error, error.__traceback__)
-    LOGGER.exception("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
 
-    # Delete the original response if it's older than 2.5 seconds and respond
-    # to the follow up instead
-    time_since_created = datetime.datetime.now(datetime.UTC) - inter.created_at
-    if time_since_created > datetime.timedelta(seconds=2.5):
-        inter = inter.followup
-        try:
-            original_message = await inter.original_response()
-            await original_message.delete()
-        except disnake.HTTPException:
-            pass
+    async def on_error(_event: any, *_args: any, **_kwargs: any) -> None:
+        bot.log_exception("on_error:")
 
-    if isinstance(error, commands.errors.CommandOnCooldown):
-        await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
-    if isinstance(error, disnake.NotFound):
-        await inter.response.send_message("Failed to communicate with the Discord API.", ephemeral=True)
+    return on_error
+
+
+def create_on_slash_command_error(bot: CustomInteractionBot) -> Callable:
+    """Closure for on_slash_command_error event.
+
+    Parameters
+    ----------
+    bot : SlashbotInterationBot
+        The bot.
+
+    """
+
+    async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> None:
+        stack = traceback.format_exception(type(error), error, error.__traceback__)
+        bot.log_exception("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
+
+        # Delete the original response if it's older than 2.5 seconds and respond
+        # to the follow up instead
+        time_since_created = datetime.datetime.now(datetime.UTC) - inter.created_at
+        if time_since_created > datetime.timedelta(seconds=2.5):
+            inter = inter.followup
+            try:
+                original_message = await inter.original_response()
+                await original_message.delete()
+            except disnake.HTTPException:
+                pass
+
+        if isinstance(error, commands.errors.CommandOnCooldown):
+            await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
+        if isinstance(error, disnake.NotFound):
+            await inter.response.send_message("Failed to communicate with the Discord API.", ephemeral=True)
+
+    return on_slash_command_error
 
 
 def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
@@ -127,23 +139,10 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
 
     Returns
     -------
-    SlashbotInterationBot
+    CustomInteractionBot
         The initialised bot instance.
 
     """
-    if args.debug:
-        LOGGER.setLevel(logging.DEBUG)
-    else:
-        LOGGER.setLevel(logging.INFO)
-
-    LOGGER.info("Initializing... %s", args)
-    LOGGER.info("Config file: %s", BotConfig.get_config("CONFIG_FILE"))
-
-    if args.on_the_fly_markov:
-        markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle")
-    else:
-        markov.MARKOV_BANK = markov.load_markov_bank("data/markov/markov-sentences.json")
-
     intents = disnake.Intents.default()
     intents.message_content = True
     intents.messages = True
@@ -155,10 +154,24 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
         reload=bool(args.debug),
     )
 
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    bot.logger.setLevel(log_level)
+
+    bot.log_info("Initializing... %s", args)
+    bot.log_info("Config file: %s", BotConfig.get_config("CONFIG_FILE"))
+
+    if args.on_the_fly_markov:
+        markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle")
+    else:
+        markov.MARKOV_BANK = markov.load_markov_bank("data/markov/markov-sentences.json")
+
     bot.load_extensions("slashbot/cogs")
     bot.add_listener(create_on_ready(bot))
-    bot.add_listener(on_error)
-    bot.add_listener(on_slash_command_error)
+    bot.add_listener(create_on_error(bot))
+    bot.add_listener(create_on_slash_command_error(bot))
+
+    for cog in bot.cogs.values():
+        cog.logger.setLevel(log_level)
 
     return bot
 
@@ -174,7 +187,7 @@ def main() -> None:
         else:
             bot.run(BotConfig.get_config("RUN_TOKEN"))
     except TypeError:
-        LOGGER.error("No Discord token provided.")  # noqa: TRY400
+        bot.log_error("No Discord token provided.")
         return 1
 
     return 0
