@@ -16,6 +16,14 @@ class Message:
     images: list[str]
 
 
+class VisionImage:
+    """Dataclass for images for LLM vision."""
+
+    url: str
+    b64image: str | None = None
+    mime_type: str | None = None
+
+
 class AIConversation(TextGeneratorLLM):
     """AI Conversation class for an LLM chatbot."""
 
@@ -23,12 +31,12 @@ class AIConversation(TextGeneratorLLM):
         """Initialise a conversation, with default values."""
         super().__init__()
         self._system_prompt = ""
+        self._system_prompt_name = ""
+        self._context = None
         self._token_size = 0
         self._token_window_size = BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")
-        self._context = [{"role": "system", "content": self._system_prompt}]
-        self.set_system_message(
-            self._load_system_prompt("data/prompts/soulless.json")
-        )  # TODO(EP): Make this configurable
+        prompt_name, prompt = self._load_system_prompt("data/prompts/soulless.json")
+        self._set_system_prompt_and_clear_context(prompt, prompt_name=prompt_name)
 
     # --------------------------------------------------------------------------
 
@@ -45,10 +53,10 @@ class AIConversation(TextGeneratorLLM):
 
     # --------------------------------------------------------------------------
 
-    def _add_user_message_to_context(self, message: str, images: list[str] | None = None) -> None:
+    def _add_user_message_to_context(self, message: str, images: VisionImage | list[VisionImage] | None = None) -> None:
         if images:
-            # images = self._prepare_images_for_context(images)
-            self._conext.append(
+            images = self._prepare_images_for_context(images)
+            self._context.append(
                 {"role": "user", "content": [{"type": "text", "content": message}, *images]},
             )
         else:
@@ -64,13 +72,24 @@ class AIConversation(TextGeneratorLLM):
     def _prepare_audio_for_context(self) -> None:
         raise NotImplementedError
 
-    def _prepare_images_for_context(self) -> None:
-        raise NotImplementedError
+    def _prepare_images_for_context(self, images: VisionImage | list[VisionImage]) -> None:
+        if not isinstance(images, list):
+            images = [images]
+        return [
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{image.mime_type};base64,{image.b64image}" if image.b64image else image.url,
+                    "detail": "low",
+                },
+            }
+            for image in images
+        ]
 
     def _prepare_video_for_context(self) -> None:
         raise NotImplementedError
 
-    def _load_system_prompt(self, filepath: str | Path) -> str:
+    def _load_system_prompt(self, filepath: str | Path) -> dict:
         if not isinstance(filepath, Path):
             filepath = Path(filepath)
         if not filepath.exists():
@@ -79,7 +98,8 @@ class AIConversation(TextGeneratorLLM):
         if filepath.suffix != ".json":
             msg = "Prompt file must be a JSON file"
             raise ValueError(msg)
-        return read_in_prompt_json(filepath)["prompt"]
+        prompt = read_in_prompt_json(filepath)
+        return prompt["name"], prompt["prompt"]
 
     def _remove_message_from_context(self, index: int) -> dict:
         if index == 0:
@@ -94,24 +114,26 @@ class AIConversation(TextGeneratorLLM):
         self._token_size -= self.count_tokens_for_message(self._context[index]["content"])
         return self._context.pop(index)
 
-    def _set_system_prompt_and_clear_context(self, prompt: str) -> None:
+    def _set_system_prompt_and_clear_context(self, prompt: str, *, prompt_name: str = "unknown") -> None:
         self.log_debug("Setting system prompt to %s", prompt)
+        self._system_prompt = prompt
+        self._system_prompt_name = prompt_name
         self._context = [{"role": "system", "content": prompt}]
         self._token_size = self.count_tokens_for_message(prompt)
 
     def _shrink_messages_to_token_window(self) -> None:
         min_messages_to_keep = 2
-        token_start = self.tokens
+        token_start = self._token_size
         messages_start = len(self)
 
-        while self.tokens > self._token_window_size and len(self) > min_messages_to_keep:
+        while self._token_size > self._token_window_size and len(self) > min_messages_to_keep:
             self._remove_message_from_context(1)
             self._remove_message_from_context(1)
 
-        if self.tokens != token_start:
+        if self._token_size != token_start:
             self.log_info(
                 "Removed %d tokens and %d messages from conversation",
-                token_start - self.tokens,
+                token_start - self._token_size,
                 messages_start - len(self),
             )
 
@@ -143,6 +165,7 @@ class AIConversation(TextGeneratorLLM):
             Any images to add to the conversation
 
         """
+        self._shrink_messages_to_token_window()
         self._add_user_message_to_context(message, images)
         response = await self.generate_text_from_llm(self._context)
         self._add_assistant_message_to_context(response.message)
@@ -172,6 +195,7 @@ if __name__ == "__main__":
         conversation.set_system_message("You are zombie, only respond in a series of moans.")
         message = await conversation.send_message("What is the capital of the United Kingdom? And why does it smell?")
         print(message)
+        message = await conversation.send_message("What is the capital of France?")
         history = conversation.get_history()
         print(history)
 
