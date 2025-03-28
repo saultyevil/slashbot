@@ -2,12 +2,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 
+from slashbot.helpers.util import read_in_prompt_json
 from slashbot.models.text_generators import TextGeneratorLLM
-from slashbot.util import read_in_prompt_json
 
 
 @dataclass
-class Message:
+class ContextMessage:
     """Message dataclass for an LLM conversation."""
 
     role: str
@@ -16,6 +16,7 @@ class Message:
     images: list[str]
 
 
+@dataclass
 class VisionImage:
     """Dataclass for images for LLM vision."""
 
@@ -144,19 +145,9 @@ class AIConversation(TextGeneratorLLM):
 
     def _shrink_messages_to_token_window(self) -> None:
         min_messages_to_keep = 2
-        token_start = self._token_size
-        messages_start = len(self)
-
         while self._token_size > self._token_window_size and len(self) > min_messages_to_keep:
             self._remove_message_from_context(1)
             self._remove_message_from_context(1)
-
-        if self._token_size != token_start:
-            self.log_info(
-                "Removed %d tokens and %d messages from conversation",
-                token_start - self._token_size,
-                messages_start - len(self),
-            )
 
     # --------------------------------------------------------------------------
 

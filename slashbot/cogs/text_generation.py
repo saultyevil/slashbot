@@ -10,15 +10,14 @@ from __future__ import annotations
 import datetime
 import json
 import logging
+import random
 from collections import defaultdict
 from dataclasses import dataclass
-from pathlib import Path
 from textwrap import shorten
 from typing import TYPE_CHECKING
 
 import disnake
 from disnake.ext import commands
-from disnake.utils import escape_markdown
 from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -29,8 +28,8 @@ from slashbot.custom_command import slash_command_with_cooldown
 from slashbot.helpers.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.helpers.responses import is_reply_to_slash_command_response
 from slashbot.helpers.util import create_prompt_dict, read_in_prompt_json
+from slashbot.models.ai_channel_summary import AIChannelSummary
 from slashbot.models.ai_conversation import AIConversation
-from slashbot.models.channel_history import ChannelHistory
 from slashbot.settings import BotConfig
 
 if TYPE_CHECKING:
@@ -86,7 +85,7 @@ class TextGeneration(CustomCog):
         self.ai_conversations: dict[AIConversation] = defaultdict(
             lambda: AIConversation(token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")),
         )
-        self.channel_histories: dict[ChannelHistory] = defaultdict(lambda: ChannelHistory())
+        self.channel_histories: dict[AIChannelSummary] = defaultdict(lambda: AIChannelSummary())
         self.user_cooldown_map = defaultdict(lambda: Cooldown(0, datetime.datetime.now(tz=datetime.UTC)))
 
         self._profiler = Profiler(async_mode="enabled")
@@ -197,21 +196,6 @@ class TextGeneration(CustomCog):
 
         return previous_message
 
-    async def _update_channel_message_history(self, history_id: int, user: str, message: str) -> None:
-        """Record the history of messages in a channel.
-
-        Parameters
-        ----------
-        history_id : int
-            The unique identifier for the channel's history.
-        user : str
-            The user who sent the message.
-        message : str
-            The content of the message sent by the user.
-
-        """
-        pass
-
     async def _get_response_from_llm(self, discord_message: disnake.Message) -> None:
         """Generate a response to a prompt for a conversation of messages.
 
@@ -243,11 +227,28 @@ class TextGeneration(CustomCog):
 
         try:
             bot_response = await conversation.send_message(user_prompt, images)
-        except:  # TODO(EP): need to handle this exception
+        except:
             self.log_exception("Failed to get response from AI, reverting to markov sentence")
             bot_response = self.get_random_markov_sentence()
 
         return bot_response
+
+    async def _respond_with_random_llm_response(self, message: disnake.Message) -> None:
+        """Respond to a discord message with a random LLM response.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to respond to
+
+        """
+        prompt = read_in_prompt_json("data/prompts/_random-response-prompt.json")
+        messages = [
+            {"role": "system", "content": prompt["prompt"]},
+            {"role": "user", "content": message.clean_content},
+        ]
+        response = await self.generate_text_from_llm(messages)
+        await send_message_to_channel(response.message, message, dont_tag_user=True)
 
     async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:
         """Respond to a user's message prompt.
@@ -285,9 +286,10 @@ class TextGeneration(CustomCog):
 
     @commands.Cog.listener("on_message")
     async def _append_to_history(self, message: disnake.Message) -> None:
-        history_id = get_history_id(message)
         if message.type != disnake.MessageType.application_command:
-            await self._update_channel_message_history(history_id, message.author.display_name, message.clean_content)
+            self.channel_histories[get_history_id(message)].add_message_to_history(
+                message, self_message=message.author == self.bot.user
+            )
 
     @commands.Cog.listener("on_message")
     async def _listen_for_prompts(self, message: disnake.Message) -> None:
@@ -308,85 +310,32 @@ class TextGeneration(CustomCog):
             await self._respond_to_user_prompt(message, message_in_dm=message_in_dm)
             return
 
-        # TODO: send a random message here
+        if random.random() < BotConfig.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
+            await self._respond_with_random_llm_response(message)
 
     # Commands -----------------------------------------------------------------
 
-    # @slash_command_with_cooldown(
-    #     name="summarise_chat_history",
-    #     description="Get a summary of the previous conversation",
-    #     dm_permission=False,
-    # )
-    async def generate_chat_summary(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        amount: int = commands.Param(
-            default=0,
-            name="amount",
-            description="The last X amount of messages to summarise",
-        ),
-    ) -> None:
+    @slash_command_with_cooldown(
+        name="summarise_chat_history",
+        description="Get a summary of the previous conversation",
+        dm_permission=False,
+    )
+    async def generate_chat_summary(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Summarize the chat history.
 
         Parameters
         ----------
         inter : disnake.ApplicationCommandInteraction
             The interaction object representing the user's command interaction.
-        amount : int, optional
-            The number of previous messages to include in the summary, by default 0.
-
-        Returns
-        -------
-        Coroutine
-            An asynchronous coroutine representing the summary process.
 
         """
-        # history_id = get_history_id(inter)
-        # channel_history = self.channel_histories[history_id]
-        # if channel_history.tokens == 0:
-        #     await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
-        #     return
-        # await inter.response.defer(ephemeral=True)
-
-        # try:
-        #     with Path.open(BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
-        #         summary_prompt = json.load(file_in)["prompt"]
-        # except OSError:
-        #     self.log_exception("Failed to open summary prompt: %s", BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT"))
-        #     return
-        # except json.JSONDecodeError:
-        #     self.log_exception("Failed to decode summary prompt: %s", BotConfig.get_config("AI_CHAT_SUMMARY_PROMPT"))
-        #     return
-
-        # sent_messages = "Summarise the following conversation between multiple users: " + "\n".join(
-        #     channel_history.get_messages(amount),
-        # )
-        # conversation = [
-        #     {
-        #         "role": "system",
-        #         "content": BotConfig.get_config("AI_CHAT_PROMPT_PREPEND")
-        #         + summary_prompt
-        #         + BotConfig.get_config("AI_CHAT_PROMPT_APPEND"),
-        #     },
-        #     {"role": "user", "content": sent_messages},
-        # ]
-        # self.log_debug("Conversation to summarise: %s", conversation)
-        # summary_message, token_count = await generate_text_from_llm(
-        #     BotConfig.get_config("AI_CHAT_CHAT_MODEL"), conversation
-        # )
-        # # We don't want to add the entire conversation to the history, so for
-        # # context put <HISTORY REDACTED>
-        # self.ai_conversations[history_id].add_message(
-        #     BotConfig.get_config("AI_CHAT_PROMPT_PREPEND")
-        #     + "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]"
-        #     + BotConfig.get_config("AI_CHAT_PROMPT_APPEND"),
-        #     "user",
-        # )
-        # self.ai_conversations[history_id].add_message(summary_message, "assistant", tokens=token_count)
-
-        # await send_message_to_channel(summary_message, inter, dont_tag_user=True)
-        # original_message = await inter.edit_original_message(content="...")
-        # await original_message.delete(delay=3)
+        channel_history = self.channel_histories[get_history_id(inter)]
+        if len(channel_history) == 0:
+            await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
+            return
+        await inter.response.send_message("Generating summary.", ephemeral=True)
+        summary = await self.channel_histories[get_history_id(inter)].generate_summary()
+        await send_message_to_channel(summary, inter, dont_tag_user=True)
 
     @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_conversation_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
