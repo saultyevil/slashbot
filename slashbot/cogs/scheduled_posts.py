@@ -12,9 +12,9 @@ from watchdog.observers import Observer
 
 from slashbot.custom_bot import CustomInteractionBot
 from slashbot.custom_cog import CustomCog
+from slashbot.helpers.util import calculate_seconds_until
 from slashbot.markov import generate_text_from_markov_chain
 from slashbot.settings import BotConfig
-from slashbot.util import calculate_seconds_until
 
 COOLDOWN_USER = commands.BucketType.user
 

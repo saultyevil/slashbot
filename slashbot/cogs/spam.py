@@ -15,9 +15,9 @@ from disnake.ext import commands, tasks
 
 from slashbot import markov
 from slashbot.custom_cog import CustomCog
-from slashbot.db import get_users
+from slashbot.database import get_users
+from slashbot.helpers.util import calculate_seconds_until
 from slashbot.settings import BotConfig
-from slashbot.util import calculate_seconds_until
 
 COOLDOWN_USER = commands.BucketType.user
 EMPTY_STRING = ""

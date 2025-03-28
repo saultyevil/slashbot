@@ -7,10 +7,10 @@ import disnake
 from disnake.ext import commands
 
 from slashbot.custom_cog import CustomCog
-from slashbot.db import get_twitter_convert_users, get_user, update_user
-from slashbot.error import deferred_error_message
+from slashbot.database import get_twitter_convert_users, get_user, update_user
+from slashbot.helpers.error import deferred_error_message
+from slashbot.helpers.util import convert_string_to_lower
 from slashbot.settings import BotConfig
-from slashbot.util import convert_string_to_lower
 
 COOLDOWN_USER = commands.BucketType.user
 USER_OPTIONS = [

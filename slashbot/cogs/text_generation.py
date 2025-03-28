@@ -24,14 +24,14 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from slashbot import markov
-from slashbot.ai_conversation import AIConversation
-from slashbot.channel_history import ChannelHistory
 from slashbot.custom_cog import CustomCog
 from slashbot.custom_command import slash_command_with_cooldown
-from slashbot.messages import get_attached_images_from_message, send_message_to_channel
-from slashbot.responses import is_reply_to_slash_command_response
+from slashbot.helpers.messages import get_attached_images_from_message, send_message_to_channel
+from slashbot.helpers.responses import is_reply_to_slash_command_response
+from slashbot.helpers.util import create_prompt_dict, read_in_prompt_json
+from slashbot.models.ai_conversation import AIConversation
+from slashbot.models.channel_history import ChannelHistory
 from slashbot.settings import BotConfig
-from slashbot.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
     from slashbot.custom_bot import CustomInteractionBot
