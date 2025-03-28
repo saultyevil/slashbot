@@ -7,7 +7,7 @@ the database will likely remain small.
 
 import json
 import logging
-import pathlib
+from pathlib import Path
 
 from slashbot.custom_types import Member, User
 from slashbot.settings import BotConfig
@@ -31,7 +31,7 @@ def create_empty_database(location: str) -> None:
         The file location to save the database.
 
     """
-    with open(location, "w", encoding="utf-8") as file_out:
+    with Path(location).open("w", encoding="utf-8") as file_out:
         json.dump({"USERS": {}, "REMINDERS": []}, file_out)
 
 
@@ -44,12 +44,12 @@ def check_database_exists(location: str) -> None:
         The file location to check.
 
     """
-    location = pathlib.Path(location)
+    location = Path(location)
     if not location.exists():
         create_empty_database(location)
 
 
-def load_database(location: str | None = None) -> dict:
+def load_database(location: str | Path | None = None) -> dict:
     """Load a database.
 
     If no location is provided, the location defined in the config file will be
@@ -72,13 +72,11 @@ def load_database(location: str | None = None) -> dict:
 
     check_database_exists(location)
 
-    with open(location, encoding="utf-8") as file_in:
-        database = json.load(file_in)
-
-    return database
+    with Path(location).open(encoding="utf-8") as file_in:
+        return json.load(file_in)
 
 
-def save_database(database: dict, location: str = None) -> dict:
+def save_database(database: dict, location: str | Path | None = None) -> dict:
     """Dump the provided database to disk.
 
     The database is not modified by this function.
@@ -103,7 +101,7 @@ def save_database(database: dict, location: str = None) -> dict:
     if not location:
         location = BotConfig.get_config("DATABASE_LOCATION")
 
-    with open(location, "w", encoding="utf-8") as file_out:
+    with Path(location).open("w", encoding="utf-8") as file_out:
         json.dump(database, file_out)
 
     return database
