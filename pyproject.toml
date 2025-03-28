@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "slashbot"
-version = "2.6.0"
+version = "2.7.0"
 description = "A (useless) discord bot designed around slash commands."
 authors = ["Edward J. Parkinson"]
 readme = "README.md"
@@ -9,7 +9,7 @@ packages = [
 ]
 
 [tool.poetry.scripts]
-slashbot = "slashbot.run_slashbot:main"
+slashbot = "slashbot.cli.run:main"
 
 [tool.poetry.dependencies]
 python = "^3.11"

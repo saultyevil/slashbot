@@ -308,6 +308,8 @@ class TextGeneration(CustomCog):
             await self._respond_to_user_prompt(message, message_in_dm=message_in_dm)
             return
 
+        # TODO: send a random message here
+
     # Commands -----------------------------------------------------------------
 
     # @slash_command_with_cooldown(
