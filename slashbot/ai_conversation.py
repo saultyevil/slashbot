@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 
-from slashbot.lib.text_generation import TextGeneratorLLM
-from slashbot.lib.util import read_in_prompt_json
+from slashbot.text_generators import TextGeneratorLLM
+from slashbot.util import read_in_prompt_json
 
 
 @dataclass

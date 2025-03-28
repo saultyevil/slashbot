@@ -13,12 +13,12 @@ import requests
 from disnake.ext import commands
 from geopy import GoogleV3
 
-from slashbot.lib.config import BotConfig
-from slashbot.lib.custom_cog import CustomCog
-from slashbot.lib.custom_command import slash_command_with_cooldown
-from slashbot.lib.db import get_user_location
-from slashbot.lib.error import deferred_error_message
-from slashbot.lib.util import convert_radial_to_cardinal_direction
+from slashbot.custom_cog import CustomCog
+from slashbot.custom_command import slash_command_with_cooldown
+from slashbot.db import get_user_location
+from slashbot.error import deferred_error_message
+from slashbot.settings import BotConfig
+from slashbot.util import convert_radial_to_cardinal_direction
 
 
 class GeocodeError(Exception):

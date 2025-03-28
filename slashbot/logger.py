@@ -1,6 +1,6 @@
 import logging
 
-from slashbot.lib.config import BotConfig
+from slashbot.settings import BotConfig
 
 
 class Logger:

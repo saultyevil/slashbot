@@ -4,10 +4,10 @@ import disnake
 from disnake.ext import tasks
 from disnake.ext.commands import Cog
 
-from slashbot.lib import markov
-from slashbot.lib.config import BotConfig
-from slashbot.lib.custom_bot import CustomInteractionBot
-from slashbot.lib.logger import Logger
+from slashbot import markov
+from slashbot.custom_bot import CustomInteractionBot
+from slashbot.logger import Logger
+from slashbot.settings import BotConfig
 
 
 class CustomCog(Cog, Logger):

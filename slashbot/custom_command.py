@@ -4,7 +4,7 @@ from typing import Any
 
 from disnake.ext import commands
 
-from slashbot.lib.config import BotConfig
+from slashbot.settings import BotConfig
 
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")

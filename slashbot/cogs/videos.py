@@ -6,8 +6,8 @@ import random
 import disnake
 from disnake.ext import commands
 
-from slashbot.lib.config import BotConfig
-from slashbot.lib.custom_cog import CustomCog
+from slashbot.custom_cog import CustomCog
+from slashbot.settings import BotConfig
 
 COOLDOWN_USER = commands.BucketType.user
 

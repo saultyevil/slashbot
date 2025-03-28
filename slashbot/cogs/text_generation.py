@@ -23,23 +23,23 @@ from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from slashbot.lib import markov
-from slashbot.lib.config import BotConfig
-from slashbot.lib.custom_cog import CustomCog
-from slashbot.lib.custom_command import slash_command_with_cooldown
-from slashbot.lib.messages import get_attached_images_from_message, send_message_to_channel
-from slashbot.lib.models.channel_history import ChannelHistory
-from slashbot.lib.models.conversation import AIConversation
-from slashbot.lib.responses import is_reply_to_slash_command_response
-from slashbot.lib.text_generation_OLD import get_prompts_at_launch
-from slashbot.lib.util import create_prompt_dict, read_in_prompt_json
+from slashbot import markov
+from slashbot.ai_conversation import AIConversation
+from slashbot.channel_history import ChannelHistory
+from slashbot.custom_cog import CustomCog
+from slashbot.custom_command import slash_command_with_cooldown
+from slashbot.messages import get_attached_images_from_message, send_message_to_channel
+from slashbot.responses import is_reply_to_slash_command_response
+from slashbot.settings import BotConfig
+from slashbot.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
-    from slashbot.lib.custom_bot import CustomInteractionBot
-    from slashbot.lib.custom_types import ApplicationCommandInteraction, Message
+    from slashbot.custom_bot import CustomInteractionBot
+    from slashbot.custom_types import ApplicationCommandInteraction, Message
+
 
 MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
-DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()
+AVAILABLE_PROMPTS = create_prompt_dict()
 
 
 @dataclass

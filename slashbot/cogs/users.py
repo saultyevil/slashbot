@@ -6,11 +6,11 @@ from types import coroutine
 import disnake
 from disnake.ext import commands
 
-from slashbot.lib.config import BotConfig
-from slashbot.lib.custom_cog import CustomCog
-from slashbot.lib.db import get_twitter_convert_users, get_user, update_user
-from slashbot.lib.error import deferred_error_message
-from slashbot.lib.util import convert_string_to_lower
+from slashbot.custom_cog import CustomCog
+from slashbot.db import get_twitter_convert_users, get_user, update_user
+from slashbot.error import deferred_error_message
+from slashbot.settings import BotConfig
+from slashbot.util import convert_string_to_lower
 
 COOLDOWN_USER = commands.BucketType.user
 USER_OPTIONS = [

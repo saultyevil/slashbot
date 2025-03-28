@@ -5,8 +5,8 @@ from typing import Any
 import openai
 import tiktoken
 
-from slashbot.lib.config import BotConfig
-from slashbot.lib.logger import Logger
+from slashbot.logger import Logger
+from slashbot.settings import BotConfig
 
 
 @dataclass

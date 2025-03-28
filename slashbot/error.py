@@ -1,6 +1,6 @@
 """Commands for getting the weather."""
 
-from slashbot.lib.custom_types import ApplicationCommandInteraction
+from slashbot.custom_types import ApplicationCommandInteraction
 
 
 async def deferred_error_message(

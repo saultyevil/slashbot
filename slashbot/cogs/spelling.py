@@ -10,9 +10,9 @@ import disnake
 from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
 
-from slashbot.lib.config import BotConfig
-from slashbot.lib.custom_cog import CustomCog
-from slashbot.lib.util import calculate_seconds_until, join_list_max_chars
+from slashbot.custom_cog import CustomCog
+from slashbot.settings import BotConfig
+from slashbot.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user
 MAX_EMBEDS_AT_ONCE = 5

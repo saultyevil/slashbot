@@ -6,8 +6,7 @@ These classes are used to marshal data
 import logging
 import sys
 
-from slashbot.lib.config import BotConfig
-from slashbot.lib.text_generation_OLD import get_token_count
+from slashbot.settings import BotConfig
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 
@@ -325,7 +324,7 @@ class Conversation:
             msg = "Trying to remove system prompt"
             raise ValueError(msg)
         message = self._messages.pop(index)
-        self.tokens -= get_token_count(BotConfig.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
+        # self.tokens -= get_token_count(BotConfig.get_config("AI_CHAT_CHAT_MODEL"), message["content"])
         return Message(message["content"], message["role"])
 
     def remove_images_from_messages(self) -> list[dict]:
