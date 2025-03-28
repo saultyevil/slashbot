@@ -3,7 +3,7 @@ from textwrap import dedent
 
 import disnake
 
-from slashbot.models.text_generators import TextGeneratorLLM
+from slashbot.classes.text_generator import TextGeneratorLLM
 
 
 @dataclass

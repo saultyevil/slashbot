@@ -6,7 +6,7 @@ from typing import Any
 from disnake.ext.commands import InteractionBot
 
 from slashbot import markov
-from slashbot.logger import Logger
+from slashbot.classes.logger import Logger
 
 
 class CustomInteractionBot(InteractionBot, Logger):

@@ -6,7 +6,7 @@ from disnake.ext.commands import Cog
 
 from slashbot import markov
 from slashbot.custom_bot import CustomInteractionBot
-from slashbot.logger import Logger
+from slashbot.classes.logger import Logger
 from slashbot.settings import BotConfig
 
 
