@@ -412,7 +412,7 @@ class Weather(CustomCog):
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
-            text=f"{self.get_random_sentence('forecast', 1)}\n(You can set your location using /set_info)",
+            text=f"{self.get_random_markov_sentence('forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
         embed = self.add_forecast_to_embed(embed, forecast[: amount + 1], units)
@@ -456,7 +456,7 @@ class Weather(CustomCog):
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
         embed.set_footer(
-            text=f"{self.get_random_sentence('weather', 1)}\n(You can set your location using /set_info)",
+            text=f"{self.get_random_markov_sentence('weather', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(weather_return["current"]["weather"][0]["icon"]))
         embed = self.add_weather_conditions_to_embed(

@@ -30,7 +30,7 @@ class CustomCog(Cog, Logger):
 
     # --------------------------------------------------------------------------
 
-    def _get_random_sentence(self, seed_word: str | None, amount: int) -> str | list[str]:
+    def _get_random_markov_sentence(self, seed_word: str | None, amount: int) -> str | list[str]:
         """Get a random markov generated sentence.
 
         If the markov cache is enabled, the sentence will be taken from the
@@ -81,7 +81,7 @@ class CustomCog(Cog, Logger):
         """
         for seed_word in seed_words or self.markov_seed_words:
             current_amount = len(self._markov_sentences.get(seed_word, []))
-            self._markov_sentences[seed_word] = self.get_random_sentence(
+            self._markov_sentences[seed_word] = self.get_random_markov_sentence(
                 seed_word, amount=BotConfig.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT") - current_amount
             )
         self.log_info("Generated markov sentences for seed words: %s", self.markov_seed_words)
@@ -120,7 +120,7 @@ class CustomCog(Cog, Logger):
 
     # --------------------------------------------------------------------------
 
-    def get_random_sentence(
+    def get_random_markov_sentence(
         self,
         seed_word: str | None = None,
         amount: int = 1,
@@ -143,7 +143,7 @@ class CustomCog(Cog, Logger):
         if amount < 1:
             msg = "Requested number of sentences must be > 1"
             raise ValueError(msg)
-        return self._get_random_sentence(seed_word, amount)
+        return self._get_random_markov_sentence(seed_word, amount)
 
     @tasks.loop(seconds=10)
     async def check_markov_cache_size(self) -> None:
