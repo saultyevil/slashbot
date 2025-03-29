@@ -241,7 +241,7 @@ class TextGeneration(CustomCog):
             {"role": "system", "content": prompt["prompt"]},
             {"role": "user", "content": message.clean_content},
         ]
-        response = await self.generate_text_from_llm(messages)
+        response = await self.ai_conversations[get_history_id(message)].generate_text_from_llm(messages)
         await send_message_to_channel(response.message, message, dont_tag_user=True)
 
     async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:
