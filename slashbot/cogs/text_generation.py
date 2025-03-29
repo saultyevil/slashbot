@@ -5,8 +5,6 @@ currently implements AI chat/vision using ChatGPT and Claude, as well as
 text-to-image generation using Monster API.
 """
 
-from __future__ import annotations
-
 import datetime
 import json
 import logging
@@ -14,7 +12,6 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass
 from textwrap import shorten
-from typing import TYPE_CHECKING
 
 import disnake
 from disnake.ext import commands
@@ -25,17 +22,14 @@ from watchdog.observers import Observer
 from slashbot.core import markov
 from slashbot.core.channel_summary import AIChannelSummary
 from slashbot.core.conversation import AIConversation
+from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
+from slashbot.core.custom_types import ApplicationCommandInteraction, Message
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
+from slashbot.prompts import create_prompt_dict, read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
 from slashbot.settings import BotConfig
-from slashbot.util import create_prompt_dict, read_in_prompt_json
-
-if TYPE_CHECKING:
-    from slashbot.core.custom_bot import CustomInteractionBot
-    from slashbot.core.custom_types import ApplicationCommandInteraction, Message
-
 
 MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
 AVAILABLE_PROMPTS = create_prompt_dict()

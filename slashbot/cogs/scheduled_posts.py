@@ -10,11 +10,11 @@ from disnake.ext import commands, tasks
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from slashbot.clock import calculate_seconds_until
 from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.markov import generate_text_from_markov_chain
 from slashbot.settings import BotConfig
-from slashbot.util import calculate_seconds_until
 
 COOLDOWN_USER = commands.BucketType.user
 

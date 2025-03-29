@@ -20,12 +20,30 @@ from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
 from slashbot.core.custom_types import ApplicationCommandInteraction
 from slashbot.settings import BotConfig
-from slashbot.util import ordinal_suffix
 
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")
 COOLDOWN_RATE = BotConfig.get_config("COOLDOWN_RATE")
 JERMA_GIFS = list(Path("data/images").glob("jerma*.gif"))
+
+
+def ordinal_suffix(n: int) -> str:
+    """Return the ordinal suffix for a given number.
+
+    Parameters
+    ----------
+    n : int
+        The number to get the ordinal suffix for.
+
+    Returns
+    -------
+    str
+        The ordinal suffix for the given number.
+
+    """
+    if 11 <= (n % 100) <= 13:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
 class AdminTools(CustomCog):

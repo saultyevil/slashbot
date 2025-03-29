@@ -16,9 +16,8 @@ from geopy import GoogleV3
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
 from slashbot.core.database import get_user_location
-from slashbot.error import deferred_error_message
+from slashbot.errors import deferred_error_message
 from slashbot.settings import BotConfig
-from slashbot.util import convert_radial_to_cardinal_direction
 
 
 class GeocodeError(Exception):
@@ -484,3 +483,38 @@ def setup(bot: commands.InteractionBot) -> None:
         bot.add_cog(Weather(bot))
     else:
         Weather.log_error(Weather, "No Google API key found, weather cog not loaded.")
+
+
+def convert_radial_to_cardinal_direction(degrees: float) -> str:
+    """Convert a degrees value to a cardinal direction.
+
+    Parameters
+    ----------
+    degrees: float
+        The degrees direction.
+
+    Returns
+    -------
+    The cardinal direction as a string.
+
+    """
+    directions = [
+        "N",
+        "NNE",
+        "NE",
+        "ENE",
+        "E",
+        "ESE",
+        "SE",
+        "SSE",
+        "S",
+        "SSW",
+        "SW",
+        "WSW",
+        "W",
+        "WNW",
+        "NW",
+        "NNW",
+    ]
+
+    return directions[round(degrees / (360.0 / len(directions))) % len(directions)]

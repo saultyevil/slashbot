@@ -1,14 +1,55 @@
 """Module for general purpose message handling."""
 
+import base64
 import logging
 
+import requests
+
+from slashbot.core.conversation import VisionImage
 from slashbot.core.custom_types import ApplicationCommandInteraction, Message
 from slashbot.settings import BotConfig
-from slashbot.util import split_text_into_chunks
-from slashbot.core.conversation import download_and_encode_image
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
+
+
+def split_text_into_chunks(text: str, chunk_length: int) -> list:
+    """Split text into smaller chunks of a set length while preserving sentences.
+
+    Parameters
+    ----------
+    text : str
+        The input text to be split into chunks.
+    chunk_length : int, optional
+        The maximum length of each chunk. Default is 1648.
+
+    Returns
+    -------
+    list
+        A list of strings where each string represents a chunk of the text.
+
+    """
+    chunks = []
+    current_chunk = ""
+
+    while len(text) > 0:
+        # Find the nearest sentence end within the chunk length
+        end_index = min(len(text), chunk_length)
+        while end_index > 0 and text[end_index - 1] not in (".", "!", "?"):
+            end_index -= 1
+
+        # If no sentence end found, break at chunk length
+        if end_index == 0:
+            end_index = chunk_length
+
+        current_chunk += text[:end_index]
+        text = text[end_index:]
+
+        if len(text) == 0 or len(current_chunk) + len(text) > chunk_length:
+            chunks.append(current_chunk)
+            current_chunk = ""
+
+    return chunks
 
 
 async def send_message_to_channel(
@@ -46,7 +87,34 @@ async def send_message_to_channel(
     return sent_messages
 
 
-async def get_attached_images_from_message(message: Message) -> list[Image]:
+def download_and_encode_image(url: str, *, encode_to_b64: bool = False) -> VisionImage:
+    """Download and encode an image for vision tasks with OpenAI.
+
+    Parameters
+    ----------
+    url : str
+        The URL of the image to encode.
+    encode_to_b64 : bool
+        Encode images to a base64 string, instead of returning the image url.
+
+    Returns
+    -------
+    VisionImage
+        The downloaded/encoded image
+
+    """
+    if encode_to_b64:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        mime_type = response.headers["Content-Type"]
+        encoded_image = base64.b64encode(response.content).decode("utf-8")
+    else:
+        encoded_image = mime_type = None
+
+    return VisionImage(url, encoded_image, mime_type)
+
+
+async def get_attached_images_from_message(message: Message) -> list[VisionImage]:
     """Retrieve the URLs for images attached or embedded in a Discord message.
 
     Parameters

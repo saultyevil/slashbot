@@ -10,12 +10,43 @@ import disnake
 from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
 
+from slashbot.clock import calculate_seconds_until
 from slashbot.core.custom_cog import CustomCog
 from slashbot.settings import BotConfig
-from slashbot.util import calculate_seconds_until, join_list_max_chars
 
 COOLDOWN_USER = commands.BucketType.user
 MAX_EMBEDS_AT_ONCE = 5
+
+
+def join_list_max_chars(words: list[str], max_chars: int) -> str:
+    """Join a list of words into a comma-separated list.
+
+    Parameters
+    ----------
+    words : List[str]
+        A list of words to join together
+    max_chars : int
+        The maximum length the output string can be
+
+    Returns
+    -------
+    str
+        The joined words with "..." at the end if max_chars is hit
+
+    """
+    result = ""
+    current_length = 0
+
+    for word in words:
+        if current_length + len(word) > max_chars - 3:
+            if result:
+                result += "..."
+            break
+        result += word + ", "
+        current_length += len(word)
+
+    # Remove the trailing ", " if there's anything in the result
+    return result.removesuffix(", ")
 
 
 class Spelling(CustomCog):
