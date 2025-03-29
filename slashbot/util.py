@@ -7,7 +7,7 @@ import pathlib
 import re
 from typing import Any
 
-from slashbot.custom_types import (
+from slashbot.core.custom_types import (
     ApplicationCommandInteraction,
     DMChannel,
     Member,

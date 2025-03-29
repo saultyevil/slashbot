@@ -9,7 +9,7 @@ import json
 import logging
 from pathlib import Path
 
-from slashbot.custom_types import Member, User
+from slashbot.core.custom_types import Member, User
 from slashbot.settings import BotConfig
 
 logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))

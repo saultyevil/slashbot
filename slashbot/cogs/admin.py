@@ -8,19 +8,19 @@ import git
 from disnake.ext import commands
 
 from slashbot import __version__
-from slashbot.custom_bot import CustomInteractionBot
-from slashbot.custom_cog import CustomCog
-from slashbot.custom_command import slash_command_with_cooldown
-from slashbot.custom_types import ApplicationCommandInteraction
-from slashbot.helpers.admin import (
+from slashbot.admin import (
     get_logfile_tail,
     get_modifiable_config_keys,
     restart_bot,
     set_config_value,
     update_local_repository,
 )
-from slashbot.helpers.util import ordinal_suffix
+from slashbot.core.custom_bot import CustomInteractionBot
+from slashbot.core.custom_cog import CustomCog
+from slashbot.core.custom_command import slash_command_with_cooldown
+from slashbot.core.custom_types import ApplicationCommandInteraction
 from slashbot.settings import BotConfig
+from slashbot.util import ordinal_suffix
 
 COOLDOWN_USER = commands.BucketType.user
 COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")

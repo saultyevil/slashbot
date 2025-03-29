@@ -96,7 +96,7 @@ def restart_bot(arguments: list[str]) -> None:
     os.execv(command[0], command)  # noqa: S606
 
 
-def get_modifiable_config_keys() -> tuple[str]:
+def get_modifiable_config_keys() -> tuple:
     """Get the keys that can be modified for the config file.
 
     Returns

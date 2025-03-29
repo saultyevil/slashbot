@@ -13,11 +13,11 @@ import requests
 import rule34 as r34
 from disnake.ext import commands, tasks
 
-from slashbot import markov
-from slashbot.custom_cog import CustomCog
-from slashbot.database import get_users
-from slashbot.helpers.util import calculate_seconds_until
+from slashbot.core import markov
+from slashbot.core.custom_cog import CustomCog
+from slashbot.core.database import get_users
 from slashbot.settings import BotConfig
+from slashbot.util import calculate_seconds_until
 
 COOLDOWN_USER = commands.BucketType.user
 EMPTY_STRING = ""

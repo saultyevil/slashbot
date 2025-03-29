@@ -22,19 +22,19 @@ from pyinstrument import Profiler
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from slashbot import markov
-from slashbot.classes.channel_summary import AIChannelSummary
-from slashbot.classes.conversation import AIConversation
-from slashbot.custom_cog import CustomCog
-from slashbot.custom_command import slash_command_with_cooldown
-from slashbot.helpers.messages import get_attached_images_from_message, send_message_to_channel
-from slashbot.helpers.responses import is_reply_to_slash_command_response
-from slashbot.helpers.util import create_prompt_dict, read_in_prompt_json
+from slashbot.core import markov
+from slashbot.core.channel_summary import AIChannelSummary
+from slashbot.core.conversation import AIConversation
+from slashbot.core.custom_cog import CustomCog
+from slashbot.core.custom_command import slash_command_with_cooldown
+from slashbot.messages import get_attached_images_from_message, send_message_to_channel
+from slashbot.responses import is_reply_to_slash_command_response
 from slashbot.settings import BotConfig
+from slashbot.util import create_prompt_dict, read_in_prompt_json
 
 if TYPE_CHECKING:
-    from slashbot.custom_bot import CustomInteractionBot
-    from slashbot.custom_types import ApplicationCommandInteraction, Message
+    from slashbot.core.custom_bot import CustomInteractionBot
+    from slashbot.core.custom_types import ApplicationCommandInteraction, Message
 
 
 MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
@@ -82,10 +82,10 @@ class TextGeneration(CustomCog):
 
         """
         super().__init__(bot)
-        self.ai_conversations: dict[AIConversation] = defaultdict(
+        self.ai_conversations = defaultdict(
             lambda: AIConversation(token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")),
         )
-        self.channel_histories: dict[AIChannelSummary] = defaultdict(lambda: AIChannelSummary())
+        self.channel_histories = defaultdict(lambda: AIChannelSummary())
         self.user_cooldown_map = defaultdict(lambda: Cooldown(0, datetime.datetime.now(tz=datetime.UTC)))
 
         self._profiler = Profiler(async_mode="enabled")

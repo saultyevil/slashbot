@@ -1,9 +1,12 @@
+import base64
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 
-from slashbot.classes.text_generator import TextGeneratorLLM
-from slashbot.helpers.util import read_in_prompt_json
+import requests
+
+from slashbot.core.text_generator import TextGeneratorLLM
+from slashbot.util import read_in_prompt_json
 
 
 @dataclass
@@ -75,6 +78,21 @@ class AIConversation(TextGeneratorLLM):
 
     # --------------------------------------------------------------------------
 
+    @staticmethod
+    def _load_system_prompt(self, filepath: str | Path) -> tuple[str, str]:
+        if not isinstance(filepath, Path):
+            filepath = Path(filepath)
+        if not filepath.exists():
+            msg = f"Prompt file does not exist at {filepath}"
+            raise FileNotFoundError(msg)
+        if filepath.suffix != ".json":
+            msg = "Prompt file must be a JSON file"
+            raise ValueError(msg)
+        prompt = read_in_prompt_json(filepath)
+        return prompt["name"], prompt["prompt"]
+
+    # --------------------------------------------------------------------------
+
     def _add_user_message_to_context(self, message: str, images: VisionImage | list[VisionImage] | None = None) -> None:
         if images:
             images = self._prepare_images_for_context(images)
@@ -94,7 +112,7 @@ class AIConversation(TextGeneratorLLM):
     def _prepare_audio_for_context(self) -> None:
         raise NotImplementedError
 
-    def _prepare_images_for_context(self, images: VisionImage | list[VisionImage]) -> None:
+    def _prepare_images_for_context(self, images: VisionImage | list[VisionImage]) -> list[dict]:
         if not isinstance(images, list):
             images = [images]
         return [
@@ -110,18 +128,6 @@ class AIConversation(TextGeneratorLLM):
 
     def _prepare_video_for_context(self) -> None:
         raise NotImplementedError
-
-    def _load_system_prompt(self, filepath: str | Path) -> dict:
-        if not isinstance(filepath, Path):
-            filepath = Path(filepath)
-        if not filepath.exists():
-            msg = f"Prompt file does not exist at {filepath}"
-            raise FileNotFoundError(msg)
-        if filepath.suffix != ".json":
-            msg = "Prompt file must be a JSON file"
-            raise ValueError(msg)
-        prompt = read_in_prompt_json(filepath)
-        return prompt["name"], prompt["prompt"]
 
     def _remove_message_from_context(self, index: int) -> dict:
         if index == 0:
@@ -206,3 +212,30 @@ class AIConversation(TextGeneratorLLM):
 
         """
         self._set_system_prompt_and_clear_context(new_prompt)
+
+
+def download_and_encode_image(url: str, *, encode_to_b64: bool = False) -> VisionImage:
+    """Download and encode an image for vision tasks with OpenAI.
+
+    Parameters
+    ----------
+    url : str
+        The URL of the image to encode.
+    encode_to_b64 : bool
+        Encode images to a base64 string, instead of returning the image url.
+
+    Returns
+    -------
+    VisionImage
+        The downloaded/encoded image
+
+    """
+    if encode_to_b64:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        mime_type = response.headers["Content-Type"]
+        encoded_image = base64.b64encode(response.content).decode("utf-8")
+    else:
+        encoded_image = mime_type = None
+
+    return VisionImage(url, encoded_image, mime_type)

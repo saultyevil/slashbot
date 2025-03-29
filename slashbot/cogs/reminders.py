@@ -8,10 +8,10 @@ import disnake
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 
-from slashbot.custom_bot import CustomInteractionBot
-from slashbot.custom_cog import CustomCog
-from slashbot.custom_command import slash_command_with_cooldown
-from slashbot.database import (
+from slashbot.core.custom_bot import CustomInteractionBot
+from slashbot.core.custom_cog import CustomCog
+from slashbot.core.custom_command import slash_command_with_cooldown
+from slashbot.core.database import (
     add_reminder,
     get_all_reminders,
     get_all_reminders_for_user,

@@ -2,10 +2,10 @@
 
 import logging
 
-from slashbot.custom_types import ApplicationCommandInteraction, Message
-from slashbot.helpers.util import split_text_into_chunks
-from slashbot.helpers.vision import Image, download_and_encode_image
+from slashbot.core.custom_types import ApplicationCommandInteraction, Message
 from slashbot.settings import BotConfig
+from slashbot.util import split_text_into_chunks
+from slashbot.core.conversation import download_and_encode_image
 
 LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
 MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
@@ -13,7 +13,7 @@ MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
 
 async def send_message_to_channel(
     message: str, obj: Message | ApplicationCommandInteraction, *, dont_tag_user: bool = False
-) -> None:
+) -> Message | list[Message]:
     """Send a response to the provided message channel and author.
 
     Parameters
@@ -25,6 +25,11 @@ async def send_message_to_channel(
     dont_tag_user : bool
         Boolean to indicate if a user should be tagged or not. Default is
         False, which would tag the user.
+
+    Returns
+    -------
+    Message | list[Message]
+        The message or messages sent to the chat.
 
     """
     sent_messages = []
