@@ -1,15 +1,11 @@
 """Module for setting up the Slashbot config and logger."""
 
-import copy
 import json
 import logging
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, ClassVar
-
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
 
 
 def setup_logging() -> None:
@@ -41,31 +37,6 @@ def setup_logging() -> None:
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
     logger.info("Loaded config file %s", BotConfig.get_config("CONFIG_FILE"))
-
-
-class FileWatcher(FileSystemEventHandler):
-    """Class for watching for changes to the config file."""
-
-    def on_modified(self, event: FileSystemEventHandler) -> None:
-        """Reload the config on file modify.
-
-        Parameters
-        ----------
-        event : FileSystemEventHandler
-            The event to check.
-
-        """
-        if event.event_type == "modified" and event.src_path == BotConfig.get_config("CONFIG_FILE"):
-            original_config = copy.copy(BotConfig._config)  # noqa: SLF001
-            new_config = BotConfig.set_config_values()
-            modified_keys = {
-                key for key in original_config if key in new_config and original_config[key] != new_config[key]
-            }
-            if modified_keys:
-                logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
-                logger.info("App config updated:")
-                for key in modified_keys:
-                    logger.info("  %s: %s -> %s", key, original_config[key], new_config[key])
 
 
 class BotConfig:
@@ -237,7 +208,3 @@ class BotConfig:
 
 BotConfig.set_config_values()
 setup_logging()
-
-observer = Observer()
-observer.schedule(FileWatcher(), path=Path(BotConfig.get_config("CONFIG_FILE")).parent)
-observer.start()

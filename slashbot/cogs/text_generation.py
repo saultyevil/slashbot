@@ -6,7 +6,6 @@ text-to-image generation using Monster API.
 """
 
 import datetime
-import json
 import logging
 import random
 from collections import defaultdict
@@ -16,9 +15,8 @@ from textwrap import shorten
 import disnake
 from disnake.ext import commands
 from pyinstrument import Profiler
-from watchdog.events import FileSystemEvent, FileSystemEventHandler
-from watchdog.observers import Observer
 
+import slashbot.watchers
 from slashbot.core import markov
 from slashbot.core.channel_summary import AIChannelSummary
 from slashbot.core.conversation import AIConversation
@@ -27,12 +25,11 @@ from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
 from slashbot.core.custom_types import ApplicationCommandInteraction, Message
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
-from slashbot.prompts import create_prompt_dict, read_in_prompt_json
+from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
 from slashbot.settings import BotConfig
 
 MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
-AVAILABLE_PROMPTS = create_prompt_dict()
 
 
 @dataclass
@@ -352,7 +349,9 @@ class TextGeneration(CustomCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
-            autocomplete=lambda _, user_input: [choice for choice in AVAILABLE_PROMPTS if user_input in choice],
+            autocomplete=lambda _, user_input: [
+                choice for choice in slashbot.watchers.AVAILABLE_LLM_PROMPTS if user_input in choice
+            ],
             description="The choice of prompt to use",
         ),
     ) -> None:
@@ -366,7 +365,7 @@ class TextGeneration(CustomCog):
             The choice of system prompt
 
         """
-        prompt = AVAILABLE_PROMPTS[choice]
+        prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         self.ai_conversations[get_history_id(inter)].set_system_message(prompt)
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
@@ -412,7 +411,7 @@ class TextGeneration(CustomCog):
 
         prompt_name = "Unknown"
         prompt = self.ai_conversations[history_id].system_prompt
-        for name, text in AVAILABLE_PROMPTS.items():
+        for name, text in slashbot.watchers.AVAILABLE_LLM_PROMPTS.items():
             if prompt == text:
                 prompt_name = name
 
@@ -438,37 +437,3 @@ def setup(bot: commands.InteractionBot) -> None:
         bot.add_cog(TextGeneration(bot))
     else:
         TextGeneration.log_error(TextGeneration, "No API key found for OpenAI, unable to load AIChatBot cog")
-
-
-class PromptFileWatcher(FileSystemEventHandler):
-    """Event handler for prompt files.
-
-    This event handler is meant to watch the `data/prompts` directory for
-    changes.
-    """
-
-    def on_any_event(self, event: FileSystemEvent) -> None:
-        """Handle any file system event.
-
-        This method is called when any file system event occurs.
-        It updates the `PROMPT_CHOICES` dictionary based on the event type and
-        source path.
-        """
-        global AVAILABLE_PROMPTS  # noqa: PLW0603
-
-        if event.is_directory:
-            return
-
-        try:
-            if event.event_type in ["created", "modified"] and event.src_path.endswith(".json"):
-                prompt = read_in_prompt_json(event.src_path)
-                AVAILABLE_PROMPTS[prompt["name"]] = prompt["prompt"]
-            if event.event_type == "deleted" and event.src_path.endswith(".json"):
-                AVAILABLE_PROMPTS = create_prompt_dict()
-        except json.decoder.JSONDecodeError:
-            self.log_exception("Error reading in prompt file %s", event.src_path)
-
-
-observer = Observer()
-observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
-observer.start()

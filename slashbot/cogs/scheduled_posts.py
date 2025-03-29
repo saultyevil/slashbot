@@ -7,14 +7,14 @@ from pathlib import Path
 
 import disnake
 from disnake.ext import commands, tasks
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
 
+import slashbot.watchers
 from slashbot.clock import calculate_seconds_until
 from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.markov import generate_text_from_markov_chain
 from slashbot.settings import BotConfig
+from slashbot.watchers import ScheduledPostWatcher
 
 COOLDOWN_USER = commands.BucketType.user
 
@@ -79,7 +79,8 @@ class ScheduledPosts(CustomCog):
 
         self.scheduled_posts = None
         self.get_scheduled_posts()
-        self.post_loop.start()  # pylint: disable=no-member
+        if not self.post_loop.is_running():
+            self.post_loop.start()  # pylint: disable=no-member
 
         self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
@@ -136,38 +137,9 @@ class ScheduledPosts(CustomCog):
 
     def update_posts_on_modify(self) -> None:
         """Reload the posts on file modify."""
-
-        class PostWatcher(FileSystemEventHandler):
-            """File watcher to watch for changes to scheduled posts file."""
-
-            def __init__(self, parent: ScheduledPosts) -> None:
-                """Initialise the watcher."""
-                super().__init__()
-                self.parent = parent
-
-            def on_modified(self, event: FileSystemEventHandler) -> None:
-                """Reload the posts on file modify.
-
-                Parameters
-                ----------
-                event : FileSystemEventHandler
-                    The event to check.
-
-                """
-                if event.src_path == str(BotConfig.get_config("SCHEDULED_POST_FILE").absolute()):
-                    self.parent.get_scheduled_posts()
-                    # If the loop is running, we'll restart the task otherwise
-                    # start the task. The post should *never* not be running,
-                    # but better safe than sorry as it can sometimes raise an
-                    # exception and stop
-                    if self.parent.post_loop.is_running():
-                        self.parent.post_loop.restart()
-                    else:
-                        self.parent.post_loop.start()
-
-        observer = Observer()
-        observer.schedule(PostWatcher(self), path=str(BotConfig.get_config("SCHEDULED_POST_FILE").parent.absolute()))
-        observer.start()
+        slashbot.watchers.FILE_OBSERVER.schedule(
+            ScheduledPostWatcher(self), path=str(BotConfig.get_config("SCHEDULED_POST_FILE").parent.absolute())
+        )
 
     # Task ---------------------------------------------------------------------
 
