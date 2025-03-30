@@ -115,7 +115,6 @@ class BotConfig:
             # cooldown parameters
             "COOLDOWN_RATE": int(config_json["COOLDOWN"]["RATE"]),
             "COOLDOWN_STANDARD": int(config_json["COOLDOWN"]["STANDARD"]),
-            "COOLDOWN_EXTENDED": int(config_json["COOLDOWN"]["EXTENDED"]),
             "NO_COOLDOWN_SERVERS": config_json["COOLDOWN"]["NO_COOLDOWN_SERVERS"],
             "NO_COOLDOWN_USERS": config_json["COOLDOWN"]["NO_COOLDOWN_USERS"],
             # general things
@@ -157,16 +156,10 @@ class BotConfig:
             "AI_CHAT_PRESENCE_PENALTY": config_json["COGS"]["AI_CHAT"]["MODEL_PRESENCE_PENALTY"],
             "AI_CHAT_MAX_OUTPUT_TOKENS": config_json["COGS"]["AI_CHAT"]["MAX_OUTPUT_TOKENS"],
             "AI_CHAT_TOKEN_WINDOW_SIZE": config_json["COGS"]["AI_CHAT"]["TOKEN_WINDOW_SIZE"],
-            "AI_CHAT_PROMPT_APPEND": config_json["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
-            "AI_CHAT_PROMPT_PREPEND": config_json["COGS"]["AI_CHAT"]["PROMPT_PREPEND"],
-            "AI_CHAT_SUMMARY_PROMPT": config_json["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
             "AI_CHAT_RANDOM_RESPONSE_CHANCE": config_json["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
-            "AI_CHAT_RANDOM_RESPONSE_PROMPT": config_json["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"],
             "AI_CHAT_RATE_LIMIT": config_json["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
             "AI_CHAT_RATE_INTERVAL": config_json["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
-            "AI_CHAT_USE_HISTORIC_REPLIES": bool(config_json["COGS"]["AI_CHAT"]["USE_HISTORIC_REPLIES"]),
             "AI_CHAT_PROFILE_RESPONSE_TIME": bool(config_json["COGS"]["AI_CHAT"]["ENABLE_PROFILING"]),
-            "AI_CHAT_PREFER_IMAGE_URLS": bool(config_json["COGS"]["AI_CHAT"]["PREFER_IMAGE_URLS"]),
         }
         cls._config = _config
 
