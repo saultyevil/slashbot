@@ -81,6 +81,20 @@ class AIConversation(TextGeneratorLLM):
 
     # --------------------------------------------------------------------------
 
+    @property
+    def system_prompt(self) -> str:
+        """Get the system prompt of the conversation.
+
+        Returns
+        -------
+        str
+            The system prompt of the conversation.
+
+        """
+        return self._system_prompt
+
+    # --------------------------------------------------------------------------
+
     @staticmethod
     def _load_system_prompt(self, filepath: str | Path) -> tuple[str, str]:
         if not isinstance(filepath, Path):

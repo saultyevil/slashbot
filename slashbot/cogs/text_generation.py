@@ -5,6 +5,7 @@ currently implements AI chat/vision using ChatGPT and Claude, as well as
 text-to-image generation using Monster API.
 """
 
+import asyncio
 import datetime
 import logging
 import random
@@ -77,6 +78,7 @@ class TextGeneration(CustomCog):
         self.channel_histories = defaultdict(lambda: AIChannelSummary())
         self.user_cooldown_map = defaultdict(lambda: Cooldown(0, datetime.datetime.now(tz=datetime.UTC)))
 
+        self._lock = asyncio.Lock()
         self._profiler = Profiler(async_mode="enabled")
         file_handler = logging.FileHandler("logs/ai_chat_profile.log")
         file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
@@ -87,6 +89,9 @@ class TextGeneration(CustomCog):
     def _start_profiler(self) -> None:
         if not BotConfig.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
             return
+        if self._profiler.is_running:
+            self._profiler.stop()
+            self._profiler.reset()
         self._profiler.start()
 
     def _stop_profiler(self) -> None:
@@ -106,15 +111,18 @@ class TextGeneration(CustomCog):
             ),
         )
 
-    def _get_conversation(self, obj: Message | ApplicationCommandInteraction) -> AIConversation:
-        history_id = get_history_id(obj)
-        return self.ai_conversations.setdefault(
-            history_id,
-            AIConversation(
-                token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"),
-                extra_print=f"{obj.channel.name}",
-            ),
+    async def _get_conversation(self, obj: int | Message | ApplicationCommandInteraction) -> AIConversation:
+        history_id = get_history_id(obj) if not isinstance(obj, int) else obj
+        self.log_debug("Getting conversation for history ID: %s", history_id)
+
+        if history_id in self.ai_conversations:
+            return self.ai_conversations[history_id]
+
+        self.ai_conversations[history_id] = AIConversation(
+            token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"),
+            extra_print=f"{obj.channel.name}",
         )
+        return self.ai_conversations[history_id]
 
     def _check_if_user_on_cooldown(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
@@ -168,7 +176,7 @@ class TextGeneration(CustomCog):
             dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )
 
-    def _reset_conversation_history(self, history_id: str | int) -> None:
+    async def _reset_conversation_history(self, history_id: str | int) -> None:
         """Clear chat history and reset the token counter.
 
         Parameters
@@ -177,7 +185,8 @@ class TextGeneration(CustomCog):
             The index to reset in chat history.
 
         """
-        self._get_conversation(history_id).reset_history()
+        conversation = await self._get_conversation(history_id)
+        conversation.reset_history()
 
     async def _get_highlighted_discord_message(self, original_message: disnake.Message) -> disnake.Message:
         """Retrieve a message from a message reply.
@@ -219,7 +228,7 @@ class TextGeneration(CustomCog):
             Whether or not the prompt was sent in a direct message, optional
 
         """
-        conversation = self._get_conversation(discord_message)
+        conversation = await self._get_conversation(discord_message)
         user_prompt = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         images = await get_attached_images_from_message(discord_message)
 
@@ -255,7 +264,8 @@ class TextGeneration(CustomCog):
             {"role": "system", "content": prompt["prompt"]},
             {"role": "user", "content": message.clean_content},
         ]
-        response = await self._get_conversation(message).generate_text_from_llm(messages)
+        conversation = await self._get_conversation(message)
+        response = await conversation.generate_text_from_llm(messages)
         await send_message_to_channel(response.message, message, dont_tag_user=True)
 
     async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:
@@ -366,7 +376,7 @@ class TextGeneration(CustomCog):
             The slash command interaction.
 
         """
-        self._reset_conversation_history(get_history_id(inter))
+        await self._reset_conversation_history(get_history_id(inter))
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -395,7 +405,8 @@ class TextGeneration(CustomCog):
         """
         prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
-        self._get_conversation(inter).set_system_message(prompt)
+        conversation = await self._get_conversation(inter)
+        conversation.set_system_message(prompt)
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -420,7 +431,8 @@ class TextGeneration(CustomCog):
 
         """
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
-        self._get_conversation(inter).set_system_message(prompt)
+        conversation = await self._get_conversation(inter)
+        conversation.set_system_message(prompt)
         await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -435,7 +447,7 @@ class TextGeneration(CustomCog):
             The slash command interaction.
 
         """
-        conversation = self._get_conversation(inter)
+        conversation = await self._get_conversation(inter)
 
         prompt_name = "Unknown"
         prompt = conversation.system_prompt
