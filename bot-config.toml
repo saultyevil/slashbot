@@ -13,7 +13,7 @@ random_response_chance = 0.005
 response_rate_limit = 10
 rate_limit_interval = 5
 enable_profiling = true
-prefer_image_urls = true
+prefer_image_urls = false
 
 [cogs.spellcheck]
 enabled = true
