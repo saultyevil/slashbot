@@ -142,7 +142,7 @@ async def get_attached_images_from_message(message: Message) -> list[VisionImage
     result = []
     for url in image_urls:
         try:
-            result.append(download_and_encode_image(url))
+            result.append(download_and_encode_image(url, encode_to_b64=not BotSettings.cogs.ai_chat.prefer_image_urls))
         except Exception:
             LOGGER.log_exception("Failed to download image from %s", url)
     return result
