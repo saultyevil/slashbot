@@ -110,7 +110,8 @@ class TextGeneration(CustomCog):
             return self.channel_histories[history_id]
 
         self.channel_histories[history_id] = AIChannelSummary(
-            token_window_size=BotSettings.cogs.ai_chat.token_window_size, extra_print=f"{obj.channel.name}"
+            token_window_size=BotSettings.cogs.ai_chat.token_window_size,
+            extra_print=f"{obj.channel.id}" if not hasattr(obj.channel, "name") else f"{obj.channel.name}",
         )
         return self.channel_histories[history_id]
 
@@ -123,7 +124,7 @@ class TextGeneration(CustomCog):
 
         self.ai_conversations[history_id] = AIConversation(
             token_window_size=BotSettings.cogs.ai_chat.token_window_size,
-            extra_print=f"{obj.channel.name}",
+            extra_print=f"{obj.channel.id}" if not hasattr(obj.channel, "channel") else f"{obj.channel.name}",
         )
         return self.ai_conversations[history_id]
 
