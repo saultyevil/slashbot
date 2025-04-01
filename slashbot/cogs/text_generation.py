@@ -362,7 +362,7 @@ class TextGeneration(CustomCog):
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
         await inter.response.defer(with_message="Generating summary...", ephemeral=True)
-        summary = await channel_history.generate_summary()
+        summary = await channel_history.generate_summary(requesting_user=inter.user.display_name)
         await inter.delete_original_response()
         await send_message_to_channel(summary, inter)
 
