@@ -50,7 +50,7 @@ class TextGeneratorLLM(Logger):
         self._client = None
         self._base_url = None
         self._text_generator = None
-        self._extra_print = f"[{extra_print}] " if extra_print else ""
+        self._extra_print = extra_print
 
     def _init_for_model(self, model: str) -> None:
         if model not in self.SUPPORTED_MODELS:

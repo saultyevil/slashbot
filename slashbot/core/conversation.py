@@ -54,13 +54,13 @@ class AIConversation(TextGeneratorLLM):
 
 
         """
-        super().__init__(extra_print=extra_print)
+        self._extra_print = f"[AIConversation:{extra_print}] " if extra_print else ""
+        super().__init__(extra_print=self._extra_print)
         self._system_prompt = ""
         self._system_prompt_name = ""
         self._context = []
         self._token_size = 0
         self._token_window_size = token_window_size
-        self._extra_print = f"[{extra_print}] " if extra_print else ""
         self._set_system_prompt_and_clear_context(
             system_prompt,
             prompt_name="default prompt" if system_prompt == AIConversation.DEFAULT_SYSTEM_PROMPT else "custom prompt",

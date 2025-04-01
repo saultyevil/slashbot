@@ -33,9 +33,10 @@ class AIChannelSummary(TextGeneratorLLM):
     """).splitlines()
     )
 
-    def __init__(self, *, token_window_size: int = 8096) -> None:
+    def __init__(self, *, token_window_size: int = 8096, extra_print: str = "") -> None:
         """Initialise the AI channel summary."""
-        super().__init__()
+        self._extra_print = f"[AIChannelSummary:{extra_print}] " if extra_print else ""
+        super().__init__(extra_print=self._extra_print)
         self._token_size = 0
         self._token_window_size = token_window_size
         self._history_context = []

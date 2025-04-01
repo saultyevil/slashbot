@@ -97,13 +97,22 @@ class TextGeneration(CustomCog):
         self._profiler_logger.info("\n%s", profiler_output)
         self._profiler.reset()
 
+    def _get_channel_history(self, obj: Message | ApplicationCommandInteraction) -> AIChannelSummary:
+        history_id = get_history_id(obj)
+        return self.channel_histories.setdefault(
+            history_id,
+            AIChannelSummary(
+                token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"), extra_print=f"{obj.channel.name}"
+            ),
+        )
+
     def _get_conversation(self, obj: Message | ApplicationCommandInteraction) -> AIConversation:
         history_id = get_history_id(obj)
         return self.ai_conversations.setdefault(
             history_id,
             AIConversation(
                 token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"),
-                extra_print=f"{history_id}:{obj.channel.name}",
+                extra_print=f"{obj.channel.name}",
             ),
         )
 
@@ -285,10 +294,13 @@ class TextGeneration(CustomCog):
 
     @commands.Cog.listener("on_message")
     async def _append_to_history(self, message: disnake.Message) -> None:
-        if message.type != disnake.MessageType.application_command:
-            self.channel_histories[get_history_id(message)].add_message_to_history(
-                message, self_message=message.author == self.bot.user
-            )
+        if message.type in [disnake.MessageType.application_command]:
+            return
+
+        self._get_channel_history(message).add_message_to_history(
+            message,
+            self_message=message.author == self.bot.user,
+        )
 
     @commands.Cog.listener("on_message")
     async def _listen_for_prompts(self, message: disnake.Message) -> None:
@@ -328,13 +340,14 @@ class TextGeneration(CustomCog):
             The interaction object representing the user's command interaction.
 
         """
-        channel_history = self.channel_histories[get_history_id(inter)]
+        channel_history = self._get_channel_history(inter)
         if len(channel_history) == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
-        await inter.response.send_message("Generating summary.", ephemeral=True)
-        summary = await self.channel_histories[get_history_id(inter)].generate_summary()
-        await send_message_to_channel(summary, inter, dont_tag_user=True)
+        await inter.response.defer(with_message="Generating summary...", ephemeral=True)
+        summary = await channel_history.generate_summary()
+        await inter.edit_original_message("Summary generated!")
+        await send_message_to_channel(summary + f"\n*Requested by {inter.author.display_name}*", inter)
 
     @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_conversation_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
