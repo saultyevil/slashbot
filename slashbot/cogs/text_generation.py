@@ -75,7 +75,7 @@ class TextGeneration(CustomCog):
         """
         super().__init__(bot)
         self.ai_conversations = {}
-        self.channel_histories = defaultdict(lambda: AIChannelSummary())
+        self.channel_histories = {}
         self.user_cooldown_map = defaultdict(lambda: Cooldown(0, datetime.datetime.now(tz=datetime.UTC)))
 
         self._lock = asyncio.Lock()
@@ -104,12 +104,15 @@ class TextGeneration(CustomCog):
 
     def _get_channel_history(self, obj: Message | ApplicationCommandInteraction) -> AIChannelSummary:
         history_id = get_history_id(obj)
-        return self.channel_histories.setdefault(
-            history_id,
-            AIChannelSummary(
-                token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"), extra_print=f"{obj.channel.name}"
-            ),
+        self.log_debug("Getting channel history for history ID: %s", history_id)
+
+        if history_id in self.channel_histories:
+            return self.channel_histories[history_id]
+
+        self.channel_histories[history_id] = AIChannelSummary(
+            token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"), extra_print=f"{obj.channel.name}"
         )
+        return self.channel_histories[history_id]
 
     async def _get_conversation(self, obj: int | Message | ApplicationCommandInteraction) -> AIConversation:
         history_id = get_history_id(obj) if not isinstance(obj, int) else obj
