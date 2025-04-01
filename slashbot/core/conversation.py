@@ -37,7 +37,9 @@ class AIConversation(TextGeneratorLLM):
     """).splitlines()
     )
 
-    def __init__(self, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT, token_window_size: int = 2048) -> None:
+    def __init__(
+        self, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT, token_window_size: int = 2048, extra_print: str = ""
+    ) -> None:
         """Initialise a conversation, with default values.
 
         Parameters
@@ -47,14 +49,18 @@ class AIConversation(TextGeneratorLLM):
             system prompt is used.
         token_window_size : int, optional
             The maximum number of tokens to store in the conversation history.
+        extra_print : str, optional
+            Additional information to print at the start of the log message.
+
 
         """
-        super().__init__()
+        super().__init__(extra_print=extra_print)
         self._system_prompt = ""
         self._system_prompt_name = ""
         self._context = []
         self._token_size = 0
         self._token_window_size = token_window_size
+        self._extra_print = f"[{extra_print}] " if extra_print else ""
         self._set_system_prompt_and_clear_context(
             system_prompt,
             prompt_name="default prompt" if system_prompt == AIConversation.DEFAULT_SYSTEM_PROMPT else "custom prompt",
@@ -140,7 +146,7 @@ class AIConversation(TextGeneratorLLM):
         return self._context.pop(index)
 
     def _set_system_prompt_and_clear_context(self, prompt: str, *, prompt_name: str = "unknown") -> None:
-        self.log_debug("Setting system prompt to %s", prompt)
+        self.log_info('%sSetting system prompt to "%s"', self._extra_print, prompt.strip())
         self._system_prompt = prompt
         self._system_prompt_name = prompt_name
         self._context = [{"role": "system", "content": prompt}]

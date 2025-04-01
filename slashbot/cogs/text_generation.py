@@ -73,9 +73,7 @@ class TextGeneration(CustomCog):
 
         """
         super().__init__(bot)
-        self.ai_conversations = defaultdict(
-            lambda: AIConversation(token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")),
-        )
+        self.ai_conversations = {}
         self.channel_histories = defaultdict(lambda: AIChannelSummary())
         self.user_cooldown_map = defaultdict(lambda: Cooldown(0, datetime.datetime.now(tz=datetime.UTC)))
 
@@ -98,6 +96,16 @@ class TextGeneration(CustomCog):
         profiler_output = self._profiler.output_text()
         self._profiler_logger.info("\n%s", profiler_output)
         self._profiler.reset()
+
+    def _get_conversation(self, obj: Message | ApplicationCommandInteraction) -> AIConversation:
+        history_id = get_history_id(obj)
+        return self.ai_conversations.setdefault(
+            history_id,
+            AIConversation(
+                token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"),
+                extra_print=f"{history_id}:{obj.channel.name}",
+            ),
+        )
 
     def _check_if_user_on_cooldown(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
@@ -160,7 +168,7 @@ class TextGeneration(CustomCog):
             The index to reset in chat history.
 
         """
-        self.ai_conversations[history_id].reset_history()
+        self._get_conversation(history_id).reset_history()
 
     async def _get_highlighted_discord_message(self, original_message: disnake.Message) -> disnake.Message:
         """Retrieve a message from a message reply.
@@ -202,7 +210,7 @@ class TextGeneration(CustomCog):
             Whether or not the prompt was sent in a direct message, optional
 
         """
-        conversation: AIConversation = self.ai_conversations[get_history_id(discord_message)]
+        conversation = self._get_conversation(discord_message)
         user_prompt = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         images = await get_attached_images_from_message(discord_message)
 
@@ -238,7 +246,7 @@ class TextGeneration(CustomCog):
             {"role": "system", "content": prompt["prompt"]},
             {"role": "user", "content": message.clean_content},
         ]
-        response = await self.ai_conversations[get_history_id(message)].generate_text_from_llm(messages)
+        response = await self._get_conversation(message).generate_text_from_llm(messages)
         await send_message_to_channel(response.message, message, dont_tag_user=True)
 
     async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:
@@ -367,7 +375,7 @@ class TextGeneration(CustomCog):
         """
         prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
-        self.ai_conversations[get_history_id(inter)].set_system_message(prompt)
+        self._get_conversation(inter).set_system_message(prompt)
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -392,7 +400,7 @@ class TextGeneration(CustomCog):
 
         """
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
-        self.ai_conversations[get_history_id(inter)].set_system_message(prompt)
+        self._get_conversation(inter).set_system_message(prompt)
         await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -407,17 +415,17 @@ class TextGeneration(CustomCog):
             The slash command interaction.
 
         """
-        history_id = get_history_id(inter)
+        conversation = self._get_conversation(inter)
 
         prompt_name = "Unknown"
-        prompt = self.ai_conversations[history_id].system_prompt
+        prompt = conversation.system_prompt
         for name, text in slashbot.watchers.AVAILABLE_LLM_PROMPTS.items():
             if prompt == text:
                 prompt_name = name
 
         response = ""
-        response += f"**Model name**: {self.ai_conversations[history_id].model}\n"
-        response += f"**Token usage**: {self.ai_conversations[history_id].tokens}\n"
+        response += f"**Model name**: {conversation.model}\n"
+        response += f"**Token usage**: {conversation.tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {shorten(prompt, 1800)}\n"
 

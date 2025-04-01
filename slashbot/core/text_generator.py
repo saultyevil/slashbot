@@ -36,14 +36,21 @@ class TextGeneratorLLM(Logger):
     SEARCH_MODELS = ("gpt-4o-mini-search-preview",)
     AUDIO_MODELS = ("gpt-4o-mini-audio-preview",)
 
-    def __init__(self) -> None:
-        """Initialise a TextGeneratorLLM with default values."""
+    def __init__(self, *, extra_print: str = "") -> None:
+        """Initialise a TextGeneratorLLM with default values.
+
+        Parameters
+        ----------
+        extra_print : str, optional
+            Additional information to print at the start of the log message.
+
+        """
         super().__init__()
         self._model_name = "gpt-4o-mini"
         self._client = None
         self._base_url = None
         self._text_generator = None
-        self._init_for_model(self._model_name)
+        self._extra_print = f"[{extra_print}] " if extra_print else ""
 
     def _init_for_model(self, model: str) -> None:
         if model not in self.SUPPORTED_MODELS:
@@ -54,7 +61,7 @@ class TextGeneratorLLM(Logger):
         self._base_url = self._get_base_url_for_model(model)
         self._client = self._get_client()
         self._text_generator = self._get_generator_function()
-        self.log_info("Model set to %s with base url %s", self._model_name, self._base_url)
+        self.log_info("%sModel set to %s with base url %s", self._extra_print, self._model_name, self._base_url)
 
     def _get_base_url_for_model(self, model: str) -> str:
         if model in TextGeneratorLLM.SUPPORTED_OPENAI_MODELS:
@@ -145,6 +152,9 @@ class TextGeneratorLLM(Logger):
                 ]
 
         """
+        if not self._client:
+            self._init_for_model(self._model_name)
+
         # TODO(EP): handle and/or raise custom exception on failure
         response = await self._text_generator(
             messages=messages,
