@@ -94,7 +94,7 @@ class AIConversation(TextGeneratorLLM):
         if images:
             images = self._prepare_images_for_context(images)
             self._context.append(
-                {"role": "user", "content": [{"type": "text", "content": message}, *images]},
+                {"role": "user", "content": [{"type": "text", "text": message}, *images]},
             )
         else:
             self._context.append({"role": "user", "content": message})
@@ -116,7 +116,7 @@ class AIConversation(TextGeneratorLLM):
             {
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:{image.mime_type};base64,{image.b64image}" if image.b64image else image.url,
+                    "url": f"data:image/{image.mime_type};base64,{image.b64image}" if image.b64image else image.url,
                     "detail": "low",
                 },
             }
