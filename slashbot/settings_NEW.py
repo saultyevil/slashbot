@@ -1,27 +1,24 @@
 import os
+import sys
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 
-# --- Dataclass Definitions ---
 @dataclass
 class SpellcheckSettings:
+    """Settings for the spellcheck cog."""
+
     enabled: bool
     servers: dict[str, Any]
     custom_dictionary: str
 
 
 @dataclass
-class ScheduledPostsSettings:
-    random_post_channels: list[int]
-
-
-@dataclass
 class AIChatSettings:
-    summary_prompt: str
-    random_response_prompt: str
+    """Settings for LLM text generation."""
+
     token_window_size: int
     max_output_tokens: int
     model_temperature: float
@@ -33,37 +30,40 @@ class AIChatSettings:
     random_response_chance: float
     response_rate_limit: int
     rate_limit_interval: int
-    prompt_prepend: str
-    prompt_append: str
-    use_historic_replies: bool
     enable_profiling: bool
     prefer_image_urls: bool
 
 
 @dataclass
 class CogSettings:
+    """Cog settings."""
+
     spellcheck: SpellcheckSettings
-    scheduled_posts: ScheduledPostsSettings
     ai_chat: AIChatSettings
 
 
 @dataclass
-class CooldownSettings:
+class CommandCooldownSettings:
+    """Command cooldown settings."""
+
     rate: int
     standard: int
-    extended: int
     no_cooldown_users: list[int]
     no_cooldown_servers: list[int]
 
 
 @dataclass
 class DiscordSettings:
+    """Discord specific settings."""
+
     max_chars: int
     development_servers: list[int]
 
 
 @dataclass
 class FilesSettings:
+    """File locations and settings."""
+
     database: str
     bad_words: str
     god_words: str
@@ -71,13 +71,17 @@ class FilesSettings:
 
 
 @dataclass
-class LogfileSettings:
-    log_name: str
+class LoggingSettings:
+    """Logfile settings."""
+
+    logger_name: str
     log_location: str
 
 
 @dataclass
 class MarkovSettings:
+    """Settings related to Markov generation."""
+
     enable_markov_training: bool
     enable_pregen_sentences: bool
     num_pregen_sentences: int
@@ -86,29 +90,29 @@ class MarkovSettings:
 
 @dataclass
 class Settings:
+    """Global settings dataclass."""
+
+    config_file: str
     cogs: CogSettings
-    cooldown: CooldownSettings
+    cooldown: CommandCooldownSettings
     discord: DiscordSettings
     files: FilesSettings
-    logfile: LogfileSettings
+    logging: LoggingSettings
     markov: MarkovSettings
 
     @classmethod
-    def from_toml(cls, path: str | Path) -> "Settings":
-        with open(path, "rb") as f:
+    def from_toml(cls, config_path: str | Path) -> "Settings":
+        """Load the settings from a TOML file."""
+        config_path = Path(config_path)
+        with config_path.open("rb") as f:
             data = tomllib.load(f)
-        # Build each section using the lower-case keys from the TOML.
+
         spellcheck = SpellcheckSettings(
             enabled=data["cogs"]["spellcheck"]["enabled"],
             servers=data["cogs"]["spellcheck"]["servers"],
             custom_dictionary=data["cogs"]["spellcheck"]["custom_dictionary"],
         )
-        scheduled_posts = ScheduledPostsSettings(
-            random_post_channels=data["cogs"]["scheduled_posts"]["random_post_channels"]
-        )
         ai_chat = AIChatSettings(
-            summary_prompt=data["cogs"]["ai_chat"]["summary_prompt"],
-            random_response_prompt=data["cogs"]["ai_chat"]["random_response_prompt"],
             token_window_size=data["cogs"]["ai_chat"]["token_window_size"],
             max_output_tokens=data["cogs"]["ai_chat"]["max_output_tokens"],
             model_temperature=data["cogs"]["ai_chat"]["model_temperature"],
@@ -120,17 +124,13 @@ class Settings:
             random_response_chance=data["cogs"]["ai_chat"]["random_response_chance"],
             response_rate_limit=data["cogs"]["ai_chat"]["response_rate_limit"],
             rate_limit_interval=data["cogs"]["ai_chat"]["rate_limit_interval"],
-            prompt_prepend=data["cogs"]["ai_chat"]["prompt_prepend"],
-            prompt_append=data["cogs"]["ai_chat"]["prompt_append"],
-            use_historic_replies=data["cogs"]["ai_chat"]["use_historic_replies"],
             enable_profiling=data["cogs"]["ai_chat"]["enable_profiling"],
             prefer_image_urls=data["cogs"]["ai_chat"]["prefer_image_urls"],
         )
-        cogs = CogSettings(spellcheck=spellcheck, scheduled_posts=scheduled_posts, ai_chat=ai_chat)
-        cooldown = CooldownSettings(
+        cogs = CogSettings(spellcheck=spellcheck, ai_chat=ai_chat)
+        cooldown = CommandCooldownSettings(
             rate=data["cooldown"]["rate"],
             standard=data["cooldown"]["standard"],
-            extended=data["cooldown"]["extended"],
             no_cooldown_users=data["cooldown"]["no_cooldown_users"],
             no_cooldown_servers=data["cooldown"]["no_cooldown_servers"],
         )
@@ -144,8 +144,8 @@ class Settings:
             god_words=data["files"]["god_words"],
             scheduled_posts=data["files"]["scheduled_posts"],
         )
-        logfile = LogfileSettings(
-            log_name=data["logfile"]["log_name"],
+        logging = LoggingSettings(
+            logger_name=data["logfile"]["log_name"],
             log_location=data["logfile"]["log_location"],
         )
         markov = MarkovSettings(
@@ -155,19 +155,39 @@ class Settings:
             pregenerate_limit=data["markov"]["pregenerate_limit"],
         )
         return cls(
+            config_file=str(config_path.resolve()),
             cogs=cogs,
             cooldown=cooldown,
             discord=discord,
             files=files,
-            logfile=logfile,
+            logging=logging,
             markov=markov,
         )
 
 
 def load_settings() -> Settings:
-    config_path = "bot-config.toml"
+    """Load the settings from a TOML file.
+
+    Returns
+    -------
+    Settings
+        The settings from the TOML file, as a Settings dataclass.
+
+    """
+    config_path = Path(os.getenv("BOT_CONFIG_TOML", "./bot-config.toml"))
+    if not config_path.is_file():
+        print(f"Failed to load config file defined in $BOT_CONFIG {config_path} or default location")  # noqa: T201
+        sys.exit(1)
+
     return Settings.from_toml(config_path)
 
 
-settings = load_settings()
-print(settings)
+BotSettings = load_settings()
+a = 1
+
+
+def reload_settings() -> None:
+    """Reload the global BotSettings."""
+    global BotSettings  # noqa: PLW0603
+    BotSettings = load_settings()
+    return BotSettings

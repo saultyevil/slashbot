@@ -13,9 +13,7 @@ random_response_chance = 0.005
 response_rate_limit = 10
 rate_limit_interval = 5
 enable_profiling = true
-
-[cogs.scheduled_posts]
-random_post_channels = [237647756049514498]
+prefer_image_urls = true
 
 [cogs.spellcheck]
 enabled = true
