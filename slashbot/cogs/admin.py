@@ -383,7 +383,7 @@ class AdminTools(CustomCog):
             return
         await self.restart_bot(inter, on_the_fly_markov)
 
-    @slash_command_with_cooldown(name="set_config_value")
+    # @slash_command_with_cooldown(name="set_config_value")
     async def set_config_value(
         self,
         inter: ApplicationCommandInteraction,
