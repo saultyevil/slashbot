@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import shutil
 from pathlib import Path
@@ -7,9 +6,10 @@ from pathlib import Path
 import aiofiles
 import git
 
-from slashbot.settings import BotConfig
+from slashbot.core.logger import Logger
+from slashbot.settings import BotSettings
 
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+logger = Logger()
 
 
 def _open_config_file() -> dict:
@@ -21,7 +21,7 @@ def _open_config_file() -> dict:
         The contents of the config file.
 
     """
-    with Path(BotConfig.get_config("CONFIG_FILE")).open(encoding="utf-8") as file_in:
+    with Path(BotSettings.config_file).open(encoding="utf-8") as file_in:
         return json.load(file_in)
 
 
@@ -34,7 +34,7 @@ def _save_modified_config(updated_config: dict) -> None:
         The updated config file.
 
     """
-    file = Path(BotConfig.get_config("CONFIG_FILE"))
+    file = Path(BotSettings.config_file)
     shutil.copy(file, file.with_suffix(".bak"))
     try:
         with file.open("w", encoding="utf-8") as file_out:
@@ -71,7 +71,7 @@ async def get_logfile_tail(logfile_path: Path, num_lines: int) -> list[str]:
             num_chars += len(log_lines[-i])
         except IndexError:
             break
-        if num_chars > BotConfig.get_config("MAX_CHARS"):
+        if num_chars > BotSettings.discord.max_chars:
             break
         tail.append(log_lines[-i])
 
@@ -89,10 +89,10 @@ def restart_bot(arguments: list[str]) -> None:
     """
     poetry_executable = shutil.which("poetry")
     if poetry_executable is None:
-        logger.error("Could not find the poetry executable")
+        logger.log_error("Could not find the poetry executable")
         return
     command = [poetry_executable, "run", *arguments]
-    logger.info("Restarting with command %s", command)
+    logger.log_info("Restarting with command %s", command)
     os.execv(command[0], command)  # noqa: S606
 
 

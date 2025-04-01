@@ -8,7 +8,7 @@ import wolframalpha
 from disnake.ext import commands
 
 from slashbot.core.custom_cog import CustomCog
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user
 
@@ -29,11 +29,11 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
 
         """
         super().__init__(bot)
-        self.worlfram_alpha_client = wolframalpha.Client(BotConfig.get_config("WOLFRAM_API_KEY"))
+        self.worlfram_alpha_client = wolframalpha.Client(BotSettings.keys.wolframalpha)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="die_roll", description="roll a dice")
     async def die_roll(
         self,
@@ -52,7 +52,7 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="wolfram", description="ask wolfram a question")
     async def wolfram(
         self,
@@ -81,7 +81,7 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
         results = self.worlfram_alpha_client.query(question)
 
         if not results["@success"]:
-            async with aiofiles.open(BotConfig.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
+            async with aiofiles.open(BotSettings.files.bad_words, encoding="utf-8") as file_in:
                 bad_word = (await file_in.readlines())[random.randint(0, num_solutions - 1)].strip()
             embed.add_field(
                 name=f"{question}",

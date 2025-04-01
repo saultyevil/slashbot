@@ -13,7 +13,7 @@ from slashbot.clock import calculate_seconds_until
 from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.markov import generate_text_from_markov_chain
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 from slashbot.watchers import ScheduledPostWatcher
 
 COOLDOWN_USER = commands.BucketType.user
@@ -108,7 +108,7 @@ class ScheduledPosts(CustomCog):
 
     def get_scheduled_posts(self) -> None:
         """Read in the scheduled posts Json file."""
-        with Path.open(BotConfig.get_config("SCHEDULED_POST_FILE"), encoding="utf-8") as file_in:
+        with Path.open(BotSettings.files.scheduled_posts, encoding="utf-8") as file_in:
             posts_json = json.load(file_in)
 
         self.scheduled_posts = posts_json["SCHEDULED_POSTS"]
@@ -131,14 +131,14 @@ class ScheduledPosts(CustomCog):
         self.log_info(
             "%d scheduled posts loaded from %s",
             len(self.scheduled_posts),
-            BotConfig.get_config("SCHEDULED_POST_FILE"),
+            BotSettings.files.scheduled_posts,
         )
         self.order_scheduled_posts_by_soonest()
 
     def update_posts_on_modify(self) -> None:
         """Reload the posts on file modify."""
         slashbot.watchers.FILE_OBSERVER.schedule(
-            ScheduledPostWatcher(self), path=str(BotConfig.get_config("SCHEDULED_POST_FILE").parent.absolute())
+            ScheduledPostWatcher(self), path=str(BotSettings.files.scheduled_posts.parent.absolute())
         )
 
     # Task ---------------------------------------------------------------------

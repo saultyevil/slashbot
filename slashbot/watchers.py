@@ -1,17 +1,17 @@
-import copy
 import json
 import logging
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from slashbot.prompts import create_prompt_dict, read_in_prompt_json
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings, reload_settings
 
 AVAILABLE_LLM_PROMPTS = create_prompt_dict()
-LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(BotSettings.logging.logger_name)
 
 
 class PromptFileWatcher(FileSystemEventHandler):
@@ -43,7 +43,13 @@ class PromptFileWatcher(FileSystemEventHandler):
 
 
 class ConfigFileWatcher(FileSystemEventHandler):
-    """Class for watching for changes to the config file."""
+    """Watches for changes to the configuration file and reloads BotSettings.
+
+    ####
+    THIS IS NOT IMPLEMENTED YET
+    ###
+
+    """
 
     def on_modified(self, event: FileSystemEventHandler) -> None:
         """Reload the config on file modify.
@@ -54,20 +60,29 @@ class ConfigFileWatcher(FileSystemEventHandler):
             The event to check.
 
         """
-        if event.event_type == "modified" and event.src_path == BotConfig.get_config("CONFIG_FILE"):
-            original_config = copy.copy(BotConfig._config)  # noqa: SLF001
-            new_config = BotConfig.set_config_values()
-            modified_keys = {
-                key for key in original_config if key in new_config and original_config[key] != new_config[key]
+        src_path = str(Path(event.src_path).resolve())
+        if event.event_type == "modified" and src_path == BotSettings.config_file:
+            old_settings = asdict(BotSettings)
+            new_settings = asdict(reload_settings())
+            changes = {
+                key: (old_settings[key], new_settings[key])
+                for key in old_settings
+                if old_settings[key] != new_settings[key]
             }
-            if modified_keys:
-                LOGGER.info("App config updated:")
-                for key in modified_keys:
-                    LOGGER.info("  %s: %s -> %s", key, original_config[key], new_config[key])
+            if changes:
+                LOGGER.info("Bot settings updated:")
+                for key, (old_val, new_val) in changes.items():
+                    LOGGER.info("  %s: %s -> %s", key, old_val, new_val)
+
+            LOGGER.info("%s", BotSettings.markov.pregenerate_limit)
 
 
 class ScheduledPostWatcher(FileSystemEventHandler):
-    """File watcher to watch for changes to scheduled posts file."""
+    """File watcher to watch for changes to scheduled posts file.
+
+    Note that the ScheduledPostWatcher is scheduled to a different thread inside
+    the ScheduledPosts cog.
+    """
 
     def __init__(self, parent_class) -> None:  # noqa: ANN001
         """Initialise the watcher."""
@@ -88,7 +103,7 @@ class ScheduledPostWatcher(FileSystemEventHandler):
             return
         self.last_restart_time = time.time()
 
-        if event.src_path == str(BotConfig.get_config("SCHEDULED_POST_FILE").absolute()):
+        if event.src_path == str(BotSettings.files.scheduled_posts):
             self.parent.get_scheduled_posts()
             if self.parent.post_loop.is_running():
                 self.parent.post_loop.cancel()
@@ -99,5 +114,5 @@ class ScheduledPostWatcher(FileSystemEventHandler):
 
 FILE_OBSERVER = Observer()
 FILE_OBSERVER.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
-FILE_OBSERVER.schedule(ConfigFileWatcher(), path=Path(BotConfig.get_config("CONFIG_FILE")).parent)
+# FILE_OBSERVER.schedule(ConfigFileWatcher(), path=Path(BotSettings.config_file).parent)
 FILE_OBSERVER.start()

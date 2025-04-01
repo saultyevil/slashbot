@@ -19,7 +19,7 @@ from disnake.ext import commands
 
 from slashbot.core import markov
 from slashbot.core.custom_bot import CustomInteractionBot
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 LAUNCH_TIME = time.time()
 
@@ -158,7 +158,7 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
     bot.logger.setLevel(log_level)
 
     bot.log_info("Initializing... %s", args)
-    bot.log_info("Config file: %s", BotConfig.get_config("CONFIG_FILE"))
+    bot.log_info("Config file: %s", BotSettings.config_file)
 
     if args.on_the_fly_markov:
         markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle")
@@ -183,9 +183,9 @@ def main() -> None:
 
     try:
         if args.debug:
-            bot.run(BotConfig.get_config("DEVELOPMENT_TOKEN"))
+            bot.run(BotSettings.keys.development_token)
         else:
-            bot.run(BotConfig.get_config("RUN_TOKEN"))
+            bot.run(BotSettings.keys.run_token)
     except TypeError:
         bot.log_error("No Discord token provided.")
         return 1

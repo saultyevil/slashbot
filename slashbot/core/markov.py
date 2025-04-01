@@ -18,9 +18,9 @@ import markovify
 
 from slashbot.core.custom_types import ApplicationCommandInteraction
 from slashbot.errors import deferred_error_message
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
-LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(BotSettings.logging.logger_name)
 MARKOV_MODEL = None
 MARKOV_BANK = None
 
@@ -226,7 +226,7 @@ def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markov
         msg = f"No chain at {chain_location}"
         raise OSError(msg)
 
-    BotConfig.set_config("CURRENT_MARKOV_CHAIN", chain_location)
+    BotSettings.markov.current_chain = chain_location
 
     return model
 

@@ -7,7 +7,7 @@ from disnake.ext.commands import Cog
 from slashbot.core import markov
 from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.logger import Logger
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 
 class CustomCog(Cog, Logger):
@@ -82,7 +82,7 @@ class CustomCog(Cog, Logger):
         for seed_word in seed_words or self.markov_seed_words:
             current_amount = len(self._markov_sentences.get(seed_word, []))
             self._markov_sentences[seed_word] = self.get_random_markov_sentence(
-                seed_word, amount=BotConfig.get_config("PREGEN_MARKOV_SENTENCES_AMOUNT") - current_amount
+                seed_word, amount=BotSettings.markov.num_pregen_sentences - current_amount
             )
         self.log_info("Generated markov sentences for seed words: %s", self.markov_seed_words)
 
@@ -101,10 +101,10 @@ class CustomCog(Cog, Logger):
 
         """
         # Servers which don't have a cooldown
-        if inter.guild and inter.guild.id not in BotConfig.get_config("NO_COOLDOWN_SERVERS"):
+        if inter.guild and inter.guild.id not in BotSettings.cooldown.no_cooldown_servers:
             inter.application_command.reset_cooldown(inter)
         # Users which don't have a cooldown
-        if inter.author.id in BotConfig.get_config("NO_COOLDOWN_USERS"):
+        if inter.author.id in BotSettings.cooldown.no_cooldown_users:
             inter.application_command.reset_cooldown(inter)
 
     async def cog_load(self) -> None:
@@ -151,5 +151,5 @@ class CustomCog(Cog, Logger):
         if not self.bot.use_markov_cache:
             return
         for seed_word in self.markov_seed_words:
-            if len(self._markov_sentences[seed_word]) < BotConfig.get_config("PREGEN_REGENERATE_LIMIT"):
+            if len(self._markov_sentences[seed_word]) < BotSettings.markov.pregenerate_limit:
                 self._populate_markov_cache(seed_words=[seed_word])

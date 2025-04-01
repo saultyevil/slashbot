@@ -1,16 +1,16 @@
 """Module for general purpose message handling."""
 
 import base64
-import logging
 
 import requests
 
 from slashbot.core.conversation import VisionImage
 from slashbot.core.custom_types import ApplicationCommandInteraction, Message
-from slashbot.settings import BotConfig
+from slashbot.core.logger import Logger
+from slashbot.settings import BotSettings
 
-LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
-MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
+LOGGER = Logger()
+MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
 
 
 def split_text_into_chunks(text: str, chunk_length: int) -> list:
@@ -130,8 +130,8 @@ async def get_attached_images_from_message(message: Message) -> list[VisionImage
 
     """
     # DeepSeek doesn't support vision as of current implementation 28/01/2025
-    if BotConfig.get_config("AI_CHAT_CHAT_MODEL") in ["deepseek-chat", "deepseek-reasoner", "o3-mini"]:
-        LOGGER.debug("Vision not supported in current model %s", BotConfig.get_config("AI_CHAT_CHAT_MODEL"))
+    if BotSettings.cogs.ai_chat.chat_model in ["deepseek-chat", "deepseek-reasoner", "o3-mini"]:
+        LOGGER.log_debug("Vision not supported in current model %s", BotSettings.cogs.ai_chat.chat_model)
         return []
 
     image_urls = []  # Start off with empty list, which makes it clearer we will always returns a list
@@ -144,5 +144,5 @@ async def get_attached_images_from_message(message: Message) -> list[VisionImage
         try:
             result.append(download_and_encode_image(url))
         except Exception:
-            LOGGER.exception("Failed to download image from %s", url)
+            LOGGER.log_exception("Failed to download image from %s", url)
     return result

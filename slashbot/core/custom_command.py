@@ -4,12 +4,12 @@ from typing import Any
 
 from disnake.ext import commands
 
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user
-COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")
-COOLDOWN_RATE = BotConfig.get_config("COOLDOWN_RATE")
-LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+COOLDOWN_STANDARD = BotSettings.cooldown.standard
+COOLDOWN_RATE = BotSettings.cooldown.rate
+LOGGER = logging.getLogger(BotSettings.logging.logger_name)
 
 
 def slash_command_with_cooldown(

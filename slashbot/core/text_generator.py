@@ -6,7 +6,7 @@ import openai
 import tiktoken
 
 from slashbot.core.logger import Logger
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 
 @dataclass
@@ -73,7 +73,7 @@ class TextGeneratorLLM(Logger):
     def _get_client(self) -> openai.AsyncClient:
         if self._client:
             return self._client
-        api_key = BotConfig.get_config("OPENAI_API_KEY")
+        api_key = BotSettings.keys.openai
 
         return openai.AsyncOpenAI(api_key=api_key, base_url=self._base_url)
 

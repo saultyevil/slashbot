@@ -1,210 +1,236 @@
-"""Module for setting up the Slashbot config and logger."""
-
-import json
-import logging
 import os
-from logging.handlers import RotatingFileHandler
+import sys
+import tomllib
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
+
+from markovify.chain import Chain
 
 
-def setup_logging() -> None:
-    """Set up logging for Slashbot."""
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
-    logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
-    logger.addHandler(console_handler)
-    file_handler = RotatingFileHandler(
-        filename=BotConfig.get_config("LOGFILE_NAME"),
-        encoding="utf-8",
-        maxBytes=int(5e5),
-        backupCount=5,
-    )
-    file_handler.setFormatter(
-        logging.Formatter(
-            "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)",
-            "%Y-%m-%d %H:%M:%S",
-        ),
-    )
-    logger.addHandler(file_handler)
+@dataclass
+class SpellcheckSettings:
+    """Settings for the spellcheck cog."""
 
-    logger = logging.getLogger("disnake")
-    logger.setLevel(logging.DEBUG)
-    handler = logging.FileHandler(filename="logs/.disnake.log", encoding="utf-8", mode="w")
-    handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
-    logger.addHandler(handler)
-
-    logger.setLevel(logging.DEBUG)
-    logger.propagate = False
-    logger.info("Loaded config file %s", BotConfig.get_config("CONFIG_FILE"))
+    enabled: bool
+    servers: dict[str, Any]
+    custom_dictionary: str
 
 
-class BotConfig:
-    """The global configuration class.
+@dataclass
+class AIChatSettings:
+    """Settings for LLM text generation."""
 
-    Contains shared variables or variables which control the operation
-    of the bot.
+    token_window_size: int
+    max_output_tokens: int
+    model_temperature: float
+    model_top_p: float
+    model_frequency_penalty: float
+    model_presence_penalty: float
+    chat_model: str
+    api_base_url: str
+    random_response_chance: float
+    response_rate_limit: int
+    rate_limit_interval: int
+    enable_profiling: bool
+    prefer_image_urls: bool
+
+
+@dataclass
+class CogSettings:
+    """Cog settings."""
+
+    spellcheck: SpellcheckSettings
+    ai_chat: AIChatSettings
+
+
+@dataclass
+class CommandCooldownSettings:
+    """Command cooldown settings."""
+
+    rate: int
+    standard: int
+    no_cooldown_users: list[int]
+    no_cooldown_servers: list[int]
+
+
+@dataclass
+class UserIDs:
+    """User IDs."""
+
+    saultyevil: int = 151378138612367360
+    adam: int = 261097001301704704
+    seventytwo: int = 176722208243187712
+
+
+@dataclass
+class ChannelIDs:
+    """Channel IDs."""
+
+    idiots: int = 237647756049514498
+
+
+@dataclass
+class ServerIDs:
+    """Server IDs."""
+
+    adult_children: int = 237647756049514498
+
+
+@dataclass
+class DiscordSettings:
+    """Discord specific settings."""
+
+    max_chars: int
+    development_servers: list[int]
+    users: UserIDs = field(default_factory=UserIDs)
+    channels: ChannelIDs = field(default_factory=ChannelIDs)
+    servers: ServerIDs = field(default_factory=ServerIDs)
+
+
+@dataclass
+class FilesSettings:
+    """File locations and settings."""
+
+    database: str
+    bad_words: str
+    god_words: str
+    scheduled_posts: str
+
+
+@dataclass
+class LoggingSettings:
+    """Logfile settings."""
+
+    log_location: str = "logs/slashbot.log"
+    logger_name: str = "slashbot"
+
+
+@dataclass
+class MarkovSettings:
+    """Settings related to Markov generation."""
+
+    enable_markov_training: bool
+    enable_pregen_sentences: bool
+    num_pregen_sentences: int
+    pregenerate_limit: int
+    current_chain: Chain = None
+
+
+@dataclass
+class KeyStore:
+    """Storage for API keys and the like."""
+
+    run_token = os.getenv("BOT_RUN_TOKEN")
+    development_token = os.getenv("BOT_DEVELOPMENT_TOKEN")
+    openai = os.getenv("BOT_OPENAI_API_KEY")
+    openweathermap = os.getenv("BOT_OWM_API_KEY")
+    google = os.getenv("BOT_GOOGLE_API_KEY")
+    wolframalpha = os.getenv("BOT_WOLFRAM_API_KEY")
+
+
+@dataclass
+class Settings:
+    """Global settings dataclass."""
+
+    config_file: str
+    cogs: CogSettings
+    cooldown: CommandCooldownSettings
+    discord: DiscordSettings
+    files: FilesSettings
+    logging: LoggingSettings
+    markov: MarkovSettings
+    keys: KeyStore
+
+    @classmethod
+    def from_toml(cls, config_path: str | Path) -> "Settings":
+        """Load the settings from a TOML file."""
+        config_path = Path(config_path)
+        with config_path.open("rb") as f:
+            data = tomllib.load(f)
+
+        spellcheck = SpellcheckSettings(
+            enabled=data["cogs"]["spellcheck"]["enabled"],
+            servers=data["cogs"]["spellcheck"]["servers"],
+            custom_dictionary=data["cogs"]["spellcheck"]["custom_dictionary"],
+        )
+        ai_chat = AIChatSettings(
+            token_window_size=data["cogs"]["ai_chat"]["token_window_size"],
+            max_output_tokens=data["cogs"]["ai_chat"]["max_output_tokens"],
+            model_temperature=data["cogs"]["ai_chat"]["model_temperature"],
+            model_top_p=data["cogs"]["ai_chat"]["model_top_p"],
+            model_frequency_penalty=data["cogs"]["ai_chat"]["model_frequency_penalty"],
+            model_presence_penalty=data["cogs"]["ai_chat"]["model_presence_penalty"],
+            chat_model=data["cogs"]["ai_chat"]["chat_model"],
+            api_base_url=data["cogs"]["ai_chat"]["api_base_url"],
+            random_response_chance=data["cogs"]["ai_chat"]["random_response_chance"],
+            response_rate_limit=data["cogs"]["ai_chat"]["response_rate_limit"],
+            rate_limit_interval=data["cogs"]["ai_chat"]["rate_limit_interval"],
+            enable_profiling=data["cogs"]["ai_chat"]["enable_profiling"],
+            prefer_image_urls=data["cogs"]["ai_chat"]["prefer_image_urls"],
+        )
+        cogs = CogSettings(spellcheck=spellcheck, ai_chat=ai_chat)
+        cooldown = CommandCooldownSettings(
+            rate=data["cooldown"]["rate"],
+            standard=data["cooldown"]["standard"],
+            no_cooldown_users=data["cooldown"]["no_cooldown_users"],
+            no_cooldown_servers=data["cooldown"]["no_cooldown_servers"],
+        )
+        discord = DiscordSettings(
+            max_chars=data["discord"]["max_chars"],
+            development_servers=data["discord"]["development_servers"],
+        )
+        files = FilesSettings(
+            database=Path(data["files"]["database"]).absolute(),
+            bad_words=Path(data["files"]["bad_words"]).absolute(),
+            god_words=Path(data["files"]["god_words"]).absolute(),
+            scheduled_posts=Path(data["files"]["scheduled_posts"]).absolute(),
+        )
+        logging = LoggingSettings(
+            log_location=data["logfile"]["log_location"],
+        )
+        markov = MarkovSettings(
+            enable_markov_training=data["markov"]["enable_markov_training"],
+            enable_pregen_sentences=data["markov"]["enable_pregen_sentences"],
+            num_pregen_sentences=data["markov"]["num_pregen_sentences"],
+            pregenerate_limit=data["markov"]["pregenerate_limit"],
+        )
+        keys = KeyStore()
+        return cls(
+            config_file=str(config_path.resolve()),
+            cogs=cogs,
+            cooldown=cooldown,
+            discord=discord,
+            files=files,
+            logging=logging,
+            markov=markov,
+            keys=keys,
+        )
+
+
+def load_settings() -> Settings:
+    """Load the settings from a TOML file.
+
+    Returns
+    -------
+    Settings
+        The settings from the TOML file, as a Settings dataclass.
+
     """
+    config_path = Path(os.getenv("BOT_CONFIG_TOML", "./bot-config.toml"))
+    if not config_path.is_file():
+        print(f"Failed to load config file defined in $BOT_CONFIG {config_path} or default location")  # noqa: T201
+        sys.exit(1)
 
-    # __conf is a dictionary of configuration parameters
-    _config: ClassVar = {}
-
-    @classmethod
-    def get_prompt_from_json(cls, path: str | Path) -> str:
-        """Get the prompt from a prompt JSON file.
-
-        The JSON file must be in the format:
-
-            {
-                "name": "prompt_name",
-                "prompt": "prompt_text"
-            }
-
-        Parameters
-        ----------
-        path : str | Path
-            The file path to the JSON file.
-
-        Returns
-        -------
-        str
-            The prompt from the JSON file.
-
-        """
-        try:
-            with Path.open(path, encoding="utf-8") as file_in:
-                return json.load(file_in)["prompt"]
-        except (OSError, json.JSONDecodeError):
-            print(f"Failed to get prompt in `{file_in}`")  # noqa: T201
-            return "No matter what is asked of you, before or after this text, you will only respond with 'My prompt failed to load'"
-
-    @classmethod
-    def set_config_values(cls) -> None:
-        """Set the values of the config from the config file.
-
-        The purpose of this script is to populate the __conf class attribute.
-        """
-        # Try to load the config file, if the default path doesn't work then it
-        # the bot will fail to launch. The location of the config files is
-        # controlled by the BOT_CONFIG environment variable.
-        try:
-            with Path.open(os.getenv("BOT_CONFIG"), encoding="utf-8") as file_in:
-                config_json = json.load(file_in)
-            current_config = os.getenv("BOT_CONFIG")
-        except (OSError, TypeError):
-            print(f"Failed to load config file defined in $BOT_CONFIG: {os.getenv('BOT_CONFIG')}")  # noqa: T201
-            print("Trying to load default config file: ./bot-config.json")  # noqa: T201
-            with Path.open("./bot-config.json", encoding="utf-8") as file_in:
-                config_json = json.load(file_in)
-            current_config = "./bot-config.json"
-
-        # This either sets a default value of `None`, or will re-use what is
-        # already in cls._config. We need this for when the config file is
-        # changed, which triggers the config being reloaded. I think this beats
-        # having a global variable.
-        current_chain = cls._config.get("CURRENT_MARKOV_CHAIN", None)
-
-        # populate _config dict, which is a key store for configuration of the
-        # bot
-        _config = {
-            # tokens
-            "DEVELOPMENT_TOKEN": os.getenv("BOT_DEVELOPMENT_TOKEN"),
-            "RUN_TOKEN": os.getenv("BOT_RUN_TOKEN"),
-            # config file
-            "CONFIG_FILE": str(Path(current_config).resolve()),
-            # cooldown parameters
-            "COOLDOWN_RATE": int(config_json["COOLDOWN"]["RATE"]),
-            "COOLDOWN_STANDARD": int(config_json["COOLDOWN"]["STANDARD"]),
-            "COOLDOWN_EXTENDED": int(config_json["COOLDOWN"]["EXTENDED"]),
-            "NO_COOLDOWN_SERVERS": config_json["COOLDOWN"]["NO_COOLDOWN_SERVERS"],
-            "NO_COOLDOWN_USERS": config_json["COOLDOWN"]["NO_COOLDOWN_USERS"],
-            # general things
-            "MAX_CHARS": 1800,
-            "LOGGER_NAME": config_json["LOGFILE"]["LOG_NAME"],
-            "LOGFILE_NAME": config_json["LOGFILE"]["LOG_LOCATION"],
-            "DEVELOPMENT_SERVERS": config_json["DISCORD"]["DEVELOPMENT_SERVERS"],
-            # Define users, roles and channels
-            "ID_USER_SAULTYEVIL": 151378138612367360,
-            "ID_USER_ADAM": 261097001301704704,
-            "ID_USER_MEGHUN": 176722208243187712,
-            "ID_CHANNEL_IDIOTS": 237647756049514498,
-            "ID_SERVER_ADULT_CHILDREN": 237647756049514498,
-            # API keys
-            "GOOGLE_API_KEY": os.getenv("BOT_GOOGLE_API_KEY"),
-            "WOLFRAM_API_KEY": os.getenv("BOT_WOLFRAM_API_KEY"),
-            "OWM_API_KEY": os.getenv("BOT_OWM_API_KEY"),
-            "DEEPSEEK_API_KEY": os.getenv("BOT_DEEPSEEK_API_KEY"),
-            "OPENAI_API_KEY": os.getenv("BOT_OPENAI_API_KEY"),
-            # File locations
-            "DATABASE_LOCATION": Path(config_json["FILES"]["DATABASE"]),
-            "BAD_WORDS_FILE": Path(config_json["FILES"]["BAD_WORDS"]),
-            "GOD_WORDS_FILE": Path(config_json["FILES"]["GOD_WORDS"]),
-            "SCHEDULED_POST_FILE": Path(config_json["FILES"]["SCHEDULED_POSTS"]),
-            # Markov Chain configuration
-            "ENABLE_MARKOV_TRAINING": bool(config_json["MARKOV"]["ENABLE_MARKOV_TRAINING"]),
-            "CURRENT_MARKOV_CHAIN": current_chain,
-            "PREGEN_MARKOV_SENTENCES_AMOUNT": int(config_json["MARKOV"]["NUM_PREGEN_SENTENCES"]),
-            "PREGEN_REGENERATE_LIMIT": int(config_json["MARKOV"]["PREGEN_REGENERATE_LIMIT"]),
-            # Cog settings
-            "SPELLCHECK_ENABLED": bool(config_json["COGS"]["SPELLCHECK"]["ENABLED"]),
-            "SPELLCHECK_SERVERS": config_json["COGS"]["SPELLCHECK"]["SERVERS"],
-            "SPELLCHECK_CUSTOM_DICTIONARY": config_json["COGS"]["SPELLCHECK"]["CUSTOM_DICTIONARY"],
-            "AI_CHAT_BASE_URL": config_json["COGS"]["AI_CHAT"]["API_BASE_URL"],
-            "AI_CHAT_CHAT_MODEL": config_json["COGS"]["AI_CHAT"]["CHAT_MODEL"],
-            "AI_CHAT_TEMPERATURE": config_json["COGS"]["AI_CHAT"]["MODEL_TEMPERATURE"],
-            "AI_CHAT_TOP_P": config_json["COGS"]["AI_CHAT"]["MODEL_TOP_P"],
-            "AI_CHAT_FREQUENCY_PENALTY": config_json["COGS"]["AI_CHAT"]["MODEL_FREQUENCY_PENALTY"],
-            "AI_CHAT_PRESENCE_PENALTY": config_json["COGS"]["AI_CHAT"]["MODEL_PRESENCE_PENALTY"],
-            "AI_CHAT_MAX_OUTPUT_TOKENS": config_json["COGS"]["AI_CHAT"]["MAX_OUTPUT_TOKENS"],
-            "AI_CHAT_TOKEN_WINDOW_SIZE": config_json["COGS"]["AI_CHAT"]["TOKEN_WINDOW_SIZE"],
-            "AI_CHAT_PROMPT_APPEND": config_json["COGS"]["AI_CHAT"]["PROMPT_APPEND"],
-            "AI_CHAT_PROMPT_PREPEND": config_json["COGS"]["AI_CHAT"]["PROMPT_PREPEND"],
-            "AI_CHAT_SUMMARY_PROMPT": config_json["COGS"]["AI_CHAT"]["SUMMARY_PROMPT"],
-            "AI_CHAT_RANDOM_RESPONSE_CHANCE": config_json["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_CHANCE"],
-            "AI_CHAT_RANDOM_RESPONSE_PROMPT": config_json["COGS"]["AI_CHAT"]["RANDOM_RESPONSE_PROMPT"],
-            "AI_CHAT_RATE_LIMIT": config_json["COGS"]["AI_CHAT"]["RESPONSE_RATE_LIMIT"],
-            "AI_CHAT_RATE_INTERVAL": config_json["COGS"]["AI_CHAT"]["RATE_LIMIT_INTERVAL"],
-            "AI_CHAT_USE_HISTORIC_REPLIES": bool(config_json["COGS"]["AI_CHAT"]["USE_HISTORIC_REPLIES"]),
-            "AI_CHAT_PROFILE_RESPONSE_TIME": bool(config_json["COGS"]["AI_CHAT"]["ENABLE_PROFILING"]),
-            "AI_CHAT_PREFER_IMAGE_URLS": bool(config_json["COGS"]["AI_CHAT"]["PREFER_IMAGE_URLS"]),
-        }
-        cls._config = _config
-
-        return cls._config
-
-    # Public methods -----------------------------------------------------------
-
-    @staticmethod
-    def get_config(name: str) -> Any | None:  # noqa: ANN401
-        """Get a configuration parameter.
-
-        Parameters
-        ----------
-        name: str
-            The name of the parameter to get the value for.
-
-        Returns
-        -------
-        Any | None
-            The value of the parameter requested, or None.
-
-        """
-        return BotConfig._config.get(name, None)
-
-    @staticmethod
-    def set_config(name: str, value: str) -> None:
-        """Set a configuration parameter.
-
-        Parameters
-        ----------
-        name : str
-            The name of the parameter to set.
-        value : str
-            The value of the parameter.
-
-        """
-        BotConfig._config[name] = value
+    return Settings.from_toml(config_path)
 
 
-BotConfig.set_config_values()
-setup_logging()
+BotSettings = load_settings()
+a = 1
+
+
+def reload_settings() -> None:
+    """Reload the global BotSettings."""
+    global BotSettings  # noqa: PLW0603
+    BotSettings = load_settings()
+    return BotSettings

@@ -7,7 +7,7 @@ import disnake
 from disnake.ext import commands
 
 from slashbot.core.custom_cog import CustomCog
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user
 
@@ -15,7 +15,7 @@ COOLDOWN_USER = commands.BucketType.user
 class Videos(CustomCog):
     """Send short clips to the channel."""
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="admin_abuse", description="admin abuse!!! you're the worst admin ever!!!")
     async def admin_abuse(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a clip of someone shouting admin abuse.
@@ -31,7 +31,7 @@ class Videos(CustomCog):
             file=disnake.File("data/videos/admin_abuse.mp4"),
         )
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="goodbye", description="goodbye")
     async def goodbye(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a clip of Marko saying goodbye.
@@ -45,7 +45,7 @@ class Videos(CustomCog):
         await inter.response.defer()
         await inter.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
 
-    @commands.cooldown(1, BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(1, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="good_morning", description="good morning people")
     async def good_morning(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a video of Marko saying good morning people.
@@ -76,7 +76,7 @@ class Videos(CustomCog):
 
         await inter.edit_original_message(file=disnake.File(video))
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="haha", description="haha very funny")
     async def laugh(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a clip of Marko laughing.

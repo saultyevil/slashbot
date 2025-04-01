@@ -19,11 +19,11 @@ from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
 from slashbot.core.custom_types import ApplicationCommandInteraction
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user
-COOLDOWN_STANDARD = BotConfig.get_config("COOLDOWN_STANDARD")
-COOLDOWN_RATE = BotConfig.get_config("COOLDOWN_RATE")
+COOLDOWN_STANDARD = BotSettings.cooldown.standard
+COOLDOWN_RATE = BotSettings.cooldown.rate
 JERMA_GIFS = list(Path("data/images").glob("jerma*.gif"))
 
 
@@ -119,7 +119,7 @@ class AdminTools(CustomCog):
         reason = await self._find_entry(guild, member, action_user, action)
         if reason:
             num_times = await self._count_times(guild, member, action)
-            channel = await self.bot.fetch_channel(BotConfig.get_config("ID_CHANNEL_IDIOTS"))
+            channel = await self.bot.fetch_channel(BotSettings.discord.channel.idiots)
             await channel.send(
                 f":warning: looks like {action_user.display_name} needs to zerk off after {action_present} "
                 f"{member.display_name} for {reason}!! This is the {num_times}{ordinal_suffix(num_times)} "
@@ -187,12 +187,12 @@ class AdminTools(CustomCog):
             The member which has been removed
 
         """
-        if member.id != BotConfig.get_config("ID_USER_ADAM"):
+        if member.id != BotSettings.discord.users.adam:
             return
         guild = member.guild
-        if guild.id != BotConfig.get_config("ID_SERVER_ADULT_CHILDREN"):
+        if guild.id != BotSettings.discord.servers.adult_children:
             return
-        filter_user = await self.bot.fetch_user(BotConfig.get_config("ID_USER_MEGHUN"))
+        filter_user = await self.bot.fetch_user(BotSettings.discord.users.seventytwo)
 
         # First check if he has been banned
         banned = await self._check_audit_log_for_action_and_invite(
@@ -219,10 +219,10 @@ class AdminTools(CustomCog):
             The member which has joined.
 
         """
-        if member.id != BotConfig.get_config("ID_USER_ADAM"):
+        if member.id != BotSettings.discord.users.adam:
             return
         guild = member.guild
-        if guild.id != BotConfig.get_config("ID_SERVER_ADULT_CHILDREN"):
+        if guild.id != BotSettings.discord.servers.adult_children:
             return
         if member.id not in self.invite_tasks:
             return
@@ -301,7 +301,7 @@ class AdminTools(CustomCog):
 
         """
         await inter.response.defer(ephemeral=True)
-        tail = await get_logfile_tail(Path(BotConfig.get_config("LOGFILE_NAME")), num_lines)
+        tail = await get_logfile_tail(Path(BotSettings.logger.log_location), num_lines)
         await inter.edit_original_message(f"```{tail}```")
 
     @slash_command_with_cooldown()
@@ -327,7 +327,7 @@ class AdminTools(CustomCog):
             into a bool.
 
         """
-        if inter.author.id != BotConfig.get_config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != BotSettings.discord.users.saultyevil:
             await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
 
@@ -371,7 +371,7 @@ class AdminTools(CustomCog):
             into a bool.
 
         """
-        if inter.author.id != BotConfig.get_config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != BotSettings.discord.users.saultyevil:
             await inter.response.send_message("You don't have permission to use this command.", ephemeral=True)
             return
         await inter.response.defer(ephemeral=True)
@@ -402,7 +402,7 @@ class AdminTools(CustomCog):
             The new value of the config setting.
 
         """
-        if inter.author.id != BotConfig.get_config("ID_USER_SAULTYEVIL"):
+        if inter.author.id != BotSettings.discord.users.saultyevil:
             await inter.response.send_message("You aren't allowed to use this command.", ephemeral=True)
             return
 
