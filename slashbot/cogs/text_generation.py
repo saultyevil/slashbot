@@ -18,7 +18,7 @@ from pyinstrument import Profiler
 
 import slashbot.watchers
 from slashbot.core import markov
-from slashbot.core.channel_summary import AIChannelSummary
+from slashbot.core.channel_summary import AIChannelSummary, SummaryMessage
 from slashbot.core.conversation import AIConversation
 from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
@@ -297,9 +297,15 @@ class TextGeneration(CustomCog):
         if message.type in [disnake.MessageType.application_command]:
             return
 
-        self._get_channel_history(message).add_message_to_history(
-            message,
-            self_message=message.author == self.bot.user,
+        clean_message = message.clean_content.replace(f"@{self.bot.user.name}", "me")
+        for user in message.mentions:
+            clean_message = message.clean_content.replace(f"@{user.name}", f"{user.display_name}")
+        channel_history = self._get_channel_history(message)
+        channel_history.add_message_to_history(
+            SummaryMessage(
+                user=message.author.display_name if message.author != self.bot.user else "me",
+                content=clean_message,
+            )
         )
 
     @commands.Cog.listener("on_message")
@@ -346,8 +352,8 @@ class TextGeneration(CustomCog):
             return
         await inter.response.defer(with_message="Generating summary...", ephemeral=True)
         summary = await channel_history.generate_summary()
-        await inter.edit_original_message("Summary generated!")
-        await send_message_to_channel(summary + f"\n*Requested by {inter.author.display_name}*", inter)
+        await inter.delete_original_response()
+        await send_message_to_channel(summary + f"\n\n*Requested by {inter.author.display_name}*", inter)
 
     @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_conversation_history(self, inter: disnake.ApplicationCommandInteraction) -> None:

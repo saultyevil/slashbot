@@ -1,18 +1,16 @@
 from dataclasses import dataclass
 from textwrap import dedent
 
-import disnake
-
 from slashbot.core.text_generator import TextGeneratorLLM
 
 
 @dataclass
-class TextChannelMessage:
+class SummaryMessage:
     """Dataclass for a message from a text channel."""
 
     user: str
-    message: str
-    tokens: int
+    content: str
+    tokens: int = 0
 
 
 class AIChannelSummary(TextGeneratorLLM):
@@ -24,7 +22,7 @@ class AIChannelSummary(TextGeneratorLLM):
             summary of the conversation, highlighting key points, sentiments,
             and notable exchanges to provide a comprehensive overview of the
             interaction. Provide details about specific users. You will be
-            named "assistant" in any transcripts or summaries sent to you. Do
+            named "me" in any transcripts or summaries sent to you. Do
             not refer to yourself in the third person under any circumstances.
             Instead, use the first person when describing your own
             contributions. If you generate a summary where you would
@@ -59,6 +57,9 @@ class AIChannelSummary(TextGeneratorLLM):
     def _remove_message_from_history_context(self, index: int) -> None:
         removed_message = self._history_context.pop(index)
         self._token_size -= removed_message.tokens
+        self.log_debug(
+            "%sRemoved %d tokens with message: %s", self._extra_print, removed_message.tokens, removed_message.message
+        )
 
     def _shrink_history_to_token_window_size(self) -> None:
         while self._token_size > self._token_window_size and len(self) > 1:
@@ -66,35 +67,31 @@ class AIChannelSummary(TextGeneratorLLM):
 
     # --------------------------------------------------------------------------
 
-    def add_message_to_history(self, message: disnake.Message, *, self_message: bool = False) -> None:
+    def add_message_to_history(self, message: SummaryMessage) -> None:
         """Add a message to the history.
 
         Parameters
         ----------
         message : disnake.Message
             The message to add
-        self_message : bool
-            Whether the message was sent by the bot or not
 
         """
         self._shrink_history_to_token_window_size()
-        self._history_context.append(
-            TextChannelMessage(
-                message.author.display_name if not self_message else "assistant",
-                message.clean_content,
-                self.count_tokens_for_message(message.clean_content),
-            )
-        )
+        if message.tokens == 0:
+            message.tokens = self.count_tokens_for_message(message.content)
+        self._history_context.append(message)
+        self.log_debug("%sAdding message: %s", self._extra_print, message.content)
 
     async def generate_summary(self) -> str:
         """Generate a summary of the current history."""
         history_message = "Summarise the following conversation between multiple users: " + "\n".join(
-            [f"{message.user}: {message.message}" for message in self._history_context]
+            [f"{message.user}: {message.content}" for message in self._history_context]
         )
         full_conversation = [
             {"role": "system", "content": AIChannelSummary.SUMMARY_PROMPT},
             {"role": "user", "content": history_message},
         ]
-
         response = await self.generate_text_from_llm(full_conversation)
+        self.log_debug("%sGenerated summary: %s", self._extra_print, response.message)
+
         return response.message
