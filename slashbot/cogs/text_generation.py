@@ -297,9 +297,10 @@ class TextGeneration(CustomCog):
         if message.type in [disnake.MessageType.application_command]:
             return
 
-        clean_message = message.clean_content.replace(f"@{self.bot.user.name}", "me")
+        clean_message = message.clean_content.replace(f"@{self.bot.user.name}", "[directed at me]")
         for user in message.mentions:
-            clean_message = message.clean_content.replace(f"@{user.name}", f"{user.display_name}")
+            clean_message = clean_message.replace(f"@{user.name}", f"[directed at {user.display_name}]")
+
         channel_history = self._get_channel_history(message)
         channel_history.add_message_to_history(
             SummaryMessage(
@@ -353,7 +354,7 @@ class TextGeneration(CustomCog):
         await inter.response.defer(with_message="Generating summary...", ephemeral=True)
         summary = await channel_history.generate_summary()
         await inter.delete_original_response()
-        await send_message_to_channel(summary + f"\n\n*Requested by {inter.author.display_name}*", inter)
+        await send_message_to_channel(summary, inter)
 
     @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
     async def reset_conversation_history(self, inter: disnake.ApplicationCommandInteraction) -> None:

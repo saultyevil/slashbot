@@ -84,13 +84,14 @@ class AIChannelSummary(TextGeneratorLLM):
 
     async def generate_summary(self) -> str:
         """Generate a summary of the current history."""
-        history_message = "Summarise the following conversation between multiple users: " + "\n".join(
+        history_message = "Summarise the following conversation between multiple users:\n" + "\n".join(
             [f"{message.user}: {message.content}" for message in self._history_context]
         )
         full_conversation = [
             {"role": "system", "content": AIChannelSummary.SUMMARY_PROMPT},
             {"role": "user", "content": history_message},
         ]
+        self.log_debug("%sContext for summary: %s", self._extra_print, full_conversation[1:])
         response = await self.generate_text_from_llm(full_conversation)
         self.log_debug("%sGenerated summary: %s", self._extra_print, response.message)
 
