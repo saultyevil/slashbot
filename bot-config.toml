@@ -40,7 +40,6 @@ god_words = "data/text/godwords.txt"
 scheduled_posts = "data/scheduled_posts.json"
 
 [logfile]
-log_name = "slashbot"
 log_location = "logs/slashbot.log"
 
 [markov]
