@@ -242,11 +242,12 @@ class TextGeneration(CustomCog):
                 + user_prompt
             )
 
-        try:
-            bot_response = await conversation.send_message(user_prompt, images)
-        except:
-            self.log_exception("Failed to get response from AI, reverting to markov sentence")
-            bot_response = self.get_random_markov_sentence()
+        async with self._lock:
+            try:
+                bot_response = await conversation.send_message(user_prompt, images)
+            except:  # noqa: E722
+                self.log_exception("Failed to get response from AI, reverting to markov sentence")
+                bot_response = self.get_random_markov_sentence()
 
         return bot_response
 
