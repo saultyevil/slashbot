@@ -17,7 +17,7 @@ from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
 from slashbot.core.database import get_user_location
 from slashbot.errors import deferred_error_message
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 
 class GeocodeError(Exception):
@@ -48,7 +48,7 @@ class Weather(CustomCog):
         """
         super().__init__(bot)
         self.geolocator = GoogleV3(
-            api_key=BotConfig.get_config("GOOGLE_API_KEY"),
+            api_key=BotSettings.keys.google,
             domain="maps.google.co.uk",
         )
         self.markov_seed_words = ["weather", "forecast"]
@@ -203,7 +203,7 @@ class Weather(CustomCog):
         api_units = "metric" if units == "mixed" else units
 
         weather_response = requests.get(
-            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={BotConfig.get_config('OWM_API_KEY')}",
+            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={BotSettings.keys.openweathermap}",
             timeout=5,
         )
         if weather_response.status_code != requests.codes.ok:
@@ -479,7 +479,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if BotConfig.get_config("GOOGLE_API_KEY"):
+    if BotSettings.keys.google and BotSettings.keys.openweathermap:
         bot.add_cog(Weather(bot))
     else:
         Weather.log_error(Weather, "No Google API key found, weather cog not loaded.")

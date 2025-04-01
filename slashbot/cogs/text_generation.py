@@ -27,9 +27,9 @@ from slashbot.core.custom_types import ApplicationCommandInteraction, Message
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
-MAX_MESSAGE_LENGTH = BotConfig.get_config("MAX_CHARS")
+MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
 
 
 @dataclass
@@ -74,7 +74,7 @@ class TextGeneration(CustomCog):
         """
         super().__init__(bot)
         self.ai_conversations = defaultdict(
-            lambda: AIConversation(token_window_size=BotConfig.get_config("AI_CHAT_TOKEN_WINDOW_SIZE")),
+            lambda: AIConversation(token_window_size=BotSettings.cogs.ai_chat.token_window_size),
         )
         self.channel_histories = defaultdict(lambda: AIChannelSummary())
         self.user_cooldown_map = defaultdict(lambda: Cooldown(0, datetime.datetime.now(tz=datetime.UTC)))
@@ -87,12 +87,12 @@ class TextGeneration(CustomCog):
         self._profiler_logger.addHandler(file_handler)
 
     def _start_profiler(self) -> None:
-        if not BotConfig.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
+        if not BotSettings.cogs.ai_chat.enable_profiling:
             return
         self._profiler.start()
 
     def _stop_profiler(self) -> None:
-        if not BotConfig.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
+        if not BotSettings.cogs.ai_chat.enable_profiling:
             return
         self._profiler.stop()
         profiler_output = self._profiler.output_text()
@@ -118,9 +118,9 @@ class TextGeneration(CustomCog):
         time_difference = (current_time - user_cooldown.last_interaction).seconds
 
         # Check if exceeded rate limit
-        if user_cooldown.count > BotConfig.get_config("AI_CHAT_RATE_LIMIT"):
+        if user_cooldown.count > BotSettings.cogs.ai_chat.response_rate_limit:
             # If exceeded rate limit, check if cooldown period has passed
-            if time_difference > BotConfig.get_config("AI_CHAT_RATE_INTERVAL"):
+            if time_difference > BotSettings.cogs.ai_chat.rate_limit_interval:
                 # reset count and update last_interaction time
                 user_cooldown.count = 1
                 user_cooldown.last_interaction = current_time
@@ -301,7 +301,7 @@ class TextGeneration(CustomCog):
             await self._respond_to_user_prompt(message, message_in_dm=message_in_dm)
             return
 
-        if random.random() < BotConfig.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
+        if random.random() < BotSettings.cogs.ai_chat.random_response_chance:
             await self._respond_with_random_llm_response(message)
 
     # Commands -----------------------------------------------------------------
@@ -433,7 +433,7 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if BotConfig.get_config("OPENAI_API_KEY"):
+    if BotSettings.keys.openai:
         bot.add_cog(TextGeneration(bot))
     else:
         TextGeneration.log_error(TextGeneration, "No API key found for OpenAI, unable to load AIChatBot cog")

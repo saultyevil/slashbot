@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 import time
@@ -9,11 +8,10 @@ from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from slashbot.prompts import create_prompt_dict, read_in_prompt_json
-from slashbot.settings import BotConfig
-from slashbot.settings_NEW import BotSettings, reload_settings
+from slashbot.settings import BotSettings, reload_settings
 
 AVAILABLE_LLM_PROMPTS = create_prompt_dict()
-LOGGER = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+LOGGER = logging.getLogger(BotSettings.logging.logger_name)
 
 
 class PromptFileWatcher(FileSystemEventHandler):
@@ -105,7 +103,7 @@ class ScheduledPostWatcher(FileSystemEventHandler):
             return
         self.last_restart_time = time.time()
 
-        if event.src_path == str(BotConfig.get_config("SCHEDULED_POST_FILE").absolute()):
+        if event.src_path == str(BotSettings.files.scheduled_posts):
             self.parent.get_scheduled_posts()
             if self.parent.post_loop.is_running():
                 self.parent.post_loop.cancel()
@@ -116,5 +114,5 @@ class ScheduledPostWatcher(FileSystemEventHandler):
 
 FILE_OBSERVER = Observer()
 FILE_OBSERVER.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
-# FILE_OBSERVER.schedule(ConfigFileWatcher(), path=Path(BotConfig.get_config("CONFIG_FILE")).parent)
+# FILE_OBSERVER.schedule(ConfigFileWatcher(), path=Path(BotSettings.config_file).parent)
 FILE_OBSERVER.start()

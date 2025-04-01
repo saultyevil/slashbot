@@ -10,9 +10,9 @@ import logging
 from pathlib import Path
 
 from slashbot.core.custom_types import Member, User
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
-logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+logger = logging.getLogger(BotSettings.logging.logger_name)
 
 
 # Database functions -----------------------------------------------------------
@@ -68,7 +68,7 @@ def load_database(location: str | Path | None = None) -> dict:
 
     """
     if not location:
-        location = BotConfig.get_config("DATABASE_LOCATION")
+        location = BotSettings.files.database
 
     check_database_exists(location)
 
@@ -99,7 +99,7 @@ def save_database(database: dict, location: str | Path | None = None) -> dict:
 
     """
     if not location:
-        location = BotConfig.get_config("DATABASE_LOCATION")
+        location = BotSettings.files.database
 
     with Path(location).open("w", encoding="utf-8") as file_out:
         json.dump(database, file_out)

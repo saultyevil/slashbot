@@ -1,6 +1,7 @@
 import logging
+from logging.handlers import RotatingFileHandler
 
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 
 class Logger:
@@ -8,7 +9,7 @@ class Logger:
 
     def __init__(self) -> None:
         """Initialise the logger."""
-        self.logger = logging.getLogger(BotConfig.get_config("LOGGER_NAME"))
+        self.logger = logging.getLogger(BotSettings.logging.logger_name)
 
     def _get_extra_logging(self) -> str:
         return f"[Cog:{self.__cog_name__}] " if hasattr(self, "__cog_name__") else ""
@@ -68,3 +69,37 @@ class Logger:
         """
         extra = self._get_extra_logging()
         self.logger.info("%s%s", extra, msg % args)
+
+
+def setup_logging() -> None:
+    """Set up logging for Slashbot."""
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
+    logger = logging.getLogger(BotSettings.logging.logger_name)
+    logger.addHandler(console_handler)
+    file_handler = RotatingFileHandler(
+        filename=BotSettings.logging.log_location,
+        encoding="utf-8",
+        maxBytes=int(5e5),
+        backupCount=5,
+    )
+    file_handler.setFormatter(
+        logging.Formatter(
+            "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)",
+            "%Y-%m-%d %H:%M:%S",
+        ),
+    )
+    logger.addHandler(file_handler)
+
+    logger = logging.getLogger("disnake")
+    logger.setLevel(logging.DEBUG)
+    handler = logging.FileHandler(filename="logs/.disnake.log", encoding="utf-8", mode="w")
+    handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+    logger.addHandler(handler)
+
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    logger.info("Loaded config file %s", BotSettings.config_file)
+
+
+setup_logging()

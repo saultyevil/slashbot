@@ -17,7 +17,7 @@ from slashbot.clock import calculate_seconds_until
 from slashbot.core import markov
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.database import get_users
-from slashbot.settings import BotConfig
+from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user
 EMPTY_STRING = ""
@@ -56,7 +56,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
 
     # Slash commands -----------------------------------------------------------
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="bad_word", description="send a naughty word")
     async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
         """Send a bad word to the chat.
@@ -67,7 +67,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             The interaction to possibly remove the cooldown from.
 
         """
-        async with aiofiles.open(BotConfig.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
+        async with aiofiles.open(BotSettings.files.bad_words, encoding="utf-8") as file_in:
             bad_words = await file_in.readlines()
 
         bad_word = random.choice(bad_words).strip()  # noqa: S311
@@ -102,7 +102,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
 
         await inter.response.send_message(content=message, file=file)
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /sentence")
     @commands.default_member_permissions(administrator=True)
     async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction) -> None:
@@ -121,7 +121,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             The interaction to possibly remove the cooldown from.
 
         """
-        if not BotConfig.get_config("ENABLE_MARKOV_TRAINING"):
+        if not BotSettings.markov.enable_markov_training:
             await inter.response.send_message("Updating the Markov Chain has been disabled.")
         else:
             await inter.response.defer(ephemeral=True)
@@ -130,13 +130,13 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             inter,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
-            BotConfig.get_config("CURRENT_MARKOV_CHAIN"),
+            BotSettings.markov.current_chain,
         )
         self.markov_training_sample.clear()
 
         await inter.edit_original_message("Markov chain has been updated.")
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="oracle", description="a message from god")
     async def oracle(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a Terry Davis inspired "God message" to the chat.
@@ -147,14 +147,14 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             The interaction to possibly remove the cooldown from.
 
         """
-        async with aiofiles.open(BotConfig.get_config("GOD_WORDS_FILE"), encoding="utf-8") as file_in:
+        async with aiofiles.open(BotSettings.files.god_words, encoding="utf-8") as file_in:
             oracle_words = await file_in.readlines()
 
         await inter.response.send_message(
             f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",  # noqa: S311
         )
 
-    @commands.cooldown(BotConfig.get_config("COOLDOWN_RATE"), BotConfig.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
+    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="rule34", description="search for a naughty image")
     async def rule34(
         self,
@@ -204,7 +204,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             The message to record.
 
         """
-        if not BotConfig.get_config("ENABLE_MARKOV_TRAINING"):
+        if not BotSettings.markov.enable_markov_training:
             return
         if message.author.bot:
             return
@@ -220,7 +220,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             The payload containing the message.
 
         """
-        if not BotConfig.get_config("ENABLE_MARKOV_TRAINING"):
+        if not BotSettings.markov.enable_markov_training:
             return
 
         message = payload.cached_message
@@ -290,7 +290,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
     @tasks.loop(seconds=1)
     async def markov_chain_update_loop(self) -> None:
         """Get the bot to update the chain every 6 hours."""
-        if not BotConfig.get_config("ENABLE_MARKOV_TRAINING"):
+        if not BotSettings.markov.enable_markov_training:
             return
         sleep_time = calculate_seconds_until(-1, 3, 0, 1)
         self.log_info(
@@ -305,7 +305,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             None,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
-            BotConfig.get_config("CURRENT_MARKOV_CHAIN"),
+            BotSettings.markov.current_chain,
         )
         self.markov_training_sample.clear()
 
