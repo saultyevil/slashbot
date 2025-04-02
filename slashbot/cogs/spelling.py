@@ -218,7 +218,7 @@ class Spelling(CustomCog):
         guild_key = str(message.guild.id)
         if guild_key not in BotSettings.cogs.spellcheck.servers:
             return
-        if message.author.id not in BotSettings.cogs.spellcheck.servers[guild_key]["USERS"]:
+        if message.author.id not in BotSettings.cogs.spellcheck.servers[guild_key]["users"]:
             return
 
         cleaned_content = self.cleanup_message(message.content)
