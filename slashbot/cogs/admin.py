@@ -301,7 +301,7 @@ class AdminTools(CustomCog):
 
         """
         await inter.response.defer(ephemeral=True)
-        tail = await get_logfile_tail(Path(BotSettings.logger.log_location), num_lines)
+        tail = await get_logfile_tail(Path(BotSettings.logging.log_location), num_lines)
         await inter.edit_original_message(f"```{tail}```")
 
     @slash_command_with_cooldown()
