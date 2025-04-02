@@ -21,6 +21,7 @@ custom_dictionary = "data/slash_dict.txt"
 
 [cogs.spellcheck.servers."710120382144839691"]
 users = [357550184655224833, 151378138612367360, 284782689226063874]
+post_channel = 710120383235227670
 
 [cooldown]
 rate = 3

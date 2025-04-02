@@ -72,7 +72,8 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency_days
         msg = "Invalid value for weekday: 0 <= weekday <= 6 and must be int"
         raise ValueError(msg)
 
-    now = datetime.datetime.now(tz=datetime.UTC)
+    my_timezone = datetime.datetime.now(datetime.UTC).astimezone().tzinfo
+    now = datetime.datetime.now(my_timezone)
 
     if weekday < 0:
         weekday = now.weekday()

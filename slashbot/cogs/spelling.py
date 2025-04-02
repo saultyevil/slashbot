@@ -224,6 +224,13 @@ class Spelling(CustomCog):
         cleaned_content = self.cleanup_message(message.content)
         unknown_words = self.spellchecker.unknown(cleaned_content.split())
         unknown_words = list(filter(lambda w: w not in self.custom_words, unknown_words))
+        if unknown_words:
+            self.log_debug(
+                "Channel %s: Unknown words for %s = %s",
+                message.channel.name,
+                message.author.display_name,
+                unknown_words,
+            )
 
         self.incorrect_spellings[guild_key][str(message.author.id)]["word_count"] += len(message.content.split())
         self.incorrect_spellings[guild_key][str(message.author.id)]["unknown_words"] += unknown_words
@@ -238,7 +245,7 @@ class Spelling(CustomCog):
         if not BotSettings.cogs.spellcheck.enabled:
             return
 
-        sleep_time = calculate_seconds_until(-1, 17, 0, 1)
+        sleep_time = calculate_seconds_until(weekday=-1, hour=17, minute=0, frequency_days=1)
 
         self.log_info(
             "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",
@@ -284,7 +291,7 @@ class Spelling(CustomCog):
             if len(embeds) == 0:
                 continue
 
-            channel = await self.bot.fetch_channel(BotSettings.cogs.spellcheck.servers[str(guild_id)]["CHANNEL"])
+            channel = await self.bot.fetch_channel(BotSettings.cogs.spellcheck.servers[str(guild_id)]["post_channel"])
 
             if len(embeds) < MAX_EMBEDS_AT_ONCE:
                 await channel.send(embeds=embeds)
