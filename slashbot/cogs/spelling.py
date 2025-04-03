@@ -241,11 +241,11 @@ class Spelling(CustomCog):
 
         The summary will be in a single message. This will run everyday at 5pm.
         """
-        await self.bot.wait_until_ready()
         if not BotSettings.cogs.spellcheck.enabled:
             return
 
         sleep_time = calculate_seconds_until(weekday=-1, hour=17, minute=0, frequency_days=1)
+        await self.bot.wait_until_ready()
 
         self.log_info(
             "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",

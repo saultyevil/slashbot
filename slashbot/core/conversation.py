@@ -54,8 +54,8 @@ class AIConversation(TextGeneratorLLM):
 
 
         """
-        self._extra_print = f"[AIConversation:{extra_print}] " if extra_print else ""
-        super().__init__(extra_print=self._extra_print)
+        extra_print = f"[AIConversation:{extra_print}] " if extra_print else ""
+        super().__init__(extra_print=extra_print)
         self._system_prompt = ""
         self._system_prompt_name = ""
         self._context = []
@@ -160,7 +160,7 @@ class AIConversation(TextGeneratorLLM):
         return self._context.pop(index)
 
     def _set_system_prompt_and_clear_context(self, prompt: str, *, prompt_name: str = "unknown") -> None:
-        self.log_info('%sSetting system prompt to "%s"', self._extra_print, prompt.strip())
+        self.log_info('Setting system prompt to "%s"', prompt.strip())
         self._system_prompt = prompt
         self._system_prompt_name = prompt_name
         self._context = [{"role": "system", "content": prompt}]

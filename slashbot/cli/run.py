@@ -155,7 +155,7 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
     )
 
     log_level = logging.DEBUG if args.debug else logging.INFO
-    bot.logger.setLevel(log_level)
+    bot.set_log_level(log_level)
 
     bot.log_info("Initializing... %s", args)
     bot.log_info("Config file: %s", BotSettings.config_file)
@@ -171,7 +171,7 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
     bot.add_listener(create_on_slash_command_error(bot))
 
     for cog in bot.cogs.values():
-        cog.logger.setLevel(log_level)
+        cog.set_log_level(log_level)
 
     return bot
 

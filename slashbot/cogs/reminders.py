@@ -226,13 +226,13 @@ class Reminders(CustomCog):
             filter(lambda r: f"{r['date']}: {r['reminder']}" == reminder, get_all_reminders_for_user(inter.author.id)),
         )
         if not reminder_to_remove:
-            Reminders.logger.error("Failed to find reminder (%s) in auto-completion field", reminder)
+            Reminders._logger.error("Failed to find reminder (%s) in auto-completion field", reminder)
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
         try:
             reminder_to_remove = reminder_to_remove[0]
         except IndexError:
-            Reminders.logger.exception("Failed to index of reminder when trying to delete it from the database")
+            Reminders._logger.exception("Failed to index of reminder when trying to delete it from the database")
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
         remove_reminder(reminder_to_remove)

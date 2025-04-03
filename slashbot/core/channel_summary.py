@@ -33,8 +33,8 @@ class AIChannelSummary(TextGeneratorLLM):
 
     def __init__(self, *, token_window_size: int = 8096, extra_print: str = "") -> None:
         """Initialise the AI channel summary."""
-        self._extra_print = f"[AIChannelSummary:{extra_print}] " if extra_print else ""
-        super().__init__(extra_print=self._extra_print)
+        extra_print = f"[AIChannelSummary:{extra_print}] " if extra_print else ""
+        super().__init__(extra_print=extra_print)
         self._token_size = 0
         self._token_window_size = token_window_size
         self._history_context = []
@@ -57,9 +57,7 @@ class AIChannelSummary(TextGeneratorLLM):
     def _remove_message_from_history_context(self, index: int) -> None:
         removed_message = self._history_context.pop(index)
         self._token_size -= removed_message.tokens
-        self.log_debug(
-            "%sRemoved %d tokens with message: %s", self._extra_print, removed_message.tokens, removed_message.message
-        )
+        self.log_debug("Removed %d tokens with message: %s", removed_message.tokens, removed_message.message)
 
     def _shrink_history_to_token_window_size(self) -> None:
         while self._token_size > self._token_window_size and len(self) > 1:
@@ -80,7 +78,7 @@ class AIChannelSummary(TextGeneratorLLM):
         if message.tokens == 0:
             message.tokens = self.count_tokens_for_message(message.content)
         self._history_context.append(message)
-        self.log_debug("%sAdding message: %s", self._extra_print, message.content)
+        self.log_debug("Adding message: %s", message.content)
 
     async def generate_summary(self, *, requesting_user: str | None = None) -> str:
         """Generate a summary of the current history.
@@ -104,8 +102,8 @@ class AIChannelSummary(TextGeneratorLLM):
                 f".\nPlease refer to me, {requesting_user}, as 'you' in the summary like we were having a conversation."
             )
 
-        self.log_debug("%sContext for summary: %s", self._extra_print, full_conversation[1:])
+        self.log_debug("Context for summary: %s", full_conversation[1:])
         response = await self.generate_text_from_llm(full_conversation)
-        self.log_debug("%sGenerated summary: %s", self._extra_print, response.message)
+        self.log_debug("Generated summary: %s", response.message)
 
         return response.message

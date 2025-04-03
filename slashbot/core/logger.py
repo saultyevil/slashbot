@@ -7,40 +7,40 @@ from slashbot.settings import BotSettings
 class Logger:
     """Logger object for classes."""
 
-    def __init__(self) -> None:
-        """Initialise the logger."""
-        self.logger = logging.getLogger(BotSettings.logging.logger_name)
-
-    def _get_extra_logging(self) -> str:
-        return f"[Cog:{self.__cog_name__}] " if hasattr(self, "__cog_name__") else ""
-
-    def log_debug(self, msg: str, *args: any) -> None:
-        """Log a debug message.
+    def __init__(self, *, prepend_msg: str = "", append_msg: str = "") -> None:
+        """Initialise the logger.
 
         Parameters
         ----------
-        msg : str
-            The message to log.
-        args : any
-            The arguments to pass to the message.
+        prepend_msg : str
+            The message to prepend to the message.
+        append_msg : str
+            The message to append to the message.
 
         """
-        extra = self._get_extra_logging()
-        self.logger.debug("%s%s", extra, msg % args)
+        self._logger = logging.getLogger(BotSettings.logging.logger_name)
+        self._prepend = prepend_msg.strip()
+        self._append = append_msg.strip()
+        self._cog_name = f"[{self.__cog_name__}.Cog] " if hasattr(self, "__cog_name__") else ""
 
-    def log_error(self, msg: str, *args: any) -> None:
-        """Log an error message.
+    def _log_impl(self, level: int, msg: str, *args: any, exc_info: bool = False) -> None:
+        formatted_msg = msg % args
+        stripped_msg = formatted_msg.strip()
 
-        Parameters
-        ----------
-        msg : str
-            The message to log.
-        args : any
-            The arguments to pass to the message.
+        if self._prepend:
+            stripped_msg = " " + stripped_msg
+        if self._append:
+            stripped_msg = stripped_msg + " "
 
-        """
-        extra = self._get_extra_logging()
-        self.logger.error("%s%s", extra, msg % args)
+        self._logger.log(
+            level,
+            "%s%s%s%s",
+            self._cog_name,
+            self._prepend,
+            stripped_msg,
+            self._append,
+            exc_info=exc_info,
+        )
 
     def log_exception(self, msg: str, *args: any) -> None:
         """Log a exception message.
@@ -53,8 +53,33 @@ class Logger:
             The arguments to pass to the message.
 
         """
-        extra = self._get_extra_logging()
-        self.logger.exception("%s%s", extra, msg % args)
+        self._log_impl(logging.ERROR, msg, *args, exc_info=True)
+
+    def log_debug(self, msg: str, *args: any) -> None:
+        """Log a debug message.
+
+        Parameters
+        ----------
+        msg : str
+            The message to log.
+        args : any
+            The arguments to pass to the message.
+
+        """
+        self._log_impl(logging.DEBUG, msg, *args)
+
+    def log_error(self, msg: str, *args: any) -> None:
+        """Log an error message.
+
+        Parameters
+        ----------
+        msg : str
+            The message to log.
+        args : any
+            The arguments to pass to the message.
+
+        """
+        self._log_impl(logging.ERROR, msg, *args)
 
     def log_info(self, msg: str, *args: any) -> None:
         """Log an info message.
@@ -67,12 +92,25 @@ class Logger:
             The arguments to pass to the message.
 
         """
-        extra = self._get_extra_logging()
-        self.logger.info("%s%s", extra, msg % args)
+        self._log_impl(logging.INFO, msg, *args)
+
+    def set_log_level(self, level: int) -> None:
+        """Set the logging output level.
+
+        Parameters
+        ----------
+        level : int
+            The logging output level.
+
+        """
+        self._logger.setLevel(level)
 
 
 def setup_logging() -> None:
-    """Set up logging for Slashbot."""
+    """Set up log formatting.
+
+    This sets up the logging for the bot's logic, and also the Disnake log.
+    """
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
     logger = logging.getLogger(BotSettings.logging.logger_name)
@@ -93,7 +131,7 @@ def setup_logging() -> None:
 
     logger = logging.getLogger("disnake")
     logger.setLevel(logging.DEBUG)
-    handler = logging.FileHandler(filename="logs/.disnake.log", encoding="utf-8", mode="w")
+    handler = logging.FileHandler(filename="logs/disnake.log", encoding="utf-8", mode="w")
     handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
     logger.addHandler(handler)
 

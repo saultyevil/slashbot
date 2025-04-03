@@ -78,7 +78,6 @@ class ScheduledPosts(CustomCog):
         super().__init__(bot)
 
         self.scheduled_posts = None
-        self.get_scheduled_posts()
         if not self.post_loop.is_running():
             self.post_loop.start()  # pylint: disable=no-member
 
@@ -154,6 +153,11 @@ class ScheduledPosts(CustomCog):
         Once all messages have been sent, the task will be complete and start
         again in 10 seconds.
         """
+        await self.bot.wait_until_ready()
+
+        if not self.scheduled_posts:
+            self.get_scheduled_posts()
+
         self.order_scheduled_posts_by_soonest()
 
         for post in self.scheduled_posts:
