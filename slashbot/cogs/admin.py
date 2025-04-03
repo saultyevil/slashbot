@@ -119,7 +119,7 @@ class AdminTools(CustomCog):
         reason = await self._find_entry(guild, member, action_user, action)
         if reason:
             num_times = await self._count_times(guild, member, action)
-            channel = await self.bot.fetch_channel(BotSettings.discord.channel.idiots)
+            channel = await self.bot.fetch_channel(BotSettings.discord.channels.idiots)
             await channel.send(
                 f":warning: looks like {action_user.display_name} needs to zerk off after {action_present} "
                 f"{member.display_name} for {reason}!! This is the {num_times}{ordinal_suffix(num_times)} "
