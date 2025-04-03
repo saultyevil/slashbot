@@ -35,7 +35,7 @@ class LocationNotFoundError(Exception):
 class Weather(CustomCog):
     """Query information about the weather."""
 
-    WEATHER_UNITS: tuple[str] = ("mixed", "metric", "imperial")
+    WEATHER_UNITS: list[str] = ("mixed", "metric", "imperial")
 
     def __init__(self, bot: commands.InteractionBot) -> None:
         """Initialize the cog.
@@ -383,7 +383,7 @@ class Weather(CustomCog):
             choices=WEATHER_UNITS,
         ),
         amount: int = commands.Param(
-            name="days", description="The number of results to return.", default=4, gt=0, lt=8
+            name="days", description="The number of results to return.", default=3, gt=0, lt=8
         ),
     ) -> None:
         """Send the weather forecast to chat, either daily or hourly.
@@ -394,8 +394,6 @@ class Weather(CustomCog):
             The interaction to possibly remove the cooldown from.
         user_location: str
             The location to get the weather forecast for.
-        forecast_type: str
-            Either daily or hourly.
         units: str
             The units to get the forecast for.
         amount: int
@@ -414,7 +412,7 @@ class Weather(CustomCog):
             text=f"{self.get_random_markov_sentence('forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
-        embed = self.add_forecast_to_embed(embed, forecast[: amount + 1], units)
+        embed = self.add_forecast_to_embed(embed, forecast[1:amount], units)  # start from 1 to avoid the current day
 
         await inter.edit_original_message(embed=embed)
 
