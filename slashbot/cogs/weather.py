@@ -412,7 +412,7 @@ class Weather(CustomCog):
             text=f"{self.get_random_markov_sentence('forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
-        embed = self.add_forecast_to_embed(embed, forecast[1:amount], units)  # start from 1 to avoid the current day
+        embed = self.add_forecast_to_embed(embed, forecast[1:amount + 1], units)  # start from 1 to avoid the current day
 
         await inter.edit_original_message(embed=embed)
 
