@@ -45,7 +45,7 @@ class TextGeneratorLLM(Logger):
             Additional information to print at the start of the log message.
 
         """
-        super().__init__()
+        super().__init__(prepend_msg=extra_print)
         self._model_name = "gpt-4o-mini"
         self._client = None
         self._base_url = None
@@ -61,7 +61,7 @@ class TextGeneratorLLM(Logger):
         self._base_url = self._get_base_url_for_model(model)
         self._client = self._get_client()
         self._text_generator = self._get_generator_function()
-        self.log_info("%sModel set to %s with base url %s", self._extra_print, self._model_name, self._base_url)
+        self.log_info("Model set to %s with base url %s", self._model_name, self._base_url)
 
     def _get_base_url_for_model(self, model: str) -> str:
         if model in TextGeneratorLLM.SUPPORTED_OPENAI_MODELS:
