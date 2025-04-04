@@ -40,9 +40,9 @@ class User(BaseDataClass):
 
     user_id: int
     user_name: str
-    city: str
-    country_code: str
-    bad_word: str
+    city: str = ""
+    country_code: str = ""
+    bad_word: str = ""
 
 
 @dataclass
