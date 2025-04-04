@@ -4,7 +4,7 @@ from pathlib import Path
 
 import aiofiles
 
-from slashbot.core.database.models import Reminder, User
+from slashbot.core.database_NEW.models import Reminder, User
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -23,7 +23,7 @@ class Database(Logger):
         self._tables = {self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}
 
     async def _create_empty_database(self) -> None:
-        async with self._lock, aiofiles.open(self._filename, mode="w") as file_out:
+        async with aiofiles.open(self._filename, mode="w") as file_out:
             await file_out.write(json.dumps({self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}, indent=4))
 
     async def _load_database(self) -> None:
@@ -32,6 +32,7 @@ class Database(Logger):
 
         async with self._lock, aiofiles.open(self._filename) as file_in:
             content = await file_in.read()
+            # TODO: need to check for JSONDecodeError and handle it
             data = json.loads(content)
             self._tables[self.USER_DATA_KEY] = {int(k): User.from_dict(v) for k, v in data[self.USER_DATA_KEY].items()}
             self._tables[self.REMINDERS_KEY] = {
@@ -52,16 +53,15 @@ class Database(Logger):
             async with aiofiles.open(self._filename, mode="w") as file_out:
                 await file_out.write(json.dumps(serialisable_tables, indent=4))
 
-    async def _create_empty_user(self, user_id: int, user_name: str) -> None:
+    async def _create_empty_user(self, user_id: str, user_name: str) -> None:
         new_user = User(user_id, user_name)
         async with self._lock:
             self._tables[self.USER_DATA_KEY][user_id] = new_user
         await self._save_database()
-
         return self._tables[self.USER_DATA_KEY][user_id]
 
     @classmethod
-    async def open(cls, *, filename: str | None = None) -> "Database":
+    async def open(cls, *, filepath: str | None = None) -> "Database":
         """Open the database.
 
         Parameters
@@ -75,8 +75,8 @@ class Database(Logger):
             An opened and initialised database.
 
         """
-        filename = Path(filename or BotSettings.files.database)
-        self = cls(filename=filename)
+        filepath = Path(filepath or BotSettings.files.database)
+        self = cls(filename=filepath)
         await self._load_database()
 
         return self
@@ -107,8 +107,7 @@ class Database(Logger):
             self.log_error("User %s already exists in database", user_id)
             return self._tables[self.USER_DATA_KEY][user_id]
 
-        await self._create_empty_user(user_id, user_name)
-        return self._tables[self.USER_DATA_KEY][user_id]
+        return await self._create_empty_user(user_id, user_name)
 
     async def get_reminder(self) -> Reminder:
         raise NotImplementedError
@@ -184,7 +183,7 @@ class Database(Logger):
             await self._save_database()
             return removed_user
 
-    async def update_user(self, user_id: int, field: str, value: str) -> User:
+    async def update_user(self, user_id: str, field: str, value: str) -> User:
         """Update a user in the database.
 
         Parameters
@@ -206,8 +205,8 @@ class Database(Logger):
         match field:
             case "city":
                 user.city = value
-            case "country":
-                user.country = value
+            case "country_code":
+                user.country_code = value
             case "bad_word":
                 user.bad_word = value
             case _:
@@ -215,18 +214,3 @@ class Database(Logger):
                 raise ValueError(msg)
         await self._save_database()
         return user
-
-
-async def _main():
-    db = await Database.open()
-    user = await db.add_user(1, "test_user")
-    print(user)
-    user = await db.update_user(1, "city", "bradford")
-    print(user)
-    user = await db.get_user(1)
-    print(user)
-    await db.remove_user(1)
-
-
-if __name__ == "__main__":
-    asyncio.run(_main())
