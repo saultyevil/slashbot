@@ -10,8 +10,8 @@ import disnake
 from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
 
+from slashbot.bot.custom_cog import CustomCog
 from slashbot.clock import calculate_seconds_until
-from slashbot.core.custom_cog import CustomCog
 from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user

@@ -12,9 +12,9 @@ import requests
 import rule34 as r34
 from disnake.ext import commands, tasks
 
+from slashbot.bot.custom_cog import CustomCog
 from slashbot.clock import calculate_seconds_until
 from slashbot.core import markov
-from slashbot.core.custom_cog import CustomCog
 from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user

@@ -18,13 +18,13 @@ from disnake.ext import commands
 from pyinstrument import Profiler
 
 import slashbot.watchers
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
+from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core import markov
 from slashbot.core.channel_summary import AIChannelSummary, SummaryMessage
 from slashbot.core.conversation import AIConversation
-from slashbot.core.custom_bot import CustomInteractionBot
-from slashbot.core.custom_cog import CustomCog
-from slashbot.core.custom_command import slash_command_with_cooldown
-from slashbot.core.custom_types import ApplicationCommandInteraction, Message
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response

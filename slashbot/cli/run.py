@@ -18,8 +18,8 @@ from collections.abc import Callable
 import disnake
 from disnake.ext import commands
 
+from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
-from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.settings import BotSettings
 
 LAUNCH_TIME = time.time()

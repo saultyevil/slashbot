@@ -1,38 +1,82 @@
 """Custom Cog class."""
 
-from typing import TYPE_CHECKING
+from typing import Any
 
 import disnake
 from disnake.ext import tasks
 from disnake.ext.commands import Cog
 
+from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
-from slashbot.core.custom_bot import CustomInteractionBot
+from slashbot.core.database import Database
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
-
-if TYPE_CHECKING:
-    from slashbot.core.database import Database
 
 
 class CustomCog(Cog, Logger):
     """A custom cog class which modifies cooldown behaviour."""
 
-    def __init__(self, bot: CustomInteractionBot, **kwargs: dict) -> None:
+    def __init__(self, bot: CustomInteractionBot, **kwargs: Any) -> None:
         """Intialise the cog.
 
         Parameters
         ----------
-        bot : SlashbotInterationBot
+        bot : CustomInteractionBot
             The bot the cog will be added to.
+        **kwargs : dict
+            The keyword arguments to pass to the parent class.
 
         """
-        super().__init__(**kwargs)
+        Cog.__init__(**kwargs)
         Logger.__init__(self)
-        self.bot: CustomInteractionBot = bot
-        self.db: Database | None = None
+        self.bot = bot
+        self.db = Database()
         self.markov_seed_words = []
         self._markov_sentences = {}
+
+    # --------------------------------------------------------------------------
+
+    async def cog_load(self) -> None:
+        """Async cog load method.
+
+        This initialises:
+            - The database attribute, from the bot/client
+            - Pre-generated markov sentences, if enabled
+            - Starts all tasks
+        """
+        await self.bot.wait_until_first_connect()
+        self.db = self.bot.db
+        if self.bot.use_markov_cache and self.markov_seed_words:
+            self.log_info("Generating markov sentence cache")
+            self._populate_markov_cache()
+            self.check_markov_cache_size.start()
+        self._start_all_tasks()
+
+    def _start_all_tasks(self) -> None:
+        """Start all tasks in the cog."""
+        for attr in dir(self):
+            task_candidate = getattr(self, attr)
+            if isinstance(task_candidate, tasks.Loop) and not task_candidate.is_running():
+                self.log_debug("Starting task: %s", attr)
+                task_candidate.start()
+
+    async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction) -> None:
+        """Reset the cooldown for some users and servers.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to possibly remove the cooldown from.
+
+        """
+        # Servers which don't have a cooldown
+        if inter.guild and inter.guild.id not in BotSettings.cooldown.no_cooldown_servers:
+            inter.application_command.reset_cooldown(inter)
+        # Users which don't have a cooldown
+        if inter.author.id in BotSettings.cooldown.no_cooldown_users:
+            inter.application_command.reset_cooldown(inter)
+
+    # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------
 
@@ -91,50 +135,6 @@ class CustomCog(Cog, Logger):
                 seed_word, amount=BotSettings.markov.num_pregen_sentences - current_amount
             )
         self.log_info("Generated markov sentences for seed words: %s", self.markov_seed_words)
-
-    # --------------------------------------------------------------------------
-
-    async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction) -> None:
-        """Reset the cooldown for some users and servers.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-
-        """
-        # Servers which don't have a cooldown
-        if inter.guild and inter.guild.id not in BotSettings.cooldown.no_cooldown_servers:
-            inter.application_command.reset_cooldown(inter)
-        # Users which don't have a cooldown
-        if inter.author.id in BotSettings.cooldown.no_cooldown_users:
-            inter.application_command.reset_cooldown(inter)
-
-    async def cog_load(self) -> None:
-        """Async cog load method.
-
-        This initialises:
-            - The database attribute, from the bot/client
-            - Pre-generated markov sentences, if enabled
-            - Starts all tasks
-        """
-        await self.bot.wait_until_first_connect()
-        self.db = self.bot.db
-        if self.bot.use_markov_cache and self.markov_seed_words:
-            self.log_info("Generating markov sentence cache")
-            self._populate_markov_cache()
-            self.check_markov_cache_size.start()
-        self._start_all_tasks()
-
-    def _start_all_tasks(self) -> None:
-        """Start all tasks in the cog."""
-        for attr in dir(self):
-            task_candidate = getattr(self, attr)
-            if isinstance(task_candidate, tasks.Loop) and not task_candidate.is_running():
-                self.log_debug("Starting task: %s", attr)
-                task_candidate.start()
-
-    # --------------------------------------------------------------------------
 
     def get_random_markov_sentence(
         self,

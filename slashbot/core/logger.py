@@ -1,5 +1,6 @@
 import logging
 from logging.handlers import RotatingFileHandler
+from typing import Any
 
 from slashbot.settings import BotSettings
 
@@ -23,7 +24,7 @@ class Logger:
         self._append = append_msg.strip()
         self._cog_name = f"[{self.__cog_name__}.Cog] " if hasattr(self, "__cog_name__") else ""
 
-    def _log_impl(self, level: int, msg: str, *args: any, exc_info: bool = False) -> None:
+    def _log_impl(self, level: int, msg: str, *args: Any, exc_info: bool = False) -> None:
         formatted_msg = msg % args
         stripped_msg = formatted_msg.strip()
 
@@ -42,7 +43,7 @@ class Logger:
             exc_info=exc_info,
         )
 
-    def log_exception(self, msg: str, *args: any) -> None:
+    def log_exception(self, msg: str, *args: Any) -> None:
         """Log a exception message.
 
         Parameters
@@ -55,7 +56,7 @@ class Logger:
         """
         self._log_impl(logging.ERROR, msg, *args, exc_info=True)
 
-    def log_debug(self, msg: str, *args: any) -> None:
+    def log_debug(self, msg: str, *args: Any) -> None:
         """Log a debug message.
 
         Parameters
@@ -68,7 +69,7 @@ class Logger:
         """
         self._log_impl(logging.DEBUG, msg, *args)
 
-    def log_error(self, msg: str, *args: any) -> None:
+    def log_error(self, msg: str, *args: Any) -> None:
         """Log an error message.
 
         Parameters
@@ -81,7 +82,7 @@ class Logger:
         """
         self._log_impl(logging.ERROR, msg, *args)
 
-    def log_info(self, msg: str, *args: any) -> None:
+    def log_info(self, msg: str, *args: Any) -> None:
         """Log an info message.
 
         Parameters

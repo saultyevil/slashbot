@@ -12,9 +12,9 @@ import requests
 from disnake.ext import commands
 from geopy import GoogleV3
 
-from slashbot.core.custom_bot import CustomInteractionBot
-from slashbot.core.custom_cog import CustomCog
-from slashbot.core.custom_command import slash_command_with_cooldown
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 

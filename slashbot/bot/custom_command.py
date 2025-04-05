@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(BotSettings.logging.logger_name)
 
 def slash_command_with_cooldown(
     **kwargs,  # noqa: ANN003
-) -> Callable[[Callable[..., Coroutine[Any, Any, Any]]], Coroutine[Any, Any, Any]]:
+) -> Callable[[Callable[..., Coroutine[Any, Any, Any]]], commands.InvokableSlashCommand]:
     """Add a cooldown and slash command functionality to a function.
 
     Parameters
@@ -29,7 +29,7 @@ def slash_command_with_cooldown(
 
     """
 
-    def decorator(func: Callable[..., Coroutine[Any, Any, Any]]) -> Coroutine[Any, Any, Any]:
+    def decorator(func: Callable[..., Coroutine[Any, Any, Any]]) -> commands.InvokableSlashCommand:
         """Decorate a function with cooldown and slash command functionality.
 
         Parameters
@@ -39,7 +39,7 @@ def slash_command_with_cooldown(
 
         Returns
         -------
-        Coroutine[Any, Any, Any]
+        commands.InvokableSlashCommand
             Decorated function.
 
         """

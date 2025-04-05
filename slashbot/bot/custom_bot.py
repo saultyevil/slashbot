@@ -32,7 +32,7 @@ class CustomInteractionBot(InteractionBot, Logger):
         Logger.__init__(self)
         self.cleanup_functions = []
         self.times_connected = 0
-        self.db = None
+        self.db = Database()
         self.use_markov_cache = enable_markov_cache and markov.MARKOV_MODEL
         if markov.MARKOV_MODEL:
             self.log_info(
@@ -75,4 +75,4 @@ class CustomInteractionBot(InteractionBot, Logger):
         tables if they do not exist.
 
         """
-        self.db = await Database.open()
+        self.db = await self.db.open()

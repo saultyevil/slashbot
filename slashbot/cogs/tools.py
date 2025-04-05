@@ -7,7 +7,7 @@ import disnake
 import wolframalpha
 from disnake.ext import commands
 
-from slashbot.core.custom_cog import CustomCog
+from slashbot.bot.custom_cog import CustomCog
 from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user

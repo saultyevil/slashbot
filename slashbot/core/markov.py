@@ -16,7 +16,7 @@ from pathlib import Path
 
 import markovify
 
-from slashbot.core.custom_types import ApplicationCommandInteraction
+from slashbot.bot.custom_types import ApplicationCommandInteraction
 from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 

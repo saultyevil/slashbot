@@ -3,10 +3,10 @@
 import disnake
 from disnake.ext import commands
 
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import convert_string_to_lower
-from slashbot.core.custom_bot import CustomInteractionBot
-from slashbot.core.custom_cog import CustomCog
-from slashbot.core.custom_command import slash_command_with_cooldown
 
 USER_OPTIONS = [
     disnake.OptionChoice("City", "city"),

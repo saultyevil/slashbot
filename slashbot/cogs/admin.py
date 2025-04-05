@@ -15,10 +15,10 @@ from slashbot.admin import (
     set_config_value,
     update_local_repository,
 )
-from slashbot.core.custom_bot import CustomInteractionBot
-from slashbot.core.custom_cog import CustomCog
-from slashbot.core.custom_command import slash_command_with_cooldown
-from slashbot.core.custom_types import ApplicationCommandInteraction
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
+from slashbot.bot.custom_types import ApplicationCommandInteraction
 from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user

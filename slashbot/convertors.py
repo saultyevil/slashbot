@@ -1,6 +1,6 @@
 from typing import Any
 
-from slashbot.core.custom_types import ApplicationCommandInteraction
+from slashbot.bot.custom_types import ApplicationCommandInteraction
 
 
 def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any) -> Any:  # noqa: ANN401

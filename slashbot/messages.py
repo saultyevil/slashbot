@@ -4,8 +4,8 @@ import base64
 
 import requests
 
+from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core.conversation import VisionImage
-from slashbot.core.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
