@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -46,11 +46,11 @@ class TextGeneratorLLM(Logger):
 
         """
         super().__init__(prepend_msg=extra_print)
-        self._model_name = "gpt-4o-mini"
-        self._client = None
-        self._base_url = None
-        self._text_generator = None
-        self._extra_print = extra_print
+        self._model_name: str = "gpt-4o-mini"
+        self._client: openai.AsyncClient | None = None
+        self._base_url: str | None = None
+        self._text_generator: Callable[..., Awaitable[Any]] | None = None
+        self._extra_print: str = extra_print
 
     def _init_for_model(self, model: str) -> None:
         if model not in self.SUPPORTED_MODELS:
@@ -78,6 +78,9 @@ class TextGeneratorLLM(Logger):
         return openai.AsyncOpenAI(api_key=api_key, base_url=self._base_url)
 
     def _get_generator_function(self) -> Callable[..., Any]:
+        if self._client is None:
+            msg = "Client not initialized. Call _init_for_model() first."
+            raise ValueError(msg)
         return self._client.chat.completions.create
 
     # --------------------------------------------------------------------------
@@ -89,7 +92,7 @@ class TextGeneratorLLM(Logger):
 
     # --------------------------------------------------------------------------
 
-    def count_tokens_for_message(self, message: list[str] | str) -> int:
+    def count_tokens_for_message(self, message: list[dict[str, str]] | str) -> int:
         """Get the token count for a given message for the current LLM model.
 
         Parameters
@@ -154,6 +157,9 @@ class TextGeneratorLLM(Logger):
         """
         if not self._client:
             self._init_for_model(self._model_name)
+        if not self._text_generator:
+            msg = "Text generator function not initialized. Call _init_for_model() first."
+            raise RuntimeError(msg)
 
         # TODO(EP): handle and/or raise custom exception on failure
         response = await self._text_generator(

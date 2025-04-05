@@ -115,7 +115,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             inter,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
-            BotSettings.markov.current_chain,
+            BotSettings.markov.current_chain_location,
         )
         self.markov_training_sample.clear()
 
@@ -290,7 +290,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             None,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
-            BotSettings.markov.current_chain,
+            BotSettings.markov.current_chain_location,
         )
         self.markov_training_sample.clear()
 

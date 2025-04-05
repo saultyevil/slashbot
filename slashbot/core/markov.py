@@ -6,23 +6,24 @@ asynchronous version of sentence generation functions.
 """
 
 import json
-import logging
 import pickle
 import random
 import re
 import shutil
 import string
 from pathlib import Path
+from textwrap import shorten
 
 import markovify
 
 from slashbot.bot.custom_types import ApplicationCommandInteraction
+from slashbot.core.logger import Logger
 from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 
-LOGGER = logging.getLogger(BotSettings.logging.logger_name)
+LOGGER = Logger()
 MARKOV_MODEL = None
-MARKOV_BANK = None
+MARKOV_BANK = {}
 
 
 def _search_for_seed_in_markov_bank(seed_word: str) -> str:
@@ -40,7 +41,7 @@ def _search_for_seed_in_markov_bank(seed_word: str) -> str:
 
     """
     if seed_word not in MARKOV_BANK:
-        LOGGER.error("Seed word '%s' not found in markov bank", seed_word)
+        LOGGER.log_error("Seed word '%s' not found in markov bank", seed_word)
         sentences = MARKOV_BANK.get(
             "error", ["An error occurred with the markov sentence generation [a seed word is probably missing]"]
         )
@@ -49,7 +50,9 @@ def _search_for_seed_in_markov_bank(seed_word: str) -> str:
     return random.choice(MARKOV_BANK[seed_word])
 
 
-def _generate_markov_sentence(model: markovify.Text = None, seed_word: str | None = None, attempts: int = 5) -> str:
+def _generate_markov_sentence(
+    model: markovify.Text | None = None, seed_word: str | None = None, attempts: int = 5
+) -> str:
     """Generate a sentence using a markov chain.
 
     Parameters
@@ -69,10 +72,11 @@ def _generate_markov_sentence(model: markovify.Text = None, seed_word: str | Non
 
     """
     sentence = "My Markov Chain sentence generator isn't working!"
+
     if not model:
         model = MARKOV_MODEL
     if not model or not isinstance(model, markovify.Text):
-        LOGGER.error("An invalid Markov model was passed to sentence generation")
+        LOGGER.log_error("An invalid Markov model was passed to sentence generation")
         return sentence
 
     for _ in range(attempts):
@@ -98,9 +102,9 @@ def _generate_markov_sentence(model: markovify.Text = None, seed_word: str | Non
             break
 
     if not sentence:
-        sentence = model.make_sentence()
+        sentence = "My Markov chain isn't work properly!"
 
-    return sentence.strip()[:1024]
+    return shorten(sentence.strip(), 1024)
 
 
 def _get_sentence_from_bank(seed_word: str | None, amount: int = 1) -> str | list[str]:
@@ -206,19 +210,17 @@ def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markov
         The Markov Chain model loaded.
 
     """
-    if not isinstance(str, Path):
-        chain_location = Path(chain_location)
-
+    chain_location = Path(chain_location)
     model = markovify.Text(
         "This is an empty markov model. I think you may need two sentences.",
         state_size=state_size if state_size != 0 else 2,
     )
 
     if chain_location.exists():
-        with Path.open(chain_location, "rb") as file_in:
+        with chain_location.open("rb") as file_in:
             try:
                 model.chain = pickle.load(file_in)  # noqa: S301
-                LOGGER.info("Model %s has been loaded", str(chain_location))
+                LOGGER.log_info("Model %s has been loaded", str(chain_location))
             except EOFError:
                 shutil.copy2(str(chain_location) + ".bak", chain_location)
                 model = load_markov_model(chain_location, state_size)  # the recursion might be a bit spicy here
@@ -226,7 +228,7 @@ def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markov
         msg = f"No chain at {chain_location}"
         raise OSError(msg)
 
-    BotSettings.markov.current_chain = chain_location
+    BotSettings.markov.current_chain_location = chain_location
 
     return model
 
@@ -259,7 +261,7 @@ def load_markov_bank(bank_location: str | Path) -> dict:
     with path.open("r") as file_in:
         bank = json.load(file_in)
 
-    LOGGER.info("Markov bank %s has been loaded", bank_location)
+    LOGGER.log_info("Markov bank %s has been loaded", bank_location)
 
     return bank
 
@@ -305,7 +307,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         if inter:
             await deferred_error_message(inter, "No new messages to update chain with.")
             return None
-        LOGGER.info("No sentences to update chain with")
+        LOGGER.log_info("No sentences to update chain with")
         return None
 
     messages = _clean_sentence_for_learning(new_messages)
@@ -315,7 +317,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         if inter:
             await deferred_error_message(inter, "No new messages to update chain with.")
             return None
-        LOGGER.info("No sentences to update chain with")
+        LOGGER.log_info("No sentences to update chain with")
         return None
 
     shutil.copy2(save_location, str(save_location) + ".bak")
@@ -325,7 +327,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         if inter:
             await deferred_error_message(inter, "The interim model failed to train.")
             return None
-        LOGGER.exception("The interim model failed to train.")
+        LOGGER.log_exception("The interim model failed to train.")
         return None
 
     combined_chain = markovify.combine([model.chain, new_model.chain])
@@ -337,7 +339,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         await inter.edit_original_message(content=f"Markov chain updated with {num_messages} new messages.")
 
     # num_messages should already but an int, but sometimes it isn't...
-    LOGGER.info(
+    LOGGER.log_info(
         "Markov chain (%s) updated with %d new messages",
         str(save_location),
         int(num_messages),

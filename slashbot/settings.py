@@ -114,7 +114,7 @@ class MarkovSettings:
     enable_pregen_sentences: bool
     num_pregen_sentences: int
     pregenerate_limit: int
-    current_chain: Chain = None
+    current_chain_location: str | Path | None = None
 
 
 @dataclass

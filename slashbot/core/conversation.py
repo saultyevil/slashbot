@@ -58,7 +58,7 @@ class AIConversation(TextGeneratorLLM):
         super().__init__(extra_print=extra_print)
         self._system_prompt = ""
         self._system_prompt_name = ""
-        self._context = []
+        self._context: list[dict] = []
         self._token_size = 0
         self._token_window_size = token_window_size
         self._set_system_prompt_and_clear_context(
@@ -96,7 +96,7 @@ class AIConversation(TextGeneratorLLM):
     # --------------------------------------------------------------------------
 
     @staticmethod
-    def _load_system_prompt(self, filepath: str | Path) -> tuple[str, str]:
+    def _load_system_prompt(filepath: str | Path) -> tuple[str, str]:
         if not isinstance(filepath, Path):
             filepath = Path(filepath)
         if not filepath.exists():
@@ -112,9 +112,9 @@ class AIConversation(TextGeneratorLLM):
 
     def _add_user_message_to_context(self, message: str, images: VisionImage | list[VisionImage] | None = None) -> None:
         if images:
-            images = self._prepare_images_for_context(images)
+            image_content = self._prepare_images_for_context(images)
             self._context.append(
-                {"role": "user", "content": [{"type": "text", "text": message}, *images]},
+                {"role": "user", "content": [{"type": "text", "text": message}, *image_content]},
             )
         else:
             self._context.append({"role": "user", "content": message})
@@ -129,7 +129,9 @@ class AIConversation(TextGeneratorLLM):
     def _prepare_audio_for_context(self) -> None:
         raise NotImplementedError
 
-    def _prepare_images_for_context(self, images: VisionImage | list[VisionImage]) -> list[dict]:
+    def _prepare_images_for_context(
+        self, images: VisionImage | list[VisionImage]
+    ) -> list[dict[str, str | dict[str, str]]]:
         if not isinstance(images, list):
             images = [images]
         return [
@@ -196,7 +198,7 @@ class AIConversation(TextGeneratorLLM):
         """Reset the conversation history back to the system prompt."""
         self._clear_message_context()
 
-    async def send_message(self, message: str, images: list[str] | None = None) -> str:
+    async def send_message(self, message: str, images: VisionImage | list[VisionImage] | None = None) -> str:
         """Add a new message to the conversation history.
 
         Parameters
