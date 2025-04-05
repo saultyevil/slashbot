@@ -96,8 +96,26 @@ class Database(Logger):
 
         return self
 
-    async def add_reminder(self) -> Reminder:
-        raise NotImplementedError
+    async def add_reminder(self, reminder: Reminder) -> Reminder:
+        """Add a reminder to the database.
+
+        Parameters
+        ----------
+        reminder : Reminder
+            The reminder to add.
+
+        Returns
+        -------
+        Reminder
+            The reminder that was added to the database.
+
+        """
+        index = max(self._tables[self.REMINDERS_KEY]) + 1
+        reminder.reminder_id = index
+        self._tables[self.REMINDERS_KEY][index] = reminder
+        await self._save_database()
+
+        return reminder
 
     async def add_user(self, user_id: int, user_name: str) -> User:
         """Add a user to the database.
@@ -124,8 +142,25 @@ class Database(Logger):
 
         return await self._create_empty_user(user_id, user_name)
 
-    async def get_reminder(self) -> Reminder:
-        raise NotImplementedError
+    async def get_reminder(self, reminder_id: int) -> Reminder:
+        """Get a reminder from the database.
+
+        Parameters
+        ----------
+        reminder_id : int
+            The ID for the reminder to get.
+
+        Returns
+        -------
+        Reminder
+            The reminder from the database.
+
+        """
+        try:
+            return self._tables[self.REMINDERS_KEY][reminder_id]
+        except KeyError:
+            self.log_error("Reminder %s not found in database", reminder_id)
+            raise
 
     async def get_reminders(self) -> list[Reminder]:
         """Get all the reminders in the database.
@@ -170,10 +205,43 @@ class Database(Logger):
         return self._tables[self.USER_DATA_KEY].values()
 
     async def get_reminders_for_user(self, user_id: int) -> list[Reminder]:
-        raise NotImplementedError
+        """Get all reminders set for a given user.
+
+        Parameters
+        ----------
+        user_id : int
+            The Discord ID for the user to get reminders for.
+
+        Returns
+        -------
+        list[Reminder]
+            A list of the reminders for this user.
+
+        """
+        return filter(lambda r: r.user_id == user_id, await self.get_reminders())
 
     async def remove_reminder(self, reminder_id: int) -> Reminder:
-        raise NotImplementedError
+        """Remove a reminder from the database.
+
+        Parameters
+        ----------
+        reminder_id : int
+            The ID for the reminder to remove.
+
+        Returns
+        -------
+        Reminder
+            The reminder that was removed from the database.
+
+        """
+        try:
+            removed_reminder = self._tables[self.REMINDERS_KEY].pop(reminder_id)
+        except KeyError:
+            self.log_error("Reminder %s not found in database", reminder_id)
+            raise
+        else:
+            await self._save_database()
+            return removed_reminder
 
     async def remove_user(self, user_id: int) -> User:
         """Remove a user from the database.
