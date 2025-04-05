@@ -1,5 +1,6 @@
 import asyncio
 import json
+import uuid
 from dataclasses import fields
 from pathlib import Path
 
@@ -27,7 +28,7 @@ class Database(Logger):
 
         """
         super().__init__()
-        self._filename = filepath or BotSettings.files.database
+        self._filename = Path(filepath or BotSettings.files.database)
         self._lock = asyncio.Lock()
         self._tables = {self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}
 
@@ -68,21 +69,23 @@ class Database(Logger):
             async with aiofiles.open(self._filename, mode="w") as file_out:
                 await file_out.write(json.dumps(serialisable_tables, indent=4))
 
-    async def _create_empty_user(self, user_id: str, user_name: str) -> None:
+    async def _create_empty_user(self, user_id: int, user_name: str) -> User:
         new_user = User(user_id, user_name)
         async with self._lock:
             self._tables[self.USER_DATA_KEY][user_id] = new_user
         await self._save_database()
+
         return self._tables[self.USER_DATA_KEY][user_id]
 
     @classmethod
-    async def open(cls, *, filepath: str | None = None) -> "Database":
+    async def open(cls, *, filepath: str | Path | None = None) -> "Database":
         """Open the database.
 
         Parameters
         ----------
-        filepath: str | None, optional
-            The file location of the database, by default None
+        filepath: str | Path | None, optional
+            The file location of the database, by default None. If None, the
+            default location is used.
 
         Returns
         -------
@@ -110,7 +113,7 @@ class Database(Logger):
             The reminder that was added to the database.
 
         """
-        index = max(self._tables[self.REMINDERS_KEY]) + 1
+        index = uuid.uuid4().int
         reminder.reminder_id = index
         self._tables[self.REMINDERS_KEY][index] = reminder
         await self._save_database()
@@ -171,7 +174,7 @@ class Database(Logger):
             A list of reminders from the database.
 
         """
-        return self._tables[self.REMINDERS_KEY].values()
+        return list(self._tables[self.REMINDERS_KEY].values())
 
     async def get_user(self, user_id: int) -> User:
         """Get a user from the database.
@@ -202,7 +205,7 @@ class Database(Logger):
             A list of users from the database.
 
         """
-        return self._tables[self.USER_DATA_KEY].values()
+        return list(self._tables[self.USER_DATA_KEY].values())
 
     async def get_reminders_for_user(self, user_id: int) -> list[Reminder]:
         """Get all reminders set for a given user.
@@ -218,7 +221,7 @@ class Database(Logger):
             A list of the reminders for this user.
 
         """
-        return filter(lambda r: r.user_id == user_id, await self.get_reminders())
+        return list(filter(lambda r: r.user_id == user_id, await self.get_reminders()))
 
     async def remove_reminder(self, reminder_id: int) -> Reminder:
         """Remove a reminder from the database.
@@ -266,7 +269,7 @@ class Database(Logger):
             await self._save_database()
             return removed_user
 
-    async def update_user(self, user_id: str, field: str, value: str) -> User:
+    async def update_user(self, user_id: int, field: str, value: str) -> User:
         """Update a user in the database.
 
         Parameters
@@ -302,16 +305,3 @@ class Database(Logger):
         await self._save_database()
 
         return user
-
-
-if __name__ == "__main__":
-
-    async def _main():
-        db = await Database.open(filepath="data/slashbot_NEW.db.json")
-        new_user = await db.add_user(1, "test_user")
-        print("New user:", new_user)
-        print("All users:", await db.get_users())
-        await db.update_user(1, "city", "Paris")
-        print("Updated user:", await db.get_user(1))
-
-    asyncio.run(_main())

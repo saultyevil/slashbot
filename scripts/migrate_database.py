@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 
 import slashbot.core.database as old_database
 import slashbot.core.database_NEW as new_database
@@ -20,6 +21,20 @@ async def main():
         await db_new.update_user(user_id, "country_code", user_data["country_code"])
         user = await db_new.update_user(user_id, "bad_word", user_data["bad_word"])
         print(user)
+
+    reminders_to_migrate = old_database.get_all_reminders()
+
+    for reminder in reminders_to_migrate:
+        user_id = int(reminder["user_id"])
+        channel_id = int(reminder["channel"])
+        date = reminder["date"]
+        content = reminder["reminder"]
+        tagged_users = reminder["tagged_users"]
+
+        new_reminder = new_database.Reminder(user_id, channel_id, date, content, tagged_users)
+        await db_new.add_reminder(new_reminder)
+
+    print(await db_new.get_reminders())
 
 
 if __name__ == "__main__":
