@@ -1,5 +1,6 @@
 import asyncio
 import json
+from dataclasses import fields
 from pathlib import Path
 
 import aiofiles
@@ -15,10 +16,18 @@ class Database(Logger):
     USER_DATA_KEY = "user_data"
     REMINDERS_KEY = "reminders"
 
-    def __init__(self, *, filename: str | Path | None = None) -> None:
-        """Initialise the database class."""
+    def __init__(self, *, filepath: str | Path | None = None) -> None:
+        """Initialise the database class.
+
+        Parameters
+        ----------
+        filepath: str | Path | None, optional
+            The file location of the database, by default None
+            If None, the default location is used.
+
+        """
         super().__init__()
-        self._filename = filename or BotSettings.files.database
+        self._filename = filepath or BotSettings.files.database
         self._lock = asyncio.Lock()
         self._tables = {self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}
 
@@ -32,8 +41,14 @@ class Database(Logger):
 
         async with self._lock, aiofiles.open(self._filename) as file_in:
             content = await file_in.read()
-            # TODO: need to check for JSONDecodeError and handle it
-            data = json.loads(content)
+
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError as e:
+                self.log_error("Failed to parse database. Creating new empty one. exc=%s", e)
+                await self._create_empty_database()
+                data = {self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}
+
             self._tables[self.USER_DATA_KEY] = {int(k): User.from_dict(v) for k, v in data[self.USER_DATA_KEY].items()}
             self._tables[self.REMINDERS_KEY] = {
                 int(k): Reminder.from_dict(v) for k, v in data[self.REMINDERS_KEY].items()
@@ -66,7 +81,7 @@ class Database(Logger):
 
         Parameters
         ----------
-        filename : str | None, optional
+        filepath: str | None, optional
             The file location of the database, by default None
 
         Returns
@@ -76,7 +91,7 @@ class Database(Logger):
 
         """
         filepath = Path(filepath or BotSettings.files.database)
-        self = cls(filename=filepath)
+        self = cls(filepath=filepath)
         await self._load_database()
 
         return self
@@ -201,7 +216,11 @@ class Database(Logger):
             The user that was updated in the database.
 
         """
+        if field not in [f.name for f in fields(User)]:
+            msg = f"{field} is an unknown field"
+            raise ValueError(msg)
         user = await self.get_user(user_id)
+
         match field:
             case "city":
                 user.city = value
@@ -213,4 +232,18 @@ class Database(Logger):
                 msg = f"Unknown field {field}"
                 raise ValueError(msg)
         await self._save_database()
+
         return user
+
+
+if __name__ == "__main__":
+
+    async def _main():
+        db = await Database.open(filepath="data/slashbot_NEW.db.json")
+        new_user = await db.add_user(1, "test_user")
+        print("New user:", new_user)
+        print("All users:", await db.get_users())
+        await db.update_user(1, "city", "Paris")
+        print("Updated user:", await db.get_user(1))
+
+    asyncio.run(_main())
