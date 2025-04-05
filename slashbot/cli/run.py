@@ -8,6 +8,7 @@ Disnake is used as the API client.
 """
 
 import argparse
+import asyncio
 import datetime
 import logging
 import time
@@ -170,13 +171,16 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
     bot.add_listener(create_on_error(bot))
     bot.add_listener(create_on_slash_command_error(bot))
 
+    event_loop = asyncio.get_event_loop()
+    event_loop.run_until_complete(bot.initialise_database())
+
     for cog in bot.cogs.values():
         cog.set_log_level(log_level)
 
     return bot
 
 
-def main() -> None:
+def main() -> int:
     """Run Slashbot."""
     args = parse_args()
     bot = initialise_bot(args)

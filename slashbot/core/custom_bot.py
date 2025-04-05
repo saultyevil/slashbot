@@ -1,11 +1,12 @@
 """Modified InteractionBot class."""
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from disnake.ext.commands import InteractionBot
 
 from slashbot.core import markov
+from slashbot.core.database_NEW import Database
 from slashbot.core.logger import Logger
 
 
@@ -15,7 +16,7 @@ class CustomInteractionBot(InteractionBot, Logger):
     This is a modified version of disnake.ext.commands.InteractionBot.
     """
 
-    def __init__(self, *, enable_markov_cache: bool = False, **kwargs: int) -> None:
+    def __init__(self, *, enable_markov_cache: bool = False, **kwargs: dict) -> None:
         """Initialise the bot.
 
         Parameters
@@ -31,6 +32,7 @@ class CustomInteractionBot(InteractionBot, Logger):
         Logger.__init__(self)
         self.cleanup_functions = []
         self.times_connected = 0
+        self.db = None
         self.use_markov_cache = enable_markov_cache and markov.MARKOV_MODEL
         if markov.MARKOV_MODEL:
             self.log_info(
@@ -38,7 +40,7 @@ class CustomInteractionBot(InteractionBot, Logger):
                 "enabled" if self.use_markov_cache else "disabled",
             )
 
-    def add_function_to_cleanup(self, message: str | None, function: callable, args: Iterable[Any]) -> None:
+    def add_function_to_cleanup(self, message: str | None, function: Callable, args: Iterable[Any]) -> None:
         """Add a function to the cleanup list.
 
         Parameters
@@ -65,3 +67,12 @@ class CustomInteractionBot(InteractionBot, Logger):
                 await function["function"]()
 
         await super().close()
+
+    async def initialise_database(self) -> None:
+        """Initialise the database.
+
+        This will create the database if it does not exist, and create the
+        tables if they do not exist.
+
+        """
+        self.db = await Database.open()
