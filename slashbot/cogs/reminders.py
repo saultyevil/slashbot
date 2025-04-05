@@ -8,34 +8,11 @@ import disnake
 from disnake.ext import commands, tasks
 from prettytable import PrettyTable
 
+from slashbot.convertors import get_user_reminders
 from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
-from slashbot.core.database import (
-    add_reminder,
-    get_all_reminders,
-    get_all_reminders_for_user,
-    remove_reminder,
-)
-
-
-def forget_reminders_autocompleter(inter: disnake.ApplicationCommandInteraction, _: str) -> list[str]:
-    """Interface to get reminders for /forget_reminder autocomplete.
-
-    Parameters
-    ----------
-    inter : disnake.ApplicationCommandInteraction
-        The interaction this is ued with.
-    _ : str
-        The user input, which is unused.
-
-    Returns
-    -------
-    List[str]
-        A list of reminders
-
-    """
-    return [f"{reminder['date']}: {reminder['reminder']}" for reminder in get_all_reminders_for_user(inter.author.id)]
+from slashbot.core.database_NEW import Reminder
 
 
 class Reminders(CustomCog):
@@ -52,7 +29,6 @@ class Reminders(CustomCog):
         """
         super().__init__(bot)
         self.my_timezone = datetime.datetime.now(datetime.UTC).astimezone().tzinfo
-        self.check_reminders.start()
 
     # Private methods ----------------------------------------------------------
 
@@ -75,9 +51,13 @@ class Reminders(CustomCog):
         # it does some odd things. If you do something like 21:30 UTC+6, it will
         # convert that date to the bot's local timezone. For an input of 21:30
         # UTC+6 when the bot's timezone is UTC+1, future = 16:30 UTC + 1
-        return dateparser.parse(user_input, settings={"TIMEZONE": "Europe/London"})
+        parsed_date = dateparser.parse(user_input, settings={"TIMEZONE": "Europe/London"})
+        if not parsed_date:
+            msg = f"Unable to parse date {user_input}"
+            raise ValueError(msg)
+        return parsed_date
 
-    async def replace_mentions_with_display_names(self, guild: disnake.Guild, sentence: str) -> list[str] | str:
+    async def replace_mentions_with_display_names(self, guild: disnake.Guild | None, sentence: str) -> tuple[str, str]:
         """Replace mentions from a post with the corresponding name.
 
         Parameters
@@ -115,17 +95,19 @@ class Reminders(CustomCog):
             modified_sentence = modified_sentence.replace(f"<@!{mention}>", f"@{name}")
             modified_sentence = modified_sentence.replace(f"<@{mention}>", f"@{name}")
 
-        # Replace role mentions
-        role_mentions = re.findall(r"<@&(\d+)>", sentence)
-        for mention in role_mentions:
-            mentions.append(f"<@&{mention}>")
-            try:
+        # Replace role mentions in a guild, if we are in one
+        if guild:
+            role_mentions = re.findall(r"<@&(\d+)>", sentence)
+            for mention in role_mentions:
+                mentions.append(f"<@&{mention}>")
                 role = guild.get_role(int(mention))
-                name = role.name
-            except AttributeError:
-                continue
-
-            modified_sentence = modified_sentence.replace(f"<@&{mention}>", f"@{name}")
+                if not role:
+                    continue
+                try:
+                    name = role.name
+                except AttributeError:
+                    continue
+                modified_sentence = modified_sentence.replace(f"<@&{mention}>", f"@{name}")
 
         mentions_str = ", ".join(mentions)
         return mentions_str, modified_sentence
@@ -135,25 +117,38 @@ class Reminders(CustomCog):
     @tasks.loop(seconds=1)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
-        reminders = get_all_reminders()
+        await self.bot.wait_until_first_connect()
+        reminders = await self.db.get_reminders()
         if len(reminders) == 0:
             return
-        now = datetime.datetime.now(tz=datetime.UTC)
+        dt_now = datetime.datetime.now(tz=datetime.UTC)
 
         for reminder in reminders:
-            date = datetime.datetime.fromisoformat(reminder["date"]).replace(tzinfo=datetime.UTC)
+            reminder_date = datetime.datetime.fromisoformat(reminder.date_iso).replace(tzinfo=datetime.UTC)
 
-            if date <= now:
-                remove_reminder(reminder)
-                owner = await self.bot.fetch_user(reminder["user_id"])
-                embed = disnake.Embed(title=reminder["reminder"], color=disnake.Color.default())
-                embed.set_thumbnail(url=owner.avatar.url)
-                message = f"{owner.mention}"
-                if reminder["tagged_users"]:
-                    message = f"{message}, {reminder['tagged_users']}"
+            if reminder_date <= dt_now:
+                try:
+                    user = await self.bot.fetch_user(reminder.user_id)
+                except disnake.NotFound:
+                    self.log_error("User %s not found when trying to send reminder", reminder.user_id)
+                    await self.db.remove_reminder(reminder.reminder_id)
+                    continue
 
-                channel = await self.bot.fetch_channel(reminder["channel"])
-                await channel.send(f"Here's your reminder {message}", embed=embed)
+                embed = disnake.Embed(title=reminder.content, color=disnake.Color.default())
+                embed.set_thumbnail(url=user.display_avatar.url)
+                message = f"{user.mention}"
+                if reminder.tagged_users:
+                    message = f"{message}, {reminder.tagged_users}"
+
+                try:
+                    channel = await self.bot.fetch_channel(reminder.channel_id)
+                except (disnake.NotFound, disnake.Forbidden):
+                    self.log_error("Channel %s not found when trying to send reminder", reminder.channel_id)
+                    await self.db.remove_reminder(reminder.reminder_id)
+                    continue
+
+                await channel.send(f"Here's your reminder, {message}", embed=embed)
+                await self.db.remove_reminder(reminder.reminder_id)
 
     # Commands -----------------------------------------------------------------
 
@@ -191,14 +186,15 @@ class Reminders(CustomCog):
             return
 
         tagged_users, reminder = await self.replace_mentions_with_display_names(inter.guild, reminder)
-        add_reminder(
-            {
-                "user_id": inter.author.id,
-                "channel": inter.channel.id,
-                "date": future_time.astimezone(datetime.UTC).isoformat(),
-                "reminder": reminder,
-                "tagged_users": tagged_users if tagged_users else None,
-            },
+
+        await self.db.add_reminder(
+            Reminder(
+                inter.author.id,
+                inter.channel.id,
+                future_time.astimezone(datetime.UTC).isoformat(),
+                reminder,
+                tagged_users if tagged_users else None,
+            )
         )
 
         await inter.response.send_message(f"Your reminder has been set for {when}.", ephemeral=True)
@@ -208,7 +204,7 @@ class Reminders(CustomCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         reminder: str = commands.Param(
-            autocomplete=forget_reminders_autocompleter,
+            autocomplete=get_user_reminders,
             description="The reminder you want to forget.",
         ),
     ) -> None:
@@ -223,19 +219,22 @@ class Reminders(CustomCog):
 
         """
         reminder_to_remove = list(
-            filter(lambda r: f"{r['date']}: {r['reminder']}" == reminder, get_all_reminders_for_user(inter.author.id)),
+            filter(
+                lambda r: f"{r.date_iso}: {r.content}" == reminder,
+                await self.db.get_reminders_for_user(inter.author.id),
+            ),
         )
         if not reminder_to_remove:
-            Reminders._logger.error("Failed to find reminder (%s) in auto-completion field", reminder)
+            self.log_error("Failed to find reminder (%s) in auto-completion field", reminder)
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
         try:
             reminder_to_remove = reminder_to_remove[0]
         except IndexError:
-            Reminders._logger.exception("Failed to index of reminder when trying to delete it from the database")
+            self.log_exception("Failed to index of reminder when trying to delete it from the database")
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
-        remove_reminder(reminder_to_remove)
+        await self.db.remove_reminder(reminder_to_remove.reminder_id)
 
         await inter.response.send_message("Your reminder has been removed.", ephemeral=True)
 
@@ -249,13 +248,13 @@ class Reminders(CustomCog):
             The interaction object for the command.
 
         """
-        reminders = get_all_reminders_for_user(inter.author.id)
+        reminders = await self.db.get_reminders_for_user(inter.author.id)
         if not reminders:
             await inter.response.send_message("You don't have any reminders.", ephemeral=True)
             return
         reminders = sorted(
             [
-                (datetime.datetime.fromisoformat(reminder["date"]).astimezone(datetime.UTC), reminder["reminder"])
+                (datetime.datetime.fromisoformat(reminder.date_iso).astimezone(datetime.UTC), reminder.content)
                 for reminder in reminders
             ],
             key=lambda entry: entry[0],
@@ -275,7 +274,7 @@ class Reminders(CustomCog):
         await inter.response.send_message(message, ephemeral=True)
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up cogs in this module.
 
     Parameters

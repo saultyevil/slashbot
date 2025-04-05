@@ -56,5 +56,5 @@ class Reminder(BaseDataClass):
     channel_id: int
     date_iso: str
     content: str
-    tagged_users: list[str] | None = None
+    tagged_users: str | None = None
     reminder_id: int = ID_UNSET

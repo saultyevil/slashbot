@@ -78,9 +78,6 @@ class ScheduledPosts(CustomCog):
         super().__init__(bot)
 
         self.scheduled_posts = None
-        if not self.post_loop.is_running():
-            self.post_loop.start()  # pylint: disable=no-member
-
         self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
 

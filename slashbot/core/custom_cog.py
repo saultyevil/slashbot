@@ -1,5 +1,7 @@
 """Custom Cog class."""
 
+from typing import TYPE_CHECKING
+
 import disnake
 from disnake.ext import tasks
 from disnake.ext.commands import Cog
@@ -9,11 +11,14 @@ from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
+if TYPE_CHECKING:
+    from slashbot.core.database_NEW import Database
+
 
 class CustomCog(Cog, Logger):
     """A custom cog class which modifies cooldown behaviour."""
 
-    def __init__(self, bot: CustomInteractionBot, **kwargs) -> None:
+    def __init__(self, bot: CustomInteractionBot, **kwargs: dict) -> None:
         """Intialise the cog.
 
         Parameters
@@ -24,8 +29,9 @@ class CustomCog(Cog, Logger):
         """
         super().__init__(**kwargs)
         Logger.__init__(self)
-        self.bot = bot
-        self.markov_seed_words = None
+        self.bot: CustomInteractionBot = bot
+        self.db: Database | None = None
+        self.markov_seed_words = []
         self._markov_sentences = {}
 
     # --------------------------------------------------------------------------
@@ -79,7 +85,7 @@ class CustomCog(Cog, Logger):
            The seed words to generate sentences for, by default None
 
         """
-        for seed_word in seed_words or self.markov_seed_words:
+        for seed_word in seed_words or self.markov_seed_words or []:
             current_amount = len(self._markov_sentences.get(seed_word, []))
             self._markov_sentences[seed_word] = self.get_random_markov_sentence(
                 seed_word, amount=BotSettings.markov.num_pregen_sentences - current_amount
@@ -88,10 +94,7 @@ class CustomCog(Cog, Logger):
 
     # --------------------------------------------------------------------------
 
-    async def cog_before_slash_command_invoke(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-    ) -> disnake.ApplicationCommandInteraction:
+    async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Reset the cooldown for some users and servers.
 
         Parameters
@@ -111,12 +114,25 @@ class CustomCog(Cog, Logger):
         """Async cog load method.
 
         This initialises:
+            - The database attribute, from the bot/client
             - Pre-generated markov sentences, if enabled
+            - Starts all tasks
         """
+        await self.bot.wait_until_first_connect()
+        self.db = self.bot.db
         if self.bot.use_markov_cache and self.markov_seed_words:
             self.log_info("Generating markov sentence cache")
             self._populate_markov_cache()
             self.check_markov_cache_size.start()
+        self._start_all_tasks()
+
+    def _start_all_tasks(self) -> None:
+        """Start all tasks in the cog."""
+        for attr in dir(self):
+            task_candidate = getattr(self, attr)
+            if isinstance(task_candidate, tasks.Loop) and not task_candidate.is_running():
+                self.log_debug("Starting task: %s", attr)
+                task_candidate.start()
 
     # --------------------------------------------------------------------------
 

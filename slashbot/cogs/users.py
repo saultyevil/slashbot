@@ -178,4 +178,4 @@ def setup(bot: commands.InteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    bot.add_cog(Users(bot))
+    # bot.add_cog(Users(bot))

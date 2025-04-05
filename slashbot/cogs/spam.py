@@ -47,10 +47,6 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         self.markov_training_sample = {}
         self.rule34_api = r34.Rule34()
 
-        # If no markov model, don't start the loop.
-        if markov.MARKOV_MODEL:
-            self.markov_chain_update_loop.start()  # pylint: disable=no-member
-
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)  # noqa: SLF001
 

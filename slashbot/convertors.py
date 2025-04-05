@@ -1,6 +1,7 @@
 from typing import Any
 
 from slashbot.core.custom_types import ApplicationCommandInteraction
+from slashbot.core.database_NEW import Database
 
 
 def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any) -> Any:  # noqa: ANN401
@@ -40,3 +41,23 @@ def convert_yes_no_to_bool(_inter: ApplicationCommandInteraction, choice: str) -
 
     """
     return choice.lower() == "yes"
+
+
+async def get_user_reminders(inter: ApplicationCommandInteraction, _: str) -> list[str]:
+    """Interface to get reminders for /forget_reminder autocomplete.
+
+    Parameters
+    ----------
+    inter : disnake.ApplicationCommandInteraction
+        The interaction this is ued with.
+    _ : str
+        The user input, which is unused.
+
+    Returns
+    -------
+    List[str]
+        A list of reminders
+
+    """
+    user_reminders = await inter.bot.db.get_reminders_for_user(inter.author.id)
+    return [f"{reminder.date_iso}: {reminder.content}" for reminder in user_reminders]

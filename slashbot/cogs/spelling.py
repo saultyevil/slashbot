@@ -71,7 +71,6 @@ class Spelling(CustomCog):
             ),  # incorrect_spellings[guild_id][user_id]
         )
         self.spellchecker = SpellChecker(case_sensitive=False)
-        self.spelling_summary.start()  # pylint: disable=no-member
         self.custom_words = self.get_custom_words()
 
     @commands.cooldown(
