@@ -1,4 +1,7 @@
 from dataclasses import asdict, dataclass
+from datetime import datetime
+
+ID_UNSET = -1
 
 
 @dataclass
@@ -47,4 +50,11 @@ class User(BaseDataClass):
 
 @dataclass
 class Reminder(BaseDataClass):
-    pass
+    """Reminder dataclass."""
+
+    user_id: int
+    channel_id: int
+    date: datetime
+    content: str
+    tagged_users: list[int] | None = None
+    reminder_id: int = ID_UNSET
