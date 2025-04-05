@@ -6,16 +6,15 @@ location into a latitude and longitude for OpenWeatherMap.
 
 import datetime
 import json
-from types import coroutine
 
 import disnake
 import requests
 from disnake.ext import commands
 from geopy import GoogleV3
 
+from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
-from slashbot.core.database import get_user_location
 from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 
@@ -30,6 +29,41 @@ class OneCallError(Exception):
 
 class LocationNotFoundError(Exception):
     """Raise when OWM cannot find the provided location."""
+
+
+def convert_radial_to_cardinal_direction(degrees: float) -> str:
+    """Convert a degrees value to a cardinal direction.
+
+    Parameters
+    ----------
+    degrees: float
+        The degrees direction.
+
+    Returns
+    -------
+    The cardinal direction as a string.
+
+    """
+    directions = [
+        "N",
+        "NNE",
+        "NE",
+        "ENE",
+        "E",
+        "ESE",
+        "SE",
+        "SSE",
+        "S",
+        "SSW",
+        "SW",
+        "WSW",
+        "W",
+        "WNW",
+        "NW",
+        "NNW",
+    ]
+
+    return directions[round(degrees / (360.0 / len(directions))) % len(directions)]
 
 
 class Weather(CustomCog):
@@ -121,7 +155,7 @@ class Weather(CustomCog):
 
     @staticmethod
     def add_weather_alert_to_embed(
-        embed: disnake.Embed, weather_alerts: list[dict], timezone_offset: int
+        embed: disnake.Embed, weather_alerts: list[dict] | None, timezone_offset: int
     ) -> disnake.Embed:
         """Add weather alerts to an embed.
 
@@ -252,14 +286,16 @@ class Weather(CustomCog):
 
         """
         if not location:
-            location = get_user_location(inter.author)
-            if not location:
+            try:
+                user = await self.db.get_user(inter.user.id)
+                location = user.city
+            except KeyError as exc:
                 await deferred_error_message(
                     inter,
                     "You need to either specify a city, or set your city and/or country using /set_info.",
                 )
-                msg = "Invalid input for location provided"
-                raise ValueError(msg)
+                msg = "No location provided"
+                raise ValueError(msg) from exc
 
         try:
             location, forecast = self.weather_api(location, units, request_type)
@@ -317,7 +353,7 @@ class Weather(CustomCog):
         embed: disnake.Embed,
         weather: dict,
         forecast: dict,
-        alerts: list[dict],
+        alerts: list[dict] | None,
         units: str,
         tz_offset: int,
     ) -> disnake.Embed:
@@ -412,7 +448,9 @@ class Weather(CustomCog):
             text=f"{self.get_random_markov_sentence('forecast', 1)}\n(You can set your location using /set_info)",
         )
         embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
-        embed = self.add_forecast_to_embed(embed, forecast[1:amount + 1], units)  # start from 1 to avoid the current day
+        embed = self.add_forecast_to_embed(
+            embed, forecast[1 : amount + 1], units
+        )  # start from 1 to avoid the current day
 
         await inter.edit_original_message(embed=embed)
 
@@ -430,7 +468,7 @@ class Weather(CustomCog):
             default="mixed",
             choices=WEATHER_UNITS,
         ),
-    ) -> coroutine:
+    ) -> None:
         """Get the weather for a location.
 
         Parameters
@@ -468,7 +506,7 @@ class Weather(CustomCog):
         await inter.edit_original_message(embed=embed)
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up the cogs in this module.
 
     Parameters
@@ -480,39 +518,4 @@ def setup(bot: commands.InteractionBot) -> None:
     if BotSettings.keys.google and BotSettings.keys.openweathermap:
         bot.add_cog(Weather(bot))
     else:
-        Weather.log_error(Weather, "No Google API key found, weather cog not loaded.")
-
-
-def convert_radial_to_cardinal_direction(degrees: float) -> str:
-    """Convert a degrees value to a cardinal direction.
-
-    Parameters
-    ----------
-    degrees: float
-        The degrees direction.
-
-    Returns
-    -------
-    The cardinal direction as a string.
-
-    """
-    directions = [
-        "N",
-        "NNE",
-        "NE",
-        "ENE",
-        "E",
-        "ESE",
-        "SE",
-        "SSE",
-        "S",
-        "SSW",
-        "SW",
-        "WSW",
-        "W",
-        "WNW",
-        "NW",
-        "NNW",
-    ]
-
-    return directions[round(degrees / (360.0 / len(directions))) % len(directions)]
+        bot.log_error("No Google API key found, weather cog not loaded.")

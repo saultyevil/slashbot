@@ -165,8 +165,8 @@ class Spelling(CustomCog):
 
         """
         try:
-            with Path.open(BotSettings.cogs.spellcheck.custom_dictionary, encoding="utf-8") as file_in:
-                return list({line.strip() for line in file_in.readlines()})
+            with Path(BotSettings.cogs.spellcheck.custom_dictionary).open(encoding="utf-8") as file_in:
+                return list({line.strip() for line in file_in})
         except OSError:
             self.log_exception("No dictionary found at %s", BotSettings.cogs.spellcheck.custom_dictionary)
             return []

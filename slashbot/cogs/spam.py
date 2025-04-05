@@ -3,7 +3,6 @@
 import asyncio
 import atexit
 import random
-from types import coroutine
 
 import aiofiles
 import defusedxml
@@ -16,7 +15,6 @@ from disnake.ext import commands, tasks
 from slashbot.clock import calculate_seconds_until
 from slashbot.core import markov
 from slashbot.core.custom_cog import CustomCog
-from slashbot.core.database import get_users
 from slashbot.settings import BotSettings
 
 COOLDOWN_USER = commands.BucketType.user
@@ -54,7 +52,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
 
     @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
     @commands.slash_command(name="bad_word", description="send a naughty word")
-    async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a bad word to the chat.
 
         Parameters
@@ -65,23 +63,14 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         """
         async with aiofiles.open(BotSettings.files.bad_words, encoding="utf-8") as file_in:
             bad_words = await file_in.readlines()
-
-        bad_word = random.choice(bad_words).strip()  # noqa: S311
-        users_to_mention = [
-            inter.guild.get_member(user_id).mention
-            for user_id, user_settings in get_users().items()
-            if user_settings["bad_word"] == bad_word
-        ]
-        if users_to_mention:
-            await inter.response.send_message(f"Here's one for ya, {', '.join(users_to_mention)} ... {bad_word}!")
-        else:
-            await inter.response.send_message(f"{bad_word.capitalize()}.")
+        bad_word = random.choice(bad_words).strip()
+        await inter.response.send_message(f"{bad_word.capitalize()}.")
 
     @commands.slash_command(
         name="evil_wii",
         description="evil wii",
     )
-    async def evil_wii(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    async def evil_wii(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send the Evil Wii, a cursed image.
 
         Parameters
@@ -90,7 +79,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             The interaction to respond to.
 
         """
-        message = random.choice(  # noqa: S311
+        message = random.choice(
             ["evil wii", "evil wii?", "have you seen this?", "||evil wii||", "||evil|| ||wii||"],
         )
         file = disnake.File("data/images/evil_wii.png")
@@ -179,7 +168,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
         choices = [result for result in results if result.has_comments]
         if len(choices) == 0:
             choices = results
-        image = random.choice(choices)  # noqa: S311
+        image = random.choice(choices)
 
         comment, user = self.get_comments_for_rule34_post(image.id)
         comment = "*Too cursed for comments*" if not comment else f'"{comment}"'

@@ -77,7 +77,7 @@ class ScheduledPosts(CustomCog):
         """
         super().__init__(bot)
 
-        self.scheduled_posts = None
+        self.scheduled_posts = []
         self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
 
