@@ -2,7 +2,7 @@ import asyncio
 import datetime
 
 import slashbot.core.database as old_database
-import slashbot.core.database_NEW as new_database
+import slashbot.core.database as new_database
 from slashbot.core.logger import setup_logging
 from slashbot.settings import BotSettings
 

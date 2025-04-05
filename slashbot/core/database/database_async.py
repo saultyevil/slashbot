@@ -6,7 +6,7 @@ from pathlib import Path
 
 import aiofiles
 
-from slashbot.core.database_NEW.models import Reminder, User
+from slashbot.core.database.models import Reminder, User
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 

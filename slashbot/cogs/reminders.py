@@ -12,7 +12,7 @@ from slashbot.convertors import get_user_reminders
 from slashbot.core.custom_bot import CustomInteractionBot
 from slashbot.core.custom_cog import CustomCog
 from slashbot.core.custom_command import slash_command_with_cooldown
-from slashbot.core.database_NEW import Reminder
+from slashbot.core.database import Reminder
 
 
 class Reminders(CustomCog):

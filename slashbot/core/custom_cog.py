@@ -12,7 +12,7 @@ from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
 if TYPE_CHECKING:
-    from slashbot.core.database_NEW import Database
+    from slashbot.core.database import Database
 
 
 class CustomCog(Cog, Logger):
