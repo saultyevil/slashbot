@@ -40,3 +40,23 @@ def convert_yes_no_to_bool(_inter: ApplicationCommandInteraction, choice: str) -
 
     """
     return choice.lower() == "yes"
+
+
+async def get_user_reminders(inter: ApplicationCommandInteraction, _: str) -> list[str]:
+    """Interface to get reminders for /forget_reminder autocomplete.
+
+    Parameters
+    ----------
+    inter : disnake.ApplicationCommandInteraction
+        The interaction this is ued with.
+    _ : str
+        The user input, which is unused.
+
+    Returns
+    -------
+    List[str]
+        A list of reminders
+
+    """
+    user_reminders = await inter.bot.db.get_reminders_for_user(inter.author.id)  # type: ignore  # noqa: PGH003
+    return [f"{reminder.date_iso}: {reminder.content}" for reminder in user_reminders]
