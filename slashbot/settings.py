@@ -5,8 +5,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from markovify.chain import Chain
-
 
 @dataclass
 class SpellcheckSettings:
@@ -92,10 +90,10 @@ class DiscordSettings:
 class FilesSettings:
     """File locations and settings."""
 
-    database: str
-    bad_words: str
-    god_words: str
-    scheduled_posts: str
+    database: Path
+    bad_words: Path
+    god_words: Path
+    scheduled_posts: Path
 
 
 @dataclass
@@ -226,11 +224,3 @@ def load_settings() -> Settings:
 
 
 BotSettings = load_settings()
-a = 1
-
-
-def reload_settings() -> None:
-    """Reload the global BotSettings."""
-    global BotSettings  # noqa: PLW0603
-    BotSettings = load_settings()
-    return BotSettings

@@ -16,7 +16,7 @@ class CustomInteractionBot(InteractionBot, Logger):
     This is a modified version of disnake.ext.commands.InteractionBot.
     """
 
-    def __init__(self, *, enable_markov_cache: bool = False, **kwargs: dict) -> None:
+    def __init__(self, *, enable_markov_cache: bool = False, **kwargs: Any) -> None:
         """Initialise the bot.
 
         Parameters

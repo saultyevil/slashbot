@@ -14,6 +14,7 @@ import logging
 import time
 import traceback
 from collections.abc import Callable
+from typing import Any
 
 import disnake
 from disnake.ext import commands
@@ -91,7 +92,7 @@ def create_on_error(bot: CustomInteractionBot) -> Callable:
 
     """
 
-    async def on_error(_event: any, *_args: any, **_kwargs: any) -> None:
+    async def on_error(_event: Any, *_args: Any, **_kwargs: Any) -> None:
         bot.log_exception("on_error:")
 
     return on_error
@@ -115,9 +116,9 @@ def create_on_slash_command_error(bot: CustomInteractionBot) -> Callable:
         # to the follow up instead
         time_since_created = datetime.datetime.now(datetime.UTC) - inter.created_at
         if time_since_created > datetime.timedelta(seconds=2.5):
-            inter = inter.followup
+            followup = inter.followup
             try:
-                original_message = await inter.original_response()
+                original_message = await followup.original_response()  # type: ignore  # noqa: PGH003
                 await original_message.delete()
             except disnake.HTTPException:
                 pass
@@ -175,7 +176,7 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
     event_loop.run_until_complete(bot.initialise_database())
 
     for cog in bot.cogs.values():
-        cog.set_log_level(log_level)
+        cog.set_log_level(log_level)  # type: ignore  # noqa: PGH003
 
     return bot
 

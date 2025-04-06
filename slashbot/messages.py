@@ -129,15 +129,15 @@ async def get_attached_images_from_message(message: Message) -> list[VisionImage
         data and the MIME type of the image.
 
     """
-    # DeepSeek doesn't support vision as of current implementation 28/01/2025
-    if BotSettings.cogs.ai_chat.chat_model in ["deepseek-chat", "deepseek-reasoner", "o3-mini"]:
-        LOGGER.log_debug("Vision not supported in current model %s", BotSettings.cogs.ai_chat.chat_model)
-        return []
-
-    image_urls = []  # Start off with empty list, which makes it clearer we will always returns a list
-    image_urls += [attachment.url for attachment in message.attachments if attachment.content_type.startswith("image/")]
-    image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image]
-    image_urls += [embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail]
+    image_urls = [
+        attachment.url
+        for attachment in message.attachments
+        if attachment.content_type and attachment.content_type.startswith("image/")
+    ]
+    image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image and embed.image.proxy_url]
+    image_urls += [
+        embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail and embed.thumbnail.proxy_url
+    ]
 
     result = []
     for url in image_urls:
@@ -145,4 +145,5 @@ async def get_attached_images_from_message(message: Message) -> list[VisionImage
             result.append(download_and_encode_image(url, encode_to_b64=not BotSettings.cogs.ai_chat.prefer_image_urls))
         except Exception:
             LOGGER.log_exception("Failed to download image from %s", url)
+
     return result

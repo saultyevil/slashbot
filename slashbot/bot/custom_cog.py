@@ -78,8 +78,6 @@ class CustomCog(Cog, Logger):
 
     # --------------------------------------------------------------------------
 
-    # --------------------------------------------------------------------------
-
     def _get_random_markov_sentence(self, seed_word: str | None, amount: int) -> str | list[str]:
         """Get a random markov generated sentence.
 

@@ -22,7 +22,7 @@ from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 
 LOGGER = Logger()
-MARKOV_MODEL = None
+MARKOV_MODEL = markovify.Text("This is an empty markov model. I think you may need two sentences.")
 MARKOV_BANK = {}
 
 

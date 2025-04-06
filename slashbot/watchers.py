@@ -1,14 +1,12 @@
 import json
 import logging
 import time
-from dataclasses import asdict
-from pathlib import Path
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from slashbot.prompts import create_prompt_dict, read_in_prompt_json
-from slashbot.settings import BotSettings, reload_settings
+from slashbot.settings import BotSettings
 
 AVAILABLE_LLM_PROMPTS = create_prompt_dict()
 LOGGER = logging.getLogger(BotSettings.logging.logger_name)
@@ -42,41 +40,6 @@ class PromptFileWatcher(FileSystemEventHandler):
             LOGGER.exception("Error reading in prompt file %s", event.src_path)
 
 
-class ConfigFileWatcher(FileSystemEventHandler):
-    """Watches for changes to the configuration file and reloads BotSettings.
-
-    ####
-    THIS IS NOT IMPLEMENTED YET
-    ###
-
-    """
-
-    def on_modified(self, event: FileSystemEventHandler) -> None:
-        """Reload the config on file modify.
-
-        Parameters
-        ----------
-        event : FileSystemEventHandler
-            The event to check.
-
-        """
-        src_path = str(Path(event.src_path).resolve())
-        if event.event_type == "modified" and src_path == BotSettings.config_file:
-            old_settings = asdict(BotSettings)
-            new_settings = asdict(reload_settings())
-            changes = {
-                key: (old_settings[key], new_settings[key])
-                for key in old_settings
-                if old_settings[key] != new_settings[key]
-            }
-            if changes:
-                LOGGER.info("Bot settings updated:")
-                for key, (old_val, new_val) in changes.items():
-                    LOGGER.info("  %s: %s -> %s", key, old_val, new_val)
-
-            LOGGER.info("%s", BotSettings.markov.pregenerate_limit)
-
-
 class ScheduledPostWatcher(FileSystemEventHandler):
     """File watcher to watch for changes to scheduled posts file.
 
@@ -90,7 +53,7 @@ class ScheduledPostWatcher(FileSystemEventHandler):
         self.parent = parent_class
         self.last_restart_time = 0
 
-    def on_modified(self, event: FileSystemEventHandler) -> None:
+    def on_modified(self, event: FileSystemEvent) -> None:
         """Reload the posts on file modify.
 
         Parameters
@@ -114,5 +77,4 @@ class ScheduledPostWatcher(FileSystemEventHandler):
 
 FILE_OBSERVER = Observer()
 FILE_OBSERVER.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
-# FILE_OBSERVER.schedule(ConfigFileWatcher(), path=Path(BotSettings.config_file).parent)
 FILE_OBSERVER.start()

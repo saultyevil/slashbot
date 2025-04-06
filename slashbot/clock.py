@@ -1,9 +1,7 @@
 import datetime
 
 
-def add_days_to_datetime(
-    now: datetime.datetime, original_date: datetime.datetime, days_to_add: float
-) -> datetime.datetime:
+def add_days_to_datetime(now: datetime.datetime, original_date: datetime.datetime, days_to_add: float) -> float:
     """Add a week to a datetime object.
 
     Parameters
@@ -17,7 +15,8 @@ def add_days_to_datetime(
 
     Returns
     -------
-    A datetime object a week after the given one.
+    float
+        The number of seconds to sleep for.
 
     """
     if days_to_add < 0:
@@ -41,7 +40,7 @@ def add_days_to_datetime(
     return (next_date - now).total_seconds()
 
 
-def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency_days: int) -> int:
+def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency_days: int) -> float:
     """Calculate how long to sleep till a hour:minute time for a given weekday.
 
     If the requested moment is time is beyond the current time, the number of
@@ -61,7 +60,7 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency_days
 
     Returns
     -------
-    int
+    float
         The time to sleep for in seconds.
 
     """

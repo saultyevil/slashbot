@@ -44,7 +44,7 @@ def _save_modified_config(updated_config: dict) -> None:
         raise
 
 
-async def get_logfile_tail(logfile_path: Path, num_lines: int) -> list[str]:
+async def get_logfile_tail(logfile_path: Path, num_lines: int) -> str:
     """Get the last `num_lines` lines of the Slashbot logfile.
 
     Parameters
@@ -56,7 +56,7 @@ async def get_logfile_tail(logfile_path: Path, num_lines: int) -> list[str]:
 
     Returns
     -------
-    list[str]
+    str
         The last `num_lines` lines of the log file.
 
     """
@@ -134,12 +134,12 @@ def update_local_repository(branch: str) -> None:
     """
     repo = git.Repo(".", search_parent_directories=True)
     if repo.active_branch != branch:
-        branch = repo.branches[branch]
-        branch.checkout()
+        target_branch = repo.heads[branch]
+        target_branch.checkout()
     repo.remotes.origin.pull()
 
 
-def set_config_value(key: str, value: str) -> None:  # noqa: C901
+def set_config_value(key: str, value: str) -> str | None:  # noqa: C901
     """Set the value of a config key.
 
     Parameters
