@@ -22,8 +22,8 @@ from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 
 LOGGER = Logger()
-MARKOV_MODEL = markovify.Text("This is an empty markov model. I think you may need two sentences.")
-MARKOV_BANK = {}
+MARKOV_MODEL = None
+MARKOV_BANK = None
 
 
 def _search_for_seed_in_markov_bank(seed_word: str) -> str:
@@ -40,6 +40,10 @@ def _search_for_seed_in_markov_bank(seed_word: str) -> str:
         The markov sentence.
 
     """
+    if not MARKOV_BANK:
+        LOGGER.log_error("Markov bank is not loaded")
+        return "Markov bank is not loaded."
+
     if seed_word not in MARKOV_BANK:
         LOGGER.log_error("Seed word '%s' not found in markov bank", seed_word)
         sentences = MARKOV_BANK.get(
@@ -268,7 +272,7 @@ def load_markov_bank(bank_location: str | Path) -> dict:
 
 async def update_markov_chain_for_model(  # noqa: PLR0911
     inter: ApplicationCommandInteraction | None,
-    model: markovify.Text,
+    model: markovify.Text | None,
     new_messages: list[str],
     save_location: str | Path,
 ) -> markovify.Text | None:
@@ -348,12 +352,14 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
     return model
 
 
-def generate_text_from_markov_chain(model: markovify.Text, seed_word: str | None, amount: int) -> str | list[str]:
+def generate_text_from_markov_chain(
+    model: markovify.Text | None, seed_word: str | None, amount: int
+) -> str | list[str]:
     """Generate a list of markov generated sentences for a specific key word.
 
     Parameters
     ----------
-    model : markovify.Text
+    model : markovify.Text | None
         The markov model to use to generate sentences.
     seed_word : str | None
         The seed word to use.

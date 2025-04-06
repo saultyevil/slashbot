@@ -22,7 +22,7 @@ class Logger:
         self._logger = logging.getLogger(BotSettings.logging.logger_name)
         self._prepend = prepend_msg.strip()
         self._append = append_msg.strip()
-        self._cog_name = f"[{self.__cog_name__}.Cog] " if hasattr(self, "__cog_name__") else ""
+        self._cog_name = f"[{self.__cog_name__}.Cog] " if hasattr(self, "__cog_name__") else ""  # type: ignore  # noqa: PGH003
 
     def _log_impl(self, level: int, msg: str, *args: Any, exc_info: bool = False) -> None:
         formatted_msg = msg % args
@@ -81,6 +81,19 @@ class Logger:
 
         """
         self._log_impl(logging.ERROR, msg, *args)
+
+    def log_warning(self, msg: str, *args: Any) -> None:
+        """Log a warning message.
+
+        Parameters
+        ----------
+        msg : str
+            The message to log.
+        args : any
+            The arguments to pass to the message.
+
+        """
+        self._log_impl(logging.WARNING, msg, *args)
 
     def log_info(self, msg: str, *args: Any) -> None:
         """Log an info message.

@@ -147,6 +147,11 @@ class Reminders(CustomCog):
                     await self.db.remove_reminder(reminder.reminder_id)
                     continue
 
+                if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                    self.log_error("Channel %s is not a text channel when trying to send reminder", channel.id)
+                    await self.db.remove_reminder(reminder.reminder_id)
+                    continue
+
                 await channel.send(f"Here's your reminder, {message}", embed=embed)
                 await self.db.remove_reminder(reminder.reminder_id)
 

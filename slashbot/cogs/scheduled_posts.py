@@ -19,7 +19,7 @@ from slashbot.watchers import ScheduledPostWatcher
 COOLDOWN_USER = commands.BucketType.user
 
 
-def check_post_has_keys(post: dict, keys: list) -> bool:
+def check_post_has_keys(post: dict, keys: list[str] | tuple[str]) -> bool:
     """Check if all the given keys are present in the given dictionary.
 
     Parameters

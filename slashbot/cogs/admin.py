@@ -4,13 +4,12 @@ import random
 from pathlib import Path
 
 import disnake
-import git
 from disnake.ext import commands
+from git.exc import GitCommandError
 
 from slashbot import __version__
 from slashbot.admin import (
     get_logfile_tail,
-    get_modifiable_config_keys,
     restart_bot,
     set_config_value,
     update_local_repository,
@@ -41,7 +40,7 @@ def ordinal_suffix(n: int) -> str:
         The ordinal suffix for the given number.
 
     """
-    if 11 <= (n % 100) <= 13:
+    if 11 <= (n % 100) <= 13:  # noqa: PLR2004
         return "th"
     return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
@@ -66,21 +65,29 @@ class AdminTools(CustomCog):
         self.my_messages = []
         self.invite_tasks = {}
 
-    async def _find_entry(
-        self, guild: disnake.Guild, member: disnake.Member, filter_user: disnake.Member, action: disnake.AuditLogAction
-    ) -> str:
+    async def _find_entry_in_audit_log(
+        self,
+        guild: disnake.Guild,
+        member: disnake.Member,
+        filter_user: disnake.Member | disnake.User,
+        action: disnake.AuditLogAction,
+    ) -> str | None:
         async for entry in guild.audit_logs(action=action, after=member.joined_at, user=filter_user):
+            if not entry.target:
+                continue
             if entry.target.id == member.id:
                 return f'"{entry.reason}"' if entry.reason else "no reason"
 
         return None
 
-    async def _count_times(
+    async def _count_times_in_audit_log_in_30_day_window(
         self, guild: disnake.Guild, member: disnake.Member | disnake.User, action: disnake.AuditLogAction
     ) -> int:
         times_happened = 0
         month_ago = datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(days=30)
         async for entry in guild.audit_logs(action=action, after=month_ago, limit=None):
+            if not entry.target:
+                continue
             if entry.target.id == member.id:
                 times_happened += 1
 
@@ -89,17 +96,17 @@ class AdminTools(CustomCog):
     async def _check_audit_log_for_action_and_invite(
         self,
         guild: disnake.Guild,
-        member: disnake.Member | disnake.User,
+        member: disnake.Member,
         action_user: disnake.Member | disnake.User,
         action: disnake.AuditLogAction,
-    ) -> str:
+    ) -> str | None:
         """Check audit logs for specific actions and send invites.
 
         Parameters
         ----------
         guild : disnake.Guild
             The guild where the action occurred.
-        member : disnake.Member or disnake.User
+        member : disnake.Member
             The member who was the target of the action.
         action_user: disnake.Member or disnake.User
             The user who initiated the action.
@@ -116,10 +123,13 @@ class AdminTools(CustomCog):
             msg = "action must be ban or kick"
             raise ValueError(msg)
         action_present = "banning" if action == disnake.AuditLogAction.ban else "kicking"
-        reason = await self._find_entry(guild, member, action_user, action)
+        reason = await self._find_entry_in_audit_log(guild, member, action_user, action)
         if reason:
-            num_times = await self._count_times(guild, member, action)
+            num_times = await self._count_times_in_audit_log_in_30_day_window(guild, member, action)
             channel = await self.bot.fetch_channel(BotSettings.discord.channels.idiots)
+            if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                msg = "Trying to send a message to a non-text channel"
+                raise RuntimeError(msg)
             await channel.send(
                 f":warning: looks like {action_user.display_name} needs to zerk off after {action_present} "
                 f"{member.display_name} for {reason}!! This is the {num_times}{ordinal_suffix(num_times)} "
@@ -134,12 +144,12 @@ class AdminTools(CustomCog):
 
         return reason
 
-    async def _invite_user(self, member: disnake.Member | disnake.User) -> None:
+    async def _invite_user(self, member: disnake.Member) -> None:
         """Send an invite to a member.
 
         Parameters
         ----------
-        member : disnake.Member | disnake.User
+        member : disnake.Member
             The member to invite.
 
         """
@@ -263,6 +273,9 @@ class AdminTools(CustomCog):
         if len(self.my_messages) == 0:
             await inter.response.send_message("There is nothing to remove.", ephemeral=True)
             return
+        if isinstance(inter.channel, disnake.PartialMessageable):
+            await inter.response.send_message("I can't delete messages in this channel.", ephemeral=True)
+            return
         await inter.response.defer(ephemeral=True)
         for i in range(0, len(self.my_messages), 100):
             messages_to_delete = list(self.my_messages[i : i + 100])
@@ -377,7 +390,7 @@ class AdminTools(CustomCog):
         await inter.response.defer(ephemeral=True)
         try:
             update_local_repository(branch)
-        except git.exc.GitCommandError:
+        except GitCommandError:
             self.log_exception("Failed to update repository")
             await inter.edit_original_message("Failed to update local repository")
             return
@@ -387,7 +400,7 @@ class AdminTools(CustomCog):
     async def set_config_value(
         self,
         inter: ApplicationCommandInteraction,
-        key: str = commands.Param(description="The config setting to update.", choices=get_modifiable_config_keys()),
+        key: str = commands.Param(description="The config setting to update."),
         new_value: str = commands.Param(description="The new value of the config setting."),
     ) -> None:
         """Change the value of a configuration parameter.
@@ -410,7 +423,7 @@ class AdminTools(CustomCog):
         await inter.response.send_message(f"Updated {key} from {old_value} to {new_value}", ephemeral=True)
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up cogs in this module.
 
     Parameters
