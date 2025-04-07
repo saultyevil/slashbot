@@ -297,7 +297,9 @@ class TextGeneration(CustomCog):
 
         """
         prompt = read_in_prompt_json("data/prompts/_random-response-prompt.json")
-        last_messages = self._get_channel_history(message).get_history(amount=5)
+        last_messages = self._get_channel_history(message).get_history(
+            amount=BotSettings.cogs.ai_chat.random_response_use_n_messages
+        )
         if len(last_messages) > 0:
             last_messages = [{"role": "user", "content": message.content} for message in last_messages]
             if last_messages[-1]["content"] == message.clean_content:
