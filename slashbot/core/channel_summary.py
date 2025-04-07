@@ -86,7 +86,7 @@ class AIChannelSummary(TextGeneratorLLM):
         Parameters
         ----------
         amount : int
-            The number of messages to return, starting from the end. If 0,
+            The number of messages to return, starting from the end. If <= 0,
             return all messages.
 
         Returns
