@@ -80,6 +80,26 @@ class AIChannelSummary(TextGeneratorLLM):
         self._history_context.append(message)
         self.log_debug("Adding message: %s", message.content)
 
+    def get_history(self, *, amount: int = 0) -> list[SummaryMessage]:
+        """Get the current history.
+
+        Parameters
+        ----------
+        amount : int
+            The number of messages to return, starting from the end. If 0,
+            return all messages.
+
+        Returns
+        -------
+        list[SummaryMessage]
+            The current history.
+
+        """
+        if amount > 0:
+            return self._history_context[-amount:]
+
+        return self._history_context
+
     async def generate_summary(self, *, requesting_user: str | None = None) -> str:
         """Generate a summary of the current history.
 

@@ -41,7 +41,7 @@ class Cooldown:
     last_interaction: datetime.datetime
 
 
-def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
+def get_history_id(obj: Message | ApplicationCommandInteraction) -> int:
     """Determine the history ID to use given the origin of the message.
 
     Historically, this used to return different values for text channels and
@@ -105,26 +105,45 @@ class TextGeneration(CustomCog):
     def _get_channel_history(self, obj: Message | ApplicationCommandInteraction) -> AIChannelSummary:
         history_id = get_history_id(obj)
         self.log_debug("Getting channel history for history ID: %s", history_id)
-
         if history_id in self.channel_histories:
             return self.channel_histories[history_id]
 
+        if isinstance(obj, int):
+            msg = "History ID is an int, but a ai conversation has not been found"
+            raise ValueError(msg)  # noqa: TRY004
+
+        if isinstance(obj.channel, disnake.TextChannel):
+            extra_print = f"{obj.channel.name}"
+        elif isinstance(obj.channel, disnake.DMChannel):
+            extra_print = f"{obj.channel.recipient}"
+        else:
+            extra_print = f"{obj.channel.id}"
+
         self.channel_histories[history_id] = AIChannelSummary(
             token_window_size=BotSettings.cogs.ai_chat.token_window_size,
-            extra_print=f"{obj.channel.id}" if not hasattr(obj.channel, "name") else f"{obj.channel.name}",
+            extra_print=extra_print,
         )
         return self.channel_histories[history_id]
 
     async def _get_conversation(self, obj: int | Message | ApplicationCommandInteraction) -> AIConversation:
         history_id = get_history_id(obj) if not isinstance(obj, int) else obj
         self.log_debug("Getting conversation for history ID: %s", history_id)
-
         if history_id in self.ai_conversations:
             return self.ai_conversations[history_id]
+        if isinstance(obj, int):
+            msg = "History ID is an int, but a ai conversation has not been found"
+            raise ValueError(msg)  # noqa: TRY004
+
+        if isinstance(obj.channel, disnake.TextChannel):
+            extra_print = f"{obj.channel.name}"
+        elif isinstance(obj.channel, disnake.DMChannel):
+            extra_print = f"{obj.channel.recipient}"
+        else:
+            extra_print = f"{obj.channel.id}"
 
         self.ai_conversations[history_id] = AIConversation(
             token_window_size=BotSettings.cogs.ai_chat.token_window_size,
-            extra_print=f"{obj.channel.id}" if not hasattr(obj.channel, "channel") else f"{obj.channel.name}",
+            extra_print=extra_print,
         )
         return self.ai_conversations[history_id]
 
@@ -175,17 +194,17 @@ class TextGeneration(CustomCog):
 
         """
         await send_message_to_channel(
-            markov.generate_text_from_markov_chain(markov.MARKOV_MODEL, "?random", 1),
+            markov.generate_text_from_markov_chain(markov.MARKOV_MODEL, "?random", 1),  # type: ignore  # noqa: PGH003
             message,
             dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )
 
-    async def _reset_conversation_history(self, history_id: str | int) -> None:
+    async def _reset_conversation_history(self, history_id: int) -> None:
         """Clear chat history and reset the token counter.
 
         Parameters
         ----------
-        history_id : str | int
+        history_id :  int
             The index to reset in chat history.
 
         """
@@ -207,17 +226,23 @@ class TextGeneration(CustomCog):
 
         """
         message_reference = original_message.reference
+        if not message_reference:
+            return original_message
         previous_message = message_reference.cached_message
         if not previous_message:
             try:
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
+                if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                    return original_message
+                if not message_reference.message_id:
+                    return original_message
                 previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
                 return original_message
 
         return previous_message
 
-    async def _get_response_from_llm(self, discord_message: disnake.Message) -> None:
+    async def _get_response_from_llm(self, discord_message: disnake.Message) -> str:
         """Generate a response to a prompt for a conversation of messages.
 
         A copy of the conversation is made before updating it with the user
@@ -230,6 +255,11 @@ class TextGeneration(CustomCog):
             The message to generate a response to.
         send_to_dm: bool
             Whether or not the prompt was sent in a direct message, optional
+
+        Returns
+        -------
+        str
+            The response from the AI.
 
         """
         conversation = await self._get_conversation(discord_message)
@@ -252,6 +282,8 @@ class TextGeneration(CustomCog):
             except:  # noqa: E722
                 self.log_exception("Failed to get response from AI, reverting to markov sentence")
                 bot_response = self.get_random_markov_sentence()
+                if isinstance(bot_response, list):
+                    bot_response = bot_response[0]
 
         return bot_response
 
@@ -265,8 +297,14 @@ class TextGeneration(CustomCog):
 
         """
         prompt = read_in_prompt_json("data/prompts/_random-response-prompt.json")
+        last_messages = self._get_channel_history(message).get_history(amount=5)
+        if len(last_messages) > 0:
+            last_messages = [{"role": "user", "content": message.content} for message in last_messages]
+            if last_messages[-1]["content"] == message.clean_content:
+                last_messages.pop()
         messages = [
             {"role": "system", "content": prompt["prompt"]},
+            *last_messages,
             {"role": "user", "content": message.clean_content},
         ]
         conversation = await self._get_conversation(message)
@@ -366,7 +404,7 @@ class TextGeneration(CustomCog):
         if len(channel_history) == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
-        await inter.response.defer(with_message="Generating summary...", ephemeral=True)
+        await inter.response.defer(ephemeral=True)
         summary = await channel_history.generate_summary(requesting_user=inter.user.display_name)
         await inter.delete_original_response()
         await send_message_to_channel(summary, inter)
@@ -469,7 +507,7 @@ class TextGeneration(CustomCog):
         await inter.response.send_message(response, ephemeral=True)
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up the entry function for load_extensions().
 
     Parameters
@@ -481,4 +519,4 @@ def setup(bot: commands.InteractionBot) -> None:
     if BotSettings.keys.openai:
         bot.add_cog(TextGeneration(bot))
     else:
-        TextGeneration.log_error(TextGeneration, "No API key found for OpenAI, unable to load AIChatBot cog")
+        bot.log_error("No API key found for OpenAI, unable to load AIChatBot cog")
