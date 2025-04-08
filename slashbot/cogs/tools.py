@@ -7,10 +7,10 @@ import disnake
 import wolframalpha
 from disnake.ext import commands
 
+from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.settings import BotSettings
-
-COOLDOWN_USER = commands.BucketType.user
 
 
 class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
@@ -18,13 +18,13 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        bot: commands.InteractionBot,
+        bot: CustomInteractionBot,
     ) -> None:
         """Initialize the bot.
 
         Parameters
         ----------
-        bot: commands.InteractionBot
+        bot: CustomInteractionBot
             The bot object.
 
         """
@@ -33,8 +33,7 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
-    @commands.slash_command(name="die_roll", description="roll a dice")
+    @slash_command_with_cooldown(name="die_roll", description="roll a dice")
     async def die_roll(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -52,8 +51,7 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
-    @commands.cooldown(BotSettings.cooldown.rate, BotSettings.cooldown.standard, COOLDOWN_USER)
-    @commands.slash_command(name="wolfram", description="ask wolfram a question")
+    @slash_command_with_cooldown(name="wolfram", description="ask wolfram a question")
     async def wolfram(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -113,12 +111,12 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
         await inter.edit_original_message(embed=embed)
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up cogs in this module.
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

@@ -469,12 +469,12 @@ class TextGeneration(CustomCog):
         await inter.response.send_message(response, ephemeral=True)
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up the entry function for load_extensions().
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

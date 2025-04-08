@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 
 import disnake
-from disnake.ext import commands, tasks
+from disnake.ext import tasks
 
 import slashbot.watchers
 from slashbot.bot.custom_bot import CustomInteractionBot
@@ -15,8 +15,6 @@ from slashbot.clock import calculate_seconds_until
 from slashbot.core.markov import generate_text_from_markov_chain
 from slashbot.settings import BotSettings
 from slashbot.watchers import ScheduledPostWatcher
-
-COOLDOWN_USER = commands.BucketType.user
 
 
 def check_post_has_keys(post: dict, keys: list[str] | tuple[str]) -> bool:
@@ -172,7 +170,7 @@ class ScheduledPosts(CustomCog):
             await asyncio.sleep(sleep_for)
 
             markov_sentence = generate_text_from_markov_chain(None, post["seed_word"], 1)
-            markov_sentence = markov_sentence.replace(
+            markov_sentence = markov_sentence.replace(  # type: ignore  # noqa: PGH003
                 post["seed_word"],
                 f"**{post['seed_word']}**",
             )
@@ -185,6 +183,9 @@ class ScheduledPosts(CustomCog):
 
             for channel in post["channels"]:
                 channel = await self.bot.fetch_channel(channel)  # noqa: PLW2901
+                if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                    self.log_warning("Scheduled post '%s' has invalid channel %s", post["title"], channel)
+                    continue
                 # Check in this case, just to be safe as I don't want
                 # disnake.File to complain if it gets nothing
                 if len(post["files"]) > 0:
@@ -201,12 +202,12 @@ class ScheduledPosts(CustomCog):
         await self.bot.wait_until_ready()
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up the cogs in this module.
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

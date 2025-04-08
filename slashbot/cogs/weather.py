@@ -11,6 +11,7 @@ import disnake
 import requests
 from disnake.ext import commands
 from geopy import GoogleV3
+from geopy.location import Location
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
@@ -66,17 +67,22 @@ def convert_radial_to_cardinal_direction(degrees: float) -> str:
     return directions[round(degrees / (360.0 / len(directions))) % len(directions)]
 
 
+WEATHER_UNITS = [
+    disnake.OptionChoice("Mixed", "mixed"),
+    disnake.OptionChoice("Metric", "metric"),
+    disnake.OptionChoice("Imperial", "imperial"),
+]
+
+
 class Weather(CustomCog):
     """Query information about the weather."""
 
-    WEATHER_UNITS: list[str] = ("mixed", "metric", "imperial")
-
-    def __init__(self, bot: commands.InteractionBot) -> None:
+    def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialize the cog.
 
         Parameters
         ----------
-        bot: commands.InteractionBot
+        bot: CustomInteractionBot
             The bot object.
 
         """
@@ -121,7 +127,7 @@ class Weather(CustomCog):
             Raised when an unknown unit system is passed
 
         """
-        if units not in Weather.WEATHER_UNITS:
+        if units not in WEATHER_UNITS:
             msg = f"Unknown weather units {units}"
             raise ValueError(msg)
 
@@ -183,6 +189,7 @@ class Weather(CustomCog):
         # Create alert strings but only for alerts that are active, meaning that
         # they are today
         alert_strings = []
+        alert_start = datetime.datetime.now(tz=datetime.UTC)
         for alert in weather_alerts:
             alert_start = datetime.datetime.fromtimestamp(alert["start"], tz=datetime.UTC)
             alert_end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.UTC)
@@ -222,10 +229,13 @@ class Weather(CustomCog):
             of the key provided in extract_type.
 
         """
-        location = self.geolocator.geocode(location, region="GB")
+        location = self.geolocator.geocode(location, region="GB")  # type: ignore  # noqa: PGH003
         if not location:
             msg = f"{location} not found in Geocoding API"
             raise LocationNotFoundError(msg)
+        if not isinstance(location, Location):
+            msg = "Location not returned in correct format"
+            raise GeocodeError(msg)
         lat, lon = location.latitude, location.longitude
         location_string = self.get_address_from_raw_response(location.raw["address_components"])
 
@@ -511,7 +521,7 @@ def setup(bot: CustomInteractionBot) -> None:
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

@@ -55,12 +55,12 @@ class Spelling(CustomCog):
     The purpose of this cog is to bully Pip for his poor spelling.
     """
 
-    def __init__(self, bot: commands.InteractionBot) -> None:
+    def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialise the cog.
 
         Parameters
         ----------
-        bot : commands.InteractionBot
+        bot : CustomInteractionBot
             The bot to pass to the cog.
 
         """
@@ -301,12 +301,12 @@ class Spelling(CustomCog):
         self.incorrect_spellings.clear()
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up cogs in this module.
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

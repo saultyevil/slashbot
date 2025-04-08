@@ -70,6 +70,9 @@ class Users(CustomCog):
                 value = user.country_code
             case "bad_word":
                 value = user.bad_word
+            case _:
+                msg = f"Unknown choice of thing '{thing}'"
+                raise ValueError(msg)
 
         await inter.response.send_message(f"{thing.capitalize()} is set to '{value}'.", ephemeral=True)
 
@@ -79,7 +82,7 @@ def setup(bot: CustomInteractionBot) -> None:
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """
