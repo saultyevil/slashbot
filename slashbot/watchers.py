@@ -62,7 +62,7 @@ class ScheduledPostWatcher(FileSystemEventHandler):
             The event to check.
 
         """
-        if time.time() - self.last_restart_time < 2:  # Prevent multiple triggers within 2s
+        if time.time() - self.last_restart_time < 2:  # Prevent multiple triggers within 2s  # noqa: PLR2004
             return
         self.last_restart_time = time.time()
 
