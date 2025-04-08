@@ -10,9 +10,10 @@ model_presence_penalty = 0.0
 chat_model = "gpt-4o-mini"
 api_base_url = "https://api.openai.com/v1"
 random_response_chance = 0.005
+random_response_use_n_messages = 5
 response_rate_limit = 10
 rate_limit_interval = 5
-enable_profiling = true
+enable_profiling = false
 prefer_image_urls = false
 
 [cogs.spellcheck]

@@ -27,7 +27,7 @@ class CustomCog(Cog, Logger):
             The keyword arguments to pass to the parent class.
 
         """
-        Cog.__init__(**kwargs)
+        super().__init__(**kwargs)
         Logger.__init__(self)
         self.bot = bot
         self.db = Database()
