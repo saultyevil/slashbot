@@ -184,6 +184,18 @@ class AdminTools(CustomCog):
         finally:
             self.invite_tasks.pop(member.id)
 
+    @commands.Cog.listener("on_member_join")
+    async def on_member_join(self, member: disnake.Member) -> None:
+        """Handle member join events.
+
+        Parameters
+        ----------
+        member : disnake.Member
+            The member who joined the server.
+
+        """
+        self.log_info("Member %s has joined guild %s", member, member.guild.name)
+
     @commands.Cog.listener("on_raw_member_remove")
     async def on_member_remove(self, payload: disnake.RawGuildMemberRemoveEvent) -> None:
         """Handle member removal, including un-banning and un-kicking Adam.
@@ -195,7 +207,8 @@ class AdminTools(CustomCog):
 
         """
         member = payload.user
-        self.log_info("Member %s has been removed from guild %s", member, payload.guild_id)
+        guild = await self.bot.fetch_guild(payload.guild_id)
+        self.log_info("Member %s has been removed from guild %s", member, guild.name)
         if not isinstance(member, disnake.Member):
             return
         if member.id != BotSettings.discord.users.adam:
