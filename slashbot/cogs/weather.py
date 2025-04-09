@@ -127,7 +127,7 @@ class Weather(CustomCog):
             Raised when an unknown unit system is passed
 
         """
-        if units not in WEATHER_UNITS:
+        if units not in [unit.value for unit in WEATHER_UNITS]:
             msg = f"Unknown weather units {units}"
             raise ValueError(msg)
 
