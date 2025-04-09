@@ -20,9 +20,6 @@ from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.bot.custom_types import ApplicationCommandInteraction
 from slashbot.settings import BotSettings
 
-COOLDOWN_USER = commands.BucketType.user
-COOLDOWN_STANDARD = BotSettings.cooldown.standard
-COOLDOWN_RATE = BotSettings.cooldown.rate
 JERMA_GIFS = list(Path("data/images").glob("jerma*.gif"))
 
 
@@ -432,7 +429,7 @@ def setup(bot: CustomInteractionBot) -> None:
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

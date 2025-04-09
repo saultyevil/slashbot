@@ -34,7 +34,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
 
         Parameters
         ----------
-        bot: commands.InteractionBot
+        bot: CustomInteractionBot
             The bot object.
         attempts: int
             The number of attempts to generate a markov sentence.
@@ -297,7 +297,7 @@ def setup(bot: CustomInteractionBot) -> None:
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

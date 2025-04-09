@@ -67,7 +67,7 @@ def calculate_seconds_until(weekday: int, hour: int, minute: int, frequency_days
     if frequency_days < 0:
         msg = "Invalid value for frequency, cannot be < 0"
         raise ValueError(msg)
-    if not isinstance(weekday, int) or weekday > 6:
+    if not isinstance(weekday, int) or weekday > 6:  # noqa: PLR2004
         msg = "Invalid value for weekday: 0 <= weekday <= 6 and must be int"
         raise ValueError(msg)
 

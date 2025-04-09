@@ -514,7 +514,7 @@ def setup(bot: CustomInteractionBot) -> None:
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """
