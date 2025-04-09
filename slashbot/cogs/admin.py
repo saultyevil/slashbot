@@ -187,16 +187,20 @@ class AdminTools(CustomCog):
         finally:
             self.invite_tasks.pop(member.id)
 
-    @commands.Cog.listener("on_member_remove")
-    async def unban_user_adam(self, member: disnake.Member) -> None:
-        """Unban and re-invite Adam, if removed by Meghun.
+    @commands.Cog.listener("on_raw_member_remove")
+    async def on_member_remove(self, payload: disnake.RawGuildMemberRemoveEvent) -> None:
+        """Handle member removal, including un-banning and un-kicking Adam.
 
         Parameters
         ----------
-        member : disnake.Member
-            The member which has been removed
+        payload : disnake.RawGuildMemberRemoveEvent
+            The payload containing information about the member who was removed.
 
         """
+        member = payload.user
+        self.log_info("Member %s has been removed from guild %s", member, payload.guild_id)
+        if not isinstance(member, disnake.Member):
+            return
         if member.id != BotSettings.discord.users.adam:
             return
         guild = member.guild
