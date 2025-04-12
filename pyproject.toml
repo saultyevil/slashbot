@@ -33,6 +33,7 @@ defusedxml = "^0.7.1"
 pyinstrument = "^5.0.0"
 gitpython = "^3.1.44"
 markovify = {git = "https://github.com/saultyevil/markovify.git"}
+pydantic = "^2.11.3"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"

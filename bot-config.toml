@@ -38,7 +38,7 @@ development_servers = [815237689775357992]
 database = "data/slashbot.db.json"
 bad_words = "data/text/badwords.txt"
 god_words = "data/text/godwords.txt"
-scheduled_posts = "data/scheduled_posts.json"
+scheduled_posts = "data/scheduled_posts.yaml"
 
 [logfile]
 log_location = "logs/slashbot.log"

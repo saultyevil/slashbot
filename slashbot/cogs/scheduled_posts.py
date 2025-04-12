@@ -1,11 +1,11 @@
 """Scheduled posts cog."""
 
 import asyncio
-import json
 import threading
 from pathlib import Path
 
 import disnake
+import yaml
 from disnake.ext import tasks
 
 import slashbot.watchers
@@ -14,6 +14,7 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.clock import calculate_seconds_until
 from slashbot.core.markov import generate_text_from_markov_chain
 from slashbot.settings import BotSettings
+from slashbot.validation import ScheduledPost
 from slashbot.watchers import ScheduledPostWatcher
 
 
@@ -75,7 +76,7 @@ class ScheduledPosts(CustomCog):
         """
         super().__init__(bot)
 
-        self.scheduled_posts = []
+        self.scheduled_posts: list[ScheduledPost] = []
         self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
 
@@ -88,45 +89,29 @@ class ScheduledPosts(CustomCog):
         in place.
         """
         for post in self.scheduled_posts:
-            post["time_until_post"] = calculate_seconds_until(
-                int(post["day"]),
-                int(post["hour"]),
-                int(post["minute"]),
+            post.time_until_post = calculate_seconds_until(
+                post.day,
+                post.hour,
+                post.minute,
                 7,
             )
 
     def order_scheduled_posts_by_soonest(self) -> None:
         """Order the schedulded posts by the soonest post."""
         self.calculate_time_until_post()
-        self.scheduled_posts.sort(key=lambda x: x["time_until_post"])
+        self.scheduled_posts.sort(key=lambda x: x.time_until_post)
 
     def get_scheduled_posts(self) -> None:
         """Read in the scheduled posts Json file."""
         with Path.open(BotSettings.files.scheduled_posts, encoding="utf-8") as file_in:
-            posts_json = json.load(file_in)
-
-        self.scheduled_posts = posts_json["SCHEDULED_POSTS"]
-
-        # Before we return from this function, we should first check to make
-        # sure each post has the correct fields in the correct format
-        for post in self.scheduled_posts:
-            if not check_post_has_keys(
-                post,
-                ("title", "files", "channels", "users", "day", "hour", "minute", "seed_word", "message"),
-            ):
-                self.log_warning("Post '%s' is missing some keys", post.get("title", "unknown"))
-            if not check_post_has_iterable(post, "files"):
-                self.log_warning("Post '%s' has non-iterable files", post["title"])
-            if not check_post_has_iterable(post, "users"):
-                self.log_warning("Post '%s' has non-iterable users", post["title"])
-            if not check_post_has_iterable(post, "channels"):
-                self.log_warning("Post '%s' has non-iterable channels", post["title"])
-
-        self.log_info(
-            "%d scheduled posts loaded from %s",
-            len(self.scheduled_posts),
-            BotSettings.files.scheduled_posts,
-        )
+            posts_data = yaml.safe_load(file_in)
+        for post in posts_data:
+            try:
+                self.scheduled_posts.append(ScheduledPost(**post))
+            except TypeError as e:
+                self.log_warning("Post '%s' is not valid: %s", post.get("title", "unknown"), e)
+                continue
+        self.log_info("%d scheduled posts loaded from %s", len(self.scheduled_posts), BotSettings.files.scheduled_posts)
         self.order_scheduled_posts_by_soonest()
 
     def update_posts_on_modify(self) -> None:
@@ -159,39 +144,39 @@ class ScheduledPosts(CustomCog):
             # we first should update sleep_for, as the original value calculated
             # when read in is no longer valid as it is a static, and not
             # dynamic, value
-            sleep_for = calculate_seconds_until(int(post["day"]), int(post["hour"]), int(post["minute"]), 7)
+            sleep_for = calculate_seconds_until(int(post.day), int(post.hour), int(post.minute), 7)
             self.log_info(
                 "Waiting %d seconds/%d minutes/%.1f hours until posting %s",
                 sleep_for,
                 int(sleep_for / 60),
                 sleep_for / 3600.0,
-                post["title"],
+                post.title,
             )
             await asyncio.sleep(sleep_for)
 
-            markov_sentence = generate_text_from_markov_chain(None, post["seed_word"], 1)
+            markov_sentence = generate_text_from_markov_chain(None, post.markov_seed_word, 1)
             markov_sentence = markov_sentence.replace(  # type: ignore  # noqa: PGH003
-                post["seed_word"],
-                f"**{post['seed_word']}**",
+                post.markov_seed_word,
+                f"**{post.markov_seed_word}**",
             )
 
             message = ""
-            if post["users"]:
-                message += " ".join([(await self.bot.fetch_user(user)).mention for user in post["users"]])
-            if post["message"]:
-                message += f" {post['message']}"
+            if post.users:
+                message += " ".join([(await self.bot.fetch_user(user)).mention for user in post.users])
+            if post.message:
+                message += f" {post.message}"
 
-            for channel in post["channels"]:
+            for channel in post.channels:
                 channel = await self.bot.fetch_channel(channel)  # noqa: PLW2901
                 if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
-                    self.log_warning("Scheduled post '%s' has invalid channel %s", post["title"], channel)
+                    self.log_warning("Scheduled post '%s' has invalid channel %s", post.title, channel)
                     continue
                 # Check in this case, just to be safe as I don't want
                 # disnake.File to complain if it gets nothing
-                if len(post["files"]) > 0:
+                if len(post.files) > 0:
                     await channel.send(
                         f"{message} {markov_sentence}",
-                        files=[disnake.File(file) for file in post["files"]],
+                        files=[disnake.File(file) for file in post.files],
                     )
                 else:
                     await channel.send(f"{message} {markov_sentence}")
