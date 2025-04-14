@@ -26,13 +26,15 @@ class TextGeneratorLLM(Logger):
         "gpt-4o-mini",
         "gpt-4o-mini-search-preview",
         "gpt-4o-mini-audio-preview",
+        "gpt-4.1-nano",
+        "gpt-4.1-mini",
         "o1-mini",
         "o3-mini",
     )
     SUPPORTED_CLAUDE_MODELS = ()
     SUPPORTED_GOOGLE_MODELS = ()
     SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS + SUPPORTED_CLAUDE_MODELS + SUPPORTED_GOOGLE_MODELS
-    VISION_MODELS = ("gpt-4o-mini",)
+    VISION_MODELS = ("gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano")
     SEARCH_MODELS = ("gpt-4o-mini-search-preview",)
     AUDIO_MODELS = ("gpt-4o-mini-audio-preview",)
 
@@ -46,7 +48,7 @@ class TextGeneratorLLM(Logger):
 
         """
         super().__init__(prepend_msg=extra_print)
-        self._model_name: str = "gpt-4o-mini"
+        self._model_name: str = BotSettings.cogs.ai_chat.chat_model
         self._client: openai.AsyncClient | None = None
         self._base_url: str | None = None
         self._text_generator: Callable[..., Awaitable[Any]] | None = None
