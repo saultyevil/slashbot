@@ -1,23 +1,19 @@
 import json
-import logging
 import time
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+from slashbot.core.logger import Logger
 from slashbot.prompts import create_prompt_dict, read_in_prompt_json
 from slashbot.settings import BotSettings
 
 AVAILABLE_LLM_PROMPTS = create_prompt_dict()
-LOGGER = logging.getLogger(BotSettings.logging.logger_name)
+LOGGER = Logger()
 
 
 class PromptFileWatcher(FileSystemEventHandler):
     """File watched for prompt files for LLM purposes."""
-
-    def __init__(self) -> None:
-        """Initialise the watcher."""
-        super().__init__()
 
     def on_any_event(self, event: FileSystemEvent) -> None:
         """Handle any file system event.
@@ -35,9 +31,9 @@ class PromptFileWatcher(FileSystemEventHandler):
                 AVAILABLE_LLM_PROMPTS[prompt["name"]] = prompt["prompt"]
             if event.event_type == "deleted":
                 AVAILABLE_LLM_PROMPTS = create_prompt_dict()
-            LOGGER.debug("%s prompt %s", event.event_type.capitalize(), event.src_path)
+            LOGGER.log_debug("%s prompt %s", event.event_type.capitalize(), event.src_path)
         except json.decoder.JSONDecodeError:
-            LOGGER.exception("Error reading in prompt file %s", event.src_path)
+            LOGGER.log_exception("Error reading in prompt file %s", event.src_path)
 
 
 class ScheduledPostWatcher(FileSystemEventHandler):
