@@ -231,3 +231,14 @@ class AIConversation(TextGeneratorLLM):
 
         """
         self._set_system_prompt_and_clear_context(new_prompt)
+
+    def set_llm_model(self, model_name: str) -> None:
+        """Set the LLM model in use.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the LLM model to use.
+
+        """
+        self._init_for_model(model_name)

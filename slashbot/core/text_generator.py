@@ -48,7 +48,7 @@ class TextGeneratorLLM(Logger):
 
         """
         super().__init__(prepend_msg=extra_print)
-        self._model_name: str = BotSettings.cogs.ai_chat.chat_model
+        self.model_name: str = BotSettings.cogs.ai_chat.chat_model
         self._client: openai.AsyncClient | None = None
         self._base_url: str | None = None
         self._text_generator: Callable[..., Awaitable[Any]] | None = None
@@ -59,11 +59,11 @@ class TextGeneratorLLM(Logger):
             msg = f"Model {model} is not supported."
             raise ValueError(msg)
 
-        self._model_name = model
+        self.model_name = model
         self._base_url = self._get_base_url_for_model(model)
         self._client = self._get_client()
         self._text_generator = self._get_generator_function()
-        self.log_info("Model set to %s with base url %s", self._model_name, self._base_url)
+        self.log_info("Model set to %s with base url %s", self.model_name, self._base_url)
 
     def _get_base_url_for_model(self, model: str) -> str:
         if model in TextGeneratorLLM.SUPPORTED_OPENAI_MODELS:
@@ -90,7 +90,7 @@ class TextGeneratorLLM(Logger):
     @property
     def model(self) -> str:
         """The name of the model."""
-        return self._model_name
+        return self.model_name
 
     # --------------------------------------------------------------------------
 
@@ -109,7 +109,7 @@ class TextGeneratorLLM(Logger):
 
         """
         try:
-            encoding = tiktoken.encoding_for_model(self._model_name)
+            encoding = tiktoken.encoding_for_model(self.model_name)
         except KeyError:
             encoding = tiktoken.get_encoding("o200k_base")  # Fallback to this base
 
@@ -158,7 +158,7 @@ class TextGeneratorLLM(Logger):
 
         """
         if not self._client:
-            self._init_for_model(self._model_name)
+            self._init_for_model(self.model_name)
         if not self._text_generator:
             msg = "Text generator function not initialized. Call _init_for_model() first."
             raise RuntimeError(msg)
@@ -166,7 +166,7 @@ class TextGeneratorLLM(Logger):
         # TODO(EP): handle and/or raise custom exception on failure
         response = await self._text_generator(
             messages=messages,
-            model=self._model_name,
+            model=self.model_name,
             max_completion_tokens=2048,  # TODO(EP): Make this configurable
         )
         message = response.choices[0].message.content
