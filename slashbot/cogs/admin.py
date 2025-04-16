@@ -11,7 +11,6 @@ from slashbot import __version__
 from slashbot.admin import (
     get_logfile_tail,
     restart_bot,
-    set_config_value,
     update_local_repository,
 )
 from slashbot.bot.custom_bot import CustomInteractionBot
@@ -409,32 +408,6 @@ class AdminTools(CustomCog):
             await inter.edit_original_message("Failed to update local repository")
             return
         await self.restart_bot(inter, on_the_fly_markov)
-
-    # @slash_command_with_cooldown(name="set_config_value")
-    async def set_config_value(
-        self,
-        inter: ApplicationCommandInteraction,
-        key: str = commands.Param(description="The config setting to update."),
-        new_value: str = commands.Param(description="The new value of the config setting."),
-    ) -> None:
-        """Change the value of a configuration parameter.
-
-        Parameters
-        ----------
-        inter : ApplicationCommandInteraction
-            The slash command interaction.
-        key : str
-            The key of the config setting to update.
-        new_value : str
-            The new value of the config setting.
-
-        """
-        if inter.author.id != BotSettings.discord.users.saultyevil:
-            await inter.response.send_message("You aren't allowed to use this command.", ephemeral=True)
-            return
-
-        old_value = set_config_value(key, new_value)
-        await inter.response.send_message(f"Updated {key} from {old_value} to {new_value}", ephemeral=True)
 
 
 def setup(bot: CustomInteractionBot) -> None:
