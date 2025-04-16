@@ -25,11 +25,10 @@ class TextGeneratorLLM(Logger):
         "gpt-3.5-turbo",
         "gpt-4o-mini",
         "gpt-4o-mini-search-preview",
-        "gpt-4o-mini-audio-preview",
         "gpt-4.1-nano",
         "gpt-4.1-mini",
-        "o1-mini",
-        "o3-mini",
+        # "o1-mini",
+        # "o3-mini",
     )
     SUPPORTED_CLAUDE_MODELS = ()
     SUPPORTED_GOOGLE_MODELS = ()
@@ -38,17 +37,27 @@ class TextGeneratorLLM(Logger):
     SEARCH_MODELS = ("gpt-4o-mini-search-preview",)
     AUDIO_MODELS = ("gpt-4o-mini-audio-preview",)
 
-    def __init__(self, *, extra_print: str = "") -> None:
+    def __init__(
+        self, *, max_completion_tokens: int = BotSettings.cogs.ai_chat.max_output_tokens, extra_print: str = ""
+    ) -> None:
         """Initialise a TextGeneratorLLM with default values.
 
         Parameters
         ----------
+        max_completion_tokens : int, optional
+            The maximum number of tokens to generate in the response. Default is
+            set to the value in BotSettings.cogs.ai_chat.max_output_tokens.
         extra_print : str, optional
             Additional information to print at the start of the log message.
 
         """
         super().__init__(prepend_msg=extra_print)
         self.model_name: str = BotSettings.cogs.ai_chat.chat_model
+
+        # Model parameters
+        self.max_completion_tokens = max_completion_tokens
+
+        # Internal state
         self._client: openai.AsyncClient | None = None
         self._base_url: str | None = None
         self._text_generator: Callable[..., Awaitable[Any]] | None = None
@@ -163,12 +172,13 @@ class TextGeneratorLLM(Logger):
             msg = "Text generator function not initialized. Call _init_for_model() first."
             raise RuntimeError(msg)
 
-        # TODO(EP): handle and/or raise custom exception on failure
         response = await self._text_generator(
             messages=messages,
             model=self.model_name,
-            max_completion_tokens=2048,  # TODO(EP): Make this configurable
+            max_completion_tokens=self.max_completion_tokens,
         )
+
         message = response.choices[0].message.content
         token_usage = response.usage.total_tokens
+
         return TextGenerationResponse(message, token_usage)
