@@ -1,6 +1,8 @@
 - title: monday-morning
-  files: data/videos/monday.mp4
-  channels: 237647756049514498
+  files:
+   - data/videos/monday.mp4
+  channels:
+    - 237647756049514498
   users:
   day: 0
   hour: 9
@@ -9,8 +11,10 @@
   message: |
     oh fug..
 - title: wednesday-morning
-  files: data/videos/wednesday.mp4
-  channels: 237647756049514498
+  files:
+    - data/videos/wednesday.mp4
+  channels:
+    - 237647756049514498
   users:
   day: 2
   hour: 9
@@ -19,8 +23,10 @@
   message: |
     haha hump day!!
 - title: friday-morning
-  files: data/videos/friday.mov
-  channels: 237647756049514498
+  files:
+    - data/videos/friday.mov
+  channels:
+    - 237647756049514498
   users:
   day: 4
   hour: 9
@@ -44,8 +50,10 @@
   message: |
     FRIDAY NIGHT MOTHERFUCKERS
 - title: sunday-morning
-  files: data/videos/sunday.mp4
-  channels: 237647756049514498
+  files:
+    - data/videos/sunday.mp4
+  channels:
+    - 237647756049514498
   users:
   day: 6
   hour: 10
@@ -55,7 +63,8 @@
     the day of rest...
 - title: friday-in-depth
   files:
-  channels: 710120383235227670
+  channels:
+    - 710120383235227670
   users:
     - 284782689226063874
     - 151378138612367360

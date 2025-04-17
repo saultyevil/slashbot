@@ -154,11 +154,14 @@ class ScheduledPosts(CustomCog):
             )
             await asyncio.sleep(sleep_for)
 
-            markov_sentence = generate_text_from_markov_chain(None, post.markov_seed_word, 1)
-            markov_sentence = markov_sentence.replace(  # type: ignore  # noqa: PGH003
-                post.markov_seed_word,
-                f"**{post.markov_seed_word}**",
-            )
+            if post.markov_seed_word:
+                markov_sentence = generate_text_from_markov_chain(None, post.markov_seed_word, 1)
+                markov_sentence = markov_sentence.replace(  # type: ignore  # noqa: PGH003
+                    post.markov_seed_word,
+                    f"**{post.markov_seed_word}**",
+                )
+            else:
+                markov_sentence = ""
 
             message = ""
             if post.users:
