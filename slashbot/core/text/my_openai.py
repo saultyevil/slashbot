@@ -1,0 +1,168 @@
+import openai
+import tiktoken
+
+from slashbot.core.text.abstract import TextGenerationAbstractClient
+from slashbot.core.text.models import TextGenerationResponse, VisionImage
+from slashbot.settings import BotSettings
+
+
+class OpenAIClient(TextGenerationAbstractClient):
+    """Synchronous OpenAI client."""
+
+    OPENAI_LOW_DETAIL_IMAGE_TOKENS = 85
+    SUPPORTED_MODELS = (
+        "gpt-3.5-turbo",
+        "gpt-4o-mini",
+        "gpt-4o-mini-search-preview",
+        "gpt-4o-mini-audio-preview",
+        "gpt-4.1-nano",
+        "gpt-4.1-mini",
+    )
+    VISION_MODELS = ("gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano")
+    SEARCH_MODELS = ("gpt-4o-mini-search-preview",)
+    AUDIO_MODELS = ("gpt-4o-mini-audio-preview",)
+
+    # --------------------------------------------------------------------------
+
+    def _add_user_message_to_context(self, message: str) -> None:
+        self._context.append({"role": "user", "content": message})
+
+    def _add_assistant_message_to_context(self, message: str) -> None:
+        self._context.append({"role": "assistant", "content": message})
+
+    def _add_images_to_context(self, images: VisionImage | list[VisionImage]) -> None:
+        if not isinstance(images, list):
+            images = [images]
+        image_list = [
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/{image.mime_type};base64,{image.b64image}" if image.b64image else image.url,
+                    "detail": "low",
+                },
+            }
+            for image in images
+        ]
+        last_context = self._context[-1]
+        if isinstance(last_context["content"], str):
+            last_context["content"] = [{"type": "text", "text": last_context["content"]}, *image_list]
+        elif isinstance(last_context["content"], list):
+            last_context["content"] += image_list
+        else:
+            msg = f"Last message in context is in wrong format: {last_context}"
+            raise TypeError(msg)
+
+    # --------------------------------------------------------------------------
+
+    @property
+    def context(self) -> list[dict]:
+        """Get the context, minus the system prompt."""
+        return self._context[1:]
+
+    # --------------------------------------------------------------------------
+
+    def count_tokens_for_message(self, messages: list[dict[str, str]] | str) -> int:
+        """Get the token count for a given message for the current LLM model.
+
+        Parameters
+        ----------
+        messages : list[str] | str
+            The message for which the token count needs to be computed.
+
+        Returns
+        -------
+        int
+            The count of tokens in the given message for the current model.
+
+        """
+        try:
+            encoding = tiktoken.encoding_for_model(self.model_name)
+        except KeyError:
+            encoding = tiktoken.get_encoding("o200k_base")  # Fallback to this base
+
+        if isinstance(messages, list):
+            num_tokens = 0
+            # Handle case where there are images and messages. Images are a fixed
+            # cost of something like 85 tokens so we don't need to encode those
+            # using tiktoken.
+            for content in messages:
+                if content["type"] == "text":
+                    num_tokens += len(encoding.encode(content["text"]))
+                else:
+                    num_tokens += self.OPENAI_LOW_DETAIL_IMAGE_TOKENS if content["type"] == "image_url" else 0
+        elif isinstance(messages, str):
+            num_tokens = len(encoding.encode(messages))
+        else:
+            msg = f"Expected a string or list of strings for encoding, got {type(messages)}"
+            raise TypeError(msg)
+
+        return num_tokens
+
+    def generate_response(
+        self, message: str, images: VisionImage | list[VisionImage] | None = None
+    ) -> TextGenerationResponse:
+        """Generate a text response, gievn a message and image inputs.
+
+        Text generation includes the entire context history, and not just the
+        most recent inputs.
+
+        Parameters
+        ----------
+        message : str
+            An input message, from the user.
+        images : VisionImage | list[VisionImage] | None
+            Input image(s), from the user.
+
+        """
+        if not self._client:
+            self.init_model(self.model_name)
+
+        self._shrink_messages_to_token_window()
+        self._add_assistant_message_to_context(message)
+        if images:
+            self._add_images_to_context(images)
+
+        response = self._client.chat.completions.create(
+            model=self.model_name,
+            messages=self._context,
+            max_completion_tokens=self._max_completion_tokens,
+        )
+
+        assistant_response = response.choices[0].message.content
+        if not assistant_response:
+            msg = "A valid response was no generated by the OpenAI client."
+            raise ValueError(msg)
+        self._add_assistant_message_to_context(assistant_response)
+        token_usage = response.usage.total_tokens if response.usage else -1
+
+        return TextGenerationResponse(assistant_response, token_usage)
+
+    def init_model(self, model_name: str) -> None:
+        """Initialise the client to use a model.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to initialise the client for.
+
+        """
+        self.model_name = model_name
+        self._base_url = "https://api.openai.com/v1"
+        self._client = openai.Client(api_key=BotSettings.keys.openai)
+
+    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
+        """Set the system prompt.
+
+        Parameters
+        ----------
+        prompt : str
+            The system prompt to set.
+        prompt_name : str
+            The name of the system prompt.
+
+        """
+        self.log_debug('Setting system prompt to "%s"', prompt.strip())
+        self.system_prompt = prompt
+        self.system_prompt_name = prompt_name
+        self._context = [{"role": "system", "content": prompt}]
+        self.token_size = self.count_tokens_for_message(prompt)

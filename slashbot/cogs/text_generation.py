@@ -451,7 +451,7 @@ class TextGeneration(CustomCog):
         prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         conversation = await self._get_conversation(inter)
-        conversation.set_system_message(prompt)
+        conversation.set_system_prompt(prompt)
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -477,7 +477,7 @@ class TextGeneration(CustomCog):
         """
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         conversation = await self._get_conversation(inter)
-        conversation.set_system_message(prompt)
+        conversation.set_system_prompt(prompt)
         await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -502,7 +502,7 @@ class TextGeneration(CustomCog):
 
         response = ""
         response += f"**Model name**: {conversation.model}\n"
-        response += f"**Token usage**: {conversation.tokens}\n"
+        response += f"**Token usage**: {conversation.size_tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {shorten(prompt, 1800)}\n"
 

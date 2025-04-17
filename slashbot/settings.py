@@ -25,7 +25,7 @@ class AIChatSettings:
     model_top_p: float
     model_frequency_penalty: float
     model_presence_penalty: float
-    chat_model: str
+    default_llm_model: str
     api_base_url: str
     random_response_chance: float
     random_response_use_n_messages: int
@@ -160,7 +160,7 @@ class Settings:
             model_top_p=data["cogs"]["ai_chat"]["model_top_p"],
             model_frequency_penalty=data["cogs"]["ai_chat"]["model_frequency_penalty"],
             model_presence_penalty=data["cogs"]["ai_chat"]["model_presence_penalty"],
-            chat_model=data["cogs"]["ai_chat"]["chat_model"],
+            default_llm_model=data["cogs"]["ai_chat"]["chat_model"],
             api_base_url=data["cogs"]["ai_chat"]["api_base_url"],
             random_response_chance=data["cogs"]["ai_chat"]["random_response_chance"],
             response_rate_limit=data["cogs"]["ai_chat"]["response_rate_limit"],

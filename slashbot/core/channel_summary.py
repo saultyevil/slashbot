@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from textwrap import dedent
 
-from slashbot.core.text_generator import TextGeneratorLLM
+from slashbot.core.text.text_generator import TextGeneratorLLM
 
 
 @dataclass
@@ -76,7 +76,7 @@ class AIChannelSummary(TextGeneratorLLM):
         """
         self._shrink_history_to_token_window_size()
         if message.tokens == 0:
-            message.tokens = self.count_tokens_for_message(message.content)
+            message.tokens = self.client_count_tokens_for_message(message.content)
         self._history_context.append(message)
         self.log_debug("Adding message: %s", message.content)
 
