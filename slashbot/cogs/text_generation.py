@@ -25,7 +25,7 @@ from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core import markov
 from slashbot.core.channel_summary import AIChannelSummary, SummaryMessage
 from slashbot.core.conversation import AIConversation
-from slashbot.core.text_generator import TextGeneratorLLM
+from slashbot.core.text.text_generator import TextGeneratorLLM
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
@@ -143,7 +143,6 @@ class TextGeneration(CustomCog):
             extra_print = f"{obj.channel.id}"
 
         self.ai_conversations[history_id] = AIConversation(
-            token_window_size=BotSettings.cogs.ai_chat.token_window_size,
             extra_print=extra_print,
         )
         return self.ai_conversations[history_id]
@@ -311,8 +310,8 @@ class TextGeneration(CustomCog):
             {"role": "user", "content": message.clean_content},
         ]
         conversation = self._get_conversation(message)
-        response = await conversation.generate_text_from_llm(messages)
-        await send_message_to_channel(response.message, message, dont_tag_user=True)
+        # response = conversation.send_message(messages)
+        # await send_message_to_channel(response.message, message, dont_tag_user=True)
 
     async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:
         """Respond to a user's message prompt.
@@ -452,7 +451,7 @@ class TextGeneration(CustomCog):
         prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         conversation = self._get_conversation(inter)
-        conversation.set_system_message(prompt)
+        conversation.set_system_prompt(prompt)
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
 
     @slash_command_with_cooldown(name="set_chat_model", description="Set the AI model to use")
@@ -480,8 +479,8 @@ class TextGeneration(CustomCog):
             return
 
         conversation = self._get_conversation(inter)
-        original_model = conversation.model_name
-        conversation.set_llm_model(model_name)
+        original_model = conversation._client.model_name
+        conversation._client.init_model(model_name)
         await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -507,7 +506,7 @@ class TextGeneration(CustomCog):
         """
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         conversation = self._get_conversation(inter)
-        conversation.set_system_message(prompt)
+        conversation.set_system_prompt(prompt)
         await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -531,7 +530,7 @@ class TextGeneration(CustomCog):
                 prompt_name = name
 
         response = ""
-        response += f"**Model name**: {conversation.model}\n"
+        response += f"**Model name**: {conversation._client.model_name}\n"
         response += f"**Token usage**: {conversation.size_tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {shorten(prompt, 1800)}\n"
