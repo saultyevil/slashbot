@@ -1,10 +1,10 @@
 from slashbot.core.logger import Logger
+from slashbot.core.text.clients.openai_client import OpenAIClient
 from slashbot.core.text.models import TextGenerationResponse, VisionImage
-from slashbot.core.text.my_openai import OpenAIClient
 from slashbot.settings import BotSettings
 
 
-class TextGeneratorLLM(Logger):
+class TextGenerator(Logger):
     """Base class for text generation using LLMs."""
 
     SUPPORTED_OPENAI_MODELS = OpenAIClient.SUPPORTED_MODELS
@@ -27,13 +27,13 @@ class TextGeneratorLLM(Logger):
 
         """
         super().__init__(prepend_msg=extra_print)
-        model_name: str = model_name or BotSettings.cogs.ai_chat.default_llm_model
+        model: str = model_name or BotSettings.cogs.ai_chat.default_llm_model
         self._extra_print: str = extra_print
 
-        if model_name in self.SUPPORTED_OPENAI_MODELS:
-            self._client = OpenAIClient(model_name)
+        if model in self.SUPPORTED_OPENAI_MODELS:
+            self._client = OpenAIClient(model)
         else:
-            msg = f"{model_name} is not available"
+            msg = f"{model} is not available"
             raise NotImplementedError(msg)
 
     # --------------------------------------------------------------------------

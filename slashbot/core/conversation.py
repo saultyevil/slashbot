@@ -2,12 +2,11 @@ from pathlib import Path
 from textwrap import dedent
 
 from slashbot.core.text.models import VisionImage
-from slashbot.core.text.text_generator import TextGeneratorLLM
+from slashbot.core.text.text_generator import TextGenerator
 from slashbot.prompts import read_in_prompt_json
-from slashbot.settings import BotSettings
 
 
-class AIConversation(TextGeneratorLLM):
+class AIConversation(TextGenerator):
     """AI Conversation class for an LLM chatbot."""
 
     DEFAULT_SYSTEM_PROMPT = " ".join(

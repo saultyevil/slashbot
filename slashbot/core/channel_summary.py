@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from textwrap import dedent
 
-from slashbot.core.text.text_generator import TextGeneratorLLM
+from slashbot.core.text.text_generator import TextGenerator
 
 
 @dataclass
@@ -13,7 +13,7 @@ class SummaryMessage:
     tokens: int = 0
 
 
-class AIChannelSummary(TextGeneratorLLM):
+class AIChannelSummary(TextGenerator):
     """Dataclass for generating AI summaries for text channels."""
 
     SUMMARY_PROMPT = " ".join(

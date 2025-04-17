@@ -1,7 +1,7 @@
 import openai
 import tiktoken
 
-from slashbot.core.text.abstract import TextGenerationAbstractClient
+from slashbot.core.text.clients.abstract_client import TextGenerationAbstractClient
 from slashbot.core.text.models import TextGenerationResponse, VisionImage
 from slashbot.settings import BotSettings
 

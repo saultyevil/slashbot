@@ -25,7 +25,7 @@ from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core import markov
 from slashbot.core.channel_summary import AIChannelSummary, SummaryMessage
 from slashbot.core.conversation import AIConversation
-from slashbot.core.text.text_generator import TextGeneratorLLM
+from slashbot.core.text.text_generator import TextGenerator
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
@@ -458,7 +458,7 @@ class TextGeneration(CustomCog):
     async def set_chat_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        model_name: str = commands.Param(choices=TextGeneratorLLM.SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
+        model_name: str = commands.Param(choices=TextGenerator.SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
     ) -> None:
         """Set the AI model to use.
 
