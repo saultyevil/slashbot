@@ -32,7 +32,7 @@ class AIConversation(TextGeneratorLLM):
 
         """
         extra_print = f"[AIConversation:{extra_print}] " if extra_print else ""
-        super().__init__(BotSettings.cogs.ai_chat.default_llm_model, extra_print=extra_print)
+        super().__init__(extra_print=extra_print)
         self.client_set_system_prompt(
             system_prompt,
             prompt_name="default prompt" if system_prompt == AIConversation.DEFAULT_SYSTEM_PROMPT else "custom prompt",
@@ -97,7 +97,7 @@ class AIConversation(TextGeneratorLLM):
         """Reset the conversation history back to the system prompt."""
         self.client_set_system_prompt(self.client_system_prompt, prompt_name=self.client_system_prompt_name)
 
-    async def send_message(self, message: str, images: VisionImage | list[VisionImage] | None = None) -> str:
+    def send_message(self, message: str, images: VisionImage | list[VisionImage] | None = None) -> str:
         """Add a new message to the conversation history.
 
         Parameters

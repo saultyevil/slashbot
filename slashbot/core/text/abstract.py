@@ -30,11 +30,12 @@ class TextGenerationAbstractClient(Logger):
             A list of key word arguments to use for the model.
 
         """
+        super().__init__(**kwargs)
         self.model_name = model_name
         self._context = [
             {
                 "role": "system",
-                "content": kwargs["system_prompt"] if kwargs["system_prompt"] else self.DEFAULT_SYSTEM_PROMPT,
+                "content": kwargs["system_prompt"] if kwargs.get("system_prompt") else self.DEFAULT_SYSTEM_PROMPT,
             }
         ]
         self._client = None

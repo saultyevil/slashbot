@@ -161,7 +161,7 @@ class OpenAIClient(TextGenerationAbstractClient):
             The name of the system prompt.
 
         """
-        self.log_debug('Setting system prompt to "%s"', prompt.strip())
+        self.log_debug('Setting system prompt to "%s"', prompt)
         self.system_prompt = prompt
         self.system_prompt_name = prompt_name
         self._context = [{"role": "system", "content": prompt}]

@@ -15,19 +15,19 @@ class TextGeneratorLLM(Logger):
     SEARCH_MODELS = (*OpenAIClient.SEARCH_MODELS,)
     AUDIO_MODELS = (*OpenAIClient.AUDIO_MODELS,)
 
-    def __init__(self, model_name: str, *, extra_print: str = "") -> None:
+    def __init__(self, *, model_name: str | None = None, extra_print: str = "") -> None:
         """Initialise a TextGeneratorLLM with default values.
 
         Parameters
         ----------
-        model_name : str
+        model_name : str | None
             The name of the LLM model to use
         extra_print : str, optional
             Additional information to print at the start of the log message.
 
         """
         super().__init__(prepend_msg=extra_print)
-        self._model_name: str = BotSettings.cogs.ai_chat.default_llm_model
+        model_name: str = model_name or BotSettings.cogs.ai_chat.default_llm_model
         self._extra_print: str = extra_print
 
         if model_name in self.SUPPORTED_OPENAI_MODELS:
