@@ -176,7 +176,7 @@ class ScheduledPosts(CustomCog):
                     continue
                 # Check in this case, just to be safe as I don't want
                 # disnake.File to complain if it gets nothing
-                if len(post.files) > 0:
+                if post.files:
                     await channel.send(
                         f"{message} {markov_sentence}",
                         files=[disnake.File(file) for file in post.files],
