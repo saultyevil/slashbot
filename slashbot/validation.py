@@ -5,8 +5,8 @@ class ScheduledPost(BaseModel):
     """Pydantic model for scheduled posts."""
 
     title: str
-    files: str | list[str] | None = None
-    channels: int | list[int]
+    channels: list[int]
+    files: list[str] | None = Field(default_factory=list)
     users: list[int] | None = Field(default_factory=list)
     day: int
     hour: int
@@ -42,7 +42,9 @@ class ScheduledPost(BaseModel):
     @field_validator("channels")
     @classmethod
     def _validate_channels(cls, value: int | list[int]) -> int | list[int]:
-        if isinstance(value, list):
+        if isinstance(value, int):
+            value = [value]
+        elif isinstance(value, list):
             if not all(isinstance(item, int) for item in value):
                 msg = "all items in channels must be integers"
                 raise ValueError(msg)
@@ -57,7 +59,7 @@ class ScheduledPost(BaseModel):
         if value is None:
             return value
         if isinstance(value, str):
-            return value
+            return [value]
         if isinstance(value, list) and all(isinstance(item, str) for item in value):
             return value
         msg = "files must be a string or a list of strings"

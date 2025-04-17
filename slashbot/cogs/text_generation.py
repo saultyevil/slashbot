@@ -25,6 +25,7 @@ from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core import markov
 from slashbot.core.channel_summary import AIChannelSummary, SummaryMessage
 from slashbot.core.conversation import AIConversation
+from slashbot.core.text_generator import TextGeneratorLLM
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
@@ -125,7 +126,7 @@ class TextGeneration(CustomCog):
         )
         return self.channel_histories[history_id]
 
-    async def _get_conversation(self, obj: int | Message | ApplicationCommandInteraction) -> AIConversation:
+    def _get_conversation(self, obj: int | Message | ApplicationCommandInteraction) -> AIConversation:
         history_id = get_history_id(obj) if not isinstance(obj, int) else obj
         self.log_debug("Getting conversation for history ID: %s", history_id)
         if history_id in self.ai_conversations:
@@ -208,7 +209,7 @@ class TextGeneration(CustomCog):
             The index to reset in chat history.
 
         """
-        conversation = await self._get_conversation(history_id)
+        conversation = self._get_conversation(history_id)
         conversation.reset_history()
 
     async def _get_highlighted_discord_message(self, original_message: disnake.Message) -> disnake.Message:
@@ -262,7 +263,7 @@ class TextGeneration(CustomCog):
             The response from the AI.
 
         """
-        conversation = await self._get_conversation(discord_message)
+        conversation = self._get_conversation(discord_message)
         user_prompt = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         images = await get_attached_images_from_message(discord_message)
 
@@ -309,7 +310,7 @@ class TextGeneration(CustomCog):
             *last_messages,
             {"role": "user", "content": message.clean_content},
         ]
-        conversation = await self._get_conversation(message)
+        conversation = self._get_conversation(message)
         response = await conversation.generate_text_from_llm(messages)
         await send_message_to_channel(response.message, message, dont_tag_user=True)
 
@@ -450,9 +451,38 @@ class TextGeneration(CustomCog):
         """
         prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
-        conversation = await self._get_conversation(inter)
-        conversation.set_system_prompt(prompt)
+        conversation = self._get_conversation(inter)
+        conversation.set_system_message(prompt)
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
+
+    @slash_command_with_cooldown(name="set_chat_model", description="Set the AI model to use")
+    async def set_chat_model(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        model_name: str = commands.Param(choices=TextGeneratorLLM.SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
+    ) -> None:
+        """Set the AI model to use.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
+        model_name : str
+            The name of the model to set.
+
+        """
+        everyone_can_pick = ["gpt-3.5-turbo", "gpt-4o-mini", "gpt-4.1-nano", "gpt-4.1-mini"]
+        if inter.author.id != BotSettings.discord.users.saultyevil and model_name not in everyone_can_pick:
+            await inter.response.send_message(
+                f"You are not allowed to pick this model!! Please choose one of the following: {', '.join(everyone_can_pick)}",
+                ephemeral=True,
+            )
+            return
+
+        conversation = self._get_conversation(inter)
+        original_model = conversation.model_name
+        conversation.set_llm_model(model_name)
+        await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
 
     @slash_command_with_cooldown(
         name="set_chat_prompt", description="Change the AI conversation prompt to one you write"
@@ -476,8 +506,8 @@ class TextGeneration(CustomCog):
 
         """
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
-        conversation = await self._get_conversation(inter)
-        conversation.set_system_prompt(prompt)
+        conversation = self._get_conversation(inter)
+        conversation.set_system_message(prompt)
         await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -492,7 +522,7 @@ class TextGeneration(CustomCog):
             The slash command interaction.
 
         """
-        conversation = await self._get_conversation(inter)
+        conversation = self._get_conversation(inter)
 
         prompt_name = "Unknown"
         prompt = conversation.system_prompt
