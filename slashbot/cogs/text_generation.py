@@ -304,14 +304,14 @@ class TextGeneration(CustomCog):
             last_messages = [{"role": "user", "content": message.content} for message in last_messages]
             if last_messages[-1]["content"] == message.clean_content:
                 last_messages.pop()
-        messages = [
+        content = [
             {"role": "system", "content": prompt["prompt"]},
             *last_messages,
             {"role": "user", "content": message.clean_content},
         ]
         conversation = self._get_conversation(message)
-        # response = conversation.send_message(messages)
-        # await send_message_to_channel(response.message, message, dont_tag_user=True)
+        llm_response = conversation.send_raw_request(content)
+        await send_message_to_channel(llm_response, message, dont_tag_user=True)
 
     async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:
         """Respond to a user's message prompt.
@@ -480,7 +480,7 @@ class TextGeneration(CustomCog):
 
         conversation = self._get_conversation(inter)
         original_model = conversation._client.model_name
-        conversation._client.init_model(model_name)
+        conversation._client.init_client(model_name)
         await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
 
     @slash_command_with_cooldown(

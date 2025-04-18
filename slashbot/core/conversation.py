@@ -112,8 +112,21 @@ class AIConversation(TextGenerator):
             The message response from the AI.
 
         """
-        response = self.client_generate_response(message, images)
+        response = self.client_generate_response_including_context(message, images)
         self._token_size = response.tokens_used
+
+        return response.message
+
+    def send_raw_request(self, content: list[dict]) -> str:
+        """Send a request to the API client.
+
+        Parameters
+        ----------
+        content : list[dict]
+            The (correctly) formatted content to send to the API.
+
+        """
+        response = self.client_send_response_request(content)
 
         return response.message
 

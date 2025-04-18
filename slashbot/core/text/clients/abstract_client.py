@@ -40,12 +40,12 @@ class TextGenerationAbstractClient(Logger):
         ]
         self._client = None
         self._base_url = None
-        self._token_size = 0
-        self._system_prompt = None
-        self._system_prompt_name = None
+        self.token_size = 0
+        self.system_prompt = None
+        self.system_prompt_name = None
         self._token_window_size = BotSettings.cogs.ai_chat.token_window_size
         self._max_completion_tokens = BotSettings.cogs.ai_chat.max_output_tokens
-        self.init_model(self.model_name)
+        self.init_client(self.model_name)
 
     # --------------------------------------------------------------------------
 
@@ -62,28 +62,6 @@ class TextGenerationAbstractClient(Logger):
 
     # --------------------------------------------------------------------------
 
-    @abstractmethod
-    def _add_assistant_message_to_context(self, message: str) -> None:
-        pass
-
-    @abstractmethod
-    def _add_images_to_context(self, images: VisionImage | list[VisionImage]) -> None:
-        pass
-
-    @abstractmethod
-    def _add_user_message_to_context(self, message: str) -> None:
-        pass
-
-    @abstractmethod
-    def _set_system_prompt_and_clear_context(self, prompt: str, *, prompt_name: str = "unknown") -> None:
-        pass
-
-    @abstractmethod
-    def _send_request(self) -> None:
-        pass
-
-    # --------------------------------------------------------------------------
-
     def _remove_message_from_context(self, index: int) -> dict:
         if index == 0:
             msg = "Cannot remove system prompt at index 0"
@@ -94,14 +72,42 @@ class TextGenerationAbstractClient(Logger):
         if index >= len(self._context):
             msg = "Cannot remove message at index greater than number of messages"
             raise IndexError(msg)
-        self._token_size -= self.count_tokens_for_message(self._context[index]["content"])
+        self.token_size -= self.count_tokens_for_message(self._context[index]["content"])
         return self._context.pop(index)
 
     def _shrink_messages_to_token_window(self) -> None:
         min_messages_to_keep = 2
-        while self._token_size > self._token_window_size and len(self) > min_messages_to_keep:
+        while self.token_size > self._token_window_size and len(self) > min_messages_to_keep:
             self._remove_message_from_context(1)
             self._remove_message_from_context(1)
+
+    # --------------------------------------------------------------------------
+
+    @abstractmethod
+    def _make_assistant_message_content(self, message: str) -> dict:
+        pass
+
+    @abstractmethod
+    def _make_image_content(self, images: VisionImage | list[VisionImage]) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def _make_user_message_content(self, messages: str | list[str]) -> dict:
+        pass
+
+    @abstractmethod
+    def _prepare_content(
+        self, message: str | list[str], images: VisionImage | list[VisionImage] | None = None
+    ) -> dict | list[dict]:
+        pass
+
+    @abstractmethod
+    def _set_system_prompt_and_clear_context(self, prompt: str, *, prompt_name: str = "unknown") -> None:
+        pass
+
+    @abstractmethod
+    def _send_request(self) -> None:
+        pass
 
     # --------------------------------------------------------------------------
 
@@ -122,31 +128,42 @@ class TextGenerationAbstractClient(Logger):
         """
 
     @abstractmethod
-    def generate_response(
-        self, message: str, images: VisionImage | list[VisionImage] | None = None
+    def generate_response_including_context(
+        self, messages: str | list[str], images: VisionImage | list[VisionImage] | None = None
     ) -> TextGenerationResponse:
-        """Generate a text response, gievn a message and image inputs.
+        """Generate a text response, given new text input and previous context.
 
         Text generation includes the entire context history, and not just the
         most recent inputs.
 
         Parameters
         ----------
-        message : str
-            An input message, from the user.
+        messages : str | list[str]
+            Input message(s), from the user.
         images : VisionImage | list[VisionImage] | None
             Input image(s), from the user.
 
         """
 
     @abstractmethod
-    def init_model(self, model_name: str) -> None:
+    def init_client(self, model_name: str) -> None:
         """Initialise the client to use a model.
 
         Parameters
         ----------
         model_name : str
             The name of the model to initialise the client for.
+
+        """
+
+    @abstractmethod
+    def send_response_request(self, content: list[dict]) -> TextGenerationResponse:
+        """Send a request to the API client.
+
+        Parameters
+        ----------
+        content : list[dict]
+            The (correctly) formatted content to send to the API.
 
         """
 

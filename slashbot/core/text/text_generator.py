@@ -76,7 +76,7 @@ class TextGenerator(Logger):
         """
         return self._client.count_tokens_for_message(message)
 
-    def client_generate_response(
+    def client_generate_response_including_context(
         self, message: str, images: VisionImage | list[VisionImage] | None = None
     ) -> TextGenerationResponse:
         """Generate text from the current LLM model.
@@ -89,7 +89,18 @@ class TextGenerator(Logger):
             The image(s) to respond to. By default, None.
 
         """
-        return self._client.generate_response(message, images)
+        return self._client.generate_response_including_context(message, images)
+
+    def client_send_response_request(self, content: list[dict]) -> TextGenerationResponse:
+        """Send a request to the API client.
+
+        Parameters
+        ----------
+        content : list[dict]
+            The (correctly) formatted content to send to the API.
+
+        """
+        return self._client.send_response_request(content)
 
     def client_set_model(self, model: str) -> None:
         """Set the current LLM model.
@@ -100,7 +111,7 @@ class TextGenerator(Logger):
             The name of the model to use.
 
         """
-        self._client.init_model(model)
+        self._client.init_client(model)
 
     def client_set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
         """Set the system prompt.
