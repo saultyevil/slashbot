@@ -123,7 +123,7 @@ class AIChannelSummary(TextGenerator):
             )
 
         self.log_debug("Context for summary: %s", full_conversation[1:])
-        response = await self.generate_text_from_llm(full_conversation)
+        response = self.client_send_response_request(full_conversation)
         self.log_debug("Generated summary: %s", response.message)
 
         return response.message
