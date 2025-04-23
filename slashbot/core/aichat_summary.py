@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from textwrap import dedent
 
-from slashbot.core.text.text_generator import TextGenerator
+from slashbot.core.text_generation import TextGenerator
 
 
 @dataclass
@@ -13,7 +13,7 @@ class SummaryMessage:
     tokens: int = 0
 
 
-class AIChannelSummary(TextGenerator):
+class AIChatSummary(TextGenerator):
     """Dataclass for generating AI summaries for text channels."""
 
     SUMMARY_PROMPT = " ".join(
@@ -114,7 +114,7 @@ class AIChannelSummary(TextGenerator):
             [f"{message.user}: {message.content}" for message in self._history_context]
         )
         full_conversation = [
-            {"role": "system", "content": AIChannelSummary.SUMMARY_PROMPT},
+            {"role": "system", "content": AIChatSummary.SUMMARY_PROMPT},
             {"role": "user", "content": history_message},
         ]
         if requesting_user:

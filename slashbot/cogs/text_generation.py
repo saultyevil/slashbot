@@ -23,9 +23,9 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core import markov
-from slashbot.core.channel_summary import AIChannelSummary, SummaryMessage
-from slashbot.core.conversation import AIConversation
-from slashbot.core.text.text_generator import TextGenerator
+from slashbot.core.aichat import AIChat
+from slashbot.core.aichat_summary import AIChatSummary, SummaryMessage
+from slashbot.core.text_generation import TextGenerator
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
@@ -75,7 +75,7 @@ class TextGeneration(CustomCog):
 
         """
         super().__init__(bot)
-        self.ai_conversations = {}
+        self.chats = {}
         self.channel_histories = {}
         self.user_cooldown_map = defaultdict(lambda: Cooldown(0, datetime.datetime.now(tz=datetime.UTC)))
 
@@ -103,7 +103,7 @@ class TextGeneration(CustomCog):
         self._profiler_logger.info("\n%s", profiler_output)
         self._profiler.reset()
 
-    def _get_channel_history(self, obj: Message | ApplicationCommandInteraction) -> AIChannelSummary:
+    def _get_channel_history(self, obj: Message | ApplicationCommandInteraction) -> AIChatSummary:
         history_id = get_history_id(obj)
         self.log_debug("Getting channel history for history ID: %s", history_id)
         if history_id in self.channel_histories:
@@ -120,17 +120,17 @@ class TextGeneration(CustomCog):
         else:
             extra_print = f"{obj.channel.id}"
 
-        self.channel_histories[history_id] = AIChannelSummary(
+        self.channel_histories[history_id] = AIChatSummary(
             token_window_size=BotSettings.cogs.ai_chat.token_window_size,
             extra_print=extra_print,
         )
         return self.channel_histories[history_id]
 
-    def _get_conversation(self, obj: int | Message | ApplicationCommandInteraction) -> AIConversation:
+    def _get_conversation(self, obj: int | Message | ApplicationCommandInteraction) -> AIChat:
         history_id = get_history_id(obj) if not isinstance(obj, int) else obj
         self.log_debug("Getting conversation for history ID: %s", history_id)
-        if history_id in self.ai_conversations:
-            return self.ai_conversations[history_id]
+        if history_id in self.chats:
+            return self.chats[history_id]
         if isinstance(obj, int):
             msg = "History ID is an int, but a ai conversation has not been found"
             raise ValueError(msg)  # noqa: TRY004
@@ -142,10 +142,10 @@ class TextGeneration(CustomCog):
         else:
             extra_print = f"{obj.channel.id}"
 
-        self.ai_conversations[history_id] = AIConversation(
+        self.chats[history_id] = AIChat(
             extra_print=extra_print,
         )
-        return self.ai_conversations[history_id]
+        return self.chats[history_id]
 
     def _check_if_user_on_cooldown(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.

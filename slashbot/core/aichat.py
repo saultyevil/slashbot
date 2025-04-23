@@ -1,12 +1,12 @@
 from pathlib import Path
 from textwrap import dedent
 
-from slashbot.core.text.models import VisionImage
-from slashbot.core.text.text_generator import TextGenerator
+from slashbot.core.text_generation import TextGenerator
+from slashbot.core.text_generation.models import VisionImage
 from slashbot.prompts import read_in_prompt_json
 
 
-class AIConversation(TextGenerator):
+class AIChat(TextGenerator):
     """AI Conversation class for an LLM chatbot."""
 
     DEFAULT_SYSTEM_PROMPT = " ".join(
@@ -34,7 +34,7 @@ class AIConversation(TextGenerator):
         super().__init__(extra_print=extra_print)
         self.client_set_system_prompt(
             system_prompt,
-            prompt_name="default prompt" if system_prompt == AIConversation.DEFAULT_SYSTEM_PROMPT else "custom prompt",
+            prompt_name="default prompt" if system_prompt == AIChat.DEFAULT_SYSTEM_PROMPT else "custom prompt",
         )
 
     # --------------------------------------------------------------------------

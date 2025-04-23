@@ -1,6 +1,6 @@
 from slashbot.core.logger import Logger
-from slashbot.core.text.clients.openai_client import OpenAIClient
-from slashbot.core.text.models import TextGenerationResponse, VisionImage
+from slashbot.core.text_generation.clients.openai_client import OpenAIClient
+from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage
 from slashbot.settings import BotSettings
 
 

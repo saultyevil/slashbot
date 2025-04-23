@@ -5,8 +5,8 @@ import base64
 import requests
 
 from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
-from slashbot.core.text.models import VisionImage
 from slashbot.core.logger import Logger
+from slashbot.core.text_generation.models import VisionImage
 from slashbot.settings import BotSettings
 
 LOGGER = Logger()
@@ -87,6 +87,7 @@ async def send_message_to_channel(
     return sent_messages
 
 
+# TODO: add to client base class
 def download_and_encode_image(url: str, *, encode_to_b64: bool = False) -> VisionImage:
     """Download and encode an image for vision tasks with OpenAI.
 
@@ -114,6 +115,7 @@ def download_and_encode_image(url: str, *, encode_to_b64: bool = False) -> Visio
     return VisionImage(url, encoded_image, mime_type)
 
 
+# TODO: move into ai chat cog
 async def get_attached_images_from_message(message: Message) -> list[VisionImage]:
     """Retrieve the URLs for images attached or embedded in a Discord message.
 

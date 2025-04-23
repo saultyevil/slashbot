@@ -3,7 +3,7 @@ from textwrap import dedent
 from typing import Any
 
 from slashbot.core.logger import Logger
-from slashbot.core.text.models import TextGenerationResponse, VisionImage
+from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage
 from slashbot.settings import BotSettings
 
 
