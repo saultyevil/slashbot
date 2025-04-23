@@ -29,22 +29,22 @@ class TextGenerator(Logger):
         super().__init__(prepend_msg=extra_print)
         model: str = model_name or BotSettings.cogs.ai_chat.default_llm_model
         self._extra_print: str = extra_print
-
-        if model in self.SUPPORTED_OPENAI_MODELS:
-            self._client = OpenAIClient(model)
-        else:
-            msg = f"{model} is not available"
-            raise NotImplementedError(msg)
+        self.set_model(model)
 
     # --------------------------------------------------------------------------
 
     @property
-    def client_system_prompt(self) -> str:
+    def model(self) -> str:
+        """Get the current LLM model name."""
+        return self._client.model_name
+
+    @property
+    def system_prompt(self) -> str:
         """Get the system prompt of the client."""
         return self._client.system_prompt
 
     @property
-    def client_system_prompt_name(self) -> str:
+    def system_prompt_name(self) -> str:
         """Get the name of the system prompt of the client."""
         return self._client.system_prompt_name
 
@@ -60,7 +60,7 @@ class TextGenerator(Logger):
 
     # --------------------------------------------------------------------------
 
-    def client_count_tokens_for_message(self, message: list[dict[str, str]] | str) -> int:
+    def count_tokens_for_message(self, message: list[dict[str, str]] | str) -> int:
         """Get the token count for a given message for the current LLM model.
 
         Parameters
@@ -76,7 +76,7 @@ class TextGenerator(Logger):
         """
         return self._client.count_tokens_for_message(message)
 
-    def client_generate_response_including_context(
+    def generate_response_including_context(
         self, message: str, images: VisionImage | list[VisionImage] | None = None
     ) -> TextGenerationResponse:
         """Generate text from the current LLM model.
@@ -91,7 +91,7 @@ class TextGenerator(Logger):
         """
         return self._client.generate_response_including_context(message, images)
 
-    def client_send_response_request(self, content: list[dict]) -> TextGenerationResponse:
+    def send_response_request(self, content: list[dict]) -> TextGenerationResponse:
         """Send a request to the API client.
 
         Parameters
@@ -102,7 +102,7 @@ class TextGenerator(Logger):
         """
         return self._client.send_response_request(content)
 
-    def client_set_model(self, model: str) -> None:
+    def set_model(self, model: str) -> None:
         """Set the current LLM model.
 
         Parameters
@@ -111,9 +111,13 @@ class TextGenerator(Logger):
             The name of the model to use.
 
         """
-        self._client.init_client(model)
+        if model in self.SUPPORTED_OPENAI_MODELS:
+            self._client = OpenAIClient(model)
+        else:
+            msg = f"{model} is not available"
+            raise NotImplementedError(msg)
 
-    def client_set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
+    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
         """Set the system prompt.
 
         Parameters

@@ -23,8 +23,8 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core import markov
-from slashbot.core.aichat import AIChat
-from slashbot.core.aichat_summary import AIChatSummary, SummaryMessage
+from slashbot.core.ai_chat import AIChat
+from slashbot.core.ai_chat_summary import AIChatSummary, SummaryMessage
 from slashbot.core.text_generation import TextGenerator
 from slashbot.messages import get_attached_images_from_message, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
@@ -126,13 +126,13 @@ class TextGeneration(CustomCog):
         )
         return self.channel_histories[history_id]
 
-    def _get_conversation(self, obj: int | Message | ApplicationCommandInteraction) -> AIChat:
+    def _get_chat(self, obj: int | Message | ApplicationCommandInteraction) -> AIChat:
         history_id = get_history_id(obj) if not isinstance(obj, int) else obj
         self.log_debug("Getting conversation for history ID: %s", history_id)
         if history_id in self.chats:
             return self.chats[history_id]
         if isinstance(obj, int):
-            msg = "History ID is an int, but a ai conversation has not been found"
+            msg = "History ID is an int, but an ai chat has not been found"
             raise ValueError(msg)  # noqa: TRY004
 
         if isinstance(obj.channel, disnake.TextChannel):
@@ -199,18 +199,6 @@ class TextGeneration(CustomCog):
             dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )
 
-    async def _reset_conversation_history(self, history_id: int) -> None:
-        """Clear chat history and reset the token counter.
-
-        Parameters
-        ----------
-        history_id :  int
-            The index to reset in chat history.
-
-        """
-        conversation = self._get_conversation(history_id)
-        conversation.reset_history()
-
     async def _get_highlighted_discord_message(self, original_message: disnake.Message) -> disnake.Message:
         """Retrieve a message from a message reply.
 
@@ -262,7 +250,7 @@ class TextGeneration(CustomCog):
             The response from the AI.
 
         """
-        conversation = self._get_conversation(discord_message)
+        conversation = self._get_chat(discord_message)
         user_prompt = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
         images = await get_attached_images_from_message(discord_message)
 
@@ -309,7 +297,7 @@ class TextGeneration(CustomCog):
             *last_messages,
             {"role": "user", "content": message.clean_content},
         ]
-        conversation = self._get_conversation(message)
+        conversation = self._get_chat(message)
         llm_response = conversation.send_raw_request(content)
         await send_message_to_channel(llm_response, message, dont_tag_user=True)
 
@@ -412,7 +400,7 @@ class TextGeneration(CustomCog):
         await send_message_to_channel(summary, inter)
 
     @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
-    async def reset_conversation_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    async def reset_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
         Parameters
@@ -421,7 +409,8 @@ class TextGeneration(CustomCog):
             The slash command interaction.
 
         """
-        await self._reset_conversation_history(get_history_id(inter))
+        chat = self._get_chat(inter)
+        chat.reset_history()
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -450,7 +439,7 @@ class TextGeneration(CustomCog):
         """
         prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
-        conversation = self._get_conversation(inter)
+        conversation = self._get_chat(inter)
         conversation.set_system_prompt(prompt)
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
 
@@ -478,9 +467,9 @@ class TextGeneration(CustomCog):
             )
             return
 
-        conversation = self._get_conversation(inter)
-        original_model = conversation._client.model_name
-        conversation._client.init_client(model_name)
+        conversation = self._get_chat(inter)
+        original_model = conversation.model
+        conversation.set_model(model_name)
         await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
 
     @slash_command_with_cooldown(
@@ -505,7 +494,7 @@ class TextGeneration(CustomCog):
 
         """
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
-        conversation = self._get_conversation(inter)
+        conversation = self._get_chat(inter)
         conversation.set_system_prompt(prompt)
         await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
@@ -521,7 +510,7 @@ class TextGeneration(CustomCog):
             The slash command interaction.
 
         """
-        conversation = self._get_conversation(inter)
+        conversation = self._get_chat(inter)
 
         prompt_name = "Unknown"
         prompt = conversation.system_prompt
@@ -530,7 +519,7 @@ class TextGeneration(CustomCog):
                 prompt_name = name
 
         response = ""
-        response += f"**Model name**: {conversation._client.model_name}\n"
+        response += f"**Model name**: {conversation.model}\n"
         response += f"**Token usage**: {conversation.size_tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
         response += f"**Prompt**: {shorten(prompt, 1800)}\n"

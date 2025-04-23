@@ -76,7 +76,7 @@ class AIChatSummary(TextGenerator):
         """
         self._shrink_history_to_token_window_size()
         if message.tokens == 0:
-            message.tokens = self.client_count_tokens_for_message(message.content)
+            message.tokens = self.count_tokens_for_message(message.content)
         self._history_context.append(message)
         self.log_debug("Adding message: %s", message.content)
 
@@ -123,7 +123,7 @@ class AIChatSummary(TextGenerator):
             )
 
         self.log_debug("Context for summary: %s", full_conversation[1:])
-        response = self.client_send_response_request(full_conversation)
+        response = self.send_response_request(full_conversation)
         self.log_debug("Generated summary: %s", response.message)
 
         return response.message

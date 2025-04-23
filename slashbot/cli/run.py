@@ -116,17 +116,14 @@ def create_on_slash_command_error(bot: CustomInteractionBot) -> Callable:
         # to the follow up instead
         time_since_created = datetime.datetime.now(datetime.UTC) - inter.created_at
         if time_since_created > datetime.timedelta(seconds=2.5):
-            followup = inter.followup
-            try:
-                original_message = await followup.original_response()  # type: ignore  # noqa: PGH003
-                await original_message.delete()
-            except disnake.HTTPException:
-                pass
+            respond_to = inter.followup.send
+        else:
+            respond_to = inter.response.send_message
 
         if isinstance(error, commands.errors.CommandOnCooldown):
-            await inter.response.send_message("This command is on cooldown for you.", ephemeral=True)
+            await respond_to("This command is on cooldown for you.", ephemeral=True)
         if isinstance(error, disnake.NotFound):
-            await inter.response.send_message("Failed to communicate with the Discord API.", ephemeral=True)
+            await respond_to("Failed to communicate with the Discord API.", ephemeral=True)
 
     return on_slash_command_error
 

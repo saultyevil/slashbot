@@ -125,32 +125,24 @@ def setup_logging() -> None:
 
     This sets up the logging for the bot's logic, and also the Disnake log.
     """
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)8s | %(message)s",
+        "%Y-%m-%d %H:%M:%S",
+    )
     console_handler = logging.StreamHandler()
-    console_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
+    console_handler.setFormatter(formatter)
     logger = logging.getLogger(BotSettings.logging.logger_name)
     logger.addHandler(console_handler)
     file_handler = RotatingFileHandler(
         filename=BotSettings.logging.log_location,
         encoding="utf-8",
-        maxBytes=int(5e5),
-        backupCount=5,
+        maxBytes=int(10 * 1e6),  # 10 MB
+        backupCount=2,
     )
-    file_handler.setFormatter(
-        logging.Formatter(
-            "[%(asctime)s] %(levelname)8s : %(message)s (%(filename)s:%(lineno)d)",
-            "%Y-%m-%d %H:%M:%S",
-        ),
-    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
 
-    logger = logging.getLogger("disnake")
-    logger.setLevel(logging.DEBUG)
-    handler = logging.FileHandler(filename="logs/disnake.log", encoding="utf-8", mode="w")
-    handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
-    logger.addHandler(handler)
-
-    logger.setLevel(logging.DEBUG)
-    logger.propagate = False
     logger.info("Loaded config file %s", BotSettings.config_file)
 
 

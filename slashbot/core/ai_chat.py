@@ -32,9 +32,10 @@ class AIChat(TextGenerator):
         """
         extra_print = f"[AIConversation:{extra_print}] " if extra_print else ""
         super().__init__(extra_print=extra_print)
-        self.client_set_system_prompt(
+        self._chat_system_prompt = system_prompt
+        self.set_system_prompt(
             system_prompt,
-            prompt_name="default prompt" if system_prompt == AIChat.DEFAULT_SYSTEM_PROMPT else "custom prompt",
+            prompt_name="default prompt" if system_prompt == self.DEFAULT_SYSTEM_PROMPT else "custom prompt",
         )
 
     # --------------------------------------------------------------------------
@@ -49,20 +50,6 @@ class AIChat(TextGenerator):
 
         """
         return self.size_messages
-
-    # --------------------------------------------------------------------------
-
-    @property
-    def system_prompt(self) -> str:
-        """Get the system prompt of the conversation.
-
-        Returns
-        -------
-        str
-            The system prompt of the conversation.
-
-        """
-        return self._client.system_prompt
 
     # --------------------------------------------------------------------------
 
@@ -94,7 +81,7 @@ class AIChat(TextGenerator):
 
     def reset_history(self) -> None:
         """Reset the conversation history back to the system prompt."""
-        self.client_set_system_prompt(self.client_system_prompt, prompt_name=self.client_system_prompt_name)
+        self.set_system_prompt(self._chat_system_prompt, prompt_name=self.system_prompt_name)
 
     def send_message(self, message: str, images: VisionImage | list[VisionImage] | None = None) -> str:
         """Add a new message to the conversation history.
@@ -112,7 +99,7 @@ class AIChat(TextGenerator):
             The message response from the AI.
 
         """
-        response = self.client_generate_response_including_context(message, images)
+        response = self.generate_response_including_context(message, images)
         self._token_size = response.tokens_used
 
         return response.message
@@ -126,11 +113,11 @@ class AIChat(TextGenerator):
             The (correctly) formatted content to send to the API.
 
         """
-        response = self.client_send_response_request(content)
+        response = self.send_response_request(content)
 
         return response.message
 
-    def set_system_prompt(self, new_prompt: str) -> None:
+    def set_chat_prompt(self, new_prompt: str) -> None:
         """Set the system prompt and clear the conversation.
 
         Parameters
@@ -139,4 +126,4 @@ class AIChat(TextGenerator):
             The new system prompt to set.
 
         """
-        self.client_set_system_prompt(new_prompt)
+        self.set_system_prompt(new_prompt)
