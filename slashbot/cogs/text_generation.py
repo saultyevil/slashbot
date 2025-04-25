@@ -251,7 +251,18 @@ class TextGeneration(CustomCog):
 
         """
         conversation = self._get_chat(discord_message)
-        user_prompt = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
+
+        # If we are in a guild, we need to get the bot's display name for that
+        # guild. Otherwise, we can use the bot's given name.
+        # Then we need to remove the bot's name from the message content,
+        # otherwise it can get very confused for some reason
+        if discord_message.guild:
+            bot_user = discord_message.guild.get_member(self.bot.user.id)
+            bot_name = bot_user.display_name if bot_user else self.bot.user.name
+        else:
+            bot_name = self.bot.user.name
+        user_prompt = discord_message.clean_content.replace(f"@{bot_name}", "")
+
         images = await get_attached_images_from_message(discord_message)
 
         if discord_message.reference:
