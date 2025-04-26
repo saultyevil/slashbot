@@ -126,6 +126,7 @@ class KeyStore:
     openweathermap = os.getenv("BOT_OWM_API_KEY")
     google = os.getenv("BOT_GOOGLE_API_KEY")
     wolframalpha = os.getenv("BOT_WOLFRAM_API_KEY")
+    gemini = os.getenv("BOT_GEMINI_API_KEY")
 
 
 @dataclass
@@ -217,7 +218,7 @@ def load_settings() -> Settings:
         The settings from the TOML file, as a Settings dataclass.
 
     """
-    config_path = Path(os.getenv("BOT_CONFIG_TOML", "./bot-config.toml"))
+    config_path = Path(os.getenv("BOT_CONFIG", "./bot-config.toml"))
     if not config_path.is_file():
         print(f"Failed to load config file defined in $BOT_CONFIG {config_path} or default location")  # noqa: T201
         sys.exit(1)

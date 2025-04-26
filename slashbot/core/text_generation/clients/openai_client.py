@@ -150,6 +150,7 @@ class OpenAIClient(TextGenerationAbstractClient):
         self.model_name = model_name
         self._base_url = "https://api.openai.com/v1"
         self._client = openai.Client(api_key=BotSettings.keys.openai)
+        self._context = [{"role": "system", "content": self.system_prompt}]
 
     def send_response_request(self, content: list[dict]) -> TextGenerationResponse:
         """Send a request to the API client.
