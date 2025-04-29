@@ -69,12 +69,12 @@ class OpenAIClient(TextGenerationAbstractClient):
 
     # --------------------------------------------------------------------------
 
-    def count_tokens_for_message(self, messages: list[dict[str, str]] | str) -> int:
+    def count_tokens_for_message(self, messages: dict | list[dict[str, str]] | str) -> int:
         """Get the token count for a given message for the current LLM model.
 
         Parameters
         ----------
-        messages : list[str] | str
+        messages : dict | list[str] | str
             The message for which the token count needs to be computed.
 
         Returns

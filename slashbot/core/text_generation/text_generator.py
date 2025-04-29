@@ -1,4 +1,5 @@
 from slashbot.core.logger import Logger
+from slashbot.core.text_generation.clients.gemini_client import GeminiClient
 from slashbot.core.text_generation.clients.openai_client import OpenAIClient
 from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage
 from slashbot.settings import BotSettings
@@ -9,11 +10,11 @@ class TextGenerator(Logger):
 
     SUPPORTED_OPENAI_MODELS = OpenAIClient.SUPPORTED_MODELS
     SUPPORTED_CLAUDE_MODELS = ()
-    SUPPORTED_GOOGLE_MODELS = ()
+    SUPPORTED_GOOGLE_MODELS = GeminiClient.SUPPORTED_MODELS
     SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS + SUPPORTED_CLAUDE_MODELS + SUPPORTED_GOOGLE_MODELS
-    VISION_MODELS = (*OpenAIClient.VISION_MODELS,)
-    SEARCH_MODELS = (*OpenAIClient.SEARCH_MODELS,)
-    AUDIO_MODELS = (*OpenAIClient.AUDIO_MODELS,)
+    VISION_MODELS = (*OpenAIClient.VISION_MODELS, *GeminiClient.VISION_MODELS)
+    SEARCH_MODELS = (*OpenAIClient.SEARCH_MODELS, *GeminiClient.SEARCH_MODELS)
+    AUDIO_MODELS = (*OpenAIClient.AUDIO_MODELS, *GeminiClient.AUDIO_MODELS)
 
     def __init__(self, *, model_name: str | None = None, extra_print: str = "") -> None:
         """Initialise a TextGeneratorLLM with default values.
@@ -60,7 +61,7 @@ class TextGenerator(Logger):
 
     # --------------------------------------------------------------------------
 
-    def count_tokens_for_message(self, message: list[dict[str, str]] | str) -> int:
+    def count_tokens_for_message(self, message: dict | list[dict[str, str]] | str) -> int:
         """Get the token count for a given message for the current LLM model.
 
         Parameters
@@ -113,6 +114,8 @@ class TextGenerator(Logger):
         """
         if model in self.SUPPORTED_OPENAI_MODELS:
             self._client = OpenAIClient(model)
+        elif model in self.SUPPORTED_GOOGLE_MODELS:
+            self._client = GeminiClient(model)
         else:
             msg = f"{model} is not available"
             raise NotImplementedError(msg)

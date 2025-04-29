@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests
 
 from slashbot.core.text_generation.clients.abstract_client import TextGenerationAbstractClient
@@ -8,39 +10,86 @@ from slashbot.settings import BotSettings
 class GeminiClient(TextGenerationAbstractClient):
     """Synchronous Gemini client."""
 
-    SUPPORTED_MODELS = ()
-    VISION_MODELS = ("gemini-1.5-turbo", "gemini-1.5-turbo-vision")
+    SUPPORTED_MODELS = (
+        "gemini-1.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.5-pro-preview-03-25",
+    )
+    VISION_MODELS = (
+        "gemini-1.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.5-pro-preview-03-25",
+    )
     SEARCH_MODELS = ()
-    AUDIO_MODELS = ()
+    AUDIO_MODELS = (
+        "gemini-1.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.5-pro-preview-03-25",
+    )
+    VIDEO_MODELS = (
+        "gemini-1.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.5-pro-preview-03-25",
+    )
+
+    def __init__(self, model_name: str, **kwargs: Any) -> None:
+        """Initialise the Gemini client.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to use.
+        kwargs : dict
+            Additional keyword arguments to pass to the parent class.
+
+        """
+        self._count_tokens_url = ""
+        super().__init__(model_name, **kwargs)
 
     def _make_assistant_message_content(self, message: str) -> dict:
-        pass
+        return {"role": "model", "parts": [{"text": message}]}
 
     def _make_image_content(self, images: VisionImage | list[VisionImage]) -> list[dict]:
-        pass
+        if self.model_name not in self.VISION_MODELS:
+            return []
+        if not isinstance(images, list):
+            images = [images]
+
+        return [
+            {
+                "inline_data": {
+                    "mime_type": image.mime_type,
+                    "data": image.b64image,
+                }
+            }
+            for image in images
+        ]
 
     def _make_user_message_content(self, messages: str | list[str]) -> dict:
-        pass
+        if not isinstance(messages, list):
+            messages = [messages]
+        return {"role": "user", "parts": [{"text": message} for message in messages]}
 
     def _prepare_content(
         self, message: str | list[str], images: VisionImage | list[VisionImage] | None = None
     ) -> dict | list[dict]:
-        pass
+        if images:
+            image_context = self._make_image_content(images)
+            context = self._make_user_message_content(message)
+            context["parts"] = [context["parts"], *image_context]
+        else:
+            context = self._make_user_message_content(message)
 
-    def _set_system_prompt_and_clear_context(self, prompt: str, *, prompt_name: str = "unknown") -> None:
-        pass
-
-    def _send_request(self) -> None:
-        pass
+        return context
 
     # --------------------------------------------------------------------------
 
     @property
     def context(self) -> list[dict]:
         """Get the context, minus the system prompt."""
-        return self.context
+        return self._context["contents"]
 
-    def count_tokens_for_message(self, messages: list[dict[str, str]] | str) -> int:
+    def count_tokens_for_message(self, messages: dict | str) -> int:
         """Count the number of tokens in a message.
 
         Parameters
@@ -49,6 +98,25 @@ class GeminiClient(TextGenerationAbstractClient):
             The message to count the number of tokens.
 
         """
+        if not self._count_tokens_url:
+            self.init_client(self.model_name)
+        if isinstance(messages, str):
+            messages = {"contents": [{"parts": [{"text": messages}]}]}
+
+        request = requests.post(
+            url=self._count_tokens_url,
+            json=messages,
+            headers={"Content-Type": "application/json"},
+            timeout=60,
+        )
+
+        if request.status_code != requests.status_codes.codes.OK:
+            self.log_debug("Request content: %s", messages)
+            msg = f"Gemini API request failed with {request.json()['error']['message']}"
+            raise GenerationFailureError(msg, code=request.status_code)
+
+        request = request.json()
+        return request["totalTokens"]
 
     def generate_response_including_context(
         self, messages: str | list[str], images: VisionImage | list[VisionImage] | None = None
@@ -66,6 +134,21 @@ class GeminiClient(TextGenerationAbstractClient):
             Input image(s), from the user.
 
         """
+        if not self._base_url:
+            self.init_client(self.model_name)
+
+        self._shrink_messages_to_token_window()
+        self._context["contents"].append(self._prepare_content(messages, images))
+
+        response = self.send_response_request(self._context)
+
+        if not response.message:
+            msg = "A valid response was not generated by the OpenAI client."
+            raise ValueError(msg)
+        self._context["contents"].append(self._make_assistant_message_content(response.message))
+        self.token_size = response.tokens_used
+
+        return response
 
     def init_client(self, model_name: str) -> None:
         """Initialise the client to use a model.
@@ -78,8 +161,19 @@ class GeminiClient(TextGenerationAbstractClient):
         """
         self.model_name = model_name
         self._base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={BotSettings.keys.gemini}"
+        self._count_tokens_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:countTokens?key={BotSettings.keys.gemini}"
+        self._context = {
+            "system_instruction": {
+                "parts": [
+                    {
+                        "text": self.system_prompt,
+                    }
+                ]
+            },
+            "contents": [],
+        }
 
-    def send_response_request(self, content: list[dict]) -> TextGenerationResponse:
+    def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
 
         Parameters
@@ -95,7 +189,7 @@ class GeminiClient(TextGenerationAbstractClient):
             timeout=60,
         )
 
-        if request.status_code != request.ok:
+        if request.status_code != requests.status_codes.codes.OK:
             self.log_debug("Request content: %s", content)
             msg = f"Gemini API request failed with {request.json()['error']['message']}"
             raise GenerationFailureError(msg, code=request.status_code)
@@ -118,3 +212,16 @@ class GeminiClient(TextGenerationAbstractClient):
             The name of the system prompt.
 
         """
+        self.system_prompt = prompt
+        self.system_prompt_name = prompt_name
+        self._context = {
+            "system_instruction": {
+                "parts": [
+                    {
+                        "text": prompt,
+                    }
+                ]
+            },
+            "contents": [],
+        }
+        self.token_size = self.count_tokens_for_message(prompt)
