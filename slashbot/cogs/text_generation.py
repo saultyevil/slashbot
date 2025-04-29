@@ -458,7 +458,7 @@ class TextGeneration(CustomCog):
     async def set_chat_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        model_name: str = commands.Param(choices=TextGenerator.SUPPORTED_OPENAI_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
+        model_name: str = commands.Param(choices=TextGenerator.SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
     ) -> None:
         """Set the AI model to use.
 
