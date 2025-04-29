@@ -35,9 +35,9 @@ class TextGenerationAbstractClient(Logger):
         self._context = []
         self._client = None
         self._base_url = None
-        self.token_size = 0
         self.system_prompt = kwargs.get("system_prompt", self.DEFAULT_SYSTEM_PROMPT)
         self.system_prompt_name = kwargs.get("system_prompt_name", "default")
+        self.token_size = self.count_tokens_for_message(self.system_prompt)
         self._token_window_size = BotSettings.cogs.ai_chat.token_window_size
         self._max_completion_tokens = BotSettings.cogs.ai_chat.max_output_tokens
         self.init_client(self.model_name)
@@ -96,14 +96,6 @@ class TextGenerationAbstractClient(Logger):
     ) -> dict | list[dict]:
         pass
 
-    @abstractmethod
-    def _set_system_prompt_and_clear_context(self, prompt: str, *, prompt_name: str = "unknown") -> None:
-        pass
-
-    @abstractmethod
-    def _send_request(self) -> None:
-        pass
-
     # --------------------------------------------------------------------------
 
     @property
@@ -112,12 +104,12 @@ class TextGenerationAbstractClient(Logger):
         """Get the context, minus the system prompt."""
 
     @abstractmethod
-    def count_tokens_for_message(self, messages: list[dict[str, str]] | str) -> int:
+    def count_tokens_for_message(self, messages: dict | list[dict[str, str]] | str) -> int:
         """Count the number of tokens in a message.
 
         Parameters
         ----------
-        messages : list[dict[str, str]] | str
+        messages : dict | list[dict[str, str]] | str
             The message to count the number of tokens.
 
         """
@@ -152,12 +144,12 @@ class TextGenerationAbstractClient(Logger):
         """
 
     @abstractmethod
-    def send_response_request(self, content: list[dict]) -> TextGenerationResponse:
+    def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
 
         Parameters
         ----------
-        content : list[dict]
+        content : list[dict] | dict
             The (correctly) formatted content to send to the API.
 
         """

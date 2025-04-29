@@ -13,14 +13,12 @@ class OpenAIClient(TextGenerationAbstractClient):
     SUPPORTED_MODELS = (
         "gpt-3.5-turbo",
         "gpt-4o-mini",
-        "gpt-4o-mini-search-preview",
-        "gpt-4o-mini-audio-preview",
         "gpt-4.1-nano",
         "gpt-4.1-mini",
     )
     VISION_MODELS = ("gpt-4o-mini", "gpt-4.1-mini", "gpt-4.1-nano")
-    SEARCH_MODELS = ("gpt-4o-mini-search-preview",)
-    AUDIO_MODELS = ("gpt-4o-mini-audio-preview",)
+    SEARCH_MODELS = ()
+    AUDIO_MODELS = ()
 
     # --------------------------------------------------------------------------
 
@@ -69,12 +67,12 @@ class OpenAIClient(TextGenerationAbstractClient):
 
     # --------------------------------------------------------------------------
 
-    def count_tokens_for_message(self, messages: list[dict[str, str]] | str) -> int:
+    def count_tokens_for_message(self, messages: dict | list[dict[str, str]] | str) -> int:
         """Get the token count for a given message for the current LLM model.
 
         Parameters
         ----------
-        messages : list[str] | str
+        messages : dict | list[str] | str
             The message for which the token count needs to be computed.
 
         Returns
