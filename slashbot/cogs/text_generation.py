@@ -458,7 +458,7 @@ class TextGeneration(CustomCog):
     async def set_chat_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        model_name: str = commands.Param(choices=TextGenerator.SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
+        model_name: str = commands.Param(choices=TextGenerator.SUPPORTED_OPENAI_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
     ) -> None:
         """Set the AI model to use.
 
@@ -470,17 +470,9 @@ class TextGeneration(CustomCog):
             The name of the model to set.
 
         """
-        everyone_can_pick = ["gpt-3.5-turbo", "gpt-4o-mini", "gpt-4.1-nano", "gpt-4.1-mini"]
-        if inter.author.id != BotSettings.discord.users.saultyevil and model_name not in everyone_can_pick:
-            await inter.response.send_message(
-                f"You are not allowed to pick this model!! Please choose one of the following: {', '.join(everyone_can_pick)}",
-                ephemeral=True,
-            )
-            return
-
-        conversation = self._get_chat(inter)
-        original_model = conversation.model
-        conversation.set_model(model_name)
+        chat = self._get_chat(inter)
+        original_model = chat.model
+        chat.set_model(model_name)
         await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
 
     @slash_command_with_cooldown(
