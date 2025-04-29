@@ -388,7 +388,7 @@ class TextGeneration(CustomCog):
     # Commands -----------------------------------------------------------------
 
     @slash_command_with_cooldown(
-        name="summarise_chat_history",
+        name="generate_chat_summary",
         description="Get a summary of the previous conversation",
         dm_permission=False,
     )
@@ -410,7 +410,7 @@ class TextGeneration(CustomCog):
         await inter.delete_original_response()
         await send_message_to_channel(summary, inter)
 
-    @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
+    @slash_command_with_cooldown(name="reset_chat", description="Reset the AI conversation history")
     async def reset_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
