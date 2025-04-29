@@ -5,6 +5,34 @@ from typing import Any
 from slashbot.settings import BotSettings
 
 
+def setup_logging() -> None:
+    """Set up log formatting.
+
+    This sets up the logging for the bot's logic, and also the Disnake log.
+    """
+    logger = logging.getLogger(BotSettings.logging.logger_name)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)8s | %(message)s",
+        "%Y-%m-%d %H:%M:%S",
+    )
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+    logger.addHandler(console_handler)
+    file_handler = RotatingFileHandler(
+        filename=BotSettings.logging.log_location,
+        encoding="utf-8",
+        maxBytes=int(10 * 1e6),  # 10 MB
+        backupCount=2,
+    )
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.DEBUG)
+    logger.addHandler(file_handler)
+
+    logger.info("Loaded config file %s", BotSettings.config_file)
+
+
 class Logger:
     """Logger object for classes."""
 
@@ -117,33 +145,5 @@ class Logger:
             The logging output level.
 
         """
-        self._logger.setLevel(level)
-
-
-def setup_logging() -> None:
-    """Set up log formatting.
-
-    This sets up the logging for the bot's logic, and also the Disnake log.
-    """
-    formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)8s | %(message)s",
-        "%Y-%m-%d %H:%M:%S",
-    )
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger = logging.getLogger(BotSettings.logging.logger_name)
-    logger.addHandler(console_handler)
-    file_handler = RotatingFileHandler(
-        filename=BotSettings.logging.log_location,
-        encoding="utf-8",
-        maxBytes=int(10 * 1e6),  # 10 MB
-        backupCount=2,
-    )
-    file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.DEBUG)
-    logger.addHandler(file_handler)
-
-    logger.info("Loaded config file %s", BotSettings.config_file)
-
-
-setup_logging()
+        for handler in self._logger.handlers:
+            handler.setLevel(level)

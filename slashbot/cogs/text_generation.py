@@ -81,7 +81,7 @@ class TextGeneration(CustomCog):
 
         self._lock = asyncio.Lock()
         self._profiler = Profiler(async_mode="enabled")
-        file_handler = logging.FileHandler("logs/ai_chat_profile.log")
+        file_handler = logging.FileHandler("logs/profile.log")
         file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
         self._profiler_logger = logging.getLogger("ProfilerLogger")
         self._profiler_logger.handlers.clear()

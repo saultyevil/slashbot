@@ -22,6 +22,7 @@ from disnake.ext import commands
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
 from slashbot.settings import BotSettings
+from slashbot.core.logger import setup_logging
 
 LAUNCH_TIME = time.time()
 
@@ -153,8 +154,8 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
         reload=bool(args.debug),
     )
 
-    log_level = logging.DEBUG if args.debug else logging.INFO
-    bot.set_log_level(log_level)
+    if args.debug:
+        bot.set_log_level(logging.DEBUG)
 
     bot.log_info("Initializing... %s", args)
     bot.log_info("Config file: %s", BotSettings.config_file)
@@ -173,13 +174,15 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
     event_loop.run_until_complete(bot.initialise_database())
 
     for cog in bot.cogs.values():
-        cog.set_log_level(log_level)  # type: ignore  # noqa: PGH003
+        if args.debug:
+            cog.set_log_level(logging.DEBUG)  # type: ignore  # noqa: PGH003
 
     return bot
 
 
 def main() -> int:
     """Run Slashbot."""
+    setup_logging()
     args = parse_args()
     bot = initialise_bot(args)
 
