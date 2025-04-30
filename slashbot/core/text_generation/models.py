@@ -21,6 +21,15 @@ class VisionImage:
 
 
 @dataclass
+class VisionVideo:
+    """Dataclass for videos for LLM vision."""
+
+    url: str
+    b64video: str | None = None
+    mime_type: str | None = None
+
+
+@dataclass
 class TextGenerationResponse:
     """Response object for text generation."""
 

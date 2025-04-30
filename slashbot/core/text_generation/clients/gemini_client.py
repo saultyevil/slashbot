@@ -3,7 +3,12 @@ from typing import Any
 import requests
 
 from slashbot.core.text_generation.clients.abstract_client import TextGenerationAbstractClient
-from slashbot.core.text_generation.models import GenerationFailureError, TextGenerationResponse, VisionImage
+from slashbot.core.text_generation.models import (
+    GenerationFailureError,
+    TextGenerationResponse,
+    VisionImage,
+    VisionVideo,
+)
 from slashbot.settings import BotSettings
 
 
@@ -70,15 +75,34 @@ class GeminiClient(TextGenerationAbstractClient):
             messages = [messages]
         return {"role": "user", "parts": [{"text": message} for message in messages]}
 
+    def _make_video_content(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
+        if self.model_name not in self.VIDEO_MODELS:
+            return []
+        if not isinstance(videos, list):
+            videos = [videos]
+        return [
+            {
+                "file_data": {
+                    "file_uri": video.url,
+                }
+            }
+            for video in videos
+        ]
+
     def _prepare_content(
-        self, message: str | list[str], images: VisionImage | list[VisionImage] | None = None
+        self,
+        message: str | list[str],
+        images: VisionImage | list[VisionImage] | None = None,
+        videos: VisionVideo | list[VisionVideo] | None = None,
     ) -> dict | list[dict]:
+        image_context = []
+        video_context = []
+        context = self._make_user_message_content(message)
+        if videos:
+            video_context = self._make_video_content(videos)
         if images:
             image_context = self._make_image_content(images)
-            context = self._make_user_message_content(message)
-            context["parts"] = [context["parts"], *image_context]
-        else:
-            context = self._make_user_message_content(message)
+        context["parts"] = [context["parts"], *image_context, *video_context]
 
         return context
 
@@ -119,7 +143,10 @@ class GeminiClient(TextGenerationAbstractClient):
         return request["totalTokens"]
 
     def generate_response_including_context(
-        self, messages: str | list[str], images: VisionImage | list[VisionImage] | None = None
+        self,
+        messages: str | list[str],
+        images: VisionImage | list[VisionImage] | None = None,
+        videos: VisionVideo | list[VisionVideo] | None = None,
     ) -> TextGenerationResponse:
         """Generate a text response, given new text input and previous context.
 
@@ -132,13 +159,15 @@ class GeminiClient(TextGenerationAbstractClient):
             Input message(s), from the user.
         images : VisionImage | list[VisionImage] | None
             Input image(s), from the user.
+        videos : VisionVideo | list[VisionVideo] | None
+            Input video(s), from the user.
 
         """
         if not self._base_url:
             self.init_client(self.model_name)
 
         self._shrink_messages_to_token_window()
-        self._context["contents"].append(self._prepare_content(messages, images))
+        self._context["contents"].append(self._prepare_content(messages, images, videos))
 
         response = self.send_response_request(self._context)
 
@@ -182,6 +211,9 @@ class GeminiClient(TextGenerationAbstractClient):
             The (correctly) formatted content to send to the API.
 
         """
+        self.log_debug("Gemini content: %s", content)
+        if not self._base_url:
+            self.init_client(self.model_name)
         request = requests.post(
             url=self._base_url,
             json=content,

@@ -9,6 +9,7 @@ import asyncio
 import datetime
 import logging
 import random
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from textwrap import shorten
@@ -26,7 +27,8 @@ from slashbot.core import markov
 from slashbot.core.ai_chat import AIChat
 from slashbot.core.ai_chat_summary import AIChatSummary, SummaryMessage
 from slashbot.core.text_generation import TextGenerator
-from slashbot.messages import get_attached_images_from_message, send_message_to_channel
+from slashbot.core.text_generation.models import VisionImage, VisionVideo
+from slashbot.messages import download_and_encode_image, get_attached_images_from_message, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
 from slashbot.settings import BotSettings
@@ -199,6 +201,63 @@ class TextGeneration(CustomCog):
             dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )
 
+    async def _get_attached_images_from_message(self, message: Message) -> list[VisionImage]:
+        """Retrieve the URLs for images attached or embedded in a Discord message.
+
+        Parameters
+        ----------
+        message : Message
+            The Discord message object to extract image URLs from.
+
+        Returns
+        -------
+        List[Image]
+            A list of `Image` dataclasses containing the URL, base64-encoded image
+            data and the MIME type of the image.
+
+        """
+        image_urls = [
+            attachment.url
+            for attachment in message.attachments
+            if attachment.content_type and attachment.content_type.startswith("image/")
+        ]
+        image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image and embed.image.proxy_url]
+        image_urls += [
+            embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail and embed.thumbnail.proxy_url
+        ]
+
+        result = []
+        for url in image_urls:
+            try:
+                result.append(
+                    download_and_encode_image(url, encode_to_b64=not BotSettings.cogs.ai_chat.prefer_image_urls)
+                )
+            except Exception:  # noqa: BLE001
+                self.log_exception("Failed to download image from %s", url)
+
+        return result
+
+    async def _get_attached_videos_from_message(self, message: Message) -> list[VisionVideo]:
+        """Retrieve the URLs for YouTube videos embedded in a Discord message.
+
+        Parameters
+        ----------
+        message : Message
+            The Discord message object to extract video URLs from.
+
+        Returns
+        -------
+        List[VisionVideo]
+            A list of `VisionVideo` dataclasses containing the URL of the video.
+
+        """
+        regex = re.compile(r"https?://(?:www\.)?youtube\.com/watch\?v=[\w-]+")
+        video_urls = regex.findall(message.content)
+        # video_urls += [embed.video.proxy_url for embed in message.embeds if embed.video and embed.video.proxy_url]
+        self.log_debug("Found %s video URLs in message: %s", len(video_urls), video_urls)
+
+        return [VisionVideo(url) for url in set(video_urls)]
+
     async def _get_highlighted_discord_message(self, original_message: disnake.Message) -> disnake.Message:
         """Retrieve a message from a message reply.
 
@@ -263,11 +322,13 @@ class TextGeneration(CustomCog):
             bot_name = self.bot.user.name
         user_prompt = discord_message.clean_content.replace(f"@{bot_name}", "")
 
-        images = await get_attached_images_from_message(discord_message)
+        images = await self._get_attached_images_from_message(discord_message)
+        videos = await self._get_attached_videos_from_message(discord_message)
 
         if discord_message.reference:
             referenced_message = await self._get_highlighted_discord_message(discord_message)
-            images += await get_attached_images_from_message(referenced_message)
+            images += await self._get_attached_images_from_message(referenced_message)
+            videos += await self._get_attached_videos_from_message(referenced_message)
             user_prompt = (
                 'Previous message to respond to with the prompt: "'
                 + referenced_message.clean_content
@@ -277,7 +338,7 @@ class TextGeneration(CustomCog):
 
         async with self._lock:
             try:
-                bot_response = conversation.send_message(user_prompt, images)
+                bot_response = conversation.send_message(user_prompt, images, videos)
             except:  # noqa: E722
                 self.log_exception("Failed to get response from AI, reverting to markov sentence")
                 bot_response = self.get_random_markov_sentence()
@@ -388,11 +449,11 @@ class TextGeneration(CustomCog):
     # Commands -----------------------------------------------------------------
 
     @slash_command_with_cooldown(
-        name="generate_chat_summary",
-        description="Get a summary of the previous conversation",
+        name="chat_generate_summary",
+        description="Generate a summary of the conversation",
         dm_permission=False,
     )
-    async def generate_chat_summary(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    async def chat_generate_summary(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Summarize the chat history.
 
         Parameters
@@ -410,8 +471,8 @@ class TextGeneration(CustomCog):
         await inter.delete_original_response()
         await send_message_to_channel(summary, inter)
 
-    @slash_command_with_cooldown(name="reset_chat", description="Reset the AI conversation history")
-    async def reset_chat_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    @slash_command_with_cooldown(name="chat_reset_context", description="Reset the AI conversation history")
+    async def chat_reset_context(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
         Parameters
@@ -425,10 +486,10 @@ class TextGeneration(CustomCog):
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
     @slash_command_with_cooldown(
-        name="select_chat_prompt",
+        name="chat_select_prompt",
         description="Set the AI conversation prompt from a list of choices",
     )
-    async def select_existing_prompt(
+    async def chat_select_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
@@ -454,8 +515,8 @@ class TextGeneration(CustomCog):
         conversation.set_system_prompt(prompt)
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
 
-    @slash_command_with_cooldown(name="set_chat_model", description="Set the AI model to use")
-    async def set_chat_model(
+    @slash_command_with_cooldown(name="chat_set_model", description="Set the AI model to use")
+    async def chat_set_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
         model_name: str = commands.Param(choices=TextGenerator.SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
@@ -476,9 +537,9 @@ class TextGeneration(CustomCog):
         await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
 
     @slash_command_with_cooldown(
-        name="set_chat_prompt", description="Change the AI conversation prompt to one you write"
+        name="chat_set_prompt", description="Change the AI conversation prompt to one you write"
     )
-    async def set_chat_prompt(
+    async def chat_set_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to set", max_length=2000),
@@ -502,9 +563,9 @@ class TextGeneration(CustomCog):
         await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
     @slash_command_with_cooldown(
-        name="show_chat_prompt", description="Print information about the current AI conversation"
+        name="chat_show_prompt", description="Print information about the current AI conversation"
     )
-    async def show_chat_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    async def chat_show_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Print the system prompt to the screen.
 
         Parameters

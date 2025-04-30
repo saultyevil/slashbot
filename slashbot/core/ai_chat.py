@@ -2,7 +2,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from slashbot.core.text_generation import TextGenerator
-from slashbot.core.text_generation.models import VisionImage
+from slashbot.core.text_generation.models import VisionImage, VisionVideo
 from slashbot.prompts import read_in_prompt_json
 
 
@@ -83,15 +83,22 @@ class AIChat(TextGenerator):
         """Reset the conversation history back to the system prompt."""
         self.set_system_prompt(self._chat_system_prompt, prompt_name=self.system_prompt_name)
 
-    def send_message(self, message: str, images: VisionImage | list[VisionImage] | None = None) -> str:
+    def send_message(
+        self,
+        message: str,
+        images: VisionImage | list[VisionImage] | None = None,
+        videos: VisionVideo | list[VisionVideo] | None = None,
+    ) -> str:
         """Add a new message to the conversation history.
 
         Parameters
         ----------
         message : str
             The message to add
-        images : list[str]
+        images : VisionImage | list[VisionVideo] | None
             Any images to add to the conversation
+        videos : VisionVideo | list[VisionVideo] | None
+            Any videos to add to the conversation
 
         Returns
         -------
@@ -99,7 +106,7 @@ class AIChat(TextGenerator):
             The message response from the AI.
 
         """
-        response = self.generate_response_including_context(message, images)
+        response = self.generate_response_including_context(message, images, videos)
         self._token_size = response.tokens_used
 
         return response.message

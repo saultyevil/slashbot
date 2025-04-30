@@ -78,7 +78,10 @@ class TextGenerator(Logger):
         return self._client.count_tokens_for_message(message)
 
     def generate_response_including_context(
-        self, message: str, images: VisionImage | list[VisionImage] | None = None
+        self,
+        message: str,
+        images: VisionImage | list[VisionImage] | None = None,
+        videos: VisionImage | list[VisionImage] | None = None,
     ) -> TextGenerationResponse:
         """Generate text from the current LLM model.
 
@@ -88,9 +91,11 @@ class TextGenerator(Logger):
             The message to respond to.
         images : VisionImage | list[VisionImage] | None
             The image(s) to respond to. By default, None.
+        videos : VisionVideo | list[VisionVideo] | None
+            The video(s) to respond to. By default, None.
 
         """
-        return self._client.generate_response_including_context(message, images)
+        return self._client.generate_response_including_context(message, images, videos)
 
     def send_response_request(self, content: list[dict]) -> TextGenerationResponse:
         """Send a request to the API client.

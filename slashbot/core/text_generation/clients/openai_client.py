@@ -2,7 +2,7 @@ import openai
 import tiktoken
 
 from slashbot.core.text_generation.clients.abstract_client import TextGenerationAbstractClient
-from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage
+from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage, VisionVideo
 from slashbot.settings import BotSettings
 
 
@@ -47,7 +47,10 @@ class OpenAIClient(TextGenerationAbstractClient):
         return {"role": "user", "content": "\n".join(messages)}
 
     def _prepare_content(
-        self, message: str | list[str], images: VisionImage | list[VisionImage] | None = None
+        self,
+        message: str | list[str],
+        images: VisionImage | list[VisionImage] | None = None,
+        _videos: VisionVideo | list[VisionVideo] | None = None,
     ) -> dict | list[dict]:
         if images:
             image_content = self._make_image_content(images)
@@ -105,7 +108,10 @@ class OpenAIClient(TextGenerationAbstractClient):
         return num_tokens
 
     def generate_response_including_context(
-        self, messages: str | list[str], images: VisionImage | list[VisionImage] | None = None
+        self,
+        messages: str | list[str],
+        images: VisionImage | list[VisionImage] | None = None,
+        videos: VisionImage | list[VisionImage] | None = None,
     ) -> TextGenerationResponse:
         """Generate a text response, gievn a message and image inputs.
 
@@ -118,13 +124,15 @@ class OpenAIClient(TextGenerationAbstractClient):
             Input message(s), from the user.
         images : VisionImage | list[VisionImage] | None
             Input image(s), from the user.
+        videos : VisionImage | list[VisionImage] | None
+            Input video(s), from the user.
 
         """
         if not self._client:
             self.init_client(self.model_name)
 
         self._shrink_messages_to_token_window()
-        self._context.append(self._prepare_content(messages, images))  # type: ignore  # noqa: PGH003
+        self._context.append(self._prepare_content(messages, images, videos))  # type: ignore  # noqa: PGH003
 
         response = self.send_response_request(self._context)
 

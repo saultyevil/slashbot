@@ -3,7 +3,7 @@ from textwrap import dedent
 from typing import Any
 
 from slashbot.core.logger import Logger
-from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage
+from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage, VisionVideo
 from slashbot.settings import BotSettings
 
 
@@ -91,8 +91,15 @@ class TextGenerationAbstractClient(Logger):
         pass
 
     @abstractmethod
+    def _make_video_content(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
+        pass
+
+    @abstractmethod
     def _prepare_content(
-        self, message: str | list[str], images: VisionImage | list[VisionImage] | None = None
+        self,
+        message: str | list[str],
+        images: VisionImage | list[VisionImage] | None = None,
+        videos: VisionVideo | list[VisionVideo] | None = None,
     ) -> dict | list[dict]:
         pass
 
@@ -116,7 +123,10 @@ class TextGenerationAbstractClient(Logger):
 
     @abstractmethod
     def generate_response_including_context(
-        self, messages: str | list[str], images: VisionImage | list[VisionImage] | None = None
+        self,
+        messages: str | list[str],
+        images: VisionImage | list[VisionImage] | None = None,
+        videos: VisionVideo | list[VisionVideo] | None = None,
     ) -> TextGenerationResponse:
         """Generate a text response, given new text input and previous context.
 
@@ -129,6 +139,8 @@ class TextGenerationAbstractClient(Logger):
             Input message(s), from the user.
         images : VisionImage | list[VisionImage] | None
             Input image(s), from the user.
+        videos : VisionVideo | list[VisionVideo] | None
+            Input video(s), from the user.
 
         """
 
