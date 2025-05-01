@@ -1,12 +1,16 @@
 from slashbot.core.logger import Logger
 from slashbot.core.text_generation.clients.gemini_client import GeminiClient
 from slashbot.core.text_generation.clients.openai_client import OpenAIClient
-from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage, VisionVideo
+from slashbot.core.text_generation.models import TextGenerationInput, TextGenerationResponse
 from slashbot.settings import BotSettings
 
 
 class TextGenerator(Logger):
-    """Base class for text generation using LLMs."""
+    """Text generator class.
+
+    This class is used to generate text using different LLM models. It is a
+    wrapper around multiple LLM clients, initialised using `set_model()`.
+    """
 
     SUPPORTED_OPENAI_MODELS = OpenAIClient.SUPPORTED_MODELS
     SUPPORTED_CLAUDE_MODELS = ()
@@ -77,25 +81,20 @@ class TextGenerator(Logger):
         """
         return self._client.count_tokens_for_message(message)
 
-    async def generate_response_including_context(
+    async def generate_response_with_context(
         self,
-        message: str,
-        images: VisionImage | list[VisionImage] | None = None,
-        videos: VisionVideo | list[VisionVideo] | None = None,
+        messages: TextGenerationInput | list[TextGenerationInput],
     ) -> TextGenerationResponse:
         """Generate text from the current LLM model.
 
         Parameters
         ----------
-        message : str
-            The message to respond to.
-        images : VisionImage | list[VisionImage] | None
-            The image(s) to respond to. By default, None.
-        videos : VisionVideo | list[VisionVideo] | None
-            The video(s) to respond to. By default, None.
+        messages : ContextMessage | list[ContextMessage]
+            Input message(s), from the user, including attached images and
+            videos.
 
         """
-        return await self._client.generate_response_including_context(message, images, videos)
+        return await self._client.generate_response_with_context(messages)
 
     async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.

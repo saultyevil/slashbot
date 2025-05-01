@@ -1,9 +1,7 @@
 from pathlib import Path
 from textwrap import dedent
 
-from slashbot.core.text_generation import TextGenerator
-from slashbot.core.text_generation.models import VisionImage, VisionVideo
-from slashbot.prompts import read_in_prompt_json
+from slashbot.core.text_generation import TextGenerationInput, TextGenerator, read_in_prompt_json
 
 
 class AIChat(TextGenerator):
@@ -85,20 +83,15 @@ class AIChat(TextGenerator):
 
     async def send_message(
         self,
-        message: str,
-        images: VisionImage | list[VisionImage] | None = None,
-        videos: VisionVideo | list[VisionVideo] | None = None,
+        messages: TextGenerationInput | list[TextGenerationInput],
     ) -> str:
         """Add a new message to the conversation history.
 
         Parameters
         ----------
-        message : str
-            The message to add
-        images : VisionImage | list[VisionVideo] | None
-            Any images to add to the conversation
-        videos : VisionVideo | list[VisionVideo] | None
-            Any videos to add to the conversation
+        messages : ContextMessage | list[ContextMessage]
+            Input message(s), from the user, including attached images and
+            videos.
 
         Returns
         -------
@@ -106,7 +99,7 @@ class AIChat(TextGenerator):
             The message response from the AI.
 
         """
-        response = await self.generate_response_including_context(message, images, videos)
+        response = await self.generate_response_with_context(messages)
         self._token_size = response.tokens_used
 
         return response.message

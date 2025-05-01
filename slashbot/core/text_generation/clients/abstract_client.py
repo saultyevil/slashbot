@@ -1,13 +1,13 @@
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from textwrap import dedent
 from typing import Any
 
 from slashbot.core.logger import Logger
-from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage, VisionVideo
+from slashbot.core.text_generation import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
 from slashbot.settings import BotSettings
 
 
-class TextGenerationAbstractClient(Logger):
+class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
     """Abstract class for a TextGenerationClient."""
 
     DEFAULT_SYSTEM_PROMPT = " ".join(
@@ -58,6 +58,23 @@ class TextGenerationAbstractClient(Logger):
 
     # --------------------------------------------------------------------------
 
+    def _create_user_contents(self, messages: TextGenerationInput | list[TextGenerationInput]) -> dict | list[dict]:
+        if isinstance(messages, TextGenerationInput):
+            messages = [messages]
+
+        text_content = []
+        image_content = []
+        video_content = []
+
+        for message in messages:
+            text_content.append(self._make_text_content(message.text))
+            if message.images:
+                image_content.extend(self._make_image_content(message.images))
+            if message.videos:
+                video_content.extend(self._make_video_content(message.videos))
+
+        return self._make_user_contents(text_content, image_content, video_content)
+
     def _remove_message_from_context(self, index: int) -> dict:
         if index == 0:
             msg = "Cannot remove system prompt at index 0"
@@ -84,24 +101,21 @@ class TextGenerationAbstractClient(Logger):
         pass
 
     @abstractmethod
-    def _make_image_content(self, images: VisionImage | list[VisionImage]) -> list[dict]:
+    def _make_image_content(self, images: VisionImage | list[VisionImage]) -> dict | list[dict]:
         pass
 
     @abstractmethod
-    def _make_user_text_content(self, messages: str | list[str]) -> dict:
+    def _make_text_content(self, messages: str | list[str]) -> dict | list[dict]:
+        pass
+
+    @abstractmethod
+    def _make_user_contents(
+        self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
+    ) -> dict | list[dict]:
         pass
 
     @abstractmethod
     def _make_video_content(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
-        pass
-
-    @abstractmethod
-    def _prepare_user_content(
-        self,
-        message: str | list[str],
-        images: VisionImage | list[VisionImage] | None = None,
-        videos: VisionVideo | list[VisionVideo] | None = None,
-    ) -> dict | list[dict]:
         pass
 
     # --------------------------------------------------------------------------
@@ -123,11 +137,8 @@ class TextGenerationAbstractClient(Logger):
         """
 
     @abstractmethod
-    async def generate_response_including_context(
-        self,
-        messages: str | list[str],
-        images: VisionImage | list[VisionImage] | None = None,
-        videos: VisionVideo | list[VisionVideo] | None = None,
+    async def generate_response_with_context(
+        self, messages: TextGenerationInput | list[TextGenerationInput]
     ) -> TextGenerationResponse:
         """Generate a text response, given new text input and previous context.
 
@@ -136,12 +147,9 @@ class TextGenerationAbstractClient(Logger):
 
         Parameters
         ----------
-        messages : str | list[str]
-            Input message(s), from the user.
-        images : VisionImage | list[VisionImage] | None
-            Input image(s), from the user.
-        videos : VisionVideo | list[VisionVideo] | None
-            Input video(s), from the user.
+        messages : ContextMessage | list[ContextMessage]
+            Input message(s), from the user, including attached images and
+            videos.
 
         """
 
@@ -157,7 +165,7 @@ class TextGenerationAbstractClient(Logger):
         """
 
     @abstractmethod
-    async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
+    async def send_response_request(self, content: dict | list[dict]) -> TextGenerationResponse:
         """Send a request to the API client.
 
         Parameters

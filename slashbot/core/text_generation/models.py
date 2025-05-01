@@ -2,16 +2,6 @@ from dataclasses import dataclass
 
 
 @dataclass
-class ContextMessage:
-    """Message dataclass for an LLM conversation."""
-
-    role: str
-    text: str
-    tokens: int
-    images: list[str]
-
-
-@dataclass
 class VisionImage:
     """Dataclass for images for LLM vision."""
 
@@ -27,6 +17,16 @@ class VisionVideo:
     url: str
     b64video: str | None = None
     mime_type: str | None = None
+
+
+@dataclass
+class TextGenerationInput:
+    """Message dataclass for an LLM conversation."""
+
+    text: str
+    images: VisionImage | list[VisionImage] | None = None
+    videos: VisionVideo | list[VisionVideo] | None = None
+    role: str = "user"
 
 
 @dataclass

@@ -1,9 +1,4 @@
-"""AI chat and text-to-image features.
-
-The purpose of this cog is to enable AI features in the Discord chat. This
-currently implements AI chat/vision using ChatGPT and Claude, as well as
-text-to-image generation using Monster API.
-"""
+"""Text generation cog for Slashbot."""
 
 import asyncio
 import datetime
@@ -24,12 +19,16 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core import markov
-from slashbot.core.ai_chat import AIChat
-from slashbot.core.ai_chat_summary import AIChatSummary, SummaryMessage
-from slashbot.core.text_generation import TextGenerator
-from slashbot.core.text_generation.models import VisionImage, VisionVideo
+from slashbot.core.ai import AIChat, AIChatSummary, SummaryMessage
+from slashbot.core.text_generation import (
+    SUPPORTED_MODELS,
+    GenerationFailureError,
+    TextGenerationInput,
+    VisionImage,
+    VisionVideo,
+    read_in_prompt_json,
+)
 from slashbot.messages import download_and_encode_image, send_message_to_channel
-from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
 from slashbot.settings import BotSettings
 
@@ -337,9 +336,9 @@ class TextGeneration(CustomCog):
 
         async with self._lock:
             try:
-                bot_response = await conversation.send_message(user_prompt, images, videos)
-            except:  # noqa: E722
-                self.log_exception("Failed to get response from AI, reverting to markov sentence")
+                message = TextGenerationInput(user_prompt, images=images, videos=videos)
+                bot_response = await conversation.send_message(message)
+            except GenerationFailureError:
                 bot_response = self.get_random_markov_sentence()
                 if isinstance(bot_response, list):
                     bot_response = bot_response[0]
@@ -422,7 +421,7 @@ class TextGeneration(CustomCog):
 
     # Listeners ----------------------------------------------------------------
 
-    @commands.Cog.listener("on_message")
+    # @commands.Cog.listener("on_message")
     async def _append_to_history(self, message: disnake.Message) -> None:
         if message.type in [disnake.MessageType.application_command]:
             return
@@ -534,7 +533,7 @@ class TextGeneration(CustomCog):
     async def chat_set_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        model_name: str = commands.Param(choices=TextGenerator.SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
+        model_name: str = commands.Param(choices=SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
     ) -> None:
         """Set the AI model to use.
 
