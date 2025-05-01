@@ -19,22 +19,26 @@ class GeminiClient(TextGenerationAbstractClient):
     SUPPORTED_MODELS = (
         "gemini-1.5-flash",
         "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
         "gemini-2.5-pro-preview-03-25",
     )
     VISION_MODELS = (
         "gemini-1.5-flash",
         "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
         "gemini-2.5-pro-preview-03-25",
     )
     SEARCH_MODELS = ()
     AUDIO_MODELS = (
         "gemini-1.5-flash",
         "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
         "gemini-2.5-pro-preview-03-25",
     )
     VIDEO_MODELS = (
         "gemini-1.5-flash",
         "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
         "gemini-2.5-pro-preview-03-25",
     )
 
