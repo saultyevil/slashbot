@@ -45,7 +45,7 @@ class OpenAIClient(TextGenerationAbstractClient):
     def _make_text_content(self, message: str) -> dict:
         return {"type": "text", "text": message}
 
-    def _make_user_contents(
+    def _make_user_content(
         self, text_content: dict, image_content: dict | list[dict], video_content: dict | list[dict]
     ) -> dict | list[dict]:
         return {"role": "user", "content": [*text_content, *image_content, *video_content]}
@@ -100,6 +100,32 @@ class OpenAIClient(TextGenerationAbstractClient):
             raise TypeError(msg)
 
         return num_tokens
+
+    def create_request_json(
+        self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
+    ) -> dict | list:
+        """Create a request JSON for the current LLM model.
+
+        Parameters
+        ----------
+        messages : ContextMessage | list[ContextMessage]
+            Input message(s), from the user, including attached images and
+            videos.
+        system_prompt : str | None
+            The system prompt to use. If None, the current system prompt is
+            used.
+
+        """
+        if not isinstance(messages, list):
+            messages = [messages]
+        content = []
+        for message in messages:
+            if message.role == "user":
+                _content = self._create_user_contents(message)
+            else:
+                _content = self._make_assistant_text_content(message.text)
+            content.append(_content)
+        return [{"role": "system", "content": system_prompt if system_prompt else ""}, *content]
 
     async def generate_response_with_context(
         self, messages: TextGenerationInput | list[TextGenerationInput]

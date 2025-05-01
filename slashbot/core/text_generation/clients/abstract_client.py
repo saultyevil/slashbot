@@ -73,7 +73,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
             if message.videos:
                 video_content.extend(self._make_video_content(message.videos))
 
-        return self._make_user_contents(text_content, image_content, video_content)
+        return self._make_user_content(text_content, image_content, video_content)
 
     def _remove_message_from_context(self, index: int) -> dict:
         if index == 0:
@@ -109,7 +109,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _make_user_contents(
+    def _make_user_content(
         self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
     ) -> dict | list[dict]:
         pass
@@ -124,6 +124,25 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
     @abstractmethod
     def context(self) -> list[dict]:
         """Get the context, minus the system prompt."""
+
+    # --------------------------------------------------------------------------
+
+    @abstractmethod
+    def create_request_json(
+        self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
+    ) -> dict | list:
+        """Create a request JSON for the current LLM model.
+
+        Parameters
+        ----------
+        messages : ContextMessage | list[ContextMessage]
+            Input message(s), from the user, including attached images and
+            videos.
+        system_prompt : str | None
+            The system prompt to use. If None, the current system prompt is
+            used.
+
+        """
 
     @abstractmethod
     def count_tokens_for_message(self, messages: dict | list[dict[str, str]] | str) -> int:

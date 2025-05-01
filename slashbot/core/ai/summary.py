@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from textwrap import dedent
 
-from slashbot.core.text_generation import TextGenerator
+from slashbot.core.text_generation import TextGenerationInput, TextGenerator
 
 
 @dataclass
@@ -113,17 +113,14 @@ class AIChatSummary(TextGenerator):
         history_message = "Summarise the following conversation between multiple users:\n" + "\n".join(
             [f"{message.user}: {message.content}" for message in self._history_context]
         )
-        full_conversation = [
-            {"role": "system", "content": AIChatSummary.SUMMARY_PROMPT},
-            {"role": "user", "content": history_message},
-        ]
         if requesting_user:
-            full_conversation[-1]["content"] += (
+            history_message += (
                 f".\nPlease refer to me, {requesting_user}, as 'you' in the summary like we were having a conversation."
             )
+        request = self.create_request_json(TextGenerationInput(history_message), system_prompt=self.SUMMARY_PROMPT)
+        self.log_debug("Context for summary: %s", request)
 
-        self.log_debug("Context for summary: %s", full_conversation[1:])
-        response = await self.send_response_request(full_conversation)
+        response = await self.send_response_request(request)
         self.log_debug("Generated summary: %s", response.message)
 
         return response.message

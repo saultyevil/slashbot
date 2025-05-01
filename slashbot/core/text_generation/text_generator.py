@@ -81,9 +81,30 @@ class TextGenerator(Logger):
         """
         return self._client.count_tokens_for_message(message)
 
+    def create_request_json(
+        self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
+    ) -> dict | list:
+        """Create a request JSON for the current LLM model.
+
+        Parameters
+        ----------
+        messages : ContextMessage | list[ContextMessage]
+            Input message(s), from the user, including attached images and
+            videos.
+        system_prompt : str | None
+            The system prompt to use. If None, the current system prompt is
+            used.
+
+        Returns
+        -------
+        dict | list
+            The request JSON for the current LLM model.
+
+        """
+        return self._client.create_request_json(messages, system_prompt=system_prompt)
+
     async def generate_response_with_context(
-        self,
-        messages: TextGenerationInput | list[TextGenerationInput],
+        self, messages: TextGenerationInput | list[TextGenerationInput]
     ) -> TextGenerationResponse:
         """Generate text from the current LLM model.
 

@@ -356,34 +356,7 @@ class TextGeneration(CustomCog):
         """
         prompt = read_in_prompt_json("data/prompts/_random-response-prompt.json")
         chat = self._get_chat(message)
-        if chat.model in chat.SUPPORTED_OPENAI_MODELS:
-            content = [
-                {"role": "system", "content": prompt["prompt"]},
-                {"role": "user", "content": message.clean_content},
-            ]
-        elif chat.model in chat.SUPPORTED_CLAUDE_MODELS:
-            content = {
-                "system_instruction": {
-                    "parts": [
-                        {
-                            "text": prompt["prompt"],
-                        },
-                    ],
-                },
-                "contents": [
-                    {
-                        "parts": [
-                            {
-                                "text": message.clean_content,
-                            },
-                        ],
-                    },
-                ],
-            }
-        else:
-            self.log_error("Unsupported model in use for random response: %s", chat.model)
-            return
-
+        content = chat.create_request_json(TextGenerationInput(message.clean_content), system_prompt=prompt["prompt"])
         llm_response = await chat.send_raw_request(content)
         await send_message_to_channel(llm_response, message, dont_tag_user=True)
 
@@ -421,7 +394,7 @@ class TextGeneration(CustomCog):
 
     # Listeners ----------------------------------------------------------------
 
-    # @commands.Cog.listener("on_message")
+    @commands.Cog.listener("on_message")
     async def _append_to_history(self, message: disnake.Message) -> None:
         if message.type in [disnake.MessageType.application_command]:
             return
@@ -546,8 +519,10 @@ class TextGeneration(CustomCog):
 
         """
         chat = self._get_chat(inter)
+        summary = self._get_channel_history(inter)
         original_model = chat.model
         chat.set_model(model_name)
+        summary.set_model(model_name)
         await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
 
     @slash_command_with_cooldown(
