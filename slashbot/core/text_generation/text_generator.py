@@ -1,7 +1,7 @@
 from slashbot.core.logger import Logger
 from slashbot.core.text_generation.clients.gemini_client import GeminiClient
 from slashbot.core.text_generation.clients.openai_client import OpenAIClient
-from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage
+from slashbot.core.text_generation.models import TextGenerationResponse, VisionImage, VisionVideo
 from slashbot.settings import BotSettings
 
 
@@ -77,11 +77,11 @@ class TextGenerator(Logger):
         """
         return self._client.count_tokens_for_message(message)
 
-    def generate_response_including_context(
+    async def generate_response_including_context(
         self,
         message: str,
         images: VisionImage | list[VisionImage] | None = None,
-        videos: VisionImage | list[VisionImage] | None = None,
+        videos: VisionVideo | list[VisionVideo] | None = None,
     ) -> TextGenerationResponse:
         """Generate text from the current LLM model.
 
@@ -95,9 +95,9 @@ class TextGenerator(Logger):
             The video(s) to respond to. By default, None.
 
         """
-        return self._client.generate_response_including_context(message, images, videos)
+        return await self._client.generate_response_including_context(message, images, videos)
 
-    def send_response_request(self, content: list[dict]) -> TextGenerationResponse:
+    async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
 
         Parameters
@@ -106,7 +106,7 @@ class TextGenerator(Logger):
             The (correctly) formatted content to send to the API.
 
         """
-        return self._client.send_response_request(content)
+        return await self._client.send_response_request(content)
 
     def set_model(self, model: str) -> None:
         """Set the current LLM model.

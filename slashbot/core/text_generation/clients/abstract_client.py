@@ -35,6 +35,7 @@ class TextGenerationAbstractClient(Logger):
         self._context = []
         self._client = None
         self._base_url = None
+        self._async_timeout = 60  # seconds
         self.system_prompt = kwargs.get("system_prompt", self.DEFAULT_SYSTEM_PROMPT)
         self.system_prompt_name = kwargs.get("system_prompt_name", "default")
         self.token_size = self.count_tokens_for_message(self.system_prompt)
@@ -122,7 +123,7 @@ class TextGenerationAbstractClient(Logger):
         """
 
     @abstractmethod
-    def generate_response_including_context(
+    async def generate_response_including_context(
         self,
         messages: str | list[str],
         images: VisionImage | list[VisionImage] | None = None,
@@ -156,7 +157,7 @@ class TextGenerationAbstractClient(Logger):
         """
 
     @abstractmethod
-    def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
+    async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
 
         Parameters
