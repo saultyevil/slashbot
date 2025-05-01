@@ -83,7 +83,7 @@ class AIChat(TextGenerator):
         """Reset the conversation history back to the system prompt."""
         self.set_system_prompt(self._chat_system_prompt, prompt_name=self.system_prompt_name)
 
-    def send_message(
+    async def send_message(
         self,
         message: str,
         images: VisionImage | list[VisionImage] | None = None,
@@ -106,21 +106,21 @@ class AIChat(TextGenerator):
             The message response from the AI.
 
         """
-        response = self.generate_response_including_context(message, images, videos)
+        response = await self.generate_response_including_context(message, images, videos)
         self._token_size = response.tokens_used
 
         return response.message
 
-    def send_raw_request(self, content: list[dict]) -> str:
+    async def send_raw_request(self, content: list[dict] | dict) -> str:
         """Send a request to the API client.
 
         Parameters
         ----------
-        content : list[dict]
+        content : list[dict] |  dict
             The (correctly) formatted content to send to the API.
 
         """
-        response = self.send_response_request(content)
+        response = await self.send_response_request(content)
 
         return response.message
 

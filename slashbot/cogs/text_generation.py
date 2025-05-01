@@ -28,7 +28,7 @@ from slashbot.core.ai_chat import AIChat
 from slashbot.core.ai_chat_summary import AIChatSummary, SummaryMessage
 from slashbot.core.text_generation import TextGenerator
 from slashbot.core.text_generation.models import VisionImage, VisionVideo
-from slashbot.messages import download_and_encode_image, get_attached_images_from_message, send_message_to_channel
+from slashbot.messages import download_and_encode_image, send_message_to_channel
 from slashbot.prompts import read_in_prompt_json
 from slashbot.responses import is_reply_to_slash_command_response
 from slashbot.settings import BotSettings
@@ -253,7 +253,6 @@ class TextGeneration(CustomCog):
         """
         regex = re.compile(r"https?://(?:www\.)?youtube\.com/watch\?v=[\w-]+")
         video_urls = regex.findall(message.content)
-        # video_urls += [embed.video.proxy_url for embed in message.embeds if embed.video and embed.video.proxy_url]
         self.log_debug("Found %s video URLs in message: %s", len(video_urls), video_urls)
 
         return [VisionVideo(url) for url in set(video_urls)]
@@ -338,7 +337,7 @@ class TextGeneration(CustomCog):
 
         async with self._lock:
             try:
-                bot_response = conversation.send_message(user_prompt, images, videos)
+                bot_response = await conversation.send_message(user_prompt, images, videos)
             except:  # noqa: E722
                 self.log_exception("Failed to get response from AI, reverting to markov sentence")
                 bot_response = self.get_random_markov_sentence()
@@ -357,20 +356,36 @@ class TextGeneration(CustomCog):
 
         """
         prompt = read_in_prompt_json("data/prompts/_random-response-prompt.json")
-        last_messages = self._get_channel_history(message).get_history(
-            amount=BotSettings.cogs.ai_chat.random_response_use_n_messages
-        )
-        if len(last_messages) > 0:
-            last_messages = [{"role": "user", "content": message.content} for message in last_messages]
-            if last_messages[-1]["content"] == message.clean_content:
-                last_messages.pop()
-        content = [
-            {"role": "system", "content": prompt["prompt"]},
-            *last_messages,
-            {"role": "user", "content": message.clean_content},
-        ]
-        conversation = self._get_chat(message)
-        llm_response = conversation.send_raw_request(content)
+        chat = self._get_chat(message)
+        if chat.model in chat.SUPPORTED_OPENAI_MODELS:
+            content = [
+                {"role": "system", "content": prompt["prompt"]},
+                {"role": "user", "content": message.clean_content},
+            ]
+        elif chat.model in chat.SUPPORTED_CLAUDE_MODELS:
+            content = {
+                "system_instruction": {
+                    "parts": [
+                        {
+                            "text": prompt["prompt"],
+                        },
+                    ],
+                },
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "text": message.clean_content,
+                            },
+                        ],
+                    },
+                ],
+            }
+        else:
+            self.log_error("Unsupported model in use for random response: %s", chat.model)
+            return
+
+        llm_response = await chat.send_raw_request(content)
         await send_message_to_channel(llm_response, message, dont_tag_user=True)
 
     async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:

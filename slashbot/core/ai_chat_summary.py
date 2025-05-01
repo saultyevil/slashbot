@@ -34,7 +34,7 @@ class AIChatSummary(TextGenerator):
     def __init__(self, *, token_window_size: int = 8096, extra_print: str = "") -> None:
         """Initialise the AI channel summary."""
         extra_print = f"[AIChannelSummary:{extra_print}] " if extra_print else ""
-        super().__init__(extra_print=extra_print)
+        super().__init__(model_name="gpt-4.1-mini", extra_print=extra_print)
         self._token_size = 0
         self._token_window_size = token_window_size
         self._history_context = []
@@ -123,7 +123,7 @@ class AIChatSummary(TextGenerator):
             )
 
         self.log_debug("Context for summary: %s", full_conversation[1:])
-        response = self.send_response_request(full_conversation)
+        response = await self.send_response_request(full_conversation)
         self.log_debug("Generated summary: %s", response.message)
 
         return response.message
