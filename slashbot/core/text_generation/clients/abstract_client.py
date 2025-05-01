@@ -80,7 +80,7 @@ class TextGenerationAbstractClient(Logger):
     # --------------------------------------------------------------------------
 
     @abstractmethod
-    def _make_assistant_message_content(self, message: str) -> dict:
+    def _make_assistant_text_content(self, message: str) -> dict:
         pass
 
     @abstractmethod
@@ -88,7 +88,7 @@ class TextGenerationAbstractClient(Logger):
         pass
 
     @abstractmethod
-    def _make_user_message_content(self, messages: str | list[str]) -> dict:
+    def _make_user_text_content(self, messages: str | list[str]) -> dict:
         pass
 
     @abstractmethod
@@ -96,7 +96,7 @@ class TextGenerationAbstractClient(Logger):
         pass
 
     @abstractmethod
-    def _prepare_content(
+    def _prepare_user_content(
         self,
         message: str | list[str],
         images: VisionImage | list[VisionImage] | None = None,
