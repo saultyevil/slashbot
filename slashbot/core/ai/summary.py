@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from textwrap import dedent
 
-from slashbot.core.text_generation import TextGenerationInput, TextGenerator
+from slashbot.core.text_generation import TextGenerationInput, TextGenerator, read_in_prompt
 
 
 @dataclass
@@ -16,25 +15,12 @@ class SummaryMessage:
 class AIChatSummary(TextGenerator):
     """Dataclass for generating AI summaries for text channels."""
 
-    SUMMARY_PROMPT = " ".join(
-        dedent("""
-            You are a secretary for a group of people. Generate a detailed
-            summary of the conversation, highlighting key points, sentiments,
-            and notable exchanges to provide a comprehensive overview of the
-            interaction. Provide details about specific users. You will be
-            named "me" in any transcripts or summaries sent to you. Do
-            not refer to yourself in the third person under any circumstances.
-            Instead, use the first person when describing your own
-            contributions. If you generate a summary where you would
-            typically refer to yourself in the third person, rewrite it to
-            comply with this rule before finalising your response.
-    """).splitlines()
-    )
+    SUMMARY_PROMPT = read_in_prompt("data/prompts/_summarise.yaml")
 
     def __init__(self, *, token_window_size: int = 8096, extra_print: str = "") -> None:
         """Initialise the AI channel summary."""
         extra_print = f"[AIChannelSummary:{extra_print}] " if extra_print else ""
-        super().__init__(model_name="gpt-4.1-mini", extra_print=extra_print)
+        super().__init__(extra_print=extra_print)
         self._token_size = 0
         self._token_window_size = token_window_size
         self._history_context = []
@@ -117,7 +103,9 @@ class AIChatSummary(TextGenerator):
             history_message += (
                 f".\nPlease refer to me, {requesting_user}, as 'you' in the summary like we were having a conversation."
             )
-        request = self.create_request_json(TextGenerationInput(history_message), system_prompt=self.SUMMARY_PROMPT)
+        request = self.create_request_json(
+            TextGenerationInput(history_message), system_prompt=self.SUMMARY_PROMPT.prompt
+        )
         self.log_debug("Context for summary: %s", request)
 
         response = await self.send_response_request(request)

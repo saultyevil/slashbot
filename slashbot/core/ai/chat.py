@@ -1,21 +1,12 @@
-from textwrap import dedent
-
-from slashbot.core.text_generation import TextGenerationInput, TextGenerator
+from slashbot.core.text_generation import TextGenerationInput, TextGenerator, read_in_prompt
 
 
 class AIChat(TextGenerator):
     """AI Conversation class for an LLM chatbot."""
 
-    DEFAULT_SYSTEM_PROMPT = " ".join(
-        dedent("""
-        Be a useful assistant, don't be patronising or write anything that can
-        be portrayed as being patronising. Be extremely concise. One sentence
-        responses are best where possible. Do not try to be friendly or
-        personable, just useful and soulless.
-    """).splitlines()
-    )
+    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml")
 
-    def __init__(self, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT, extra_print: str = "") -> None:
+    def __init__(self, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT.prompt, extra_print: str = "") -> None:
         """Initialise a conversation, with default values.
 
         Parameters
@@ -32,7 +23,9 @@ class AIChat(TextGenerator):
         self._chat_system_prompt = system_prompt
         self.set_system_prompt(
             system_prompt,
-            prompt_name="default prompt" if system_prompt == self.DEFAULT_SYSTEM_PROMPT else "custom prompt",
+            prompt_name=self.DEFAULT_SYSTEM_PROMPT.name
+            if system_prompt == self.DEFAULT_SYSTEM_PROMPT
+            else "custom prompt",
         )
 
     # --------------------------------------------------------------------------
