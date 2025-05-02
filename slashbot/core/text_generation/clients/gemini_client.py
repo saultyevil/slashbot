@@ -172,20 +172,24 @@ class GeminiClient(TextGenerationAbstractClient):
         content = []
         for message in messages:
             if message.role == "user":
-                _content = self._create_user_contents(message)
+                part = self._create_user_contents(message)
             else:
-                _content = self._make_assistant_text_content(message.text)
-            content.append(_content)
-        return {
-            "system_instruction": {
-                "parts": [
-                    {
-                        "text": system_prompt if system_prompt else "",
-                    }
-                ]
-            },
+                part = self._make_assistant_text_content(message.text)
+            content.append(part)
+
+        request = {
             "contents": content,
         }
+        if system_prompt:
+            request["system_instruction"] = {  # type: ignore
+                "parts": [
+                    {
+                        "text": system_prompt,
+                    },
+                ],
+            }
+
+        return request
 
     async def generate_response_with_context(
         self, messages: TextGenerationInput | list[TextGenerationInput]

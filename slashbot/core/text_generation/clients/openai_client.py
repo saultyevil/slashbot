@@ -134,11 +134,16 @@ class OpenAIClient(TextGenerationAbstractClient):
         content = []
         for message in messages:
             if message.role == "user":
-                _content = self._create_user_contents(message)
+                part = self._create_user_contents(message)
             else:
-                _content = self._make_assistant_text_content(message.text)
-            content.append(_content)
-        return [{"role": "system", "content": system_prompt if system_prompt else ""}, *content]
+                part = self._make_assistant_text_content(message.text)
+            content.append(part)
+
+        request = content
+        if system_prompt:
+            request.insert(0, {"role": "system", "content": system_prompt})
+
+        return request
 
     async def generate_response_with_context(
         self, messages: TextGenerationInput | list[TextGenerationInput]
@@ -159,7 +164,7 @@ class OpenAIClient(TextGenerationAbstractClient):
             self.init_client(self.model_name)
 
         self._shrink_messages_to_token_window()
-        self._context.append(self._create_user_contents(messages))  # type: ignore  # noqa: PGH003
+        self._context.append(self._create_user_contents(messages))  # type: ignore
 
         response = await self.send_response_request(self._context)
         if not response.message:
@@ -200,7 +205,7 @@ class OpenAIClient(TextGenerationAbstractClient):
 
         response = await self._client.chat.completions.create(
             model=self.model_name,
-            messages=content,  # type: ignore  # noqa: PGH003
+            messages=content,  # type: ignore
             max_completion_tokens=self._max_completion_tokens,
         )
 
