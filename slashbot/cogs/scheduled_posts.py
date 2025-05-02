@@ -18,44 +18,6 @@ from slashbot.validation import ScheduledPost
 from slashbot.watchers import ScheduledPostWatcher
 
 
-def check_post_has_keys(post: dict, keys: list[str] | tuple[str]) -> bool:
-    """Check if all the given keys are present in the given dictionary.
-
-    Parameters
-    ----------
-    post : dict
-        The dictionary to check.
-    keys : list
-        The list of keys to check for.
-
-    Returns
-    -------
-    bool
-        True if all keys are present, False otherwise.
-
-    """
-    return all(key in post for key in keys)
-
-
-def check_post_has_iterable(post: dict, key: str) -> bool:
-    """Check if the given key has an iterable value.
-
-    Parameters
-    ----------
-    post : dict
-        The dictionary to check.
-    key : str
-        The key to check for.
-
-    Returns
-    -------
-    bool
-        True if the key has an iterable value, False otherwise.
-
-    """
-    return hasattr(post[key], "__iter__")
-
-
 class ScheduledPosts(CustomCog):
     """Scheduled post cog.
 

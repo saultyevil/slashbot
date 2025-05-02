@@ -26,7 +26,7 @@ from slashbot.core.text_generation import (
     TextGenerationInput,
     VisionImage,
     VisionVideo,
-    read_in_prompt_json,
+    read_in_prompt,
 )
 from slashbot.messages import send_message_to_channel
 from slashbot.responses import is_reply_to_slash_command_response
@@ -355,9 +355,9 @@ class TextGeneration(CustomCog):
             The message to respond to
 
         """
-        prompt = read_in_prompt_json("data/prompts/_random-response-prompt.json")
+        prompt = read_in_prompt("data/prompts/_random-response.json")
         chat = self._get_chat(message)
-        content = chat.create_request_json(TextGenerationInput(message.clean_content), system_prompt=prompt["prompt"])
+        content = chat.create_request_json(TextGenerationInput(message.clean_content), system_prompt=prompt.prompt)
         llm_response = await chat.send_raw_request(content)
         await send_message_to_channel(llm_response, message, dont_tag_user=True)
 

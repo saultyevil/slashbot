@@ -1,7 +1,6 @@
-from pathlib import Path
 from textwrap import dedent
 
-from slashbot.core.text_generation import TextGenerationInput, TextGenerator, read_in_prompt_json
+from slashbot.core.text_generation import TextGenerationInput, TextGenerator
 
 
 class AIChat(TextGenerator):
@@ -48,21 +47,6 @@ class AIChat(TextGenerator):
 
         """
         return self.size_messages
-
-    # --------------------------------------------------------------------------
-
-    @staticmethod
-    def _load_system_prompt(filepath: str | Path) -> tuple[str, str]:
-        if not isinstance(filepath, Path):
-            filepath = Path(filepath)
-        if not filepath.exists():
-            msg = f"Prompt file does not exist at {filepath}"
-            raise FileNotFoundError(msg)
-        if filepath.suffix != ".json":
-            msg = "Prompt file must be a JSON file"
-            raise ValueError(msg)
-        prompt = read_in_prompt_json(filepath)
-        return prompt["name"], prompt["prompt"]
 
     # --------------------------------------------------------------------------
 

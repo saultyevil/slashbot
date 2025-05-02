@@ -1,11 +1,12 @@
-import json
 import time
 
+import pydantic
+import yaml
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from slashbot.core.logger import Logger
-from slashbot.core.text_generation.prompts import create_prompt_dict, read_in_prompt_json
+from slashbot.core.text_generation.prompts import create_prompt_dict, read_in_prompt
 from slashbot.settings import BotSettings
 
 AVAILABLE_LLM_PROMPTS = create_prompt_dict()
@@ -23,16 +24,17 @@ class PromptFileWatcher(FileSystemEventHandler):
         source path.
         """
         global AVAILABLE_LLM_PROMPTS  # noqa: PLW0603
-        if event.is_directory and not event.src_path.endswith(".json"):
+        if event.is_directory and not event.src_path.endswith(".yaml"):
             return
         try:
             if event.event_type in ["created", "modified"]:
-                prompt = read_in_prompt_json(event.src_path)
-                AVAILABLE_LLM_PROMPTS[prompt["name"]] = prompt["prompt"]
+                prompt = read_in_prompt(event.src_path)
+                AVAILABLE_LLM_PROMPTS[prompt.name] = prompt.prompt
+                LOGGER.log_debug("%s prompt %s", event.event_type.capitalize(), event.src_path)
             if event.event_type == "deleted":
                 AVAILABLE_LLM_PROMPTS = create_prompt_dict()
-            LOGGER.log_debug("%s prompt %s", event.event_type.capitalize(), event.src_path)
-        except json.decoder.JSONDecodeError:
+                LOGGER.log_debug("%s prompt %s", event.event_type.capitalize(), event.src_path)
+        except (yaml.YAMLError, pydantic.ValidationError):
             LOGGER.log_exception("Error reading in prompt file %s", event.src_path)
 
 
