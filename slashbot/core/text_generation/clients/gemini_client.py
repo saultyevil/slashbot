@@ -270,7 +270,7 @@ class GeminiClient(TextGenerationAbstractClient):
             )
 
         if request.status_code != httpx.codes.OK:
-            self.log_debug("Request content: %s", content)
+            self.log_exception("Gemini API request failed: %s", request.json()["error"]["message"])
             msg = f"Gemini API request failed with {request.json()['error']['message']}"
             raise GenerationFailureError(msg, code=request.status_code)
 

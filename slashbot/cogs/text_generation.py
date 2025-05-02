@@ -340,6 +340,9 @@ class TextGeneration(CustomCog):
                 message = TextGenerationInput(user_prompt, images=images, videos=videos)
                 bot_response = await conversation.send_message(message)
             except GenerationFailureError:
+                self.log_error(
+                    "Failed to generate response for %s, falling back to markov sentence", discord_message.clean_content
+                )
                 bot_response = self.get_random_markov_sentence()
                 if isinstance(bot_response, list):
                     bot_response = bot_response[0]
