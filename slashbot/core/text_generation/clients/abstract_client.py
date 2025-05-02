@@ -75,19 +75,6 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
 
         return self._make_user_content(text_content, image_content, video_content)
 
-    def _remove_message_from_context(self, index: int) -> dict:
-        if index == 0:
-            msg = "Cannot remove system prompt at index 0"
-            raise IndexError(msg)
-        if index < 0:
-            msg = "Cannot remove message at negative index"
-            raise IndexError(msg)
-        if index >= len(self._context):
-            msg = "Cannot remove message at index greater than number of messages"
-            raise IndexError(msg)
-        self.token_size -= self.count_tokens_for_message(self._context[index]["content"])
-        return self._context.pop(index)
-
     def _shrink_messages_to_token_window(self) -> None:
         min_messages_to_keep = 2
         while self.token_size > self._token_window_size and len(self) > min_messages_to_keep:
@@ -105,7 +92,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _make_text_content(self, messages: str | list[str]) -> dict | list[dict]:
+    def _make_text_content(self, text: str | list[str]) -> dict | list[dict]:
         pass
 
     @abstractmethod
@@ -116,6 +103,10 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
 
     @abstractmethod
     def _make_video_content(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
+        pass
+
+    @abstractmethod
+    def _remove_message_from_context(self, index: int) -> dict:
         pass
 
     # --------------------------------------------------------------------------

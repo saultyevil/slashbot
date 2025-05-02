@@ -42,11 +42,11 @@ class OpenAIClient(TextGenerationAbstractClient):
             for image in images
         ]
 
-    def _make_text_content(self, message: str) -> dict:
-        return {"type": "text", "text": message}
+    def _make_text_content(self, text: str | list[str]) -> dict | list[dict]:
+        return {"type": "text", "text": text}
 
     def _make_user_content(
-        self, text_content: dict, image_content: dict | list[dict], video_content: dict | list[dict]
+        self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
     ) -> dict | list[dict]:
         return {"role": "user", "content": [*text_content, *image_content, *video_content]}
 
@@ -54,6 +54,19 @@ class OpenAIClient(TextGenerationAbstractClient):
         if self.model_name not in self.VIDEO_MODELS:
             return []
         return []
+
+    def _remove_message_from_context(self, index: int) -> dict:
+        if index == 0:
+            msg = "Cannot remove system prompt at index 0"
+            raise IndexError(msg)
+        if index < 0:
+            msg = "Cannot remove message at negative index"
+            raise IndexError(msg)
+        if index >= len(self._context):
+            msg = "Cannot remove message at index greater than number of messages"
+            raise IndexError(msg)
+        self.token_size -= self.count_tokens_for_message(self._context[index]["content"])
+        return self._context.pop(index)
 
     # --------------------------------------------------------------------------
 

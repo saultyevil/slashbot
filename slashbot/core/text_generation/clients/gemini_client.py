@@ -78,7 +78,7 @@ class GeminiClient(TextGenerationAbstractClient):
             for image in images
         ]
 
-    def _make_text_content(self, text: str) -> dict | list[dict]:
+    def _make_text_content(self, text: str | list[str]) -> dict | list[dict]:
         return {"text": text}
 
     def _make_user_content(
@@ -99,6 +99,22 @@ class GeminiClient(TextGenerationAbstractClient):
             }
             for video in videos
         ]
+
+    def _remove_message_from_context(self, index: int) -> dict:
+        if index == 0:
+            msg = "Cannot remove system prompt at index 0"
+            raise IndexError(msg)
+        if index < 0:
+            msg = "Cannot remove message at negative index"
+            raise IndexError(msg)
+        if index >= len(self._context["contents"]):
+            msg = "Cannot remove message at index greater than number of messages"
+            raise IndexError(msg)
+        count = 0
+        for part in self._context["contents"][index]["parts"]:
+            count += self.count_tokens_for_message(part)
+        self.token_size -= count
+        return self._context["contents"].pop(index)
 
     # --------------------------------------------------------------------------
 
