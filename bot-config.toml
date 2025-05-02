@@ -1,0 +1,50 @@
+[cogs]
+
+[cogs.ai_chat]
+token_window_size = 10000
+max_output_tokens = 2000
+model_temperature = 1.0
+model_top_p = 1.0
+model_frequency_penalty = 0.0
+model_presence_penalty = 0.0
+# chat_model = "gemini-2.5-pro-preview-03-25"
+chat_model = "gpt-4.1-nano"
+random_response_chance = 0.005
+random_response_use_n_messages = 5
+response_rate_limit = 10
+rate_limit_interval = 5
+enable_profiling = false
+prefer_image_urls = false
+
+[cogs.spellcheck]
+enabled = true
+custom_dictionary = "data/slash_dict.txt"
+
+[cogs.spellcheck.servers."710120382144839691"]
+users = [357550184655224833, 151378138612367360, 284782689226063874]
+post_channel = 710120383235227670
+
+[cooldown]
+rate = 3
+standard = 60
+no_cooldown_users = [151378138612367360]
+no_cooldown_servers = [237647756049514498]
+
+[discord]
+max_chars = 1950
+development_servers = [815237689775357992]
+
+[files]
+database = "data/slashbot.db.json"
+bad_words = "data/text/badwords.txt"
+god_words = "data/text/godwords.txt"
+scheduled_posts = "data/scheduled_posts.yaml"
+
+[logfile]
+log_location = "logs/slashbot.log"
+
+[markov]
+enable_markov_training = false
+enable_pregen_sentences = true
+num_pregen_sentences = 5
+pregenerate_limit = 2

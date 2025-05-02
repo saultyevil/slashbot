@@ -1,55 +1,49 @@
-"""AI chat and text-to-image features.
+"""Text generation cog for Slashbot."""
 
-The purpose of this cog is to enable AI features in the Discord chat. This
-currently implements AI chat/vision using ChatGPT and Claude, as well as
-text-to-image generation using Monster API.
-"""
-
-from __future__ import annotations
-
-import copy
+import asyncio
 import datetime
-import json
 import logging
 import random
+import re
 from collections import defaultdict
-from pathlib import Path
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from textwrap import shorten
 
-import aiofiles
 import disnake
-import openai
-from botlib.config import Bot
-from botlib.markov import MARKOV_MODEL, generate_text_from_markov_chain
-from botlib.models import ChannelHistory, Conversation
-from botlib.text_generation import (
-    check_if_user_rate_limited,
-    generate_text_from_llm,
-    get_prompts_at_launch,
-    get_token_count,
-)
-from botlib.util import create_prompt_dict, read_in_prompt_json
 from disnake.ext import commands
-from disnake.utils import escape_markdown
 from pyinstrument import Profiler
-from watchdog.events import FileSystemEvent, FileSystemEventHandler
-from watchdog.observers import Observer
 
-from slashbot.custom_cog import SlashbotCog
-from slashbot.custom_command import slash_command_with_cooldown
-from slashbot.messages import get_attached_images_from_message, send_message_to_channel
+import slashbot.watchers
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
+from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
+from slashbot.core import markov
+from slashbot.core.ai import AIChat, AIChatSummary, SummaryMessage
+from slashbot.core.text_generation import (
+    SUPPORTED_MODELS,
+    GenerationFailureError,
+    TextGenerationInput,
+    VisionImage,
+    VisionVideo,
+    read_in_prompt,
+)
+from slashbot.messages import send_message_to_channel
 from slashbot.responses import is_reply_to_slash_command_response
+from slashbot.settings import BotSettings
 
-if TYPE_CHECKING:
-    from botlib.types import ApplicationCommandInteraction, Message
-
-    from slashbot.custom_bot import SlashbotInterationBot
-
-MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
-DEFAULT_PROMPT, AVAILABLE_PROMPTS, DEFAULT_PROMPT_TOKEN_COUNT = get_prompts_at_launch()
+MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
 
 
-def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
+@dataclass
+class Cooldown:
+    """Dataclass for tracking cooldowns for a user."""
+
+    count: int
+    last_interaction: datetime.datetime
+
+
+def get_history_id(obj: Message | ApplicationCommandInteraction) -> int:
     """Determine the history ID to use given the origin of the message.
 
     Historically, this used to return different values for text channels and
@@ -69,21 +63,10 @@ def get_history_id(obj: Message | ApplicationCommandInteraction) -> str | int:
     return obj.channel.id
 
 
-# Set up logger for profiler
-profile_logger = logging.getLogger("ProfilerLogger")
-profile_logger.handlers.clear()
-file_handler = logging.FileHandler("logs/profile.log")
-file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
-profile_logger.addHandler(file_handler)
-profile_logger.setLevel(logging.INFO)
-
-
-class TextGeneration(SlashbotCog):
+class TextGeneration(CustomCog):
     """AI chat features powered by OpenAI."""
 
-    logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
-
-    def __init__(self, bot: SlashbotInterationBot) -> None:
+    def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialize the AIChatbot class.
 
         Parameters
@@ -93,16 +76,114 @@ class TextGeneration(SlashbotCog):
 
         """
         super().__init__(bot)
-        self.conversations: dict[Conversation] = defaultdict(
-            lambda: Conversation(DEFAULT_PROMPT, DEFAULT_PROMPT_TOKEN_COUNT),
+        self.chats = {}
+        self.channel_histories = {}
+        self.user_cooldown_map = defaultdict(lambda: Cooldown(0, datetime.datetime.now(tz=datetime.UTC)))
+
+        self._lock = asyncio.Lock()
+        self._profiler = Profiler(async_mode="enabled")
+        file_handler = logging.FileHandler("logs/profile.log")
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+        self._profiler_logger = logging.getLogger("ProfilerLogger")
+        self._profiler_logger.handlers.clear()
+        self._profiler_logger.addHandler(file_handler)
+
+    def _start_profiler(self) -> None:
+        if not BotSettings.cogs.ai_chat.enable_profiling:
+            return
+        if self._profiler.is_running:
+            self._profiler.stop()
+            self._profiler.reset()
+        self._profiler.start()
+
+    def _stop_profiler(self) -> None:
+        if not BotSettings.cogs.ai_chat.enable_profiling:
+            return
+        self._profiler.stop()
+        profiler_output = self._profiler.output_text()
+        self._profiler_logger.info("\n%s", profiler_output)
+        self._profiler.reset()
+
+    def _get_channel_history(self, obj: Message | ApplicationCommandInteraction) -> AIChatSummary:
+        history_id = get_history_id(obj)
+        self.log_debug("Getting channel history for history ID: %s", history_id)
+        if history_id in self.channel_histories:
+            return self.channel_histories[history_id]
+
+        if isinstance(obj, int):
+            msg = "History ID is an int, but a ai conversation has not been found"
+            raise ValueError(msg)  # noqa: TRY004
+
+        if isinstance(obj.channel, disnake.TextChannel):
+            extra_print = f"{obj.channel.name}"
+        elif isinstance(obj.channel, disnake.DMChannel):
+            extra_print = f"{obj.channel.recipient}"
+        else:
+            extra_print = f"{obj.channel.id}"
+
+        self.channel_histories[history_id] = AIChatSummary(
+            token_window_size=BotSettings.cogs.ai_chat.token_window_size,
+            extra_print=extra_print,
         )
-        self.channel_histories: dict[ChannelHistory] = defaultdict(lambda: ChannelHistory())
-        self.cooldowns = defaultdict(
-            lambda: {"count": 0, "last_interaction": datetime.datetime.now(tz=datetime.UTC)},
+        return self.channel_histories[history_id]
+
+    def _get_chat(self, obj: int | Message | ApplicationCommandInteraction) -> AIChat:
+        history_id = get_history_id(obj) if not isinstance(obj, int) else obj
+        self.log_debug("Getting conversation for history ID: %s", history_id)
+        if history_id in self.chats:
+            return self.chats[history_id]
+        if isinstance(obj, int):
+            msg = "History ID is an int, but an ai chat has not been found"
+            raise ValueError(msg)  # noqa: TRY004
+
+        if isinstance(obj.channel, disnake.TextChannel):
+            extra_print = f"{obj.channel.name}"
+        elif isinstance(obj.channel, disnake.DMChannel):
+            extra_print = f"{obj.channel.recipient}"
+        else:
+            extra_print = f"{obj.channel.id}"
+
+        self.chats[history_id] = AIChat(
+            extra_print=extra_print,
         )
+        return self.chats[history_id]
+
+    def _check_if_user_on_cooldown(self, user_id: int) -> bool:
+        """Check if a user is on cooldown or not.
+
+        Parameters
+        ----------
+        user_id : int
+            The id of the user to rate limit
+
+        Returns
+        -------
+        bool
+            Returns True if the user needs to be rate limited
+
+        """
+        current_time = datetime.datetime.now(tz=datetime.UTC)
+        user_cooldown = self.user_cooldown_map[user_id]
+        time_difference = (current_time - user_cooldown.last_interaction).seconds
+
+        # Check if exceeded rate limit
+        if user_cooldown.count > BotSettings.cogs.ai_chat.response_rate_limit:
+            # If exceeded rate limit, check if cooldown period has passed
+            if time_difference > BotSettings.cogs.ai_chat.rate_limit_interval:
+                # reset count and update last_interaction time
+                user_cooldown.count = 1
+                user_cooldown.last_interaction = current_time
+                return False
+            # still under cooldown
+            return True
+        # hasn't exceeded rate limit, update count and last_interaction
+        user_cooldown.count += 1
+        user_cooldown.last_interaction = current_time
+
+        return False
 
     @staticmethod
-    async def send_fallback_response_to_prompt(message: disnake.Message, *, dont_tag_user: bool = False) -> None:
+    async def _send_fallback_response_to_prompt(message: disnake.Message, *, dont_tag_user: bool = False) -> None:
         """Send a fallback response using the markov chain.
 
         Parameters
@@ -114,23 +195,69 @@ class TextGeneration(SlashbotCog):
 
         """
         await send_message_to_channel(
-            generate_text_from_markov_chain(MARKOV_MODEL, "?random", 1),
+            markov.generate_text_from_markov_chain(markov.MARKOV_MODEL, "?random", 1),  # type: ignore
             message,
             dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )
 
-    def clear_conversation_history(self, history_id: str | int) -> None:
-        """Clear chat history and reset the token counter.
+    async def _get_attached_images_from_message(self, message: Message) -> list[VisionImage]:
+        """Retrieve the URLs for images attached or embedded in a Discord message.
 
         Parameters
         ----------
-        history_id : str | int
-            The index to reset in chat history.
+        message : Message
+            The Discord message object to extract image URLs from.
+
+        Returns
+        -------
+        List[Image]
+            A list of `Image` dataclasses containing the URL, base64-encoded image
+            data and the MIME type of the image.
 
         """
-        self.conversations[history_id].clear_messages()
+        image_urls = [
+            attachment.url
+            for attachment in message.attachments
+            if attachment.content_type and attachment.content_type.startswith("image/")
+        ]
+        image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image and embed.image.proxy_url]
+        image_urls += [
+            embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail and embed.thumbnail.proxy_url
+        ]
 
-    async def get_referenced_message(self, original_message: disnake.Message) -> disnake.Message:
+        images = []
+        for url in image_urls:
+            image = VisionImage(url)
+            if not BotSettings.cogs.ai_chat.prefer_image_urls:
+                try:
+                    await image.download_and_encode()
+                except Exception:  # noqa: BLE001
+                    self.log_exception("Failed to download image from %s", url)
+            images.append(image)
+
+        return images
+
+    async def _get_attached_videos_from_message(self, message: Message) -> list[VisionVideo]:
+        """Retrieve the URLs for YouTube videos embedded in a Discord message.
+
+        Parameters
+        ----------
+        message : Message
+            The Discord message object to extract video URLs from.
+
+        Returns
+        -------
+        List[VisionVideo]
+            A list of `VisionVideo` dataclasses containing the URL of the video.
+
+        """
+        regex = re.compile(r"https?://(?:www\.)?youtube\.com/watch\?v=[\w-]+")
+        video_urls = regex.findall(message.content)
+        self.log_debug("Found %s video URLs in message: %s", len(video_urls), video_urls)
+
+        return [VisionVideo(url) for url in set(video_urls)]
+
+    async def _get_highlighted_discord_message(self, original_message: disnake.Message) -> disnake.Message:
         """Retrieve a message from a message reply.
 
         Parameters
@@ -145,103 +272,23 @@ class TextGeneration(SlashbotCog):
 
         """
         message_reference = original_message.reference
+        if not message_reference:
+            return original_message
         previous_message = message_reference.cached_message
         if not previous_message:
             try:
                 channel = await self.bot.fetch_channel(message_reference.channel_id)
+                if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                    return original_message
+                if not message_reference.message_id:
+                    return original_message
                 previous_message = await channel.fetch_message(message_reference.message_id)
             except disnake.NotFound:
                 return original_message
 
         return previous_message
 
-    async def get_response_from_llm(
-        self,
-        conversation: Conversation,
-        conversation_copy: Conversation,
-    ) -> tuple[str, int]:
-        """Get the response from the LLM and update the conversation history.
-
-        Parameters
-        ----------
-        conversation : Conversation
-            The conversation to update with the response.
-        conversation_copy : Conversation
-            The copy of the conversation that the LLM is being asked to generate
-            a response for. This is used to avoid a race condition when multiple
-            people are talking to the bot at once.
-
-        Returns
-        -------
-        str
-            The response from the LLM.
-        int
-            The number of tokens in the conversation.
-
-        """
-        try:
-            bot_response, tokens_used = await generate_text_from_llm(
-                Bot.get_config("AI_CHAT_CHAT_MODEL"),
-                conversation_copy.get_messages(),
-            )
-        except openai.BadRequestError as exc:
-            if "invalid_image_url" in str(exc):
-                conversation_copy.remove_images_from_messages()
-                conversation.remove_images_from_messages()
-                bot_response, tokens_used = await generate_text_from_llm(
-                    Bot.get_config("AI_CHAT_CHAT_MODEL"),
-                    conversation_copy.get_messages(),
-                )
-            else:
-                raise
-
-        return bot_response, tokens_used
-
-    async def update_channel_message_history(self, history_id: int, user: str, message: str) -> None:
-        """Record the history of messages in a channel.
-
-        Parameters
-        ----------
-        history_id : int
-            The unique identifier for the channel's history.
-        user : str
-            The user who sent the message.
-        message : str
-            The content of the message sent by the user.
-
-        """
-        num_tokens = get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), message)
-        self.channel_histories[history_id].add_message(message, escape_markdown(user), num_tokens)
-
-        # keep it under the token limit
-        while self.channel_histories[history_id].tokens > Bot.get_config("AI_CHAT_TOKEN_WINDOW_SIZE"):
-            self.channel_histories[history_id].remove_message(0)
-
-    async def respond_with_random_llm_message(self, message: disnake.Message) -> None:
-        """Respond to a single message with no context.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The message to respond to.
-
-        """
-        try:
-            with Path.open(Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")) as file_in:
-                prompt = json.load(file_in)["prompt"]
-        except (OSError, json.JJSONDecodeError):
-            TextGeneration.logger.exception(
-                "Failed to process random response prompt %s", Bot.get_config("AI_CHAT_RANDOM_RESPONSE_PROMPT")
-            )
-            return
-        messages = [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": message.clean_content},
-        ]
-        response, _ = await generate_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), messages)
-        await send_message_to_channel(response, message, dont_tag_user=True)
-
-    async def send_response_to_prompt(self, discord_message: disnake.Message, *, send_to_dm: bool) -> None:
+    async def _get_response_from_llm(self, discord_message: disnake.Message) -> str:
         """Generate a response to a prompt for a conversation of messages.
 
         A copy of the conversation is made before updating it with the user
@@ -255,48 +302,66 @@ class TextGeneration(SlashbotCog):
         send_to_dm: bool
             Whether or not the prompt was sent in a direct message, optional
 
+        Returns
+        -------
+        str
+            The response from the AI.
+
         """
-        user_prompt = discord_message.clean_content.replace(f"@{self.bot.user.name}", "")
-        conversation = self.conversations[get_history_id(discord_message)]
-        conversation_copy = copy.deepcopy(conversation)
+        conversation = self._get_chat(discord_message)
 
-        message_images = await get_attached_images_from_message(discord_message)
+        # If we are in a guild, we need to get the bot's display name for that
+        # guild. Otherwise, we can use the bot's given name.
+        # Then we need to remove the bot's name from the message content,
+        # otherwise it can get very confused for some reason
+        if discord_message.guild:
+            bot_user = discord_message.guild.get_member(self.bot.user.id)
+            bot_name = bot_user.display_name if bot_user else self.bot.user.name
+        else:
+            bot_name = self.bot.user.name
+        user_prompt = discord_message.clean_content.replace(f"@{bot_name}", "")
+
+        images = await self._get_attached_images_from_message(discord_message)
+        videos = await self._get_attached_videos_from_message(discord_message)
+
         if discord_message.reference:
-            referenced_message = await self.get_referenced_message(discord_message)
-            if referenced_message != discord_message:
-                message_images += await get_attached_images_from_message(referenced_message)
-                user_prompt = (
-                    'Previous message to respond to with the prompt: "'
-                    + referenced_message.clean_content
-                    + '"\nPrompt: '
-                    + user_prompt
-                )
-            else:
-                TextGeneration.logger.error(
-                    "Failed to get the message referenced in %s",
-                    discord_message,
-                )
-        conversation_copy.add_message(user_prompt, "user", images=message_images, shrink_conversation=False)
-
-        try:
-            bot_response, tokens_used = await self.get_response_from_llm(
-                conversation,
-                conversation_copy,
+            referenced_message = await self._get_highlighted_discord_message(discord_message)
+            images += await self._get_attached_images_from_message(referenced_message)
+            videos += await self._get_attached_videos_from_message(referenced_message)
+            user_prompt = (
+                'Previous message to respond to with the prompt: "'
+                + referenced_message.clean_content
+                + '"\nPrompt: '
+                + user_prompt
             )
-        except openai.APIError:
-            TextGeneration.logger.exception(
-                "Failed to get response from OpenAI, reverting to markov sentence with no seed word",
-            )
-            await self.send_fallback_response_to_prompt(discord_message, dont_tag_user=send_to_dm)
-            return
 
-        await send_message_to_channel(bot_response, discord_message, dont_tag_user=send_to_dm)
-        conversation.add_message(user_prompt, "user", images=message_images)
-        conversation.add_message(bot_response, "assistant", tokens=tokens_used)
+        async with self._lock:
+            try:
+                message = TextGenerationInput(user_prompt, images=images, videos=videos)
+                bot_response = await conversation.send_message(message)
+            except GenerationFailureError:
+                bot_response = self.get_random_markov_sentence()
+                if isinstance(bot_response, list):
+                    bot_response = bot_response[0]
 
-    async def respond_to_prompt(
-        self, history_id: int, discord_message: disnake.Message, *, message_in_dm: bool = False
-    ) -> None:
+        return bot_response
+
+    async def _respond_with_random_llm_response(self, message: disnake.Message) -> None:
+        """Respond to a discord message with a random LLM response.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to respond to
+
+        """
+        prompt = read_in_prompt("data/prompts/_random-response.json")
+        chat = self._get_chat(message)
+        content = chat.create_request_json(TextGenerationInput(message.clean_content), system_prompt=prompt.prompt)
+        llm_response = await chat.send_raw_request(content)
+        await send_message_to_channel(llm_response, message, dont_tag_user=True)
+
+    async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:
         """Respond to a user's message prompt.
 
         This method handles user prompts by checking for rate limits,
@@ -304,165 +369,98 @@ class TextGeneration(SlashbotCog):
 
         Parameters
         ----------
-        history_id : int
-            The ID used to track the conversation history.
         discord_message : disnake.Message
             The Discord message containing the user's prompt.
         message_in_dm : bool, optional
             Whether the prompt was sent in a direct message (default is False).
 
         """
-        if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
-            profiler = Profiler(async_mode="enabled")
-            profiler.start()
+        self._start_profiler()
         async with discord_message.channel.typing():
-            rate_limited = check_if_user_rate_limited(self.cooldowns, discord_message.author.id)
-            if not rate_limited:
-                await self.send_response_to_prompt(discord_message, send_to_dm=message_in_dm)
-            else:
+            on_cooldown = self._check_if_user_on_cooldown(discord_message.author.id)
+            if on_cooldown:
                 await send_message_to_channel(
-                    f"Stop abusing me, {discord_message.author.mention}!",
+                    f"Stop abusing me {discord_message.author.mention}!",
                     discord_message,
                     dont_tag_user=True,
                 )
-        if Bot.get_config("AI_CHAT_PROFILE_RESPONSE_TIME"):
-            profiler.stop()
-            profiler_output = profiler.output_text()
-            profile_logger.info("\n%s", profiler_output)
-            profile_logger.info(
-                "Conversation<%d> is %e MB",
-                history_id,
-                self.conversations[history_id].get_size_of_conversation() / 1.0e6,
-            )
+            else:
+                response = await self._get_response_from_llm(discord_message)
+                await send_message_to_channel(
+                    response,
+                    discord_message,
+                    dont_tag_user=message_in_dm,
+                )
+        self._stop_profiler()
 
     # Listeners ----------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
-    async def listen_to_messages(self, discord_message: disnake.Message) -> None:
-        """Listen for mentions which are prompts for the AI.
-
-        Parameters
-        ----------
-        discord_message : str
-            The message to process for mentions.
-
-        """
-        history_id = get_history_id(discord_message)
-
-        # don't record bot interactions
-        if discord_message.type != disnake.MessageType.application_command:
-            await self.update_channel_message_history(
-                history_id, discord_message.author.display_name, discord_message.clean_content
-            )
-
-        # ignore other bot messages and itself
-        if discord_message.author.bot:
+    async def _append_to_history(self, message: disnake.Message) -> None:
+        if message.type in [disnake.MessageType.application_command]:
             return
 
-        # only respond when mentioned or in DM. mention_string is used for slash
-        # commands
-        bot_mentioned = self.bot.user in discord_message.mentions
-        mention_string = self.bot.user.mention in discord_message.content
-        message_in_dm = isinstance(discord_message.channel, disnake.channel.DMChannel)
+        clean_message = message.clean_content.replace(f"@{self.bot.user.name}", "[directed at me]")
+        for user in message.mentions:
+            clean_message = clean_message.replace(f"@{user.name}", f"[directed at {user.display_name}]")
+
+        channel_history = self._get_channel_history(message)
+        channel_history.add_message_to_history(
+            SummaryMessage(
+                user=message.author.display_name if message.author != self.bot.user else "me",
+                content=clean_message,
+            )
+        )
+
+    @commands.Cog.listener("on_message")
+    async def _listen_for_prompts(self, message: disnake.Message) -> None:
+        if message.author.bot:
+            return
 
         # Don't respond to replies, or mentions, which have a reference to a
         # slash command response or interaction UNLESS explicitly mentioned with
         # an @
-        if await is_reply_to_slash_command_response(discord_message) and not mention_string:
+        mentioned_in_message = self.bot.user.mention in message.content
+        if await is_reply_to_slash_command_response(message) and not mentioned_in_message:
             return
 
-        # If the bot was mentioned or the message was in a DM, respond
+        bot_mentioned = self.bot.user in message.mentions
+        message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
+
         if bot_mentioned or message_in_dm:
-            await self.respond_to_prompt(history_id, discord_message, message_in_dm=message_in_dm)
+            await self._respond_to_user_prompt(message, message_in_dm=message_in_dm)
             return
 
-        # If we get here, then there's a random chance the bot will respond to a
-        # "regular" message
-        if random.random() <= Bot.get_config("AI_CHAT_RANDOM_RESPONSE_CHANCE"):
-            await self.respond_with_random_llm_message(discord_message)
+        if random.random() < BotSettings.cogs.ai_chat.random_response_chance:
+            await self._respond_with_random_llm_response(message)
 
     # Commands -----------------------------------------------------------------
 
     @slash_command_with_cooldown(
-        name="summarise_chat_history",
-        description="Get a summary of the previous conversation",
+        name="chat_generate_summary",
+        description="Generate a summary of the conversation",
         dm_permission=False,
     )
-    async def generate_chat_summary(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        amount: int = commands.Param(
-            default=0,
-            name="amount",
-            description="The last X amount of messages to summarise",
-        ),
-    ) -> None:
+    async def chat_generate_summary(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Summarize the chat history.
 
         Parameters
         ----------
         inter : disnake.ApplicationCommandInteraction
             The interaction object representing the user's command interaction.
-        amount : int, optional
-            The number of previous messages to include in the summary, by default 0.
-
-        Returns
-        -------
-        Coroutine
-            An asynchronous coroutine representing the summary process.
 
         """
-        history_id = get_history_id(inter)
-        channel_history = self.channel_histories[history_id]
-        if channel_history.tokens == 0:
+        channel_history = self._get_channel_history(inter)
+        if len(channel_history) == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
         await inter.response.defer(ephemeral=True)
+        summary = await channel_history.generate_summary(requesting_user=inter.user.display_name)
+        await inter.delete_original_response()
+        await send_message_to_channel(summary, inter)
 
-        try:
-            with Path.open(Bot.get_config("AI_CHAT_SUMMARY_PROMPT")) as file_in:
-                summary_prompt = json.load(file_in)["prompt"]
-        except OSError:
-            TextGeneration.logger.exception(
-                "Failed to open summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT")
-            )
-            return
-        except json.JSONDecodeError:
-            TextGeneration.logger.exception(
-                "Failed to decode summary prompt: %s", Bot.get_config("AI_CHAT_SUMMARY_PROMPT")
-            )
-            return
-
-        sent_messages = "Summarise the following conversation between multiple users: " + "\n".join(
-            channel_history.get_messages(amount),
-        )
-        conversation = [
-            {
-                "role": "system",
-                "content": Bot.get_config("AI_CHAT_PROMPT_PREPEND")
-                + summary_prompt
-                + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
-            },
-            {"role": "user", "content": sent_messages},
-        ]
-        TextGeneration.logger.debug("Conversation to summarise: %s", conversation)
-        summary_message, token_count = await generate_text_from_llm(Bot.get_config("AI_CHAT_CHAT_MODEL"), conversation)
-        # We don't want to add the entire conversation to the history, so for
-        # context put <HISTORY REDACTED>
-        self.conversations[history_id].add_message(
-            Bot.get_config("AI_CHAT_PROMPT_PREPEND")
-            + "Summarise the following conversation between multiple users: [CONVERSATION HISTORY REDACTED]"
-            + Bot.get_config("AI_CHAT_PROMPT_APPEND"),
-            "user",
-        )
-        self.conversations[history_id].add_message(summary_message, "assistant", tokens=token_count)
-
-        await send_message_to_channel(summary_message, inter, dont_tag_user=True)
-        original_message = await inter.edit_original_message(content="...")
-        await original_message.delete(delay=3)
-
-    @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
-    async def reset_history(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    @slash_command_with_cooldown(name="chat_reset_context", description="Reset the AI conversation history")
+    async def chat_reset_context(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
         Parameters
@@ -471,19 +469,21 @@ class TextGeneration(SlashbotCog):
             The slash command interaction.
 
         """
-        history_id = get_history_id(inter)
-        self.conversations[history_id].clear_messages()
+        chat = self._get_chat(inter)
+        chat.reset_history()
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
     @slash_command_with_cooldown(
-        name="select_chat_prompt",
+        name="chat_select_prompt",
         description="Set the AI conversation prompt from a list of choices",
     )
-    async def select_existing_prompt(
+    async def chat_select_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
         choice: str = commands.Param(
-            autocomplete=lambda _, user_input: [choice for choice in AVAILABLE_PROMPTS if user_input in choice],
+            autocomplete=lambda _, user_input: [
+                choice for choice in slashbot.watchers.AVAILABLE_LLM_PROMPTS if user_input in choice
+            ],
             description="The choice of prompt to use",
         ),
     ) -> None:
@@ -497,28 +497,39 @@ class TextGeneration(SlashbotCog):
             The choice of system prompt
 
         """
-        prompt = AVAILABLE_PROMPTS.get(choice, None)
-        if not prompt:
-            await inter.response.send_message(
-                "An error with the Discord API has occurred and allowed you to pick a prompt which doesn't exist",
-                ephemeral=True,
-            )
-            return
+        prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
+        self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
+        conversation = self._get_chat(inter)
+        conversation.set_system_prompt(prompt)
+        await inter.response.send_message("History cleared and system message updated", ephemeral=True)
 
-        history_id = get_history_id(inter)
-        self.conversations[history_id].set_prompt(
-            prompt,
-            get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), prompt),
-        )
-        await inter.response.send_message(
-            f"History cleared and system prompt changed to:\n\n{prompt[:1800]}...",
-            ephemeral=True,
-        )
+    @slash_command_with_cooldown(name="chat_set_model", description="Set the AI model to use")
+    async def chat_set_model(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        model_name: str = commands.Param(choices=SUPPORTED_MODELS, description="The model to use"),  # type: ignore
+    ) -> None:
+        """Set the AI model to use.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
+        model_name : str
+            The name of the model to set.
+
+        """
+        chat = self._get_chat(inter)
+        summary = self._get_channel_history(inter)
+        original_model = chat.model
+        chat.set_model(model_name)
+        summary.set_model(model_name)
+        await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
 
     @slash_command_with_cooldown(
-        name="set_chat_prompt", description="Change the AI conversation prompt to one you write"
+        name="chat_set_prompt", description="Change the AI conversation prompt to one you write"
     )
-    async def set_chat_prompt(
+    async def chat_set_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to set", max_length=2000),
@@ -536,48 +547,15 @@ class TextGeneration(SlashbotCog):
             The new system prompt to set.
 
         """
-        TextGeneration.logger.info("%s set new prompt: %s", inter.author.display_name, prompt)
-        history_id = get_history_id(inter)
-        self.conversations[history_id].set_prompt(
-            prompt,
-            get_token_count(Bot.get_config("AI_CHAT_CHAT_MODEL"), prompt),
-        )
-        await inter.response.send_message(
-            f"History cleared and system prompt changed to:\n\n{prompt}",
-            ephemeral=True,
-        )
+        self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
+        conversation = self._get_chat(inter)
+        conversation.set_system_prompt(prompt)
+        await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
     @slash_command_with_cooldown(
-        name="save_chat_prompt", description="Save a AI conversation prompt to the bot's selection"
+        name="chat_show_prompt", description="Print information about the current AI conversation"
     )
-    async def save_prompt(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        name: str = commands.Param(description="The name to save the prompt as", max_length=64, min_length=3),
-        prompt: str = commands.Param(description="The prompt to save"),
-    ) -> None:
-        """Add a new prompt to the bot's available prompts.
-
-        Parameters
-        ----------
-        inter : disnake.ApplicationCommandInteraction
-            The slash command interaction.
-        name : str
-            The name of the new prompt.
-        prompt : str
-            The contents of the prompt.
-
-        """
-        await inter.response.defer(ephemeral=True)
-        async with aiofiles.open(f"data/prompts/{name}.json", "w", encoding="utf-8") as file_out:
-            await file_out.write(json.dumps({"name": name, "prompt": prompt}))
-
-        await inter.edit_original_message(content=f"Your prompt {name} has been saved.")
-
-    @slash_command_with_cooldown(
-        name="show_chat_prompt", description="Print information about the current AI conversation"
-    )
-    async def show_chat_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    async def chat_show_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Print the system prompt to the screen.
 
         Parameters
@@ -586,67 +564,33 @@ class TextGeneration(SlashbotCog):
             The slash command interaction.
 
         """
-        history_id = get_history_id(inter)
+        conversation = self._get_chat(inter)
 
         prompt_name = "Unknown"
-        prompt = self.conversations[history_id].system_prompt
-        for name, text in AVAILABLE_PROMPTS.items():
+        prompt = conversation.system_prompt
+        for name, text in slashbot.watchers.AVAILABLE_LLM_PROMPTS.items():
             if prompt == text:
                 prompt_name = name
 
         response = ""
-        response += f"**Model name**: {Bot.get_config('AI_CHAT_CHAT_MODEL')}\n"
-        response += f"**Token usage**: {self.conversations[history_id].tokens}\n"
+        response += f"**Model name**: {conversation.model}\n"
+        response += f"**Token usage**: {conversation.size_tokens}\n"
         response += f"**Prompt name**: {prompt_name}\n"
-        response += f"**Prompt**: {prompt[:1800]}...\n"
+        response += f"**Prompt**: {shorten(prompt, 1800)}\n"
 
         await inter.response.send_message(response, ephemeral=True)
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up the entry function for load_extensions().
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """
-    if Bot.get_config("OPENAI_API_KEY") or Bot.get_config("DEEPSEEK_API_KEY"):
+    if BotSettings.keys.openai:
         bot.add_cog(TextGeneration(bot))
     else:
-        TextGeneration.logger.error("No API key found for OpenAI, unable to load AIChatBot cog")
-
-
-class PromptFileWatcher(FileSystemEventHandler):
-    """Event handler for prompt files.
-
-    This event handler is meant to watch the `data/prompts` directory for
-    changes.
-    """
-
-    def on_any_event(self, event: FileSystemEvent) -> None:
-        """Handle any file system event.
-
-        This method is called when any file system event occurs.
-        It updates the `PROMPT_CHOICES` dictionary based on the event type and
-        source path.
-        """
-        global AVAILABLE_PROMPTS  # noqa: PLW0603
-
-        if event.is_directory:
-            return
-
-        try:
-            if event.event_type in ["created", "modified"] and event.src_path.endswith(".json"):
-                prompt = read_in_prompt_json(event.src_path)
-                AVAILABLE_PROMPTS[prompt["name"]] = prompt["prompt"]
-            if event.event_type == "deleted" and event.src_path.endswith(".json"):
-                AVAILABLE_PROMPTS = create_prompt_dict()
-        except json.decoder.JSONDecodeError:
-            TextGeneration.logger.exception("Error reading in prompt file %s", event.src_path)
-
-
-observer = Observer()
-observer.schedule(PromptFileWatcher(), "data/prompts", recursive=True)
-observer.start()
+        bot.log_error("No API key found for OpenAI, unable to load AIChatBot cog")

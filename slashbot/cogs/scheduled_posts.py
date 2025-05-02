@@ -1,65 +1,24 @@
 """Scheduled posts cog."""
 
 import asyncio
-import json
-import logging
 import threading
 from pathlib import Path
 
 import disnake
-from botlib.config import Bot
-from botlib.markov import generate_text_from_markov_chain
-from botlib.util import calculate_seconds_until
-from disnake.ext import commands, tasks
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+import yaml
+from disnake.ext import tasks
 
-from slashbot.custom_bot import SlashbotInterationBot
-from slashbot.custom_cog import SlashbotCog
-
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
-COOLDOWN_USER = commands.BucketType.user
-
-
-def check_post_has_keys(post: dict, keys: list) -> bool:
-    """Check if all the given keys are present in the given dictionary.
-
-    Parameters
-    ----------
-    post : dict
-        The dictionary to check.
-    keys : list
-        The list of keys to check for.
-
-    Returns
-    -------
-    bool
-        True if all keys are present, False otherwise.
-
-    """
-    return all(key in post for key in keys)
+import slashbot.watchers
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.clock import calculate_seconds_until
+from slashbot.core.markov import generate_text_from_markov_chain
+from slashbot.settings import BotSettings
+from slashbot.validation import ScheduledPost
+from slashbot.watchers import ScheduledPostWatcher
 
 
-def check_post_has_iterable(post: dict, key: str) -> bool:
-    """Check if the given key has an iterable value.
-
-    Parameters
-    ----------
-    post : dict
-        The dictionary to check.
-    key : str
-        The key to check for.
-
-    Returns
-    -------
-    bool
-        True if the key has an iterable value, False otherwise.
-
-    """
-    return hasattr(post[key], "__iter__")
-
-
-class ScheduledPosts(SlashbotCog):
+class ScheduledPosts(CustomCog):
     """Scheduled post cog.
 
     Scheduled posts should be added to self.scheduled_posts using a Post
@@ -68,7 +27,7 @@ class ScheduledPosts(SlashbotCog):
 
     # Special methods ----------------------------------------------------------
 
-    def __init__(self, bot: SlashbotInterationBot) -> None:
+    def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialise the cog.
 
         Parameters
@@ -79,10 +38,7 @@ class ScheduledPosts(SlashbotCog):
         """
         super().__init__(bot)
 
-        self.scheduled_posts = None
-        self.get_scheduled_posts()
-        self.post_loop.start()  # pylint: disable=no-member
-
+        self.scheduled_posts: list[ScheduledPost] = []
         self.watch_thread = threading.Thread(target=self.update_posts_on_modify)
         self.watch_thread.start()
 
@@ -95,81 +51,36 @@ class ScheduledPosts(SlashbotCog):
         in place.
         """
         for post in self.scheduled_posts:
-            post["time_until_post"] = calculate_seconds_until(
-                int(post["day"]),
-                int(post["hour"]),
-                int(post["minute"]),
+            post.time_until_post = calculate_seconds_until(
+                post.day,
+                post.hour,
+                post.minute,
                 7,
             )
 
     def order_scheduled_posts_by_soonest(self) -> None:
         """Order the schedulded posts by the soonest post."""
         self.calculate_time_until_post()
-        self.scheduled_posts.sort(key=lambda x: x["time_until_post"])
+        self.scheduled_posts.sort(key=lambda x: x.time_until_post)  # type: ignore
 
     def get_scheduled_posts(self) -> None:
         """Read in the scheduled posts Json file."""
-        with Path.open(Bot.get_config("SCHEDULED_POST_FILE"), encoding="utf-8") as file_in:
-            posts_json = json.load(file_in)
-
-        self.scheduled_posts = posts_json["SCHEDULED_POSTS"]
-
-        # Before we return from this function, we should first check to make
-        # sure each post has the correct fields in the correct format
-        for post in self.scheduled_posts:
-            if not check_post_has_keys(
-                post,
-                ("title", "files", "channels", "users", "day", "hour", "minute", "seed_word", "message"),
-            ):
-                logger.warning("Post '%s' is missing some keys", post.get("title", "unknown"))
-            if not check_post_has_iterable(post, "files"):
-                logger.warning("Post '%s' has non-iterable files", post["title"])
-            if not check_post_has_iterable(post, "users"):
-                logger.warning("Post '%s' has non-iterable users", post["title"])
-            if not check_post_has_iterable(post, "channels"):
-                logger.warning("Post '%s' has non-iterable channels", post["title"])
-
-        logger.info(
-            "%d scheduled posts loaded from %s",
-            len(self.scheduled_posts),
-            Bot.get_config("SCHEDULED_POST_FILE"),
-        )
+        with Path.open(BotSettings.files.scheduled_posts, encoding="utf-8") as file_in:
+            posts_data = yaml.safe_load(file_in)
+        for post in posts_data:
+            try:
+                self.scheduled_posts.append(ScheduledPost(**post))
+            except TypeError as e:
+                self.log_warning("Post '%s' is not valid: %s", post.get("title", "unknown"), e)
+                continue
+        self.log_info("%d scheduled posts loaded from %s", len(self.scheduled_posts), BotSettings.files.scheduled_posts)
         self.order_scheduled_posts_by_soonest()
 
     def update_posts_on_modify(self) -> None:
         """Reload the posts on file modify."""
-
-        class PostWatcher(FileSystemEventHandler):
-            """File watcher to watch for changes to scheduled posts file."""
-
-            def __init__(self, parent: ScheduledPosts) -> None:
-                """Initialise the watcher."""
-                super().__init__()
-                self.parent = parent
-
-            def on_modified(self, event: FileSystemEventHandler) -> None:
-                """Reload the posts on file modify.
-
-                Parameters
-                ----------
-                event : FileSystemEventHandler
-                    The event to check.
-
-                """
-                if event.src_path == str(Bot.get_config("SCHEDULED_POST_FILE").absolute()):
-                    self.parent.get_scheduled_posts()
-                    # If the loop is running, we'll restart the task otherwise
-                    # start the task. The post should *never* not be running,
-                    # but better safe than sorry as it can sometimes raise an
-                    # exception and stop
-                    if self.parent.post_loop.is_running():
-                        self.parent.post_loop.restart()
-                    else:
-                        self.parent.post_loop.start()
-
-        observer = Observer()
-        observer.schedule(PostWatcher(self), path=str(Bot.get_config("SCHEDULED_POST_FILE").parent.absolute()))
-        observer.start()
+        slashbot.watchers.FILE_OBSERVER.schedule(
+            ScheduledPostWatcher(self), path=str(BotSettings.files.scheduled_posts.parent.absolute())
+        )
 
     # Task ---------------------------------------------------------------------
 
@@ -184,42 +95,53 @@ class ScheduledPosts(SlashbotCog):
         Once all messages have been sent, the task will be complete and start
         again in 10 seconds.
         """
+        await self.bot.wait_until_ready()
+
+        if not self.scheduled_posts:
+            self.get_scheduled_posts()
+
         self.order_scheduled_posts_by_soonest()
 
         for post in self.scheduled_posts:
             # we first should update sleep_for, as the original value calculated
             # when read in is no longer valid as it is a static, and not
             # dynamic, value
-            sleep_for = calculate_seconds_until(int(post["day"]), int(post["hour"]), int(post["minute"]), 7)
-            logger.info(
+            sleep_for = calculate_seconds_until(int(post.day), int(post.hour), int(post.minute), 7)
+            self.log_info(
                 "Waiting %d seconds/%d minutes/%.1f hours until posting %s",
                 sleep_for,
                 int(sleep_for / 60),
                 sleep_for / 3600.0,
-                post["title"],
+                post.title,
             )
             await asyncio.sleep(sleep_for)
 
-            markov_sentence = generate_text_from_markov_chain(None, post["seed_word"], 1)
-            markov_sentence = markov_sentence.replace(
-                post["seed_word"],
-                f"**{post['seed_word']}**",
-            )
+            if post.markov_seed_word:
+                markov_sentence = generate_text_from_markov_chain(None, post.markov_seed_word, 1)
+                markov_sentence = markov_sentence.replace(  # type: ignore
+                    post.markov_seed_word,
+                    f"**{post.markov_seed_word}**",
+                )
+            else:
+                markov_sentence = ""
 
             message = ""
-            if post["users"]:
-                message += " ".join([(await self.bot.fetch_user(user)).mention for user in post["users"]])
-            if post["message"]:
-                message += f" {post['message']}"
+            if post.users:
+                message += " ".join([(await self.bot.fetch_user(user)).mention for user in post.users])
+            if post.message:
+                message += f" {post.message}"
 
-            for channel in post["channels"]:
+            for channel in post.channels:
                 channel = await self.bot.fetch_channel(channel)  # noqa: PLW2901
+                if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                    self.log_warning("Scheduled post '%s' has invalid channel %s", post.title, channel)
+                    continue
                 # Check in this case, just to be safe as I don't want
                 # disnake.File to complain if it gets nothing
-                if len(post["files"]) > 0:
+                if post.files:
                     await channel.send(
                         f"{message} {markov_sentence}",
-                        files=[disnake.File(file) for file in post["files"]],
+                        files=[disnake.File(file) for file in post.files],
                     )
                 else:
                     await channel.send(f"{message} {markov_sentence}")
@@ -230,12 +152,12 @@ class ScheduledPosts(SlashbotCog):
         await self.bot.wait_until_ready()
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up the cogs in this module.
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

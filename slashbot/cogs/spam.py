@@ -1,9 +1,8 @@
 """Commands designed to spam the chat with various things."""
 
+import asyncio
 import atexit
-import logging
 import random
-from types import coroutine
 
 import aiofiles
 import defusedxml
@@ -11,32 +10,31 @@ import defusedxml.ElementTree
 import disnake
 import requests
 import rule34 as r34
-from botlib import markov
-from botlib.config import Bot
-from botlib.db import get_users
-from botlib.markov import MARKOV_MODEL, update_markov_chain_for_model
 from disnake.ext import commands, tasks
 
-from slashbot.custom_cog import SlashbotCog
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
+from slashbot.clock import calculate_seconds_until
+from slashbot.core import markov
+from slashbot.settings import BotSettings
 
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
-COOLDOWN_USER = commands.BucketType.user
 EMPTY_STRING = ""
 
 
-class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """A collection of commands to spam the chat with."""
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        bot: commands.InteractionBot,
+        bot: CustomInteractionBot,
         attempts: int = 10,
     ) -> None:
         """Initialize the cog.
 
         Parameters
         ----------
-        bot: commands.InteractionBot
+        bot: CustomInteractionBot
             The bot object.
         attempts: int
             The number of attempts to generate a markov sentence.
@@ -48,18 +46,14 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         self.markov_training_sample = {}
         self.rule34_api = r34.Rule34()
 
-        # If no markov model, don't start the loop.
-        if MARKOV_MODEL:
-            self.markov_chain_update_loop.start()  # pylint: disable=no-member
-
         # if we don't unregister this, the bot is weird on close down
         atexit.unregister(self.rule34_api._exitHandler)  # noqa: SLF001
 
     # Slash commands -----------------------------------------------------------
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="bad_word", description="send a naughty word")
-    async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    slash_command_with_cooldown(name="bad_word", description="send a naughty word")
+
+    async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a bad word to the chat.
 
         Parameters
@@ -68,25 +62,13 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
 
         """
-        async with aiofiles.open(Bot.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
+        async with aiofiles.open(BotSettings.files.bad_words, encoding="utf-8") as file_in:
             bad_words = await file_in.readlines()
+        bad_word = random.choice(bad_words).strip()
+        await inter.response.send_message(f"{bad_word.capitalize()}.")
 
-        bad_word = random.choice(bad_words).strip()  # noqa: S311
-        users_to_mention = [
-            inter.guild.get_member(user_id).mention
-            for user_id, user_settings in get_users().items()
-            if user_settings["bad_word"] == bad_word
-        ]
-        if users_to_mention:
-            await inter.response.send_message(f"Here's one for ya, {', '.join(users_to_mention)} ... {bad_word}!")
-        else:
-            await inter.response.send_message(f"{bad_word.capitalize()}.")
-
-    @commands.slash_command(
-        name="evil_wii",
-        description="evil wii",
-    )
-    async def evil_wii(self, inter: disnake.ApplicationCommandInteraction) -> coroutine:
+    @slash_command_with_cooldown(name="evil_wii", description="evil wii")
+    async def evil_wii(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send the Evil Wii, a cursed image.
 
         Parameters
@@ -95,7 +77,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to respond to.
 
         """
-        message = random.choice(  # noqa: S311
+        message = random.choice(
             ["evil wii", "evil wii?", "have you seen this?", "||evil wii||", "||evil|| ||wii||"],
         )
         file = disnake.File("data/images/evil_wii.png")
@@ -103,8 +85,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
 
         await inter.response.send_message(content=message, file=file)
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="update_markov_chain", description="force update the markov chain for /sentence")
+    @slash_command_with_cooldown(name="update_markov_chain", description="force update the markov chain for /sentence")
     @commands.default_member_permissions(administrator=True)
     async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Update the Markov chain model.
@@ -122,23 +103,22 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
 
         """
-        if not Bot.get_config("ENABLE_MARKOV_TRAINING"):
+        if not BotSettings.markov.enable_markov_training:
             await inter.response.send_message("Updating the Markov Chain has been disabled.")
         else:
             await inter.response.defer(ephemeral=True)
 
-        await update_markov_chain_for_model(
+        await markov.update_markov_chain_for_model(
             inter,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
-            Bot.get_config("CURRENT_MARKOV_CHAIN"),
+            BotSettings.markov.current_chain_location,
         )
         self.markov_training_sample.clear()
 
         await inter.edit_original_message("Markov chain has been updated.")
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="oracle", description="a message from god")
+    @slash_command_with_cooldown(name="oracle", description="a message from god")
     async def oracle(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a Terry Davis inspired "God message" to the chat.
 
@@ -148,15 +128,14 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The interaction to possibly remove the cooldown from.
 
         """
-        async with aiofiles.open(Bot.get_config("GOD_WORDS_FILE"), encoding="utf-8") as file_in:
+        async with aiofiles.open(BotSettings.files.god_words, encoding="utf-8") as file_in:
             oracle_words = await file_in.readlines()
 
         await inter.response.send_message(
-            f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",  # noqa: S311
+            f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",
         )
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="rule34", description="search for a naughty image")
+    @slash_command_with_cooldown(name="rule34", description="search for a naughty image")
     async def rule34(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -184,11 +163,11 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         choices = [result for result in results if result.has_comments]
         if len(choices) == 0:
             choices = results
-        image = random.choice(choices)  # noqa: S311
+        image = random.choice(choices)
 
         comment, user = self.get_comments_for_rule34_post(image.id)
         comment = "*Too cursed for comments*" if not comment else f'"{comment}"'
-        user = " " if not user else f"\n\- *{user}*"  # noqa: W605
+        user = " " if not user else rf"\n\- *{user}*"
         message = f"|| {image.file_url} ||\n>>> {comment}{user}"
 
         await inter.edit_original_message(content=message)
@@ -205,7 +184,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The message to record.
 
         """
-        if not Bot.get_config("ENABLE_MARKOV_TRAINING"):
+        if not BotSettings.markov.enable_markov_training:
             return
         if message.author.bot:
             return
@@ -221,7 +200,7 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
             The payload containing the message.
 
         """
-        if not Bot.get_config("ENABLE_MARKOV_TRAINING"):
+        if not BotSettings.markov.enable_markov_training:
             return
 
         message = payload.cached_message
@@ -230,18 +209,20 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         # and the message from the channel
         if message is None:
             channel = await self.bot.fetch_channel(int(payload.channel_id))
+            if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                self.log_error("Trying to remove message in non-text channel %d", payload.channel_id)
+                return
             try:
                 message = await channel.fetch_message(int(payload.message_id))
             except disnake.NotFound:
-                logger.exception("Unable to fetch message %d", payload.message_id)
+                self.log_error("Unable to fetch message %d from channel %d", payload.message_id, payload.channel_id)
                 return
 
         self.markov_training_sample.pop(message.id, None)
 
     # Utility functions --------------------------------------------------------
 
-    @staticmethod
-    def get_comments_for_rule34_post(post_id: int | str) -> tuple[str, str]:
+    def get_comments_for_rule34_post(self, post_id: int | str) -> tuple[str | None, str | None]:
         """Get a random comment from a rule34.xxx post.
 
         Parameters
@@ -253,62 +234,70 @@ class Spam(SlashbotCog):  # pylint: disable=too-many-instance-attributes,too-man
         -------
         comment: str
             The comment.
-        who: str
-            The name of the commenter.
 
         """
         try:
             request_url = f"https://api.rule34.xxx/index.php?page=dapi&s=comment&q=index&post_id={post_id}"
-            logger.debug("Rule34 API request to %s", request_url)
+            self.log_debug("Rule34 API request to %s", request_url)
             response = requests.get(request_url, timeout=5)
             response.raise_for_status()
         except requests.exceptions.Timeout:
-            logger.exception("Request to Rule34 API timed out")
-            return EMPTY_STRING, EMPTY_STRING
-        except requests.exceptions.RequestException:
-            logger.exception("Rule34 API returned %d: unable to get comments for post", response.status_code)
-            return EMPTY_STRING, EMPTY_STRING
+            self.log_exception("Request to Rule34 API timed out")
+            raise
+        except requests.exceptions.RequestException as exc:
+            status = getattr(exc.response, "status_code", "unknown")
+            self.log_exception("Rule34 API returned %d: unable to get comments for post", status)
+            raise
 
         # the response from the rule34 api is XML, so we have to try and parse that
         try:
             parsed_comment_xml = defusedxml.ElementTree.fromstring(response.content)
         except defusedxml.ElementTree.ParseError:
-            logger.exception("Unable to parse Rule34 comment API return from string into XML")
-            logger.debug("%s", response.content)
-            return EMPTY_STRING, EMPTY_STRING
+            self.log_exception("Unable to parse Rule34 comment API return from string into XML %s", response.content)
+            raise
 
         post_comments = [
             (element.get("body"), element.get("creator")) for element in parsed_comment_xml.iter("comment")
         ]
         if not post_comments:
-            logger.error("Unable to find any comments in parsed XML comments")
-            logger.debug("%s", response.content)
+            self.log_error("Unable to find any comments in parsed XML comments %s", response.content)
             return EMPTY_STRING, EMPTY_STRING
 
-        return random.choice(post_comments)  # noqa: S311
+        return random.choice(post_comments)
 
     # Scheduled tasks ----------------------------------------------------------
 
-    @tasks.loop(hours=6)
+    @tasks.loop(seconds=1)
     async def markov_chain_update_loop(self) -> None:
         """Get the bot to update the chain every 6 hours."""
-        if not Bot.get_config("ENABLE_MARKOV_TRAINING"):
+        if not BotSettings.markov.enable_markov_training:
             return
-        await update_markov_chain_for_model(
+        if not markov.MARKOV_MODEL:
+            return
+        sleep_time = calculate_seconds_until(-1, 3, 0, 1)
+        self.log_info(
+            "Waiting %d seconds/%d minutes/%.1f hours till markov chain update",
+            sleep_time,
+            sleep_time // 60,
+            sleep_time / 3600,
+        )
+        await asyncio.sleep(sleep_time)
+
+        await markov.update_markov_chain_for_model(
             None,
             markov.MARKOV_MODEL,
             list(self.markov_training_sample.values()),
-            Bot.get_config("CURRENT_MARKOV_CHAIN"),
+            BotSettings.markov.current_chain_location,
         )
         self.markov_training_sample.clear()
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up the entry function for load_extensions().
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

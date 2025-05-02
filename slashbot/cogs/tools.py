@@ -1,42 +1,39 @@
 """Commands for searching for stuff on the internet, and etc."""
 
-import logging
 import random
 
 import aiofiles
 import disnake
 import wolframalpha
-from botlib.config import Bot
 from disnake.ext import commands
 
-from slashbot.custom_cog import SlashbotCog
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
+from slashbot.settings import BotSettings
 
-logger = logging.getLogger(Bot.get_config("LOGGER_NAME"))
-COOLDOWN_USER = commands.BucketType.user
 
-
-class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
+class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
     """Query information from the internet."""
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        bot: commands.InteractionBot,
+        bot: CustomInteractionBot,
     ) -> None:
         """Initialize the bot.
 
         Parameters
         ----------
-        bot: commands.InteractionBot
+        bot: CustomInteractionBot
             The bot object.
 
         """
         super().__init__(bot)
-        self.worlfram_alpha_client = wolframalpha.Client(Bot.get_config("WOLFRAM_API_KEY"))
+        self.worlfram_alpha_client = wolframalpha.Client(BotSettings.keys.wolframalpha)
 
     # Commands -----------------------------------------------------------------
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="die_roll", description="roll a dice")
+    @slash_command_with_cooldown(name="die_roll", description="roll a dice")
     async def die_roll(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -54,8 +51,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         """
         await inter.response.send_message(f"{inter.author.name} rolled a {random.randint(1, int(num_sides))}.")
 
-    @commands.cooldown(Bot.get_config("COOLDOWN_RATE"), Bot.get_config("COOLDOWN_STANDARD"), COOLDOWN_USER)
-    @commands.slash_command(name="wolfram", description="ask wolfram a question")
+    @slash_command_with_cooldown(name="wolfram", description="ask wolfram a question")
     async def wolfram(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -83,7 +79,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         results = self.worlfram_alpha_client.query(question)
 
         if not results["@success"]:
-            async with aiofiles.open(Bot.get_config("BAD_WORDS_FILE"), encoding="utf-8") as file_in:
+            async with aiofiles.open(BotSettings.files.bad_words, encoding="utf-8") as file_in:
                 bad_word = (await file_in.readlines())[random.randint(0, num_solutions - 1)].strip()
             embed.add_field(
                 name=f"{question}",
@@ -96,8 +92,7 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         # only go through the first N results to add to embed
         results = list(results.pods)
         num_solutions += 1
-        if num_solutions > len(results):
-            num_solutions = len(results)
+        num_solutions = min(num_solutions, len(results))
 
         # The first result is the question, and the rest are the results
         for n_sol, result in enumerate(results[1:num_solutions]):
@@ -116,12 +111,12 @@ class Tools(SlashbotCog):  # pylint: disable=too-many-instance-attributes
         await inter.edit_original_message(embed=embed)
 
 
-def setup(bot: commands.InteractionBot) -> None:
+def setup(bot: CustomInteractionBot) -> None:
     """Set up cogs in this module.
 
     Parameters
     ----------
-    bot : commands.InteractionBot
+    bot : CustomInteractionBot
         The bot to pass to the cog.
 
     """

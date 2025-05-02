@@ -1,19 +1,55 @@
 """Module for general purpose message handling."""
 
-import logging
+from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
+from slashbot.core.logger import Logger
+from slashbot.settings import BotSettings
 
-from botlib.config import Bot
-from botlib.types import ApplicationCommandInteraction, Message
-from botlib.util import split_text_into_chunks
-from botlib.vision import Image, download_and_encode_image
+LOGGER = Logger()
+MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
 
-LOGGER = logging.getLogger(Bot.get_config("LOGGER_NAME"))
-MAX_MESSAGE_LENGTH = Bot.get_config("MAX_CHARS")
+
+def split_text_into_chunks(text: str, chunk_length: int) -> list:
+    """Split text into smaller chunks of a set length while preserving sentences.
+
+    Parameters
+    ----------
+    text : str
+        The input text to be split into chunks.
+    chunk_length : int, optional
+        The maximum length of each chunk. Default is 1648.
+
+    Returns
+    -------
+    list
+        A list of strings where each string represents a chunk of the text.
+
+    """
+    chunks = []
+    current_chunk = ""
+
+    while len(text) > 0:
+        # Find the nearest sentence end within the chunk length
+        end_index = min(len(text), chunk_length)
+        while end_index > 0 and text[end_index - 1] not in (".", "!", "?"):
+            end_index -= 1
+
+        # If no sentence end found, break at chunk length
+        if end_index == 0:
+            end_index = chunk_length
+
+        current_chunk += text[:end_index]
+        text = text[end_index:]
+
+        if len(text) == 0 or len(current_chunk) + len(text) > chunk_length:
+            chunks.append(current_chunk)
+            current_chunk = ""
+
+    return chunks
 
 
 async def send_message_to_channel(
     message: str, obj: Message | ApplicationCommandInteraction, *, dont_tag_user: bool = False
-) -> None:
+) -> Message | list[Message]:
     """Send a response to the provided message channel and author.
 
     Parameters
@@ -25,6 +61,11 @@ async def send_message_to_channel(
     dont_tag_user : bool
         Boolean to indicate if a user should be tagged or not. Default is
         False, which would tag the user.
+
+    Returns
+    -------
+    Message | list[Message]
+        The message or messages sent to the chat.
 
     """
     sent_messages = []
@@ -39,37 +80,3 @@ async def send_message_to_channel(
         sent_messages.append(sent_message)
 
     return sent_messages
-
-
-async def get_attached_images_from_message(message: Message) -> list[Image]:
-    """Retrieve the URLs for images attached or embedded in a Discord message.
-
-    Parameters
-    ----------
-    message : Message
-        The Discord message object to extract image URLs from.
-
-    Returns
-    -------
-    List[Image]
-        A list of `Image` dataclasses containing the URL, base64-encoded image
-        data and the MIME type of the image.
-
-    """
-    # DeepSeek doesn't support vision as of current implementation 28/01/2025
-    if Bot.get_config("AI_CHAT_CHAT_MODEL") in ["deepseek-chat", "deepseek-reasoner", "o3-mini"]:
-        LOGGER.debug("Vision not supported in current model %s", Bot.get_config("AI_CHAT_CHAT_MODEL"))
-        return []
-
-    image_urls = []  # Start off with empty list, which makes it clearer we will always returns a list
-    image_urls += [attachment.url for attachment in message.attachments if attachment.content_type.startswith("image/")]
-    image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image]
-    image_urls += [embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail]
-
-    result = []
-    for url in image_urls:
-        try:
-            result.append(download_and_encode_image(url))
-        except Exception:
-            LOGGER.exception("Failed to download image from %s", url)
-    return result

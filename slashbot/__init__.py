@@ -1,3 +1,3 @@
-"""Package containing the API client code."""
+"""Package containing code used in Slashbot commands."""
 
-__version__ = "2.4.0"
+__version__ = "2.8.0"
