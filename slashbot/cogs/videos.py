@@ -52,7 +52,7 @@ class Videos(CustomCog):
 
         """
         await inter.response.defer()
-        time = datetime.datetime.now(tz="Europe/London")  # type: ignore  # noqa: PGH003
+        time = datetime.datetime.now(tz="Europe/London")  # type: ignore
         if time.hour >= 12:  # noqa: PLR2004
             lee_videos = [
                 "data/videos/good_morning_afternoon_1.mp4",

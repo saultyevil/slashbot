@@ -50,7 +50,7 @@ class Logger:
         self._logger = logging.getLogger(BotSettings.logging.logger_name)
         self._prepend = prepend_msg.strip()
         self._append = append_msg.strip()
-        self._cog_name = f"[{self.__cog_name__}.Cog] " if hasattr(self, "__cog_name__") else ""  # type: ignore  # noqa: PGH003
+        self._cog_name = f"[{self.__cog_name__}.Cog] " if hasattr(self, "__cog_name__") else ""  # type: ignore
 
     def _log_impl(self, level: int, msg: str, *args: Any, exc_info: bool = False) -> None:
         formatted_msg = msg % args

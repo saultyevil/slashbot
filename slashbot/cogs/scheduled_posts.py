@@ -99,7 +99,7 @@ class ScheduledPosts(CustomCog):
     def order_scheduled_posts_by_soonest(self) -> None:
         """Order the schedulded posts by the soonest post."""
         self.calculate_time_until_post()
-        self.scheduled_posts.sort(key=lambda x: x.time_until_post)
+        self.scheduled_posts.sort(key=lambda x: x.time_until_post)  # type: ignore
 
     def get_scheduled_posts(self) -> None:
         """Read in the scheduled posts Json file."""
@@ -156,7 +156,7 @@ class ScheduledPosts(CustomCog):
 
             if post.markov_seed_word:
                 markov_sentence = generate_text_from_markov_chain(None, post.markov_seed_word, 1)
-                markov_sentence = markov_sentence.replace(  # type: ignore  # noqa: PGH003
+                markov_sentence = markov_sentence.replace(  # type: ignore
                     post.markov_seed_word,
                     f"**{post.markov_seed_word}**",
                 )

@@ -21,8 +21,8 @@ from disnake.ext import commands
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
-from slashbot.settings import BotSettings
 from slashbot.core.logger import setup_logging
+from slashbot.settings import BotSettings
 
 LAUNCH_TIME = time.time()
 
@@ -175,7 +175,7 @@ def initialise_bot(args: argparse.Namespace) -> CustomInteractionBot:
 
     for cog in bot.cogs.values():
         if args.debug:
-            cog.set_log_level(logging.DEBUG)  # type: ignore  # noqa: PGH003
+            cog.set_log_level(logging.DEBUG)  # type: ignore
 
     return bot
 

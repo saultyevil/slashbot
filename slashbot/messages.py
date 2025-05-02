@@ -113,39 +113,3 @@ def download_and_encode_image(url: str, *, encode_to_b64: bool = False) -> Visio
         encoded_image = mime_type = None
 
     return VisionImage(url, encoded_image, mime_type)
-
-
-# TODO: move into ai chat cog
-async def get_attached_images_from_message(message: Message) -> list[VisionImage]:
-    """Retrieve the URLs for images attached or embedded in a Discord message.
-
-    Parameters
-    ----------
-    message : Message
-        The Discord message object to extract image URLs from.
-
-    Returns
-    -------
-    List[Image]
-        A list of `Image` dataclasses containing the URL, base64-encoded image
-        data and the MIME type of the image.
-
-    """
-    image_urls = [
-        attachment.url
-        for attachment in message.attachments
-        if attachment.content_type and attachment.content_type.startswith("image/")
-    ]
-    image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image and embed.image.proxy_url]
-    image_urls += [
-        embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail and embed.thumbnail.proxy_url
-    ]
-
-    result = []
-    for url in image_urls:
-        try:
-            result.append(download_and_encode_image(url, encode_to_b64=not BotSettings.cogs.ai_chat.prefer_image_urls))
-        except Exception:  # noqa: BLE001
-            LOGGER.log_exception("Failed to download image from %s", url)
-
-    return result

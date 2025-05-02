@@ -229,7 +229,7 @@ class Weather(CustomCog):
             of the key provided in extract_type.
 
         """
-        location = self.geolocator.geocode(location, region="GB")  # type: ignore  # noqa: PGH003
+        location = self.geolocator.geocode(location, region="GB")  # type: ignore
         if not location:
             msg = f"{location} not found in Geocoding API"
             raise LocationNotFoundError(msg)

@@ -58,5 +58,5 @@ async def get_user_reminders(inter: ApplicationCommandInteraction, _: str) -> li
         A list of reminders
 
     """
-    user_reminders = await inter.bot.db.get_reminders_for_user(inter.author.id)  # type: ignore  # noqa: PGH003
+    user_reminders = await inter.bot.db.get_reminders_for_user(inter.author.id)  # type: ignore
     return [f"{reminder.date_iso}: {reminder.content}" for reminder in user_reminders]

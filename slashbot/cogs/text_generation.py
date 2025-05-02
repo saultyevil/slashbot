@@ -195,7 +195,7 @@ class TextGeneration(CustomCog):
 
         """
         await send_message_to_channel(
-            markov.generate_text_from_markov_chain(markov.MARKOV_MODEL, "?random", 1),  # type: ignore  # noqa: PGH003
+            markov.generate_text_from_markov_chain(markov.MARKOV_MODEL, "?random", 1),  # type: ignore
             message,
             dont_tag_user=dont_tag_user,  # In a DM, we won't @ the user
         )
@@ -506,7 +506,7 @@ class TextGeneration(CustomCog):
     async def chat_set_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        model_name: str = commands.Param(choices=SUPPORTED_MODELS, description="The model to use"),  # type: ignore  # noqa: PGH003
+        model_name: str = commands.Param(choices=SUPPORTED_MODELS, description="The model to use"),  # type: ignore
     ) -> None:
         """Set the AI model to use.
 
