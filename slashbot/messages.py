@@ -1,12 +1,7 @@
 """Module for general purpose message handling."""
 
-import base64
-
-import requests
-
 from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core.logger import Logger
-from slashbot.core.text_generation.models import VisionImage
 from slashbot.settings import BotSettings
 
 LOGGER = Logger()
@@ -85,31 +80,3 @@ async def send_message_to_channel(
         sent_messages.append(sent_message)
 
     return sent_messages
-
-
-# TODO: add to client base class
-def download_and_encode_image(url: str, *, encode_to_b64: bool = False) -> VisionImage:
-    """Download and encode an image for vision tasks with OpenAI.
-
-    Parameters
-    ----------
-    url : str
-        The URL of the image to encode.
-    encode_to_b64 : bool
-        Encode images to a base64 string, instead of returning the image url.
-
-    Returns
-    -------
-    VisionImage
-        The downloaded/encoded image
-
-    """
-    if encode_to_b64:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        mime_type = response.headers["Content-Type"]
-        encoded_image = base64.b64encode(response.content).decode("utf-8")
-    else:
-        encoded_image = mime_type = None
-
-    return VisionImage(url, encoded_image, mime_type)

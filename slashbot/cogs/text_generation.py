@@ -28,7 +28,7 @@ from slashbot.core.text_generation import (
     VisionVideo,
     read_in_prompt_json,
 )
-from slashbot.messages import download_and_encode_image, send_message_to_channel
+from slashbot.messages import send_message_to_channel
 from slashbot.responses import is_reply_to_slash_command_response
 from slashbot.settings import BotSettings
 
@@ -225,16 +225,17 @@ class TextGeneration(CustomCog):
             embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail and embed.thumbnail.proxy_url
         ]
 
-        result = []
+        images = []
         for url in image_urls:
-            try:
-                result.append(
-                    download_and_encode_image(url, encode_to_b64=not BotSettings.cogs.ai_chat.prefer_image_urls)
-                )
-            except Exception:  # noqa: BLE001
-                self.log_exception("Failed to download image from %s", url)
+            image = VisionImage(url)
+            if not BotSettings.cogs.ai_chat.prefer_image_urls:
+                try:
+                    await image.download_and_encode()
+                except Exception:  # noqa: BLE001
+                    self.log_exception("Failed to download image from %s", url)
+            images.append(image)
 
-        return result
+        return images
 
     async def _get_attached_videos_from_message(self, message: Message) -> list[VisionVideo]:
         """Retrieve the URLs for YouTube videos embedded in a Discord message.
