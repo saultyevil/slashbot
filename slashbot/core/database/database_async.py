@@ -28,7 +28,7 @@ class Database(Logger):
 
         """
         super().__init__()
-        self._filename = Path(filepath or BotSettings.files.database)
+        self._filename = Path(filepath or BotSettings.file_locations.database)
         self._lock = asyncio.Lock()
         self._tables = {self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}
 
@@ -93,7 +93,7 @@ class Database(Logger):
             An opened and initialised database.
 
         """
-        filepath = Path(filepath or BotSettings.files.database)
+        filepath = Path(filepath or BotSettings.file_locations.database)
         self = cls(filepath=filepath)
         await self._load_database()
 

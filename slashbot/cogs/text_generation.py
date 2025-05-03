@@ -89,7 +89,7 @@ class TextGeneration(CustomCog):
         self._profiler_logger.addHandler(file_handler)
 
     def _start_profiler(self) -> None:
-        if not BotSettings.cogs.ai_chat.enable_profiling:
+        if not BotSettings.cogs.text_generation.enable_profiling:
             return
         if self._profiler.is_running:
             self._profiler.stop()
@@ -97,7 +97,7 @@ class TextGeneration(CustomCog):
         self._profiler.start()
 
     def _stop_profiler(self) -> None:
-        if not BotSettings.cogs.ai_chat.enable_profiling:
+        if not BotSettings.cogs.text_generation.enable_profiling:
             return
         self._profiler.stop()
         profiler_output = self._profiler.output_text()
@@ -122,7 +122,7 @@ class TextGeneration(CustomCog):
             extra_print = f"{obj.channel.id}"
 
         self.channel_histories[history_id] = AIChatSummary(
-            token_window_size=BotSettings.cogs.ai_chat.token_window_size,
+            token_window_size=BotSettings.cogs.text_generation.token_window_size,
             extra_print=extra_print,
         )
         return self.channel_histories[history_id]
@@ -167,9 +167,9 @@ class TextGeneration(CustomCog):
         time_difference = (current_time - user_cooldown.last_interaction).seconds
 
         # Check if exceeded rate limit
-        if user_cooldown.count > BotSettings.cogs.ai_chat.response_rate_limit:
+        if user_cooldown.count > BotSettings.cogs.text_generation.response_rate_limit:
             # If exceeded rate limit, check if cooldown period has passed
-            if time_difference > BotSettings.cogs.ai_chat.rate_limit_interval:
+            if time_difference > BotSettings.cogs.text_generation.rate_limit_interval:
                 # reset count and update last_interaction time
                 user_cooldown.count = 1
                 user_cooldown.last_interaction = current_time
@@ -228,7 +228,7 @@ class TextGeneration(CustomCog):
         images = []
         for url in image_urls:
             image = VisionImage(url)
-            if not BotSettings.cogs.ai_chat.prefer_image_urls:
+            if not BotSettings.cogs.text_generation.prefer_image_urls:
                 try:
                     await image.download_and_encode()
                 except Exception:  # noqa: BLE001
@@ -434,7 +434,7 @@ class TextGeneration(CustomCog):
             await self._respond_to_user_prompt(message, message_in_dm=message_in_dm)
             return
 
-        if random.random() < BotSettings.cogs.ai_chat.random_response_chance:
+        if random.random() < BotSettings.cogs.text_generation.random_response_chance:
             await self._respond_with_random_llm_response(message)
 
     # Commands -----------------------------------------------------------------

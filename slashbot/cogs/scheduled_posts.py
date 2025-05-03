@@ -65,7 +65,7 @@ class ScheduledPosts(CustomCog):
 
     def get_scheduled_posts(self) -> None:
         """Read in the scheduled posts Json file."""
-        with Path.open(BotSettings.files.scheduled_posts, encoding="utf-8") as file_in:
+        with Path.open(BotSettings.file_locations.scheduled_posts, encoding="utf-8") as file_in:
             posts_data = yaml.safe_load(file_in)
         for post in posts_data:
             try:
@@ -73,13 +73,15 @@ class ScheduledPosts(CustomCog):
             except TypeError as e:
                 self.log_warning("Post '%s' is not valid: %s", post.get("title", "unknown"), e)
                 continue
-        self.log_info("%d scheduled posts loaded from %s", len(self.scheduled_posts), BotSettings.files.scheduled_posts)
+        self.log_info(
+            "%d scheduled posts loaded from %s", len(self.scheduled_posts), BotSettings.file_locations.scheduled_posts
+        )
         self.order_scheduled_posts_by_soonest()
 
     def update_posts_on_modify(self) -> None:
         """Reload the posts on file modify."""
         slashbot.watchers.FILE_OBSERVER.schedule(
-            ScheduledPostWatcher(self), path=str(BotSettings.files.scheduled_posts.parent.absolute())
+            ScheduledPostWatcher(self), path=str(BotSettings.file_locations.scheduled_posts.parent.absolute())
         )
 
     # Task ---------------------------------------------------------------------

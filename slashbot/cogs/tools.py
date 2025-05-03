@@ -79,7 +79,7 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
         results = self.worlfram_alpha_client.query(question)
 
         if not results["@success"]:
-            async with aiofiles.open(BotSettings.files.bad_words, encoding="utf-8") as file_in:
+            async with aiofiles.open(BotSettings.file_locations.bad_words, encoding="utf-8") as file_in:
                 bad_word = (await file_in.readlines())[random.randint(0, num_solutions - 1)].strip()
             embed.add_field(
                 name=f"{question}",

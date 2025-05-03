@@ -16,7 +16,7 @@ class SpellcheckSettings:
 
 
 @dataclass
-class AIChatSettings:
+class TextGenerationSettings:
     """Settings for LLM text generation."""
 
     token_window_size: int
@@ -25,7 +25,7 @@ class AIChatSettings:
     model_top_p: float
     model_frequency_penalty: float
     model_presence_penalty: float
-    default_llm_model: str
+    default_model: str
     random_response_chance: float
     random_response_use_n_messages: int
     response_rate_limit: int
@@ -39,7 +39,7 @@ class CogSettings:
     """Cog settings."""
 
     spellcheck: SpellcheckSettings
-    ai_chat: AIChatSettings
+    text_generation: TextGenerationSettings
 
 
 @dataclass
@@ -87,7 +87,7 @@ class DiscordSettings:
 
 
 @dataclass
-class FilesSettings:
+class FileLocations:
     """File locations and settings."""
 
     database: Path
@@ -136,7 +136,7 @@ class Settings:
     cogs: CogSettings
     cooldown: CommandCooldownSettings
     discord: DiscordSettings
-    files: FilesSettings
+    file_locations: FileLocations
     logging: LoggingSettings
     markov: MarkovSettings
     keys: KeyStore
@@ -153,14 +153,14 @@ class Settings:
             servers=data["cogs"]["spellcheck"]["servers"],
             custom_dictionary=data["cogs"]["spellcheck"]["custom_dictionary"],
         )
-        ai_chat = AIChatSettings(
+        text_generation = TextGenerationSettings(
             token_window_size=data["cogs"]["ai_chat"]["token_window_size"],
             max_output_tokens=data["cogs"]["ai_chat"]["max_output_tokens"],
             model_temperature=data["cogs"]["ai_chat"]["model_temperature"],
             model_top_p=data["cogs"]["ai_chat"]["model_top_p"],
             model_frequency_penalty=data["cogs"]["ai_chat"]["model_frequency_penalty"],
             model_presence_penalty=data["cogs"]["ai_chat"]["model_presence_penalty"],
-            default_llm_model=data["cogs"]["ai_chat"]["chat_model"],
+            default_model=data["cogs"]["ai_chat"]["chat_model"],
             random_response_chance=data["cogs"]["ai_chat"]["random_response_chance"],
             response_rate_limit=data["cogs"]["ai_chat"]["response_rate_limit"],
             random_response_use_n_messages=data["cogs"]["ai_chat"]["random_response_use_n_messages"],
@@ -168,7 +168,7 @@ class Settings:
             enable_profiling=data["cogs"]["ai_chat"]["enable_profiling"],
             prefer_image_urls=data["cogs"]["ai_chat"]["prefer_image_urls"],
         )
-        cogs = CogSettings(spellcheck=spellcheck, ai_chat=ai_chat)
+        cogs = CogSettings(spellcheck=spellcheck, text_generation=text_generation)
         cooldown = CommandCooldownSettings(
             rate=data["cooldown"]["rate"],
             standard=data["cooldown"]["standard"],
@@ -179,7 +179,7 @@ class Settings:
             max_chars=data["discord"]["max_chars"],
             development_servers=data["discord"]["development_servers"],
         )
-        files = FilesSettings(
+        files = FileLocations(
             database=Path(data["files"]["database"]).absolute(),
             bad_words=Path(data["files"]["bad_words"]).absolute(),
             god_words=Path(data["files"]["god_words"]).absolute(),
@@ -200,7 +200,7 @@ class Settings:
             cogs=cogs,
             cooldown=cooldown,
             discord=discord,
-            files=files,
+            file_locations=files,
             logging=logging,
             markov=markov,
             keys=keys,

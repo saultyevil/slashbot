@@ -39,8 +39,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         self.system_prompt = kwargs.get("system_prompt", self.DEFAULT_SYSTEM_PROMPT)
         self.system_prompt_name = kwargs.get("system_prompt_name", "default")
         self.token_size = self.count_tokens_for_message(self.system_prompt)
-        self._token_window_size = BotSettings.cogs.ai_chat.token_window_size
-        self._max_completion_tokens = BotSettings.cogs.ai_chat.max_output_tokens
+        self._token_window_size = BotSettings.cogs.text_generation.token_window_size
+        self._max_completion_tokens = BotSettings.cogs.text_generation.max_output_tokens
         self.init_client(self.model_name)
 
     # --------------------------------------------------------------------------

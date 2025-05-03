@@ -13,12 +13,12 @@ class TextGenerator(Logger):
     """
 
     SUPPORTED_OPENAI_MODELS = OpenAIClient.SUPPORTED_MODELS
-    SUPPORTED_CLAUDE_MODELS = ()
     SUPPORTED_GOOGLE_MODELS = GeminiClient.SUPPORTED_MODELS
-    SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS + SUPPORTED_CLAUDE_MODELS + SUPPORTED_GOOGLE_MODELS
+    SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS + SUPPORTED_GOOGLE_MODELS
     VISION_MODELS = (*OpenAIClient.VISION_MODELS, *GeminiClient.VISION_MODELS)
     SEARCH_MODELS = (*OpenAIClient.SEARCH_MODELS, *GeminiClient.SEARCH_MODELS)
     AUDIO_MODELS = (*OpenAIClient.AUDIO_MODELS, *GeminiClient.AUDIO_MODELS)
+    VIDEO_MODELS = (*OpenAIClient.VIDEO_MODELS, *GeminiClient.VIDEO_MODELS)
 
     def __init__(self, *, model_name: str | None = None, extra_print: str = "") -> None:
         """Initialise a TextGeneratorLLM with default values.
@@ -32,7 +32,7 @@ class TextGenerator(Logger):
 
         """
         super().__init__(prepend_msg=extra_print)
-        model: str = model_name or BotSettings.cogs.ai_chat.default_llm_model
+        model: str = model_name or BotSettings.cogs.text_generation.default_model
         self._extra_print: str = extra_print
         self.set_model(model)
 
