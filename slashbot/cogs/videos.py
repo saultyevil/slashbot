@@ -2,6 +2,7 @@
 
 import datetime
 import random
+from zoneinfo import ZoneInfo
 
 import disnake
 
@@ -52,7 +53,7 @@ class Videos(CustomCog):
 
         """
         await inter.response.defer()
-        time = datetime.datetime.now(tz="Europe/London")  # type: ignore
+        time = datetime.datetime.now(ZoneInfo("Europe/London"))
         if time.hour >= 12:  # noqa: PLR2004
             lee_videos = [
                 "data/videos/good_morning_afternoon_1.mp4",
