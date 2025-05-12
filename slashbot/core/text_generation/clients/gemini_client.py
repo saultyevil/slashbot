@@ -154,6 +154,11 @@ class GeminiClient(TextGenerationAbstractClient):
             raise GenerationFailureError(msg, code=request.status_code)
 
         request = request.json()
+
+        if "totalTokens" not in request:
+            msg = f"totalTokens not in response from countToken API: {request}"
+            raise GenerationFailureError(msg, code=request.status_code)
+
         return request["totalTokens"]
 
     def create_request_json(
