@@ -104,7 +104,7 @@ class GeminiClient(TextGenerationAbstractClient):
     def _make_user_content(
         self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
     ) -> dict:
-        return {"role": "user", "parts": [*text_content, *image_content, *video_content]}
+        return {"role": "user", "parts": [*video_content, *image_content, *text_content]}
 
     def _make_video_content(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
         if self.model_name not in self.VIDEO_MODELS:
