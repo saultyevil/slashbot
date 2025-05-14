@@ -220,10 +220,7 @@ class TextGeneration(CustomCog):
             for attachment in message.attachments
             if attachment.content_type and attachment.content_type.startswith("image/")
         ]
-        image_urls += [embed.image.proxy_url for embed in message.embeds if embed.image and embed.image.proxy_url]
-        image_urls += [
-            embed.thumbnail.proxy_url for embed in message.embeds if embed.thumbnail and embed.thumbnail.proxy_url
-        ]
+        image_urls += [embed.url for embed in message.embeds if embed.type == "image" and embed.url]
 
         images = []
         for url in image_urls:
@@ -235,10 +232,15 @@ class TextGeneration(CustomCog):
                     self.log_exception("Failed to download image from %s", url)
             images.append(image)
 
+        self.log_debug("Found %s images in message: ", len(images))
+
         return images
 
     async def _get_attached_videos_from_message(self, message: Message) -> list[VisionVideo]:
         """Retrieve the URLs for YouTube videos embedded in a Discord message.
+
+        Note that we won't deal with video attachments, because then we have
+        to download the image and encode to b64, which is a bit costly.
 
         Parameters
         ----------
@@ -251,8 +253,7 @@ class TextGeneration(CustomCog):
             A list of `VisionVideo` dataclasses containing the URL of the video.
 
         """
-        regex = re.compile(r"https?://(?:www\.)?youtube\.com/watch\?v=[\w-]+")
-        video_urls = regex.findall(message.content)
+        video_urls = [embed.url for embed in message.embeds if embed.type == "video" and embed.url]
         self.log_debug("Found %s video URLs in message: %s", len(video_urls), video_urls)
 
         return [VisionVideo(url) for url in set(video_urls)]

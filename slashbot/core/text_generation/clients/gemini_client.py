@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 import httpx
@@ -60,7 +61,22 @@ class GeminiClient(TextGenerationAbstractClient):
         self._count_tokens_url = ""
         super().__init__(model_name, **kwargs)
 
+    def _contains_youtube(self, content: dict) -> bool:
+        # look for YouTube URLs in text parts
+        for part in content.get("parts", []):
+            text = part.get("text", "")
+            if re.search(r"https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[\w-]+", text):
+                return True
+        # look for YouTube in file_data URIs
+        uri = content.get("file_data", {}).get("file_uri", "")
+        return "youtube.com" in uri or "youtu.be" in uri
+
     def _add_to_contents(self, new_content: dict) -> None:
+        # if new_content has a youtube link, remove existing one first as Gemini
+        # only allows us to have one link at once...
+        if self._contains_youtube(new_content):
+            self.log_debug("Removing old YouTube URL from context")
+            self._context["contents"] = [c for c in self._context["contents"] if not self._contains_youtube(c)]
         self._context["contents"].append(new_content)
 
     def _make_assistant_text_content(self, message: str) -> dict:
@@ -267,10 +283,10 @@ class GeminiClient(TextGenerationAbstractClient):
             The (correctly) formatted content to send to the API.
 
         """
-        self.log_debug("Gemini content: %s", content)
         if not self._base_url:
             self.init_client(self.model_name)
 
+        self.log_debug("Sending request to Gemini")
         async with httpx.AsyncClient(timeout=self._async_timeout) as client:
             request = await client.post(
                 url=self._base_url,
@@ -279,11 +295,13 @@ class GeminiClient(TextGenerationAbstractClient):
             )
 
         if request.status_code != httpx.codes.OK:
+            self.log_error("%s", request.json())
             self.log_exception("Gemini API request failed: %s", request.json()["error"]["message"])
             msg = f"Gemini API request failed with {request.json()['error']['message']}"
             raise GenerationFailureError(msg, code=request.status_code)
 
         request = request.json()
+        self.log_debug("Response usage: %s tokens", request["usageMetadata"]["totalTokenCount"])
 
         return TextGenerationResponse(
             request["candidates"][0]["content"]["parts"][0]["text"],
