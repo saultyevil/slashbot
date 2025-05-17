@@ -23,6 +23,19 @@ class OpenAIClient(TextGenerationAbstractClient):
 
     # --------------------------------------------------------------------------
 
+    def __len__(self) -> int:
+        """Get the length of the conversation, excluding the system prompt.
+
+        Returns
+        -------
+        int
+            The length of the conversation.
+
+        """
+        return len(self._context[1:])
+
+    # --------------------------------------------------------------------------
+
     def _make_assistant_text_content(self, message: str) -> dict:
         return {"role": "assistant", "content": message}
 

@@ -1,6 +1,8 @@
 from abc import ABCMeta, abstractmethod
+from imaplib import Int2AP
 from textwrap import dedent
 from typing import Any
+from xml.sax import parseString
 
 from slashbot.core.logger import Logger
 from slashbot.core.text_generation import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
@@ -43,18 +45,9 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         self._max_completion_tokens = BotSettings.cogs.text_generation.max_output_tokens
         self.init_client(self.model_name)
 
-    # --------------------------------------------------------------------------
-
+    @abstractmethod
     def __len__(self) -> int:
-        """Get the length of the conversation, excluding the system prompt.
-
-        Returns
-        -------
-        int
-            The length of the conversation.
-
-        """
-        return len(self._context[1:])
+        """Get the length of the conversation."""
 
     # --------------------------------------------------------------------------
 

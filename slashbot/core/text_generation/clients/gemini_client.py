@@ -61,6 +61,17 @@ class GeminiClient(TextGenerationAbstractClient):
         self._count_tokens_url = ""
         super().__init__(model_name, **kwargs)
 
+    def __len__(self) -> int:
+        """Get the length of the conversation, excluding the system prompt.
+
+        Returns
+        -------
+        int
+            The length of the conversation.
+
+        """
+        return len(self._context["contents"])
+
     def _contains_youtube(self, content: dict) -> bool:
         # look for YouTube URLs in text parts
         for part in content.get("parts", []):
