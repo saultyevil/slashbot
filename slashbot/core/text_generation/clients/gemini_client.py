@@ -142,19 +142,24 @@ class GeminiClient(TextGenerationAbstractClient):
             messages = {"contents": [{"parts": [{"text": messages}]}]}
 
         with httpx.Client(timeout=self._async_timeout) as client:
-            request = client.post(
+            response = client.post(
                 url=self._count_tokens_url,
                 json=messages,
                 headers={"Content-Type": "application/json"},
             )
 
-        if request.status_code != httpx.codes.OK:
+        if response.status_code != httpx.codes.OK:
             self.log_debug("Request content: %s", messages)
-            msg = f"Gemini API request failed with {request.json()['error']['message']}"
-            raise GenerationFailureError(msg, code=request.status_code)
+            msg = f"Gemini API request failed with {response.json()['error']['message']}"
+            raise GenerationFailureError(msg, code=response.status_code)
 
-        request = request.json()
-        return request["totalTokens"]
+        response = response.json()
+        try:
+            return response["totalTokens"]
+        except KeyError as exc:
+            self.log_error("totalTokens not found in countTokens API. Response: %s", response)
+            msg = "Gemini API request failed: 'totalTokens' not found in response"
+            raise GenerationFailureError(msg, code=response.status_code) from exc
 
     def create_request_json(
         self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
