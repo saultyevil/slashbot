@@ -4,6 +4,8 @@ from typing import Any
 
 from slashbot.settings import BotSettings
 
+USER_FACING_LOGGER = "user-facing-log"
+
 
 def setup_logging() -> None:
     """Set up log formatting.
@@ -16,18 +18,33 @@ def setup_logging() -> None:
         "%(asctime)s | %(levelname)8s | %(message)s",
         "%Y-%m-%d %H:%M:%S",
     )
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    console_handler.setLevel(logging.INFO)
-    logger.addHandler(console_handler)
-    file_handler = RotatingFileHandler(
-        filename=BotSettings.logging.log_location,
+
+    debug_console_handler = logging.StreamHandler()
+    debug_console_handler.setFormatter(formatter)
+    debug_console_handler.setLevel(logging.DEBUG)
+    debug_console_handler.set_name("debug-console")
+    logger.addHandler(debug_console_handler)
+
+    debug_file_handler = RotatingFileHandler(
+        filename=BotSettings.logging.debug_log_location,
         encoding="utf-8",
         maxBytes=int(10 * 1e6),  # 10 MB
         backupCount=2,
     )
+    debug_file_handler.setFormatter(formatter)
+    debug_file_handler.setLevel(logging.DEBUG)
+    debug_file_handler.set_name("debug-file-handler")
+    logger.addHandler(debug_file_handler)
+
+    file_handler = RotatingFileHandler(
+        filename=BotSettings.logging.log_location,
+        encoding="utf-8",
+        maxBytes=int(1e6),  # 1 MB
+        backupCount=2,
+    )
     file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.INFO)
+    file_handler.set_name(USER_FACING_LOGGER)
     logger.addHandler(file_handler)
 
     logger.info("Loaded config file %s", BotSettings.config_file)
@@ -146,4 +163,5 @@ class Logger:
 
         """
         for handler in self._logger.handlers:
-            handler.setLevel(level)
+            if handler.name != USER_FACING_LOGGER:
+                handler.setLevel(level)

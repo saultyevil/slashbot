@@ -101,6 +101,7 @@ class LoggingSettings:
     """Logfile settings."""
 
     log_location: str = "logs/slashbot.log"
+    debug_log_location: str = "logs/slashbot_debug.log"
     logger_name: str = "slashbot"
 
 
