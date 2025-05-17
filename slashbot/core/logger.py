@@ -7,6 +7,35 @@ from slashbot.settings import BotSettings
 USER_FACING_LOGGER = "user-facing-log"
 
 
+class ConditionalFormatter(logging.Formatter):
+    """Custom log formatter that adjusts format based on log level.
+
+    For log records with level WARNING or higher, the output includes the log
+    level name. For lower levels (e.g. DEBUG, INFO), the log level is omitted
+    from the output.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format the specified log record.
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            The log record to be formatted.
+
+        Returns
+        -------
+        str
+            The formatted log message.
+
+        """
+        if record.levelno >= logging.WARNING:
+            self._style._fmt = "%(levelname)s | %(message)s"  # noqa: SLF001
+        else:
+            self._style._fmt = "%(message)s"  # noqa: SLF001
+        return super().format(record)
+
+
 def setup_logging() -> None:
     """Set up log formatting.
 
@@ -42,7 +71,7 @@ def setup_logging() -> None:
         maxBytes=int(1e6),  # 1 MB
         backupCount=2,
     )
-    file_handler.setFormatter(formatter)
+    file_handler.setFormatter(ConditionalFormatter("%(levelname)s | %(message)s"))
     file_handler.setLevel(logging.INFO)
     file_handler.set_name(USER_FACING_LOGGER)
     logger.addHandler(file_handler)
