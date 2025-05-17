@@ -4,7 +4,6 @@ import asyncio
 import datetime
 import logging
 import random
-import re
 from collections import defaultdict
 from dataclasses import dataclass
 from textwrap import shorten

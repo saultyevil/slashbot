@@ -1,8 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from imaplib import Int2AP
 from textwrap import dedent
 from typing import Any
-from xml.sax import parseString
 
 from slashbot.core.logger import Logger
 from slashbot.core.text_generation import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
