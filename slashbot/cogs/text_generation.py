@@ -359,7 +359,7 @@ class TextGeneration(CustomCog):
             The message to respond to
 
         """
-        prompt = read_in_prompt("data/prompts/_random-response.json")
+        prompt = read_in_prompt("data/prompts/_random-response.yaml")
         chat = self._get_chat(message)
         content = chat.create_request_json(TextGenerationInput(message.clean_content), system_prompt=prompt.prompt)
         llm_response = await chat.send_raw_request(content)
