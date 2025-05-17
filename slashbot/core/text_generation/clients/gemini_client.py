@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 import httpx
@@ -60,7 +61,22 @@ class GeminiClient(TextGenerationAbstractClient):
         self._count_tokens_url = ""
         super().__init__(model_name, **kwargs)
 
+    def _contains_youtube(self, content: dict) -> bool:
+        # look for YouTube URLs in text parts
+        for part in content.get("parts", []):
+            text = part.get("text", "")
+            if re.search(r"https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[\w-]+", text):
+                return True
+        # look for YouTube in file_data URIs
+        uri = content.get("file_data", {}).get("file_uri", "")
+        return "youtube.com" in uri or "youtu.be" in uri
+
     def _add_to_contents(self, new_content: dict) -> None:
+        # Remove youtube links (the only supported video understanding) from
+        # the context, as it drastically increases the latency of responses
+        self._context["contents"] = [c for c in self._context["contents"] if not self._contains_youtube(c)]
+        # But we still want to include videos in the new context for the request.
+        # It will be removed before the next request in the line above
         self._context["contents"].append(new_content)
 
     def _make_assistant_text_content(self, message: str) -> dict:
@@ -88,7 +104,7 @@ class GeminiClient(TextGenerationAbstractClient):
     def _make_user_content(
         self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
     ) -> dict:
-        return {"role": "user", "parts": [*text_content, *image_content, *video_content]}
+        return {"role": "user", "parts": [*video_content, *image_content, *text_content]}
 
     def _make_video_content(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
         if self.model_name not in self.VIDEO_MODELS:
@@ -150,16 +166,17 @@ class GeminiClient(TextGenerationAbstractClient):
 
         if response.status_code != httpx.codes.OK:
             self.log_debug("Request content: %s", messages)
+            status_code = response.status_code
             msg = f"Gemini API request failed with {response.json()['error']['message']}"
+            raise GenerationFailureError(msg, code=status_code)
+
+        response_json = response.json()
+
+        if "totalTokens" not in response_json:
+            msg = f"totalTokens not in response from countToken API: {response}"
             raise GenerationFailureError(msg, code=response.status_code)
 
-        response = response.json()
-        try:
-            return response["totalTokens"]
-        except KeyError as exc:
-            self.log_error("totalTokens not found in countTokens API. Response: %s", response)
-            msg = "Gemini API request failed: 'totalTokens' not found in response"
-            raise GenerationFailureError(msg, code=response.status_code) from exc
+        return response_json["totalTokens"]
 
     def create_request_json(
         self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
@@ -267,27 +284,30 @@ class GeminiClient(TextGenerationAbstractClient):
             The (correctly) formatted content to send to the API.
 
         """
-        self.log_debug("Gemini content: %s", content)
         if not self._base_url:
             self.init_client(self.model_name)
 
+        self.log_debug("Sending request to Gemini")
         async with httpx.AsyncClient(timeout=self._async_timeout) as client:
-            request = await client.post(
+            response = await client.post(
                 url=self._base_url,
                 json=content,
                 headers={"Content-Type": "application/json"},
             )
 
-        if request.status_code != httpx.codes.OK:
-            self.log_exception("Gemini API request failed: %s", request.json()["error"]["message"])
-            msg = f"Gemini API request failed with {request.json()['error']['message']}"
-            raise GenerationFailureError(msg, code=request.status_code)
+        if response.status_code != httpx.codes.OK:
+            self.log_error("%s", response.json())
+            self.log_exception("Gemini API request failed: %s", response.json()["error"]["message"])
+            status_code = response.status_code
+            msg = f"Gemini API request failed with {response.json()['error']['message']}"
+            raise GenerationFailureError(msg, code=status_code)
 
-        request = request.json()
+        response = response.json()
+        self.log_debug("Response usage: %s tokens", response["usageMetadata"]["totalTokenCount"])
 
         return TextGenerationResponse(
-            request["candidates"][0]["content"]["parts"][0]["text"],
-            request["usageMetadata"]["totalTokenCount"],
+            response["candidates"][0]["content"]["parts"][0]["text"],
+            response["usageMetadata"]["totalTokenCount"],
         )
 
     def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
