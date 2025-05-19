@@ -184,7 +184,7 @@ class GeminiClient(TextGenerationAbstractClient):
         response_json = response.json()
 
         if "totalTokens" not in response_json:
-            msg = f"totalTokens not in response from countToken API: {response}"
+            msg = f"totalTokens not in response from countToken API: {response_json}"
             raise GenerationFailureError(msg, code=response.status_code)
 
         return response_json["totalTokens"]
