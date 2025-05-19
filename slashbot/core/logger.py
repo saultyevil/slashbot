@@ -30,9 +30,9 @@ class ConditionalFormatter(logging.Formatter):
 
         """
         if record.levelno >= logging.WARNING:
-            self._style._fmt = "%(levelname)s | %(message)s"  # noqa: SLF001
+            self._style._fmt = "%(asctime)s | %(levelname)s | %(message)s"  # noqa: SLF001
         else:
-            self._style._fmt = "%(message)s"  # noqa: SLF001
+            self._style._fmt = "%(asctime)s | %(message)s"  # noqa: SLF001
         return super().format(record)
 
 
@@ -71,7 +71,12 @@ def setup_logging() -> None:
         maxBytes=int(1e6),  # 1 MB
         backupCount=2,
     )
-    file_handler.setFormatter(ConditionalFormatter("%(levelname)s | %(message)s"))
+    file_handler.setFormatter(
+        ConditionalFormatter(
+            "%(asctime)s | %(levelname)s | %(message)s",
+            "%Y-%m-%d %H:%M:%S",
+        ),
+    )
     file_handler.setLevel(logging.INFO)
     file_handler.set_name(USER_FACING_LOGGER)
     logger.addHandler(file_handler)
