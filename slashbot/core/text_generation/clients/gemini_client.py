@@ -175,6 +175,8 @@ class GeminiClient(TextGenerationAbstractClient):
                 headers={"Content-Type": "application/json"},
             )
 
+        self.log_debug("Gemini countTokens response: %s", response.json())
+
         if response.status_code != httpx.codes.OK:
             self.log_debug("Request content: %s", messages)
             status_code = response.status_code
