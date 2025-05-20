@@ -72,20 +72,24 @@ class GeminiClient(TextGenerationAbstractClient):
         """
         return len(self._context["contents"])
 
-    def _contains_youtube(self, content: dict) -> bool:
-        # look for YouTube URLs in text parts
+    def _content_contains_youtube_video_type(self, content: dict) -> bool:
+        # Note that this will trigger for both the model and user content
         for part in content.get("parts", []):
-            text = part.get("text", "")
-            if re.search(r"https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[\w-]+", text):
-                return True
-        # look for YouTube in file_data URIs
-        uri = content.get("file_data", {}).get("file_uri", "")
-        return "youtube.com" in uri or "youtu.be" in uri
+            if "file_data" in part:
+                uri = part.get("file_data", {}).get("file_uri", "")
+                found = "youtube.com" in uri or "youtu.be" in uri
+                if found:
+                    self.log_debug("Found YT link in contents")
+                return found
+        return False
 
     def _add_to_contents(self, new_content: dict) -> None:
         # Remove youtube links (the only supported video understanding) from
         # the context, as it drastically increases the latency of responses
-        self._context["contents"] = [c for c in self._context["contents"] if not self._contains_youtube(c)]
+        self._context["contents"] = [
+            content for content in self._context["contents"] if not self._content_contains_youtube_video_type(content)
+        ]
+
         # But we still want to include videos in the new context for the request.
         # It will be removed before the next request in the line above
         self._context["contents"].append(new_content)
@@ -174,8 +178,6 @@ class GeminiClient(TextGenerationAbstractClient):
                 json=messages,
                 headers={"Content-Type": "application/json"},
             )
-
-        self.log_debug("Gemini countTokens response: %s", response.json())
 
         if response.status_code != httpx.codes.OK:
             self.log_debug("Request content: %s", messages)
