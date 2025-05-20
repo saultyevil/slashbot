@@ -402,6 +402,8 @@ class TextGeneration(CustomCog):
     async def _append_to_history(self, message: disnake.Message) -> None:
         if message.type in [disnake.MessageType.application_command]:
             return
+        if not message.content:
+            return
 
         clean_message = message.clean_content.replace(f"@{self.bot.user.name}", "[directed at me]")
         for user in message.mentions:
