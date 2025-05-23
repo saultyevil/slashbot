@@ -72,14 +72,10 @@ class GeminiClient(TextGenerationAbstractClient):
         return len(self._context["contents"])
 
     def _content_contains_youtube_video_type(self, content: dict) -> bool:
-        # Note that this will trigger for both the model and user content
         for part in content.get("parts", []):
             if "file_data" in part:
-                uri = part.get("file_data", {}).get("file_uri", "")
-                found = "youtube.com" in uri or "youtu.be" in uri
-                if found:
-                    self.log_debug("Found YT link in contents")
-                return found
+                uri = part["file_data"].get("file_uri", "")
+                return "youtube.com" in uri or "youtu.be" in uri
         return False
 
     def _add_to_contents(self, new_content: dict) -> None:
