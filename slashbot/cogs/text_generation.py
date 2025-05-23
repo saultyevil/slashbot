@@ -86,6 +86,7 @@ class TextGeneration(CustomCog):
         self._profiler_logger = logging.getLogger("ProfilerLogger")
         self._profiler_logger.handlers.clear()
         self._profiler_logger.addHandler(file_handler)
+        self._profiler_logger.setLevel(logging.INFO)
 
     def _start_profiler(self) -> None:
         if not BotSettings.cogs.text_generation.enable_profiling:
