@@ -1,3 +1,4 @@
+import logging
 from abc import ABCMeta, abstractmethod
 from textwrap import dedent
 from typing import Any
@@ -43,6 +44,11 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         self._max_completion_tokens = BotSettings.cogs.text_generation.max_output_tokens
         self.init_client(self.model_name)
 
+        handler = logging.FileHandler(f"logs/{model_name}_requests.log", mode="w")
+        handler.setFormatter(logging.Formatter("%(asctime)s | %(message)s"))
+        self.debug_logger = logging.getLogger(f"{model_name}")
+        self.debug_logger.addHandler(handler)
+
     @abstractmethod
     def __len__(self) -> int:
         """Get the length of the conversation."""
@@ -71,6 +77,12 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         while self.token_size > self._token_window_size and len(self) > min_messages_to_keep:
             self._remove_message_from_context(1)
             self._remove_message_from_context(1)
+
+    def _log_request(self, message: str, *args: Any) -> None:
+        self.debug_logger.info("Request  | %s", message % args)
+
+    def _log_response(self, message: str, *args: Any) -> None:
+        self.debug_logger.info("Response | %s", message % args)
 
     # --------------------------------------------------------------------------
 

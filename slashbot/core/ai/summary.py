@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from slashbot.core.text_generation import TextGenerationInput, TextGenerator, read_in_prompt
+from slashbot.core.text_generation import GenerationFailureError, TextGenerationInput, TextGenerator, read_in_prompt
 
 
 @dataclass
@@ -19,7 +19,7 @@ class AIChatSummary(TextGenerator):
 
     def __init__(self, *, token_window_size: int = 8096, extra_print: str = "") -> None:
         """Initialise the AI channel summary."""
-        extra_print = f"[AIChannelSummary:{extra_print}] " if extra_print else ""
+        extra_print = f"[SummaryObject:{extra_print}] " if extra_print else ""
         super().__init__(extra_print=extra_print)
         self._token_size = 0
         self._token_window_size = token_window_size
@@ -43,7 +43,6 @@ class AIChatSummary(TextGenerator):
     def _remove_message_from_history_context(self, index: int) -> None:
         removed_message = self._history_context.pop(index)
         self._token_size -= removed_message.tokens
-        self.log_debug("Removed %d tokens with message: %s", removed_message.tokens, removed_message.message)
 
     def _shrink_history_to_token_window_size(self) -> None:
         while self._token_size > self._token_window_size and len(self) > 1:
@@ -62,9 +61,11 @@ class AIChatSummary(TextGenerator):
         """
         self._shrink_history_to_token_window_size()
         if message.tokens == 0:
-            message.tokens = self.count_tokens_for_message(message.content)
+            try:
+                message.tokens = self.count_tokens_for_message(message.content)
+            except GenerationFailureError:
+                message.tokens = len(message.content)
         self._history_context.append(message)
-        self.log_debug("Adding message: %s", message.content)
 
     def get_history(self, *, amount: int = 0) -> list[SummaryMessage]:
         """Get the current history.
@@ -106,9 +107,6 @@ class AIChatSummary(TextGenerator):
         request = self.create_request_json(
             TextGenerationInput(history_message), system_prompt=self.SUMMARY_PROMPT.prompt
         )
-        self.log_debug("Context for summary: %s", request)
-
         response = await self.send_response_request(request)
-        self.log_debug("Generated summary: %s", response.message)
 
         return response.message

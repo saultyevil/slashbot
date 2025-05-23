@@ -1,3 +1,4 @@
+
 from slashbot.core.text_generation import TextGenerationInput, TextGenerator, read_in_prompt
 
 
@@ -18,7 +19,7 @@ class AIChat(TextGenerator):
             Additional information to print at the start of the log message.
 
         """
-        extra_print = f"[AIConversation:{extra_print}] " if extra_print else ""
+        extra_print = f"[ChatObject:{extra_print}] " if extra_print else ""
         super().__init__(extra_print=extra_print)
         self._chat_system_prompt = system_prompt
         self.set_system_prompt(

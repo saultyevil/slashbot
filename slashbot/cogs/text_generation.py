@@ -82,7 +82,7 @@ class TextGeneration(CustomCog):
         self._lock = asyncio.Lock()
         self._profiler = Profiler(async_mode="enabled")
         file_handler = logging.FileHandler("logs/profile.log")
-        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+        file_handler.setFormatter(logging.Formatter("%(asctime)s | %(message)s"))
         self._profiler_logger = logging.getLogger("ProfilerLogger")
         self._profiler_logger.handlers.clear()
         self._profiler_logger.addHandler(file_handler)
@@ -105,7 +105,6 @@ class TextGeneration(CustomCog):
 
     def _get_channel_history(self, obj: Message | ApplicationCommandInteraction) -> AIChatSummary:
         history_id = get_history_id(obj)
-        self.log_debug("Getting channel history for history ID: %s", history_id)
         if history_id in self.channel_histories:
             return self.channel_histories[history_id]
 
@@ -128,7 +127,6 @@ class TextGeneration(CustomCog):
 
     def _get_chat(self, obj: int | Message | ApplicationCommandInteraction) -> AIChat:
         history_id = get_history_id(obj) if not isinstance(obj, int) else obj
-        self.log_debug("Getting conversation for history ID: %s", history_id)
         if history_id in self.chats:
             return self.chats[history_id]
         if isinstance(obj, int):
@@ -231,8 +229,6 @@ class TextGeneration(CustomCog):
                     self.log_exception("Failed to download image from %s", url)
             images.append(image)
 
-        self.log_debug("Found %s images in message: ", len(images))
-
         return images
 
     async def _get_attached_videos_from_message(self, message: Message) -> list[VisionVideo]:
@@ -253,7 +249,6 @@ class TextGeneration(CustomCog):
 
         """
         video_urls = [embed.url for embed in message.embeds if embed.type == "video" and embed.url]
-        self.log_debug("Found %s video URLs in message: %s", len(video_urls), video_urls)
 
         return [VisionVideo(url) for url in set(video_urls)]
 
@@ -340,9 +335,7 @@ class TextGeneration(CustomCog):
                 message = TextGenerationInput(user_prompt, images=images, videos=videos)
                 bot_response = await conversation.send_message(message)
             except GenerationFailureError:
-                self.log_error(
-                    "Failed to generate response for %s, falling back to markov sentence", discord_message.clean_content
-                )
+                self.log_exception("Failed to generate response, falling back to markov sentence")
                 bot_response = self.get_random_markov_sentence()
                 if isinstance(bot_response, list):
                     bot_response = bot_response[0]

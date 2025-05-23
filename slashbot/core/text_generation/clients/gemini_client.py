@@ -1,4 +1,3 @@
-import re
 from typing import Any
 
 import httpx
@@ -180,8 +179,8 @@ class GeminiClient(TextGenerationAbstractClient):
             )
 
         if response.status_code != httpx.codes.OK:
-            self.log_debug("Request content: %s", messages)
             status_code = response.status_code
+            self.log_error("Request for Gemini countTokens failed. Request content: %s", messages)
             msg = f"Gemini API request failed with {response.json()['error']['message']}"
             raise GenerationFailureError(msg, code=status_code)
 
@@ -302,27 +301,30 @@ class GeminiClient(TextGenerationAbstractClient):
         if not self._base_url:
             self.init_client(self.model_name)
 
-        self.log_debug("Sending request to Gemini")
+        self._log_request("%s", content)
         async with httpx.AsyncClient(timeout=self._async_timeout) as client:
             response = await client.post(
                 url=self._base_url,
                 json=content,
                 headers={"Content-Type": "application/json"},
             )
+        self._log_response("%s", response.json())
 
         if response.status_code != httpx.codes.OK:
-            self.log_error("%s", response.json())
-            self.log_exception("Gemini API request failed: %s", response.json()["error"]["message"])
+            error_response = response.json()
+            if "error" in error_response:
+                self.log_error("Gemini API request failed: %s", error_response["error"]["message"])
+            else:
+                self.log_error("Gemini API request failed: %s", error_response)
             status_code = response.status_code
             msg = f"Gemini API request failed with {response.json()['error']['message']}"
             raise GenerationFailureError(msg, code=status_code)
 
-        response = response.json()
-        self.log_debug("Response usage: %s tokens", response["usageMetadata"]["totalTokenCount"])
+        response_json = response.json()
 
         return TextGenerationResponse(
-            response["candidates"][0]["content"]["parts"][0]["text"],
-            response["usageMetadata"]["totalTokenCount"],
+            response_json["candidates"][0]["content"]["parts"][0]["text"],
+            response_json["usageMetadata"]["totalTokenCount"],
         )
 
     def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
