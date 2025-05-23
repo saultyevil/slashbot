@@ -3,6 +3,7 @@ from typing import Any
 import httpx
 
 from slashbot.core.text_generation.clients.abstract_client import TextGenerationAbstractClient
+from slashbot.core.text_generation.logger import setup_response_logger
 from slashbot.core.text_generation.models import (
     GenerationFailureError,
     TextGenerationInput,
@@ -284,6 +285,8 @@ class GeminiClient(TextGenerationAbstractClient):
             },
             "contents": [],
         }
+
+        self.response_logger = setup_response_logger(model_name)
 
     async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
