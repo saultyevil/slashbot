@@ -48,6 +48,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         handler.setFormatter(logging.Formatter("%(asctime)s | %(message)s"))
         self.debug_logger = logging.getLogger(f"{model_name}")
         self.debug_logger.addHandler(handler)
+        self.debug_logger.setLevel(logging.INFO)
 
     @abstractmethod
     def __len__(self) -> int:
