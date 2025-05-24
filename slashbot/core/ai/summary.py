@@ -15,7 +15,7 @@ class SummaryMessage:
 class AIChatSummary(TextGenerator):
     """Dataclass for generating AI summaries for text channels."""
 
-    SUMMARY_PROMPT = read_in_prompt("data/prompts/_summarise.yaml")
+    SUMMARY_PROMPT = read_in_prompt("data/prompts/_summarise.yaml").prompt
 
     def __init__(self, *, token_window_size: int = 8096, extra_print: str = "") -> None:
         """Initialise the AI channel summary."""
@@ -46,7 +46,7 @@ class AIChatSummary(TextGenerator):
 
     def _shrink_history_to_token_window_size(self) -> None:
         while self._token_size > self._token_window_size and len(self) > 1:
-            self._remove_message_from_history_context(1)
+            self._remove_message_from_history_context(0)
 
     # --------------------------------------------------------------------------
 

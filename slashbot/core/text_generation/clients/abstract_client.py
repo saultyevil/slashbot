@@ -16,7 +16,7 @@ from slashbot.settings import BotSettings
 class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
     """Abstract class for a TextGenerationClient."""
 
-    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml")
+    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml").prompt
 
     def __init__(self, model_name: str, **kwargs: Any) -> None:
         """Initialise the text generation class.
