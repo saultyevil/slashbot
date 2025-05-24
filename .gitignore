@@ -1,5 +1,4 @@
-.env-debug
-.env
+.env*
 .venv
 logs/*.log
 data/*.db.json
