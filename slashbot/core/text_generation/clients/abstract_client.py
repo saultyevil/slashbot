@@ -1,24 +1,22 @@
 import logging
 from abc import ABCMeta, abstractmethod
-from textwrap import dedent
 from typing import Any
 
 from slashbot.core.logger import Logger
-from slashbot.core.text_generation import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
+from slashbot.core.text_generation import (
+    TextGenerationInput,
+    TextGenerationResponse,
+    VisionImage,
+    VisionVideo,
+    read_in_prompt,
+)
 from slashbot.settings import BotSettings
 
 
 class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
     """Abstract class for a TextGenerationClient."""
 
-    DEFAULT_SYSTEM_PROMPT = " ".join(
-        dedent("""
-        Be a useful assistant, don't be patronising or write anything that can
-        be portrayed as being patronising. Be extremely concise. One sentence
-        responses are best where possible. Do not try to be friendly or
-        personable, just useful and soulless.
-    """).splitlines()
-    )
+    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml")
 
     def __init__(self, model_name: str, **kwargs: Any) -> None:
         """Initialise the text generation class.
@@ -56,7 +54,25 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
 
     # --------------------------------------------------------------------------
 
-    def _create_user_contents(self, messages: TextGenerationInput | list[TextGenerationInput]) -> dict | list[dict]:
+    def _create_content_payload(self, messages: TextGenerationInput | list[TextGenerationInput]) -> dict | list[dict]:
+        """Create the contents payload for a request.
+
+        The input object(s), TextGenerationInput, can contain text, image and
+        video (url) data to add to the contents payload. The methods inside this
+        method are all abstract and must be implemented by the current client.
+
+        Parameters
+        ----------
+        messages : TextGenerationInput | list[TextGenerationInput]
+            The input message(s) to create a contents payload.
+
+        Returns
+        -------
+        dict | list [dict]
+            An appropriately formatted dict or list of dict's for the current
+            active client.
+
+        """
         if isinstance(messages, TextGenerationInput):
             messages = [messages]
 
@@ -65,53 +81,155 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         video_content = []
 
         for message in messages:
-            text_content.append(self._make_text_content(message.text))
+            text_content.append(self._create_text_payload(message.text))
             if message.images:
-                image_content.extend(self._make_image_content(message.images))
+                image_content.extend(self._create_image_payload(message.images))
             if message.videos:
-                video_content.extend(self._make_video_content(message.videos))
+                video_content.extend(self._create_video_payload(message.videos))
 
-        return self._make_user_content(text_content, image_content, video_content)
+        return self._create_user_payload(text_content, image_content, video_content)
 
     def _shrink_messages_to_token_window(self) -> None:
+        """Shrink the context of the conversation within a token limit.
+
+        This method uses an abstract method to remove messages from the context
+        (typically the contents payload) which must be implemented by the
+        client.
+        """
         min_messages_to_keep = 2
         while self.token_size > self._token_window_size and len(self) > min_messages_to_keep:
-            self._remove_message_from_context(1)
-            self._remove_message_from_context(1)
+            self._remove_message(1)
+            self._remove_message(1)
 
     def _log_request(self, message: str, *args: Any) -> None:
+        """Log a request to an LLM API.
+
+        Parameters
+        ----------
+        message : str
+            The message string to love.
+        *args : Any
+            Additional arguments, typically used for string interpolation.
+
+        """
         self.debug_logger.info("Request  | %s", message % args)
 
     def _log_response(self, message: str, *args: Any) -> None:
+        """Log a response for a LLM API.
+
+        Parameters
+        ----------
+        message : str
+            The message string to love.
+        *args : Any
+            Additional arguments, typically used for string interpolation.
+
+        """
         self.debug_logger.info("Response | %s", message % args)
 
     # --------------------------------------------------------------------------
 
     @abstractmethod
-    def _make_assistant_text_content(self, message: str) -> dict:
-        pass
+    def _create_assistant_text_payload(self, message: str) -> dict:
+        """Create a payload for the response from the LLM.
+
+        Parameters
+        ----------
+        message : str
+            The response message from the LLM.
+
+        Returns
+        -------
+        dict
+            The correctly formatted payload.
+
+        """
 
     @abstractmethod
-    def _make_image_content(self, images: VisionImage | list[VisionImage]) -> dict | list[dict]:
-        pass
+    def _create_image_payload(self, images: VisionImage | list[VisionImage]) -> dict | list[dict]:
+        """Create a payload for an image request.
+
+        Parameters
+        ----------
+        images : VisionImage | list[VisionImage]
+            The image(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
 
     @abstractmethod
-    def _make_text_content(self, text: str | list[str]) -> dict | list[dict]:
-        pass
+    def _create_text_payload(self, text: str | list[str]) -> dict | list[dict]:
+        """Create a payload for a text request.
+
+        Parameters
+        ----------
+        text : str | list[str]
+            The text messages(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
 
     @abstractmethod
-    def _make_user_content(
+    def _create_user_payload(
         self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
     ) -> dict | list[dict]:
-        pass
+        """Create a payload for a payload, including text, images and videos.
+
+        Parameters
+        ----------
+        text_content : str | list[str]
+            The text messages(s) to add to the payload.
+        image_content : VisionImage | list[VisionImage]
+            The image(s) to add to the payload.
+        video_content : VisionVideo | list[VisionVideo]
+            The videos(s) to add to the  payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
 
     @abstractmethod
-    def _make_video_content(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
-        pass
+    def _create_video_payload(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
+        """Create a payload for a video request.
+
+        Parameters
+        ----------
+        videos : VisionVideo | list[VisionVideo]
+            The videos(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
 
     @abstractmethod
-    def _remove_message_from_context(self, index: int) -> dict:
-        pass
+    def _remove_message(self, index: int) -> dict:
+        """Remove an image from the conversation context.
+
+        Parameters
+        ----------
+        index : int
+            The index of the message to remove.
+
+        Parameters
+        ----------
+        dict
+            The removed message, including all content (text, image, video).
+
+        """
 
     # --------------------------------------------------------------------------
 
