@@ -82,12 +82,17 @@ class GeminiClient(TextGenerationAbstractClient):
     def _add_to_contents(self, new_content: dict) -> None:
         # Remove youtube links (the only supported video understanding) from
         # the context, as it drastically increases the latency of responses
-        self._context["contents"] = [
-            content for content in self._context["contents"] if not self._content_contains_youtube_video_type(content)
-        ]
+        i = 0
+        while i < len(self._context["contents"]):
+            content = self._context["contents"]
+            if self._content_contains_youtube_video_type(content):
+                self._remove_message(i)
+            else:
+                i += 1
 
-        # But we still want to include videos in the new context for the request.
-        # It will be removed before the next request in the line above
+        # But we still include new video request here, we are only removing OLD
+        # youtube links. The one added to the context here will be removed
+        # before the next request is sent
         self._context["contents"].append(new_content)
 
     def _create_assistant_text_payload(self, message: str) -> dict:
@@ -132,19 +137,14 @@ class GeminiClient(TextGenerationAbstractClient):
         ]
 
     def _remove_message(self, index: int) -> dict:
-        if index == 0:
-            msg = "Cannot remove system prompt at index 0"
-            raise IndexError(msg)
         if index < 0:
             msg = "Cannot remove message at negative index"
             raise IndexError(msg)
         if index >= len(self._context["contents"]):
             msg = "Cannot remove message at index greater than number of messages"
             raise IndexError(msg)
-        count = 0
-        for part in self._context["contents"][index]["parts"]:
-            count += self.count_tokens_for_message(part)
-        self.token_size -= count
+        self.token_size -= self.count_tokens_for_message(self._context["contents"][index])
+
         return self._context["contents"].pop(index)
 
     # --------------------------------------------------------------------------

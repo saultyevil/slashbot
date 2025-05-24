@@ -93,8 +93,10 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         """
         min_messages_to_keep = 2
         while self.token_size > self._token_window_size and len(self) > min_messages_to_keep:
-            self._remove_message(1)
-            self._remove_message(1)
+            msg1 = self._remove_message(0)
+            msg2 = self._remove_message(0)
+            self.log_debug("msg1 deleted: %s", msg1)
+            self.log_debug("msg2 deleted: %s", msg2)
 
     def _log_request(self, message: str, *args: Any) -> None:
         """Log a request to an LLM API.

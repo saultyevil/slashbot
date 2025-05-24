@@ -71,8 +71,7 @@ class OpenAIClient(TextGenerationAbstractClient):
 
     def _remove_message(self, index: int) -> dict:
         if index == 0:
-            msg = "Cannot remove system prompt at index 0"
-            raise IndexError(msg)
+            index = 1
         if index < 0:
             msg = "Cannot remove message at negative index"
             raise IndexError(msg)
