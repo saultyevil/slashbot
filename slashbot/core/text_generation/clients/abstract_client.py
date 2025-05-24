@@ -40,13 +40,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         self.token_size = self.count_tokens_for_message(self.system_prompt)
         self._token_window_size = BotSettings.cogs.text_generation.token_window_size
         self._max_completion_tokens = BotSettings.cogs.text_generation.max_output_tokens
+        self.response_logger = logging.getLogger(f"TextGenerationAbstractClient-{model_name}")
         self.init_client(self.model_name)
-
-        handler = logging.FileHandler(f"logs/{model_name}_requests.log", mode="w")
-        handler.setFormatter(logging.Formatter("%(asctime)s | %(message)s"))
-        self.debug_logger = logging.getLogger(f"{model_name}")
-        self.debug_logger.addHandler(handler)
-        self.debug_logger.setLevel(logging.INFO)
 
     @abstractmethod
     def __len__(self) -> int:
@@ -112,7 +107,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
             Additional arguments, typically used for string interpolation.
 
         """
-        self.debug_logger.info("Request  | %s", message % args)
+        self.response_logger.info("Request  | %s", message % args)
 
     def _log_response(self, message: str, *args: Any) -> None:
         """Log a response for a LLM API.
@@ -125,7 +120,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
             Additional arguments, typically used for string interpolation.
 
         """
-        self.debug_logger.info("Response | %s", message % args)
+        self.response_logger.info("Response | %s", message % args)
 
     # --------------------------------------------------------------------------
 

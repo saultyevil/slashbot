@@ -3,6 +3,7 @@ import tiktoken
 
 from slashbot.core.text_generation import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
 from slashbot.core.text_generation.clients.abstract_client import TextGenerationAbstractClient
+from slashbot.core.text_generation.logger import setup_response_logger
 from slashbot.settings import BotSettings
 
 
@@ -202,6 +203,7 @@ class OpenAIClient(TextGenerationAbstractClient):
         self._base_url = "https://api.openai.com/v1"
         self._client = openai.AsyncClient(api_key=BotSettings.keys.openai)
         self._context = [{"role": "system", "content": self.system_prompt}]
+        self.response_logger = setup_response_logger(model_name)
 
     async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
