@@ -221,8 +221,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         index : int
             The index of the message to remove.
 
-        Parameters
-        ----------
+        Returns
+        -------
         dict
             The removed message, including all content (text, image, video).
 
