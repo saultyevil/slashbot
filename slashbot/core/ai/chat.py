@@ -4,9 +4,9 @@ from slashbot.core.text_generation import TextGenerationInput, TextGenerator, re
 class AIChat(TextGenerator):
     """AI Conversation class for an LLM chatbot."""
 
-    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml").prompt
+    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml")
 
-    def __init__(self, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT, extra_print: str = "") -> None:
+    def __init__(self, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT.prompt, extra_print: str = "") -> None:
         """Initialise a conversation, with default values.
 
         Parameters

@@ -104,9 +104,7 @@ class AIChatSummary(TextGenerator):
             history_message += (
                 f".\nPlease refer to me, {requesting_user}, as 'you' in the summary like we were having a conversation."
             )
-        request = self.create_request_json(
-            TextGenerationInput(history_message), system_prompt=self.SUMMARY_PROMPT.prompt
-        )
+        request = self.create_request_json(TextGenerationInput(history_message), system_prompt=self.SUMMARY_PROMPT)
         response = await self.send_response_request(request)
 
         return response.message
