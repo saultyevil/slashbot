@@ -83,7 +83,7 @@ class GeminiClient(TextGenerationAbstractClient):
         # the context, as it drastically increases the latency of responses
         i = 0
         while i < len(self._context["contents"]):
-            content = self._context["contents"]
+            content = self._context["contents"][i]
             if self._content_contains_youtube_video_type(content):
                 self._remove_message(i)
             else:
