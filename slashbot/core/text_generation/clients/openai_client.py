@@ -215,13 +215,13 @@ class OpenAIClient(TextGenerationAbstractClient):
         if not self._client:
             self.init_client(self.model_name)
 
-        self._log_request("%s", content)
+        await self._log_request("%s", content)
         response = await self._client.chat.completions.create(
             model=self.model_name,
             messages=content,  # type: ignore
             max_completion_tokens=self._max_completion_tokens,
         )
-        self._log_response("%s", content)
+        await self._log_response("%s", content)
 
         assistant_response = response.choices[0].message.content
         if not assistant_response:

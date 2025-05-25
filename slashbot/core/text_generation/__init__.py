@@ -1,7 +1,7 @@
 """Text generation module using LLMs."""
 
 from .models import GenerationFailureError, TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
-from .prompts import read_in_prompt
+from .prompts import Prompt, read_in_prompt
 from .text_generator import TextGenerator
 
 SUPPORTED_MODELS = TextGenerator.SUPPORTED_MODELS

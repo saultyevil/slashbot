@@ -39,7 +39,9 @@ class ConditionalFormatter(logging.Formatter):
 def setup_logging() -> None:
     """Set up log formatting.
 
-    This sets up the logging for the bot's logic, and also the Disnake log.
+    This sets up the logging for the bot's logic, and also the Disnake log. Not
+    part of the Logger class below because you end up with multiple handlers on
+    one logger and this was the cleaner way to do it.
     """
     logger = logging.getLogger(BotSettings.logging.logger_name)
     logger.setLevel(logging.DEBUG)

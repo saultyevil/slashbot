@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import logging.handlers
 from abc import ABCMeta, abstractmethod
@@ -42,6 +43,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         self._token_window_size = BotSettings.cogs.text_generation.token_window_size
         self._max_completion_tokens = BotSettings.cogs.text_generation.max_output_tokens
         self._response_logger = logging.getLogger(f"TextGenerationAbstractClient-{model_name}")
+        self._logger_lock = asyncio.Lock()
         self.init_client(self.model_name)
 
     @abstractmethod
@@ -113,18 +115,21 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
             The initialised logger.
 
         """
-        handler = logging.handlers.RotatingFileHandler(
-            f"logs/{model_name}-requests.log", mode="a", maxBytes=int(5 * 1e6), backupCount=1
-        )
-        formatter = logging.Formatter("%(asctime)s | %(message)s")
-        handler.setFormatter(formatter)
-
         logger = logging.getLogger(f"TextGenerationAbstractClient-{model_name}")
-        logger.setLevel(logging.INFO)
-        logger.addHandler(handler)
+
+        if not logger.handlers:
+            handler = logging.handlers.RotatingFileHandler(
+                f"logs/{model_name}-requests.log", mode="a", maxBytes=int(5 * 1e6), backupCount=1
+            )
+            formatter = logging.Formatter("%(asctime)s | %(message)s", "%Y-%m-%d %H:%M:%S")
+            handler.setFormatter(formatter)
+            logger.setLevel(logging.INFO)
+            logger.addHandler(handler)
+            logger.propagate = False
+
         self._response_logger = logger
 
-    def _log_request(self, message: str, *args: Any) -> None:
+    async def _log_request(self, message: str, *args: Any) -> None:
         """Log a request to an LLM API.
 
         Parameters
@@ -135,9 +140,10 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
             Additional arguments, typically used for string interpolation.
 
         """
-        self._response_logger.info("Request  | %s", message % args)
+        async with self._logger_lock:
+            self._response_logger.info("Request  | %s", message % args)
 
-    def _log_response(self, message: str, *args: Any) -> None:
+    async def _log_response(self, message: str, *args: Any) -> None:
         """Log a response for a LLM API.
 
         Parameters
@@ -148,7 +154,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
             Additional arguments, typically used for string interpolation.
 
         """
-        self._response_logger.info("Response | %s", message % args)
+        async with self._logger_lock:
+            self._response_logger.info("Response | %s", message % args)
 
     # --------------------------------------------------------------------------
 

@@ -299,14 +299,14 @@ class GeminiClient(TextGenerationAbstractClient):
         if not self._base_url:
             self.init_client(self.model_name)
 
-        self._log_request("%s", content)
+        await self._log_request("%s", content)
         async with httpx.AsyncClient(timeout=self._async_timeout) as client:
             response = await client.post(
                 url=self._base_url,
                 json=content,
                 headers={"Content-Type": "application/json"},
             )
-        self._log_response("%s", response.json())
+        await self._log_response("%s", response.json())
 
         if response.status_code != httpx.codes.OK:
             error_response = response.json()
