@@ -17,7 +17,7 @@ from slashbot.settings import BotSettings
 class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
     """Abstract class for a TextGenerationClient."""
 
-    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml").prompt
+    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml")
 
     def __init__(self, model_name: str, **kwargs: Any) -> None:
         """Initialise the text generation class.
@@ -36,8 +36,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         self._client = None
         self._base_url = None
         self._async_timeout = 240  # seconds
-        self.system_prompt = kwargs.get("system_prompt", self.DEFAULT_SYSTEM_PROMPT)
-        self.system_prompt_name = kwargs.get("system_prompt_name", "default")
+        self.system_prompt = kwargs.get("system_prompt", self.DEFAULT_SYSTEM_PROMPT.prompt)
+        self.system_prompt_name = kwargs.get("system_prompt_name", self.DEFAULT_SYSTEM_PROMPT.name)
         self.token_size = self.count_tokens_for_message(self.system_prompt)
         self._token_window_size = BotSettings.cogs.text_generation.token_window_size
         self._max_completion_tokens = BotSettings.cogs.text_generation.max_output_tokens
