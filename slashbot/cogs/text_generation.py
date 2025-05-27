@@ -518,12 +518,17 @@ class TextGeneration(CustomCog):
             The name of the model to set.
 
         """
+        await inter.response.defer(ephemeral=True)
+
         chat = self._get_chat(inter)
         summary = self._get_channel_history(inter)
         original_model = chat.model
         chat.set_model(model_name)
         summary.set_model(model_name)
-        await inter.response.send_message(f"LLM model updated from {original_model} to {model_name}.", ephemeral=True)
+
+        await inter.edit_original_response(
+            content=f"LLM model updated from {original_model} to {model_name}.",
+        )
 
     @slash_command_with_cooldown(
         name="chat_set_prompt", description="Change the AI conversation prompt to one you write"
