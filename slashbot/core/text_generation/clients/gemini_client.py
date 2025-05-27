@@ -142,7 +142,9 @@ class GeminiClient(TextGenerationAbstractClient):
         if index >= len(self._context["contents"]):
             msg = "Cannot remove message at index greater than number of messages"
             raise IndexError(msg)
-        self.token_size -= self.count_tokens_for_message(self._context["contents"][index])
+        self.token_size -= self.count_tokens_for_message(
+            {"contents": [{"parts": self._context["contents"][index]["parts"]}]}
+        )
 
         return self._context["contents"].pop(index)
 
@@ -159,7 +161,8 @@ class GeminiClient(TextGenerationAbstractClient):
         Parameters
         ----------
         messages : dict | list[dict[str, str]] | str
-            The message to count the number of tokens.
+            The message to count the number of tokens. Formatted either as a
+            request, or as a str or list of strings.
 
         """
         if not self._count_tokens_url:
