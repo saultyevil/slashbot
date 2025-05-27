@@ -1,4 +1,6 @@
 import logging
+import pathlib
+from logging import FileHandler
 from logging.handlers import RotatingFileHandler
 from typing import Any
 
@@ -67,11 +69,10 @@ def setup_logging() -> None:
     debug_file_handler.set_name("debug-file-handler")
     logger.addHandler(debug_file_handler)
 
-    file_handler = RotatingFileHandler(
+    file_handler = FileHandler(
         filename=BotSettings.logging.log_location,
+        mode="w",
         encoding="utf-8",
-        maxBytes=int(1e6),  # 1 MB
-        backupCount=2,
     )
     file_handler.setFormatter(
         ConditionalFormatter(
@@ -201,3 +202,33 @@ class Logger:
         for handler in self._logger.handlers:
             if handler.name != USER_FACING_LOGGER:
                 handler.setLevel(level)
+
+    def last_error(self) -> str:
+        """Get the last error message.
+
+        Returns
+        -------
+        str
+            The last error message.
+
+        """
+        handler = next((x for x in self._logger.handlers if x.name == USER_FACING_LOGGER), None)
+        if handler is None:
+            msg = f"Unable to find `{USER_FACING_LOGGER}` in logger"
+            raise ValueError(msg)
+        if not isinstance(handler, logging.FileHandler):
+            msg = f"The logging handler named `{USER_FACING_LOGGER}` is not a file handler"
+            raise TypeError(msg)
+
+        path = pathlib.Path(handler.baseFilename)
+
+        with path.open(encoding="utf-8") as file_in:
+            lines = file_in.readlines()
+
+        latest_error = "There have been no errors since my last restart"
+        for line in reversed(lines):
+            if "ERROR" in line:
+                latest_error = line
+                break
+
+        return latest_error
