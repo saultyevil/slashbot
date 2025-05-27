@@ -203,6 +203,7 @@ class Logger:
             if handler.name != USER_FACING_LOGGER:
                 handler.setLevel(level)
 
+    @property
     def last_error(self) -> str:
         """Get the last error message.
 
@@ -225,7 +226,7 @@ class Logger:
         with path.open(encoding="utf-8") as file_in:
             lines = file_in.readlines()
 
-        latest_error = "There have been no errors since my last restart"
+        latest_error = ""
         for line in reversed(lines):
             if "ERROR" in line:
                 latest_error = line

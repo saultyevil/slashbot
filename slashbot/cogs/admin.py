@@ -305,6 +305,23 @@ class AdminTools(CustomCog):
         """Print the current version number of the bot."""
         await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
+    @slash_command_with_cooldown(name="last_error")
+    async def print_last_error(self, inter: ApplicationCommandInteraction) -> None:
+        """Print the last error which occured.
+
+        Parameters
+        ----------
+        inter : ApplicationCommandInteraction
+            The interaction to respond to.
+
+        """
+        await inter.response.defer(ephemeral=True)
+        if self.last_error:
+            last_error = f"```{self.last_error}```"
+        else:
+            last_error = "There have been no errors since the last restart."
+        await inter.edit_original_message(content=last_error)
+
     @slash_command_with_cooldown(name="logfile")
     async def print_logfile_tail(
         self,
