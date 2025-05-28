@@ -6,6 +6,7 @@ location into a latitude and longitude for OpenWeatherMap.
 
 import datetime
 import json
+from urllib import response
 
 import disnake
 import requests
@@ -209,7 +210,7 @@ class Weather(CustomCog):
 
         return embed
 
-    def weather_api(self, location: str, units: str, forecast_type: str | list | tuple) -> tuple[str, dict]:
+    def call_api(self, location: str, units: str, forecast_type: str | list | tuple) -> tuple[str, dict]:
         """Query the OpenWeatherMap API for the weather.
 
         Parameters
@@ -253,8 +254,10 @@ class Weather(CustomCog):
         if weather_response.status_code != requests.codes.ok:
             if weather_response.status_code == requests.codes.not_found:
                 msg = f"{location} could not be found"
+                self.log_error("%s", msg)
                 raise LocationNotFoundError(msg)
             msg = f"OneCall API failed for {location}"
+            self.log_debug("%s", msg)
             raise OneCallError(msg)
         response_content = json.loads(weather_response.content)
 
@@ -263,7 +266,10 @@ class Weather(CustomCog):
                 key: value for key, value in response_content.items() if key in forecast_type or "timezone" in key
             }
         else:
-            weather = response_content[forecast_type]
+            weather = {
+                f"{forecast_type}": response_content[forecast_type],
+                "timezone_offset": response_content["timezone_offset"],
+            }
 
         return location_string, weather
 
@@ -308,19 +314,19 @@ class Weather(CustomCog):
                 raise ValueError(msg) from exc
 
         try:
-            location, forecast = self.weather_api(location, units, request_type)
-        except (LocationNotFoundError, GeocodeError) as exc:
+            location, forecast = self.call_api(location, units, request_type)
+        except (LocationNotFoundError, GeocodeError):
             await deferred_error_message(inter, f"Unable to find '{location.capitalize()}'")
-            msg = "Unable to find provided location in weater API"
-            raise ValueError(msg) from exc
-        except (OneCallError, requests.Timeout) as exc:
+            raise
+        except (OneCallError, requests.Timeout):
             await deferred_error_message(inter, "Open Weather Map failed to respond")
-            msg = "Unable to find provided location in weather API"
-            raise ValueError(msg) from exc
+            raise
 
         return location, forecast
 
-    def add_forecast_to_embed(self, embed: disnake.Embed, forecast: list[dict], units: str) -> disnake.Embed:
+    def add_forecast_to_embed(
+        self, embed: disnake.Embed, forecast: list[dict], timezone_offset: int, units: str
+    ) -> disnake.Embed:
         """Add the weather forecast to the embed.
 
         Parameters
@@ -329,6 +335,8 @@ class Weather(CustomCog):
             The embed to add the forecast to.
         forecast : list[dict]
             The forecast to add to the embed.
+        timezone_offset : int
+            The timezone offset of the location from UTC.
         units : str
             The units to use, either "metric" or "imperial".
 
@@ -339,12 +347,20 @@ class Weather(CustomCog):
 
         """
         temp_unit, wind_unit, wind_factor = self.get_unit_strings(units)
+        tz_offset = datetime.timedelta(seconds=timezone_offset)
 
         for sub in forecast:
-            date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC)
-            date_string = f"{date.strftime(r'%a, %d %b %Y')}"
             desc_string = f"{sub['weather'][0]['description'].capitalize()}"
-            temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
+            date = datetime.datetime.fromtimestamp(int(sub["dt"]), tz=datetime.UTC) + tz_offset
+            # Daily forecasts have a summary, whilst a hourly do not
+            date_string = f"{date.strftime(r'%a, %d %b %Y')}" if "summary" in sub else f"{date.strftime(r'%H:%M')}"
+
+            # Daily forecasts provides a dict of min and max temperatures
+            if isinstance(sub["temp"], dict):
+                temp_string = f"{sub['temp']['min']:.0f} / {sub['temp']['max']:.0f} °{temp_unit}"
+            else:
+                temp_string = f"{sub['temp']} °{temp_unit}"
+
             humidity_string = f"({sub['humidity']}% RH)"
             wind_string = (
                 f"{float(sub['wind_speed']) * wind_factor:.0f} {wind_unit} @ {sub['wind_deg']}° "
@@ -352,7 +368,7 @@ class Weather(CustomCog):
             )
             embed.add_field(
                 name=date_string,
-                value=f" {desc_string:^30s}\n {temp_string} {humidity_string:^30s}\n {wind_string:^30s}",
+                value=f"{desc_string:^30s}\n{temp_string} {humidity_string:^30s}\n{wind_string:^30s}",
                 inline=False,
             )
 
@@ -423,13 +439,16 @@ class Weather(CustomCog):
             description="The location to get the forecast for, default is your saved location.",
             default=None,
         ),
+        forecast_type: str = commands.Param(
+            name="type", description="The forecast type to return.", choices=["daily", "hourly"], default="daily"
+        ),
+        amount: int = commands.Param(
+            name="amount", description="The number of results to return.", default=3, gt=0, lt=8
+        ),
         units: str = commands.Param(
             description="The units to return weather readings in.",
             default="mixed",
             choices=WEATHER_UNITS,
-        ),
-        amount: int = commands.Param(
-            name="days", description="The number of results to return.", default=3, gt=0, lt=8
         ),
     ) -> None:
         """Send the weather forecast to chat, either daily or hourly.
@@ -440,16 +459,20 @@ class Weather(CustomCog):
             The interaction to possibly remove the cooldown from.
         user_location: str
             The location to get the weather forecast for.
-        units: str
-            The units to get the forecast for.
+        forecast_type: str
+            The type of forecast to get, either daily or hourly.
         amount: int
             The number of items to return the forecast for, e.g. 4 days or 4
             hours.
+        units: str
+            The units to get the forecast for.
 
         """
         await inter.response.defer()
         try:
-            location, forecast = await self.get_weather_forecast_for_location(inter, user_location, units, "daily")
+            location, forecast = await self.get_weather_forecast_for_location(
+                inter, user_location, units, forecast_type
+            )
         except ValueError:
             return
 
@@ -457,10 +480,10 @@ class Weather(CustomCog):
         embed.set_footer(
             text=f"{self.get_random_markov_sentence('forecast', 1)}\n(You can set your location using /set_info)",
         )
-        embed.set_thumbnail(self.get_weather_icon_url(forecast[0]["weather"][0]["icon"]))
+        embed.set_thumbnail(self.get_weather_icon_url(forecast[forecast_type][0]["weather"][0]["icon"]))
         embed = self.add_forecast_to_embed(
-            embed, forecast[1 : amount + 1], units
-        )  # start from 1 to avoid the current day
+            embed, forecast[forecast_type][0 : amount + 1], forecast["timezone_offset"], units
+        )
 
         await inter.edit_original_message(embed=embed)
 
