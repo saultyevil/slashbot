@@ -108,17 +108,6 @@ class Logger:
         self._cog_name = f"[{self.__cog_name__}.Cog] " if hasattr(self, "__cog_name__") else ""  # type: ignore
 
     @staticmethod
-    def _get_user_facing_handler() -> logging.FileHandler:
-        handler = next((x for x in logging.getLogger().handlers if x.name == USER_FACING_LOGGER), None)
-        if handler is None:
-            msg = f"Unable to find `{USER_FACING_LOGGER}` in logger"
-            raise ValueError(msg)
-        if not isinstance(handler, logging.FileHandler):
-            msg = f"The logging handler named `{USER_FACING_LOGGER}` is not a file handler"
-            raise TypeError(msg)
-        return handler
-
-    @staticmethod
     def _extract_latest_error_block(lines: list[str]) -> list[str]:
         for i in range(len(lines) - 1, -1, -1):
             if "ERROR" in lines[i]:
@@ -145,6 +134,16 @@ class Logger:
         middle_text = "".join(middle)
         middle_trimmed = textwrap.shorten(middle_text, width=remaining, placeholder="...\n")
         return first + middle_trimmed + last
+
+    def _get_user_facing_handler(self) -> logging.FileHandler:
+        handler = next((x for x in self._logger.handlers if x.name == USER_FACING_LOGGER), None)
+        if handler is None:
+            msg = f"Unable to find `{USER_FACING_LOGGER}` in logger"
+            raise ValueError(msg)
+        if not isinstance(handler, logging.FileHandler):
+            msg = f"The logging handler named `{USER_FACING_LOGGER}` is not a file handler"
+            raise TypeError(msg)
+        return handler
 
     def _log_impl(self, level: int, msg: str, *args: Any, exc_info: bool = False) -> None:
         formatted_msg = msg % args
@@ -264,4 +263,3 @@ class Logger:
             return ""
 
         return self._truncate_error_block(error_lines, limit=2000)
-
