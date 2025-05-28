@@ -111,7 +111,7 @@ def create_on_slash_command_error(bot: CustomInteractionBot) -> Callable:
 
     async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error: Exception) -> None:
         stack = traceback.format_exception(type(error), error, error.__traceback__)
-        bot.log_exception("The command %s failed with error:\n%s", inter.application_command.name, "".join(stack))
+        bot.log_error("The command %s failed with error: %s", inter.application_command.name, "".join(stack))
 
         # Delete the original response if it's older than 2.5 seconds and respond
         # to the follow up instead

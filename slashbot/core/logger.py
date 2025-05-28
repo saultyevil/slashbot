@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import textwrap
 from logging import FileHandler
 from logging.handlers import RotatingFileHandler
 from typing import Any
@@ -106,6 +107,45 @@ class Logger:
         self._append = append_msg.strip()
         self._cog_name = f"[{self.__cog_name__}.Cog] " if hasattr(self, "__cog_name__") else ""  # type: ignore
 
+    @staticmethod
+    def _get_user_facing_handler() -> logging.FileHandler:
+        handler = next((x for x in logging.getLogger().handlers if x.name == USER_FACING_LOGGER), None)
+        if handler is None:
+            msg = f"Unable to find `{USER_FACING_LOGGER}` in logger"
+            raise ValueError(msg)
+        if not isinstance(handler, logging.FileHandler):
+            msg = f"The logging handler named `{USER_FACING_LOGGER}` is not a file handler"
+            raise TypeError(msg)
+        return handler
+
+    @staticmethod
+    def _extract_latest_error_block(lines: list[str]) -> list[str]:
+        for i in range(len(lines) - 1, -1, -1):
+            if "ERROR" in lines[i]:
+                block = [lines[i]]
+                for j in range(i + 1, len(lines)):
+                    if any(level_name in lines[j] for level_name in ("ERROR", "INFO", "WARNING")):
+                        break
+                    block.append(lines[j])
+                return block
+        return []
+
+    @staticmethod
+    def _truncate_error_block(lines: list[str], limit: int) -> str:
+        first, *middle, last = lines
+        full = "".join(lines)
+
+        if len(full) <= limit:
+            return full
+        if len(first) + len(last) >= limit:
+            available = limit - len(first)
+            return first + last[: max(0, available)]
+
+        remaining = limit - len(first) - len(last)
+        middle_text = "".join(middle)
+        middle_trimmed = textwrap.shorten(middle_text, width=remaining, placeholder="...\n")
+        return first + middle_trimmed + last
+
     def _log_impl(self, level: int, msg: str, *args: Any, exc_info: bool = False) -> None:
         formatted_msg = msg % args
         stripped_msg = formatted_msg.strip()
@@ -205,31 +245,23 @@ class Logger:
 
     @property
     def last_error(self) -> str:
-        """Get the last error message.
+        """Get the last error message and traceback (max 2000 characters).
 
         Returns
         -------
         str
-            The last error message.
+            An empty string if no error found, or the (truncated) error message.
 
         """
-        handler = next((x for x in self._logger.handlers if x.name == USER_FACING_LOGGER), None)
-        if handler is None:
-            msg = f"Unable to find `{USER_FACING_LOGGER}` in logger"
-            raise ValueError(msg)
-        if not isinstance(handler, logging.FileHandler):
-            msg = f"The logging handler named `{USER_FACING_LOGGER}` is not a file handler"
-            raise TypeError(msg)
-
+        handler = self._get_user_facing_handler()
         path = pathlib.Path(handler.baseFilename)
 
         with path.open(encoding="utf-8") as file_in:
             lines = file_in.readlines()
 
-        latest_error = ""
-        for line in reversed(lines):
-            if "ERROR" in line:
-                latest_error = line
-                break
+        error_lines = self._extract_latest_error_block(lines)
+        if not error_lines:
+            return ""
 
-        return latest_error
+        return self._truncate_error_block(error_lines, limit=2000)
+
