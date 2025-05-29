@@ -436,7 +436,7 @@ class TextGeneration(CustomCog):
     # Commands -----------------------------------------------------------------
 
     @slash_command_with_cooldown(
-        name="chat_generate_summary",
+        name="generate_chat_summary",
         description="Generate a summary of the conversation",
         dm_permission=False,
     )
@@ -458,7 +458,7 @@ class TextGeneration(CustomCog):
         await inter.delete_original_response()
         await send_message_to_channel(summary, inter)
 
-    @slash_command_with_cooldown(name="chat_reset_context", description="Reset the AI conversation history")
+    @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
     async def chat_reset_context(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear history context for where the interaction was called from.
 
@@ -473,7 +473,7 @@ class TextGeneration(CustomCog):
         await inter.response.send_message("Conversation history cleared.", ephemeral=True)
 
     @slash_command_with_cooldown(
-        name="chat_select_prompt",
+        name="select_chat_prompt",
         description="Set the AI conversation prompt from a list of choices",
     )
     async def chat_select_prompt(
@@ -496,13 +496,21 @@ class TextGeneration(CustomCog):
             The choice of system prompt
 
         """
-        prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
-        self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
+        try:
+            prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
+        except KeyError:
+            await inter.response.send_message(
+                "You probably meant to use /set_custom_chat_prompt instead of this command."
+            )
+            return
+
         conversation = self._get_chat(inter)
         conversation.set_system_prompt(prompt)
+        self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
+
         await inter.response.send_message("History cleared and system message updated", ephemeral=True)
 
-    @slash_command_with_cooldown(name="chat_set_model", description="Set the AI model to use")
+    @slash_command_with_cooldown(name="set_chat_model", description="Set the AI model to use")
     async def chat_set_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -525,13 +533,14 @@ class TextGeneration(CustomCog):
         original_model = chat.model
         chat.set_model(model_name)
         summary.set_model(model_name)
+        self.log_info("%s set new model: %s", inter.author.display_name, model_name)
 
         await inter.edit_original_response(
             content=f"LLM model updated from {original_model} to {model_name}.",
         )
 
     @slash_command_with_cooldown(
-        name="chat_set_prompt", description="Change the AI conversation prompt to one you write"
+        name="set_custom_chat_prompt", description="Change the AI conversation prompt to one you write"
     )
     async def chat_set_prompt(
         self,
@@ -551,13 +560,14 @@ class TextGeneration(CustomCog):
             The new system prompt to set.
 
         """
-        self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         conversation = self._get_chat(inter)
         conversation.set_system_prompt(prompt)
+        self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
+
         await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
 
     @slash_command_with_cooldown(
-        name="chat_show_prompt", description="Print information about the current AI conversation"
+        name="show_chat_prompt", description="Print information about the current AI conversation"
     )
     async def chat_show_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Print the system prompt to the screen.
