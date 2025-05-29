@@ -7,7 +7,6 @@ import disnake
 from disnake.ext import commands
 from git.exc import GitCommandError
 
-from slashbot import __version__
 from slashbot.admin import (
     get_logfile_tail,
     restart_bot,
@@ -299,11 +298,6 @@ class AdminTools(CustomCog):
             f"{inter.user.display_name} requested to remove my responses :frowning2:",
             delete_after=10,
         )
-
-    @slash_command_with_cooldown(name="version")
-    async def print_bot_version(self, inter: ApplicationCommandInteraction) -> None:
-        """Print the current version number of the bot."""
-        await inter.response.send_message(f"Current version: {__version__}", ephemeral=True)
 
     @slash_command_with_cooldown(name="last_error")
     async def print_last_error(self, inter: ApplicationCommandInteraction) -> None:

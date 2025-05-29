@@ -85,39 +85,6 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
 
         await inter.response.send_message(content=message, file=file)
 
-    @slash_command_with_cooldown(name="update_markov_chain", description="force update the markov chain for /sentence")
-    @commands.default_member_permissions(administrator=True)
-    async def update_markov_chain(self, inter: disnake.ApplicationCommandInteraction) -> None:
-        """Update the Markov chain model.
-
-        If there is no inter, e.g. not called from a command, then this function
-        behaves a bit differently -- mostly that it does not respond to any
-        interactions.
-
-        The markov chain is updated at the end. The chain is updated by
-        combining a newly generated chain with the current chain.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-
-        """
-        if not BotSettings.markov.enable_markov_training:
-            await inter.response.send_message("Updating the Markov Chain has been disabled.")
-        else:
-            await inter.response.defer(ephemeral=True)
-
-        await markov.update_markov_chain_for_model(
-            inter,
-            markov.MARKOV_MODEL,
-            list(self.markov_training_sample.values()),
-            BotSettings.markov.current_chain_location,
-        )
-        self.markov_training_sample.clear()
-
-        await inter.edit_original_message("Markov chain has been updated.")
-
     @slash_command_with_cooldown(name="oracle", description="a message from god")
     async def oracle(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a Terry Davis inspired "God message" to the chat.

@@ -157,7 +157,7 @@ class Reminders(CustomCog):
 
     # Commands -----------------------------------------------------------------
 
-    @slash_command_with_cooldown(name="remind_me", description="Set a reminder for later.")
+    @slash_command_with_cooldown(name="set_reminder", description="Set a reminder for later.")
     async def set_reminder(
         self,
         inter: disnake.ApplicationCommandInteraction,
@@ -243,7 +243,7 @@ class Reminders(CustomCog):
 
         await inter.response.send_message("Your reminder has been removed.", ephemeral=True)
 
-    @slash_command_with_cooldown(name="my_reminders", description="View your reminders.")
+    @slash_command_with_cooldown(name="show_reminders", description="View your reminders.")
     async def show_reminders(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Show the reminders set for a user.
 
