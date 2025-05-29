@@ -310,11 +310,10 @@ class AdminTools(CustomCog):
 
         """
         await inter.response.defer(ephemeral=True)
-        if self.last_error:
-            last_error = f"```{self.last_error}```"
-        else:
-            last_error = "There have been no errors since the last restart."
-        await inter.edit_original_message(content=last_error)
+        last_error = self.get_last_error()
+        await inter.edit_original_message(
+            content=f"```{last_error}```" if last_error else "There have been no errors since the last restart.",
+        )
 
     @slash_command_with_cooldown(name="logfile")
     async def print_logfile_tail(

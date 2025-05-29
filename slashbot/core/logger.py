@@ -121,11 +121,20 @@ class Logger:
 
     @staticmethod
     def _truncate_error_block(lines: list[str], limit: int) -> str:
-        first, *middle, last = lines
         full = "".join(lines)
-
         if len(full) <= limit:
             return full
+
+        if len(lines) == 1:
+            return lines[0][:limit]
+        if len(lines) == 2:
+            first, last = lines
+            if len(first) + len(last) >= limit:
+                available = limit - len(first)
+                return first + last[: max(0, available)]
+            return first + last[: limit - len(first)]
+
+        first, *middle, last = lines
         if len(first) + len(last) >= limit:
             available = limit - len(first)
             return first + last[: max(0, available)]
@@ -242,8 +251,7 @@ class Logger:
             if handler.name != USER_FACING_LOGGER:
                 handler.setLevel(level)
 
-    @property
-    def last_error(self) -> str:
+    def get_last_error(self) -> str:
         """Get the last error message and traceback (max 2000 characters).
 
         Returns
