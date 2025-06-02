@@ -69,7 +69,7 @@ class ArtificialIntelligence(CustomCog):
         self._profiler_logger.setLevel(logging.INFO)
 
     def _start_profiler(self) -> None:
-        if not BotSettings.cogs.text_generation.enable_profiling:
+        if not BotSettings.cogs.artificial_intelligence.enable_profiling:
             return
         if self._profiler.is_running:
             self._profiler.stop()
@@ -77,7 +77,7 @@ class ArtificialIntelligence(CustomCog):
         self._profiler.start()
 
     def _stop_profiler(self) -> None:
-        if not BotSettings.cogs.text_generation.enable_profiling:
+        if not BotSettings.cogs.artificial_intelligence.enable_profiling:
             return
         self._profiler.stop()
         profiler_output = self._profiler.output_text()
@@ -105,7 +105,7 @@ class ArtificialIntelligence(CustomCog):
             extra_print = f"{obj.channel.id}"
 
         self.channel_histories[context_id] = AIChatSummary(
-            token_window_size=BotSettings.cogs.text_generation.token_window_size,
+            token_window_size=BotSettings.cogs.artificial_intelligence.token_window_size,
             extra_print=extra_print,
         )
         return self.channel_histories[context_id]
@@ -149,9 +149,9 @@ class ArtificialIntelligence(CustomCog):
         time_difference = (current_time - user_cooldown.last_interaction).seconds
 
         # Check if exceeded rate limit
-        if user_cooldown.count > BotSettings.cogs.text_generation.response_rate_limit:
+        if user_cooldown.count > BotSettings.cogs.artificial_intelligence.response_rate_limit:
             # If exceeded rate limit, check if cooldown period has passed
-            if time_difference > BotSettings.cogs.text_generation.rate_limit_interval:
+            if time_difference > BotSettings.cogs.artificial_intelligence.rate_limit_interval:
                 # reset count and update last_interaction time
                 user_cooldown.count = 1
                 user_cooldown.last_interaction = current_time
@@ -207,7 +207,7 @@ class ArtificialIntelligence(CustomCog):
         images = []
         for url in image_urls:
             image = VisionImage(url)
-            if not BotSettings.cogs.text_generation.prefer_image_urls:
+            if not BotSettings.cogs.artificial_intelligence.prefer_image_urls:
                 try:
                     await image.download_and_encode()
                 except Exception:  # noqa: BLE001
@@ -416,7 +416,7 @@ class ArtificialIntelligence(CustomCog):
             await self._respond_to_prompted_message(message, message_in_dm=message_in_dm)
             return
 
-        if random.random() < BotSettings.cogs.text_generation.random_response_chance:
+        if random.random() < BotSettings.cogs.artificial_intelligence.random_response_chance:
             await self._respond_to_unprompted_message(message)
 
     # Commands -----------------------------------------------------------------

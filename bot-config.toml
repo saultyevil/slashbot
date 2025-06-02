@@ -1,13 +1,14 @@
 [cogs]
 
-[cogs.ai_chat]
+[cogs.artificial_intelligence]
 token_window_size = 10000
 max_output_tokens = 2000
 model_temperature = 1.0
 model_top_p = 1.0
 model_frequency_penalty = 0.0
 model_presence_penalty = 0.0
-chat_model = "gemini-2.0-flash"
+default_model = "gpt-4o-mini"
+default_chat_prompt = "data/prompts/rosamund.yaml"
 random_response_chance = 0.005
 random_response_use_n_messages = 5
 response_rate_limit = 10
