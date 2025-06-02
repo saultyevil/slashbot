@@ -145,7 +145,7 @@ class TextGenerator(Logger):
             msg = f"{model} is not available"
             raise NotImplementedError(msg)
 
-    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
+    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset name") -> None:
         """Set the system prompt.
 
         Parameters

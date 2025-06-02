@@ -328,7 +328,7 @@ class GeminiClient(TextGenerationAbstractClient):
             response_json["usageMetadata"]["totalTokenCount"],
         )
 
-    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset") -> None:
+    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset name") -> None:
         """Set the system prompt.
 
         Parameters

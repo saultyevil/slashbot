@@ -24,8 +24,8 @@ class AIChat(TextGenerator):
         self.set_system_prompt(
             system_prompt,
             prompt_name=self.DEFAULT_SYSTEM_PROMPT.name
-            if system_prompt == self.DEFAULT_SYSTEM_PROMPT
-            else "custom prompt",
+            if system_prompt == self.DEFAULT_SYSTEM_PROMPT.prompt
+            else "unset name",
         )
 
     # --------------------------------------------------------------------------

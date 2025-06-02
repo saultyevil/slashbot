@@ -462,16 +462,16 @@ class ArtificialIntelligence(CustomCog):
 
     @slash_command_with_cooldown(
         name="choose_chat_prompt",
-        description="Set the AI conversation prompt from a list of choices",
+        description="Set the AI conversation prompt from a list of pre-made prompts",
     )
     async def chat_select_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        choice: str = commands.Param(
+        prompt_name: str = commands.Param(
             autocomplete=lambda _, user_input: [
                 choice for choice in slashbot.watchers.AVAILABLE_LLM_PROMPTS if user_input in choice
             ],
-            description="The choice of prompt to use",
+            description="The name of the prompt to use",
         ),
     ) -> None:
         """Select a system prompt from a set of pre-defined prompts.
@@ -480,12 +480,12 @@ class ArtificialIntelligence(CustomCog):
         ----------
         inter : disnake.ApplicationCommandInteraction
             The slash command interaction.
-        choice : str
-            The choice of system prompt
+        prompt_name : str
+            The name of the system prompt to use
 
         """
         try:
-            prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[choice]
+            prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[prompt_name]
         except KeyError:
             await inter.response.send_message(
                 "You probably meant to use /set_custom_chat_prompt instead of this command."
@@ -493,11 +493,11 @@ class ArtificialIntelligence(CustomCog):
             return
 
         chat = self._get_ai_chat_for_id(inter)
-        chat.set_system_prompt(prompt)
-        self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
+        chat.set_system_prompt(prompt, prompt_name=prompt_name)
+        self.log_info("%s set new prompt [%s]: %s", inter.author.display_name, prompt_name, prompt)
 
         await inter.response.send_message(
-            f"Conversation history been reset and system prompt set to: {shorten(prompt, 1500)}", ephemeral=True
+            f"Conversation history been reset and system prompt set to:\n> {shorten(prompt, 1500)}", ephemeral=True
         )
 
     @slash_command_with_cooldown(name="set_chat_model", description="Set the AI model to use")
@@ -555,7 +555,7 @@ class ArtificialIntelligence(CustomCog):
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
 
         await inter.response.send_message(
-            f"Conversation history been reset and system prompt set to: {shorten(prompt, 1500)}", ephemeral=True
+            f"Conversation history been reset and system prompt set to:\n> {shorten(prompt, 1500)}", ephemeral=True
         )
 
     @slash_command_with_cooldown(
@@ -573,7 +573,7 @@ class ArtificialIntelligence(CustomCog):
         chat = self._get_ai_chat_for_id(inter)
         response = f"**Model**: {chat.model}\n"
         response += f"**Token size**: {chat.size_tokens}\n"
-        response += f"**Prompt [*{chat.system_prompt_name}*]**: {shorten(chat.system_prompt, 1500)}\n"
+        response += f"**Prompt [*{chat.system_prompt_name}*]**:\n> {shorten(chat.system_prompt, 1500)}\n"
 
         await inter.response.send_message(response, ephemeral=True)
 
