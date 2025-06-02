@@ -9,7 +9,7 @@ packages = [
 ]
 
 [tool.poetry.scripts]
-slashbot = "slashbot.cli.run:main"
+slashbot = "slashbot.cli.run:entry_point"
 
 [tool.poetry.dependencies]
 python = "^3.11"
