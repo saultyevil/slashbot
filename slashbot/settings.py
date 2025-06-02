@@ -11,7 +11,7 @@ class SpellcheckSettings:
     """Settings for the spellcheck cog."""
 
     enabled: bool
-    servers: dict[str, Any]
+    guilds: dict[str, Any]
     custom_dictionary: str
 
 
@@ -151,7 +151,7 @@ class Settings:
 
         spellcheck = SpellcheckSettings(
             enabled=data["cogs"]["spellcheck"]["enabled"],
-            servers=data["cogs"]["spellcheck"]["servers"],
+            guilds=data["cogs"]["spellcheck"]["servers"],
             custom_dictionary=data["cogs"]["spellcheck"]["custom_dictionary"],
         )
         text_generation = TextGenerationSettings(
