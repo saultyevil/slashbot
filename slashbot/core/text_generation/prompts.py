@@ -13,7 +13,7 @@ class Prompt(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def clean_prompt(cls, values: dict) -> dict:
+    def _format_prompt(cls, values: dict) -> dict:
         """Clean up the prompt string, removing newlines and indentation.
 
         Parameters

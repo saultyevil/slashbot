@@ -338,7 +338,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
+    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset") -> None:
         """Set the system prompt.
 
         Parameters

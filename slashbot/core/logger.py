@@ -127,7 +127,7 @@ class Logger:
 
         if len(lines) == 1:
             return lines[0][:limit]
-        if len(lines) == 2:
+        if len(lines) == 2:  # noqa: PLR2004
             first, last = lines
             if len(first) + len(last) >= limit:
                 available = limit - len(first)

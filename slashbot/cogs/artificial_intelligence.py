@@ -42,27 +42,7 @@ class Cooldown:
     last_interaction: datetime.datetime
 
 
-def get_history_id(obj: Message | ApplicationCommandInteraction) -> int:
-    """Determine the history ID to use given the origin of the message.
-
-    Historically, this used to return different values for text channels and
-    direct messages.
-
-    Parameters
-    ----------
-    obj
-        The Disnake object to get the history ID from.
-
-    Returns
-    -------
-    int
-        The ID to use for history purposes.
-
-    """
-    return obj.channel.id
-
-
-class TextGeneration(CustomCog):
+class ArtificialIntelligence(CustomCog):
     """AI chat features powered by OpenAI."""
 
     def __init__(self, bot: CustomInteractionBot) -> None:
@@ -104,10 +84,14 @@ class TextGeneration(CustomCog):
         self._profiler_logger.info("\n%s", profiler_output)
         self._profiler.reset()
 
-    def _get_channel_history(self, obj: Message | ApplicationCommandInteraction) -> AIChatSummary:
-        history_id = get_history_id(obj)
-        if history_id in self.channel_histories:
-            return self.channel_histories[history_id]
+    @staticmethod
+    def _get_context_id(obj: Message | ApplicationCommandInteraction) -> int:
+        return obj.channel.id
+
+    def _get_ai_summary_for_id(self, obj: int | Message | ApplicationCommandInteraction) -> AIChatSummary:
+        context_id = self._get_context_id(obj) if not isinstance(obj, int) else obj
+        if context_id in self.channel_histories:
+            return self.channel_histories[context_id]
 
         if isinstance(obj, int):
             msg = "History ID is an int, but a ai conversation has not been found"
@@ -120,16 +104,16 @@ class TextGeneration(CustomCog):
         else:
             extra_print = f"{obj.channel.id}"
 
-        self.channel_histories[history_id] = AIChatSummary(
+        self.channel_histories[context_id] = AIChatSummary(
             token_window_size=BotSettings.cogs.text_generation.token_window_size,
             extra_print=extra_print,
         )
-        return self.channel_histories[history_id]
+        return self.channel_histories[context_id]
 
-    def _get_chat(self, obj: int | Message | ApplicationCommandInteraction) -> AIChat:
-        history_id = get_history_id(obj) if not isinstance(obj, int) else obj
-        if history_id in self.chats:
-            return self.chats[history_id]
+    def _get_ai_chat_for_id(self, obj: int | Message | ApplicationCommandInteraction) -> AIChat:
+        context_id = self._get_context_id(obj) if not isinstance(obj, int) else obj
+        if context_id in self.chats:
+            return self.chats[context_id]
         if isinstance(obj, int):
             msg = "History ID is an int, but an ai chat has not been found"
             raise ValueError(msg)  # noqa: TRY004
@@ -141,10 +125,10 @@ class TextGeneration(CustomCog):
         else:
             extra_print = f"{obj.channel.id}"
 
-        self.chats[history_id] = AIChat(
+        self.chats[context_id] = AIChat(
             extra_print=extra_print,
         )
-        return self.chats[history_id]
+        return self.chats[context_id]
 
     def _check_if_user_on_cooldown(self, user_id: int) -> bool:
         """Check if a user is on cooldown or not.
@@ -284,7 +268,7 @@ class TextGeneration(CustomCog):
 
         return previous_message
 
-    async def _get_response_from_llm(self, discord_message: disnake.Message) -> str:
+    async def _get_response(self, discord_message: disnake.Message) -> str:
         """Generate a response to a prompt for a conversation of messages.
 
         A copy of the conversation is made before updating it with the user
@@ -304,7 +288,7 @@ class TextGeneration(CustomCog):
             The response from the AI.
 
         """
-        conversation = self._get_chat(discord_message)
+        conversation = self._get_ai_chat_for_id(discord_message)
 
         # If we are in a guild, we need to get the bot's display name for that
         # guild. Otherwise, we can use the bot's given name.
@@ -343,7 +327,7 @@ class TextGeneration(CustomCog):
 
         return bot_response
 
-    async def _respond_with_random_llm_response(self, message: disnake.Message) -> None:
+    async def _respond_to_unprompted_message(self, message: disnake.Message) -> None:
         """Respond to a discord message with a random LLM response.
 
         Parameters
@@ -353,12 +337,14 @@ class TextGeneration(CustomCog):
 
         """
         prompt = read_in_prompt("data/prompts/_random-response.yaml")
-        chat = self._get_chat(message)
+        chat = self._get_ai_chat_for_id(message)
         content = chat.create_request_json(TextGenerationInput(message.clean_content), system_prompt=prompt.prompt)
         llm_response = await chat.send_raw_request(content)
         await send_message_to_channel(llm_response, message, dont_tag_user=True)
 
-    async def _respond_to_user_prompt(self, discord_message: disnake.Message, *, message_in_dm: bool = False) -> None:
+    async def _respond_to_prompted_message(
+        self, discord_message: disnake.Message, *, message_in_dm: bool = False
+    ) -> None:
         """Respond to a user's message prompt.
 
         This method handles user prompts by checking for rate limits,
@@ -382,7 +368,7 @@ class TextGeneration(CustomCog):
                     dont_tag_user=True,
                 )
             else:
-                response = await self._get_response_from_llm(discord_message)
+                response = await self._get_response(discord_message)
                 await send_message_to_channel(
                     response,
                     discord_message,
@@ -403,7 +389,7 @@ class TextGeneration(CustomCog):
         for user in message.mentions:
             clean_message = clean_message.replace(f"@{user.name}", f"[directed at {user.display_name}]")
 
-        channel_history = self._get_channel_history(message)
+        channel_history = self._get_ai_summary_for_id(message)
         channel_history.add_message_to_history(
             SummaryMessage(
                 user=message.author.display_name if message.author != self.bot.user else "me",
@@ -427,11 +413,11 @@ class TextGeneration(CustomCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
-            await self._respond_to_user_prompt(message, message_in_dm=message_in_dm)
+            await self._respond_to_prompted_message(message, message_in_dm=message_in_dm)
             return
 
         if random.random() < BotSettings.cogs.text_generation.random_response_chance:
-            await self._respond_with_random_llm_response(message)
+            await self._respond_to_unprompted_message(message)
 
     # Commands -----------------------------------------------------------------
 
@@ -449,7 +435,7 @@ class TextGeneration(CustomCog):
             The interaction object representing the user's command interaction.
 
         """
-        channel_history = self._get_channel_history(inter)
+        channel_history = self._get_ai_summary_for_id(inter)
         if len(channel_history) == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
@@ -468,12 +454,14 @@ class TextGeneration(CustomCog):
             The slash command interaction.
 
         """
-        chat = self._get_chat(inter)
+        chat = self._get_ai_chat_for_id(inter)
         chat.reset_history()
-        await inter.response.send_message("Conversation history cleared.", ephemeral=True)
+        await inter.response.send_message(
+            f"Conversation history has been reset with prompt: {shorten(chat.system_prompt, 1500)}", ephemeral=True
+        )
 
     @slash_command_with_cooldown(
-        name="select_chat_prompt",
+        name="choose_chat_prompt",
         description="Set the AI conversation prompt from a list of choices",
     )
     async def chat_select_prompt(
@@ -504,11 +492,13 @@ class TextGeneration(CustomCog):
             )
             return
 
-        conversation = self._get_chat(inter)
-        conversation.set_system_prompt(prompt)
+        chat = self._get_ai_chat_for_id(inter)
+        chat.set_system_prompt(prompt)
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
 
-        await inter.response.send_message("History cleared and system message updated", ephemeral=True)
+        await inter.response.send_message(
+            f"Conversation history been reset and system prompt set to: {shorten(prompt, 1500)}", ephemeral=True
+        )
 
     @slash_command_with_cooldown(name="set_chat_model", description="Set the AI model to use")
     async def chat_set_model(
@@ -528,8 +518,8 @@ class TextGeneration(CustomCog):
         """
         await inter.response.defer(ephemeral=True)
 
-        chat = self._get_chat(inter)
-        summary = self._get_channel_history(inter)
+        chat = self._get_ai_chat_for_id(inter)
+        summary = self._get_ai_summary_for_id(inter)
         original_model = chat.model
         chat.set_model(model_name)
         summary.set_model(model_name)
@@ -542,10 +532,10 @@ class TextGeneration(CustomCog):
     @slash_command_with_cooldown(
         name="set_custom_chat_prompt", description="Change the AI conversation prompt to one you write"
     )
-    async def chat_set_prompt(
+    async def chat_set_custom_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        prompt: str = commands.Param(description="The prompt to set", max_length=2000),
+        prompt: str = commands.Param(description="The prompt to set", max_length=1950),
     ) -> None:
         """Set a new system message for the location were the interaction came from.
 
@@ -560,11 +550,13 @@ class TextGeneration(CustomCog):
             The new system prompt to set.
 
         """
-        conversation = self._get_chat(inter)
-        conversation.set_system_prompt(prompt)
+        chat = self._get_ai_chat_for_id(inter)
+        chat.set_system_prompt(prompt)
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
 
-        await inter.response.send_message("History cleared and system prompt updated", ephemeral=True)
+        await inter.response.send_message(
+            f"Conversation history been reset and system prompt set to: {shorten(prompt, 1500)}", ephemeral=True
+        )
 
     @slash_command_with_cooldown(
         name="show_chat_prompt", description="Print information about the current AI conversation"
@@ -578,19 +570,10 @@ class TextGeneration(CustomCog):
             The slash command interaction.
 
         """
-        conversation = self._get_chat(inter)
-
-        prompt_name = "Unknown"
-        prompt = conversation.system_prompt
-        for name, text in slashbot.watchers.AVAILABLE_LLM_PROMPTS.items():
-            if prompt == text:
-                prompt_name = name
-
-        response = ""
-        response += f"**Model name**: {conversation.model}\n"
-        response += f"**Token usage**: {conversation.size_tokens}\n"
-        response += f"**Prompt name**: {prompt_name}\n"
-        response += f"**Prompt**: {shorten(prompt, 1800)}\n"
+        chat = self._get_ai_chat_for_id(inter)
+        response = f"**Model**: {chat.model}\n"
+        response += f"**Token size**: {chat.size_tokens}\n"
+        response += f"**Prompt [*{chat.system_prompt_name}*]**: {shorten(chat.system_prompt, 1500)}\n"
 
         await inter.response.send_message(response, ephemeral=True)
 
@@ -604,7 +587,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if BotSettings.keys.openai:
-        bot.add_cog(TextGeneration(bot))
-    else:
-        bot.log_error("No API key found for OpenAI, unable to load AIChatBot cog")
+    try:
+        bot.add_cog(ArtificialIntelligence(bot))
+    except:  # noqa: E722
+        bot.log_error("Failed to initialise ArtificialIntelligence cog, probably due to a missing API key")
