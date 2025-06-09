@@ -7,7 +7,8 @@ from typing import Any
 
 from slashbot.settings import BotSettings
 
-USER_FACING_LOGGER = "user-facing-log"
+USER_LOG_HANDLER_NAME = "userLogFile"
+DEBUG_FILE_LOG_HANDLER_NAME = "debugLogFile"
 
 
 class ConditionalFormatter(logging.Formatter):
@@ -67,7 +68,7 @@ def setup_logging() -> None:
     )
     debug_file_handler.setFormatter(formatter)
     debug_file_handler.setLevel(logging.DEBUG)
-    debug_file_handler.set_name("debug-file-handler")
+    debug_file_handler.set_name(DEBUG_FILE_LOG_HANDLER_NAME)
     logger.addHandler(debug_file_handler)
 
     file_handler = FileHandler(
@@ -82,7 +83,7 @@ def setup_logging() -> None:
         ),
     )
     file_handler.setLevel(logging.INFO)
-    file_handler.set_name(USER_FACING_LOGGER)
+    file_handler.set_name(USER_LOG_HANDLER_NAME)
     logger.addHandler(file_handler)
 
     logger.info("Loaded config file %s", BotSettings.config_file)
@@ -113,7 +114,7 @@ class Logger:
             if "ERROR" in lines[i]:
                 block = [lines[i]]
                 for j in range(i + 1, len(lines)):
-                    if any(level_name in lines[j] for level_name in ("ERROR", "INFO", "WARNING")):
+                    if any(level_name in lines[j] for level_name in ("ERROR", "INFO", "WARNING", "DEBUG")):
                         break
                     block.append(lines[j])
                 return block
@@ -144,13 +145,13 @@ class Logger:
         middle_trimmed = textwrap.shorten(middle_text, width=remaining, placeholder="...\n")
         return first + middle_trimmed + last
 
-    def _get_user_facing_handler(self) -> logging.FileHandler:
-        handler = next((x for x in self._logger.handlers if x.name == USER_FACING_LOGGER), None)
+    def _get_debug_file_handler(self) -> logging.FileHandler:
+        handler = next((x for x in self._logger.handlers if x.name == DEBUG_FILE_LOG_HANDLER_NAME), None)
         if handler is None:
-            msg = f"Unable to find `{USER_FACING_LOGGER}` in logger"
+            msg = f"Unable to find `{DEBUG_FILE_LOG_HANDLER_NAME}` in logger"
             raise ValueError(msg)
         if not isinstance(handler, logging.FileHandler):
-            msg = f"The logging handler named `{USER_FACING_LOGGER}` is not a file handler"
+            msg = f"The logging handler named `{DEBUG_FILE_LOG_HANDLER_NAME}` is not a file handler"
             raise TypeError(msg)
         return handler
 
@@ -248,7 +249,7 @@ class Logger:
 
         """
         for handler in self._logger.handlers:
-            if handler.name != USER_FACING_LOGGER:
+            if handler.name != USER_LOG_HANDLER_NAME:
                 handler.setLevel(level)
 
     def get_last_error(self) -> str:
@@ -260,7 +261,7 @@ class Logger:
             An empty string if no error found, or the (truncated) error message.
 
         """
-        handler = self._get_user_facing_handler()
+        handler = self._get_debug_file_handler()
         path = pathlib.Path(handler.baseFilename)
 
         with path.open(encoding="utf-8") as file_in:
