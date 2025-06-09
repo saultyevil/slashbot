@@ -20,6 +20,7 @@ class ArtificialIntelligenceSettings:
     """Settings for LLM text generation."""
 
     token_window_size: int
+    max_images_in_window: int
     max_output_tokens: int
     model_temperature: float
     model_top_p: float
@@ -157,6 +158,7 @@ class Settings:
         )
         artificial_intelligence = ArtificialIntelligenceSettings(
             token_window_size=data["cogs"]["artificial_intelligence"]["token_window_size"],
+            max_images_in_window=data["cogs"]["artificial_intelligence"]["max_images_in_window"],
             max_output_tokens=data["cogs"]["artificial_intelligence"]["max_output_tokens"],
             model_temperature=data["cogs"]["artificial_intelligence"]["model_temperature"],
             model_top_p=data["cogs"]["artificial_intelligence"]["model_top_p"],
