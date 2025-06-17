@@ -6,7 +6,7 @@ location into a latitude and longitude for OpenWeatherMap.
 
 import datetime
 import json
-from urllib import response
+from os import error
 
 import disnake
 import requests
@@ -31,6 +31,10 @@ class OneCallError(Exception):
 
 class LocationNotFoundError(Exception):
     """Raise when OWM cannot find the provided location."""
+
+
+class NoLocationProvidedError(Exception):
+    """Raise when no location was provided."""
 
 
 def convert_radial_to_cardinal_direction(degrees: float) -> str:
@@ -302,24 +306,31 @@ class Weather(CustomCog):
 
         """
         if not location:
+            exc_msg = "No location provided to forecast"
+            error_msg = "You need to either specify a city, or set your location using /set_info."
             try:
                 user = await self.db.get_user(inter.user.id)
                 location = user.city
             except KeyError as exc:
                 await deferred_error_message(
                     inter,
-                    "You need to either specify a city, or set your city and/or country using /set_info.",
+                    error_msg,
                 )
-                msg = "No location provided"
-                raise ValueError(msg) from exc
+                raise NoLocationProvidedError(exc_msg) from exc
+            if not location:
+                await deferred_error_message(
+                    inter,
+                    error_msg,
+                )
+                raise NoLocationProvidedError(exc_msg)
 
         try:
             location, forecast = self.call_api(location, units, request_type)
         except (LocationNotFoundError, GeocodeError):
-            await deferred_error_message(inter, f"Unable to find '{location.capitalize()}'")
+            await deferred_error_message(inter, f"Unable to find the location '{location.capitalize()}'.")
             raise
         except (OneCallError, requests.Timeout):
-            await deferred_error_message(inter, "Open Weather Map failed to respond")
+            await deferred_error_message(inter, "Open Weather Map did not respond to the request.")
             raise
 
         return location, forecast
@@ -469,11 +480,12 @@ class Weather(CustomCog):
 
         """
         await inter.response.defer()
+
         try:
             location, forecast = await self.get_weather_forecast_for_location(
                 inter, user_location, units, forecast_type
             )
-        except ValueError:
+        except (NoLocationProvidedError, LocationNotFoundError, GeocodeError, OneCallError, requests.Timeout):
             return
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
@@ -515,11 +527,12 @@ class Weather(CustomCog):
 
         """
         await inter.response.defer()
+
         try:
             location, weather_return = await self.get_weather_forecast_for_location(
                 inter, user_location, units, ["current", "daily", "alerts"]
             )
-        except ValueError:
+        except (NoLocationProvidedError, LocationNotFoundError, GeocodeError, OneCallError, requests.Timeout):
             return
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
