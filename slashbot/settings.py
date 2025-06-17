@@ -11,21 +11,23 @@ class SpellcheckSettings:
     """Settings for the spellcheck cog."""
 
     enabled: bool
-    servers: dict[str, Any]
+    guilds: dict[str, Any]
     custom_dictionary: str
 
 
 @dataclass
-class TextGenerationSettings:
+class ArtificialIntelligenceSettings:
     """Settings for LLM text generation."""
 
     token_window_size: int
+    max_images_in_window: int
     max_output_tokens: int
     model_temperature: float
     model_top_p: float
     model_frequency_penalty: float
     model_presence_penalty: float
     default_model: str
+    default_chat_prompt: str
     random_response_chance: float
     random_response_use_n_messages: int
     response_rate_limit: int
@@ -39,7 +41,7 @@ class CogSettings:
     """Cog settings."""
 
     spellcheck: SpellcheckSettings
-    text_generation: TextGenerationSettings
+    artificial_intelligence: ArtificialIntelligenceSettings
 
 
 @dataclass
@@ -151,25 +153,27 @@ class Settings:
 
         spellcheck = SpellcheckSettings(
             enabled=data["cogs"]["spellcheck"]["enabled"],
-            servers=data["cogs"]["spellcheck"]["servers"],
+            guilds=data["cogs"]["spellcheck"]["servers"],
             custom_dictionary=data["cogs"]["spellcheck"]["custom_dictionary"],
         )
-        text_generation = TextGenerationSettings(
-            token_window_size=data["cogs"]["ai_chat"]["token_window_size"],
-            max_output_tokens=data["cogs"]["ai_chat"]["max_output_tokens"],
-            model_temperature=data["cogs"]["ai_chat"]["model_temperature"],
-            model_top_p=data["cogs"]["ai_chat"]["model_top_p"],
-            model_frequency_penalty=data["cogs"]["ai_chat"]["model_frequency_penalty"],
-            model_presence_penalty=data["cogs"]["ai_chat"]["model_presence_penalty"],
-            default_model=data["cogs"]["ai_chat"]["chat_model"],
-            random_response_chance=data["cogs"]["ai_chat"]["random_response_chance"],
-            response_rate_limit=data["cogs"]["ai_chat"]["response_rate_limit"],
-            random_response_use_n_messages=data["cogs"]["ai_chat"]["random_response_use_n_messages"],
-            rate_limit_interval=data["cogs"]["ai_chat"]["rate_limit_interval"],
-            enable_profiling=data["cogs"]["ai_chat"]["enable_profiling"],
-            prefer_image_urls=data["cogs"]["ai_chat"]["prefer_image_urls"],
+        artificial_intelligence = ArtificialIntelligenceSettings(
+            token_window_size=data["cogs"]["artificial_intelligence"]["token_window_size"],
+            max_images_in_window=data["cogs"]["artificial_intelligence"]["max_images_in_window"],
+            max_output_tokens=data["cogs"]["artificial_intelligence"]["max_output_tokens"],
+            model_temperature=data["cogs"]["artificial_intelligence"]["model_temperature"],
+            model_top_p=data["cogs"]["artificial_intelligence"]["model_top_p"],
+            model_frequency_penalty=data["cogs"]["artificial_intelligence"]["model_frequency_penalty"],
+            model_presence_penalty=data["cogs"]["artificial_intelligence"]["model_presence_penalty"],
+            default_model=data["cogs"]["artificial_intelligence"]["default_model"],
+            default_chat_prompt=data["cogs"]["artificial_intelligence"]["default_chat_prompt"],
+            random_response_chance=data["cogs"]["artificial_intelligence"]["random_response_chance"],
+            response_rate_limit=data["cogs"]["artificial_intelligence"]["response_rate_limit"],
+            random_response_use_n_messages=data["cogs"]["artificial_intelligence"]["random_response_use_n_messages"],
+            rate_limit_interval=data["cogs"]["artificial_intelligence"]["rate_limit_interval"],
+            enable_profiling=data["cogs"]["artificial_intelligence"]["enable_profiling"],
+            prefer_image_urls=data["cogs"]["artificial_intelligence"]["prefer_image_urls"],
         )
-        cogs = CogSettings(spellcheck=spellcheck, text_generation=text_generation)
+        cogs = CogSettings(spellcheck=spellcheck, artificial_intelligence=artificial_intelligence)
         cooldown = CommandCooldownSettings(
             rate=data["cooldown"]["rate"],
             standard=data["cooldown"]["standard"],

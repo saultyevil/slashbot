@@ -32,7 +32,7 @@ class TextGenerator(Logger):
 
         """
         super().__init__(prepend_msg=extra_print)
-        model: str = model_name or BotSettings.cogs.text_generation.default_model
+        model: str = model_name or BotSettings.cogs.artificial_intelligence.default_model
         self._extra_print: str = extra_print
         self.set_model(model)
 
@@ -145,7 +145,7 @@ class TextGenerator(Logger):
             msg = f"{model} is not available"
             raise NotImplementedError(msg)
 
-    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
+    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset name") -> None:
         """Set the system prompt.
 
         Parameters

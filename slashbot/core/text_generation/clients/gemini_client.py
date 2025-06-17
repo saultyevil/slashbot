@@ -71,6 +71,9 @@ class GeminiClient(TextGenerationAbstractClient):
         """
         return len(self._context["contents"])
 
+    def _content_contains_image_type(self, content: dict) -> bool:
+        return any("inline_data" in part for part in content.get("parts", []))
+
     def _content_contains_youtube_video_type(self, content: dict) -> bool:
         for part in content.get("parts", []):
             if "file_data" in part:
@@ -88,6 +91,18 @@ class GeminiClient(TextGenerationAbstractClient):
                 self._remove_message(i)
             else:
                 i += 1
+
+        # Keep some variable amount of images in the request. If we have too
+        # many images, then the latency is too high
+        i = 0
+        num_images = 0
+        while i < len(self._context["contents"]):
+            content = self._context["contents"][i]
+            if self._content_contains_image_type(content):
+                num_images += 1
+            if num_images > BotSettings.cogs.artificial_intelligence.max_images_in_window:
+                self._remove_message(i)
+            i += 1
 
         # But we still include new video request here, we are only removing OLD
         # youtube links. The one added to the context here will be removed
@@ -328,7 +343,7 @@ class GeminiClient(TextGenerationAbstractClient):
             response_json["usageMetadata"]["totalTokenCount"],
         )
 
-    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
+    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset name") -> None:
         """Set the system prompt.
 
         Parameters

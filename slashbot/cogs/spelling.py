@@ -17,47 +17,18 @@ from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.clock import calculate_seconds_until
 from slashbot.settings import BotSettings
 
-
-def join_list_max_chars(words: list[str], max_chars: int) -> str:
-    """Join a list of words into a comma-separated list.
-
-    Parameters
-    ----------
-    words : List[str]
-        A list of words to join together
-    max_chars : int
-        The maximum length the output string can be
-
-    Returns
-    -------
-    str
-        The joined words with "..." at the end if max_chars is hit
-
-    """
-    result = ""
-    current_length = 0
-
-    for word in words:
-        if current_length + len(word) > max_chars - 3:
-            if result:
-                result += "..."
-            break
-        result += word + ", "
-        current_length += len(word)
-
-    # Remove the trailing ", " if there's anything in the result
-    return result.removesuffix(", ")
+SPELLING_GUILDS = [int(guild_id) for guild_id in BotSettings.cogs.spellcheck.guilds]
 
 
 @dataclass
-class Spellings:
+class UserSpellCheck:
     """Dataclass for storing the incorrect spellings of a user."""
 
     total: int
     incorrect: list[str]
 
 
-class Spelling(CustomCog):
+class SpellCheck(CustomCog):
     """A cog for bullying people.
 
     The purpose of this cog is to bully Pip for his poor spelling.
@@ -75,14 +46,45 @@ class Spelling(CustomCog):
 
         """
         super().__init__(bot)
-        self.incorrect_spellings = defaultdict(lambda: defaultdict(lambda: Spellings(0, [])))
+        self.incorrect_spellings = defaultdict(lambda: defaultdict(lambda: UserSpellCheck(0, [])))
         self.spellchecker = SpellChecker(case_sensitive=False)
         self.custom_words = self.get_custom_words()
+
+    @staticmethod
+    def _join_list_into_csv(words: list[str], max_chars: int) -> str:
+        """Join a list of words into a comma-separated list.
+
+        Parameters
+        ----------
+        words : List[str]
+            A list of words to join together
+        max_chars : int
+            The maximum length the output string can be
+
+        Returns
+        -------
+        str
+            The joined words with "..." at the end if max_chars is hit
+
+        """
+        result = ""
+        current_length = 0
+
+        for word in words:
+            if current_length + len(word) > max_chars - 3:
+                if result:
+                    result += "..."
+                break
+            result += word + ", "
+            current_length += len(word)
+
+        # Remove the trailing ", " if there's anything in the result
+        return result.removesuffix(", ")
 
     @slash_command_with_cooldown(
         name="add_word_to_dict",
         description="Add a word to the custom dictionary for the spelling summary",
-        guild_ids=tuple(int(guild_id) for guild_id in BotSettings.cogs.spellcheck.servers),
+        guild_ids=SPELLING_GUILDS,
     )
     async def add_word_to_dict(
         self,
@@ -117,7 +119,7 @@ class Spelling(CustomCog):
     @slash_command_with_cooldown(
         name="remove_word_from_dict",
         description="Remove a word from the custom dictionary for the spelling summary",
-        guild_ids=[int(guild_id) for guild_id in BotSettings.cogs.spellcheck.servers],
+        guild_ids=SPELLING_GUILDS,
     )
     async def remove_word_from_dict(
         self,
@@ -211,9 +213,9 @@ class Spelling(CustomCog):
         if not message.guild or message.author.bot:
             return
         guild_key = str(message.guild.id)
-        if guild_key not in BotSettings.cogs.spellcheck.servers:
+        if guild_key not in BotSettings.cogs.spellcheck.guilds:
             return
-        if message.author.id not in BotSettings.cogs.spellcheck.servers[guild_key]["users"]:
+        if message.author.id not in BotSettings.cogs.spellcheck.guilds[guild_key]["users"]:
             return
 
         cleaned_content = self.cleanup_message(message.content)
@@ -261,7 +263,7 @@ class Spelling(CustomCog):
                     for mistake, correction in zip(mistakes, corrections, strict=False)
                     if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake  # this re.sub removes all punctuation
                 ]
-                mistake_string = join_list_max_chars(actual_mistakes, 4096)
+                mistake_string = self._join_list_into_csv(actual_mistakes, 1950)
 
                 user = await self.bot.fetch_user(int(user_id))
                 embed = disnake.Embed(
@@ -278,7 +280,7 @@ class Spelling(CustomCog):
             if len(embeds) == 0:
                 continue
 
-            channel = await self.bot.fetch_channel(BotSettings.cogs.spellcheck.servers[str(guild_id)]["post_channel"])
+            channel = await self.bot.fetch_channel(BotSettings.cogs.spellcheck.guilds[str(guild_id)]["post_channel"])
             if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
                 self.log_warning(
                     "Spelling summary has invalid channel %s for guild %s",
@@ -305,4 +307,4 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    bot.add_cog(Spelling(bot))
+    bot.add_cog(SpellCheck(bot))

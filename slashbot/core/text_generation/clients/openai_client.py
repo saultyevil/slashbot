@@ -231,7 +231,7 @@ class OpenAIClient(TextGenerationAbstractClient):
 
         return TextGenerationResponse(assistant_response, token_usage)
 
-    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unknown") -> None:
+    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset name") -> None:
         """Set the system prompt.
 
         Parameters

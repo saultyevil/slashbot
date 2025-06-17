@@ -1,12 +1,10 @@
-from slashbot.core.text_generation import TextGenerationInput, TextGenerator, read_in_prompt
+from slashbot.core.text_generation import TextGenerationInput, TextGenerator
 
 
 class AIChat(TextGenerator):
     """AI Conversation class for an LLM chatbot."""
 
-    DEFAULT_SYSTEM_PROMPT = read_in_prompt("data/prompts/soulless.yaml")
-
-    def __init__(self, *, system_prompt: str = DEFAULT_SYSTEM_PROMPT.prompt, extra_print: str = "") -> None:
+    def __init__(self, *, system_prompt: str | None = None, extra_print: str | None = None) -> None:
         """Initialise a conversation, with default values.
 
         Parameters
@@ -20,13 +18,9 @@ class AIChat(TextGenerator):
         """
         extra_print = f"[ChatObject:{extra_print}] " if extra_print else ""
         super().__init__(extra_print=extra_print)
-        self._chat_system_prompt = system_prompt
-        self.set_system_prompt(
-            system_prompt,
-            prompt_name=self.DEFAULT_SYSTEM_PROMPT.name
-            if system_prompt == self.DEFAULT_SYSTEM_PROMPT
-            else "custom prompt",
-        )
+
+        if system_prompt:
+            self.set_system_prompt(system_prompt)
 
     # --------------------------------------------------------------------------
 
@@ -56,7 +50,7 @@ class AIChat(TextGenerator):
 
     def reset_history(self) -> None:
         """Reset the conversation history back to the system prompt."""
-        self.set_system_prompt(self._chat_system_prompt, prompt_name=self.system_prompt_name)
+        self.set_system_prompt(self.system_prompt, prompt_name=self.system_prompt_name)
 
     async def send_message(
         self,

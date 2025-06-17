@@ -9,6 +9,7 @@ SUPPORTED_MODELS = TextGenerator.SUPPORTED_MODELS
 __all__ = [
     "SUPPORTED_MODELS",
     "GenerationFailureError",
+    "Prompt",
     "TextGenerationInput",
     "TextGenerationResponse",
     "TextGenerator",
