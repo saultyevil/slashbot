@@ -1,7 +1,7 @@
 [cogs]
 
 [cogs.artificial_intelligence]
-token_window_size = 10000
+token_window_size = 4096
 max_images_in_window = 3
 max_output_tokens = 2000
 model_temperature = 1.0

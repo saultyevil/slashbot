@@ -36,6 +36,29 @@ class OpenAIClient(TextGenerationAbstractClient):
 
     # --------------------------------------------------------------------------
 
+    def _content_contains_image_type(self, contents: list[dict]) -> bool:
+        return any(content["type"] == "image_url" for content in contents)
+
+    def _add_to_contents(self, new_content: dict) -> None:
+        # Keep some variable amount of images in the request. If we have too
+        # many images, then the latency is too high
+        i = 0
+        num_images = 0
+        while i < len(self._context[1:]):
+            contents = self._context[i]["content"]
+            # can only be an image of contents is a dict or a list
+            if not isinstance(contents, str):
+                if self._content_contains_image_type(contents):
+                    num_images += 1
+                if num_images > BotSettings.cogs.artificial_intelligence.max_images_in_window:
+                    self._remove_message(i)
+            i += 1
+
+        # But we still include new video request here, we are only removing OLD
+        # youtube links. The one added to the context here will be removed
+        # before the next request is sent
+        self._context.append(new_content)
+
     def _create_assistant_text_payload(self, message: str) -> dict:
         return {"role": "assistant", "content": message}
 
@@ -176,7 +199,13 @@ class OpenAIClient(TextGenerationAbstractClient):
             self.init_client(self.model_name)
 
         self._shrink_messages_to_token_window()
-        self._context.append(self._create_content_payload(messages))  # type: ignore
+
+        user_contents = self._create_content_payload(messages)
+        if isinstance(user_contents, list):
+            for content in user_contents:
+                self._add_to_contents(content)
+        else:
+            self._add_to_contents(user_contents)
 
         response = await self.send_response_request(self._context)
         if not response.message:
