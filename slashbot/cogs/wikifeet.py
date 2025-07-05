@@ -1,3 +1,5 @@
+"""Commands for searching WikiFeet."""
+
 import json
 import random
 
@@ -10,36 +12,51 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 
 
-class JSONExtractor:
-    """Class for extracting javascript associated array."""
-
-    js_variable = "tdata = "
-
-    def __init__(self, text=""):
-        self.text = text
-
-    def get_json_dict(self) -> dict:
-        # pinpointing the exact location of the json dictionary containing the picture ids
-        start_index = self.text.find(self.js_variable)
-        start_index = start_index + len(self.js_variable) - 1
-        end_index = self.text.find("\n", start_index) - 1
-        actress_json_data_string = self.text[start_index:end_index]
-        return json.loads(actress_json_data_string)
-
-
 class WikiFeet(CustomCog):
     """Cog for searching WikiFeet."""
 
     @staticmethod
-    def _create_model_name(name: str) -> str:
+    def _make_url_model_name(name: str) -> str:
+        """Convert a model's name to the WikiFeet URL format.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model.
+
+        Returns
+        -------
+        str
+            The formatted model name for the URL.
+
+        """
         return "_".join(part.capitalize() for part in name.split())
 
     @staticmethod
-    def _build_pid_list(json_dict: dict) -> list[str]:
+    def _build_picture_id_list(html: str) -> list[str]:
+        """Extract a list of picture IDs from the WikiFeet HTML page.
+
+        Parameters
+        ----------
+        html : str
+            The HTML content of the WikiFeet model page.
+
+        Returns
+        -------
+        list[str]
+            A list of picture IDs found in the gallery.
+
+        """
+        json_symbol = "tdata = "
+        start_index = html.find(json_symbol)
+        start_index = start_index + len(json_symbol) - 1
+        end_index = html.find("\n", start_index) - 1
+        actress_json_data_string = html[start_index:end_index]
+        json_dict = json.loads(actress_json_data_string)
+
         pids = []
         for index, _element in enumerate(json_dict["gallery"]):
             pids.append(json_dict["gallery"][index]["pid"])
-        pids.sort()
 
         return pids
 
@@ -59,33 +76,32 @@ class WikiFeet(CustomCog):
             The name of the model.
 
         """
-        model_name = self._create_model_name(model_name)
+        model_name = self._make_url_model_name(model_name)
 
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(f"https://wikifeet.com/{model_name}", timeout=2)
             except httpx.TimeoutException:
-                await inter.response.send_message(f"Your request for {model_name} feet pics timed out.", ephemeral=True)
+                await inter.response.send_message(
+                    f"Your request for {model_name.replace('_', ' ')} feet pics timed out.", ephemeral=True
+                )
                 return
 
         if response.status_code != httpx.codes.OK:
             await inter.response.send_message(
-                f"Your request for {model_name} feet pics returned error code {response.status_code}", ephemeral=True
+                f"Your request for {model_name.replace('_', ' ')} feet pics returned error code {response.status_code}",
+                ephemeral=True,
             )
             return
 
-        json_extractor = JSONExtractor(response.text)
-        extracted_json = json_extractor.get_json_dict()
         try:
-            pids = self._build_pid_list(extracted_json)
+            picture_ids = self._build_picture_id_list(response.text)
         except KeyError:
-            await inter.response.send_message(f"No feet found for {model_name}", ephemeral=True)
+            await inter.response.send_message(f"No feet found for {model_name.replace('_', ' ')}.", ephemeral=True)
             return
+        random_image = "https://pics.wikifeet.com/" + model_name + "-Feet-" + str(random.choice(picture_ids)) + ".jpg"
 
-        random_pid = random.choice(pids)
-        link = "https://pics.wikifeet.com/" + model_name + "-Feet-" + str(random_pid) + ".jpg"
-
-        await inter.response.send_message(f"{link}")
+        await inter.response.send_message(f"{random_image}")
 
 
 def setup(bot: CustomInteractionBot) -> None:
