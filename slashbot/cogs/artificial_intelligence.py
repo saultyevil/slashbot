@@ -79,6 +79,10 @@ class ArtificialIntelligence(CustomCog):
     def _stop_profiler(self) -> None:
         if not BotSettings.cogs.artificial_intelligence.enable_profiling:
             return
+        if not self._profiler.is_running:
+            self.log_error("Attempted to stop the profiler when it's not running -- resetting profiler")
+            self._profiler.reset()
+            return
         self._profiler.stop()
         profiler_output = self._profiler.output_text()
         self._profiler_logger.info("\n%s", profiler_output)
@@ -461,7 +465,7 @@ class ArtificialIntelligence(CustomCog):
         )
 
     @slash_command_with_cooldown(
-        name="choose_chat_prompt",
+        name="select_chat_prompt",
         description="Set the AI conversation prompt from a list of pre-made prompts",
     )
     async def chat_select_prompt(
