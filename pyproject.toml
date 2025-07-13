@@ -35,6 +35,8 @@ gitpython = "^3.1.44"
 markovify = {git = "https://github.com/saultyevil/markovify.git"}
 pydantic = "^2.11.3"
 google-genai = "^1.10.0"
+sqlalchemy = "^2.0.41"
+aiosqlite = "^0.21.0"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
@@ -43,7 +45,6 @@ isort = "^5.12.0"
 ruff = "^0.9.9"
 pytest = "^8.2.2"
 pytest-asyncio = "^0.23.7"
-sqlalchemy = "2.0.16"
 
 [tool.isort]
 profile = "ruff"
