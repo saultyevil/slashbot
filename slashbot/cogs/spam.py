@@ -51,8 +51,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
 
     # Slash commands -----------------------------------------------------------
 
-    slash_command_with_cooldown(name="bad_word", description="send a naughty word")
-
+    @slash_command_with_cooldown(name="bad_word", description="send a naughty word")
     async def bad_word(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Send a bad word to the chat.
 

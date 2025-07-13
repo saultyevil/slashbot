@@ -89,7 +89,7 @@ class WikiFeet(CustomCog):
 
         if response.status_code != httpx.codes.OK:
             await inter.response.send_message(
-                f"Your request for {model_name.replace('_', ' ')} feet pics returned error code {response.status_code}",
+                f"Your request for {model_name.replace('_', ' ')} feet pics returned error code {response.status_code}.",
                 ephemeral=True,
             )
             return
