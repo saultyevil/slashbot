@@ -91,5 +91,5 @@ class WikiFeetPicture(WikiFeetSqlBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     model_id: Mapped[int] = mapped_column(ForeignKey("wikifeet_models.id"))
-    picture_id: Mapped[int] = mapped_column(Integer)
+    picture_id: Mapped[int] = mapped_column(Integer, unique=True)
     model: Mapped["WikiFeetModel"] = relationship(back_populates="pictures")

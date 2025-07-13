@@ -200,3 +200,7 @@ def entry_point() -> None:
     """Entry point for the Slashbot CLI command."""
     bot = Slashbot()
     bot.run()
+
+
+if __name__ == "__main__":
+    entry_point()
