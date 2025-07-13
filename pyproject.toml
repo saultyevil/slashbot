@@ -19,7 +19,7 @@ rule34 = "1.8.1"
 wolframalpha = "5.0.0"
 disnake = "2.8.1"
 pyowm = "3.3.0"
-requests = "2.28.1"
+requests = "^2.32.4"
 dateparser = "^1.1.8"
 tiktoken = "0.9.0"
 watchdog = "^3.0.0"
@@ -35,6 +35,9 @@ gitpython = "^3.1.44"
 markovify = {git = "https://github.com/saultyevil/markovify.git"}
 pydantic = "^2.11.3"
 google-genai = "^1.10.0"
+sqlalchemy = "^2.0.41"
+aiosqlite = "^0.21.0"
+selenium = "^4.34.2"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
@@ -43,7 +46,6 @@ isort = "^5.12.0"
 ruff = "^0.9.9"
 pytest = "^8.2.2"
 pytest-asyncio = "^0.23.7"
-sqlalchemy = "2.0.16"
 
 [tool.isort]
 profile = "ruff"
