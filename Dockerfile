@@ -1,14 +1,17 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.11-slim-buster
+FROM python:3.11-slim-bookworm
+
+# Install dependencies for some commands
+RUN apt update && apt install -y \
+    git openssh-client curl unzip gnupg ca-certificates \
+    chromium chromium-driver fonts-liberation \
+    libglib2.0-0 libnss3 libgconf-2-4 libxss1 libasound2 libxtst6 libxrandr2 libu2f-udev xdg-utils
 
 # Create slashbot user, required for ssh key shenanigans and update command
 RUN useradd -m slashbot
 RUN mkdir -p /home/slashbot/.ssh
 RUN chown -R slashbot:slashbot /home/slashbot/.ssh
-
-# Install git and openssh, required for update command
-RUN apt update && apt install -y git openssh-client
 
 # This enables git to be OK with adding this directory, so we can use the
 # git update command
