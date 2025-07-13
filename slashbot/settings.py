@@ -40,7 +40,7 @@ class ArtificialIntelligenceSettings:
 class WikiFeetSettings:
     """Settings for the WikiFeet cog."""
 
-    database_url: str = f"sqlite+aiosqlite:///{Path('data/wikifeet.sqlite').absolute()}"
+    database_url: str = f"sqlite+aiosqlite:///{Path('data/wikifeet.sqlite.db').absolute()}"
 
 
 @dataclass
