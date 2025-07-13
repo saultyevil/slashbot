@@ -1,6 +1,6 @@
 .env*
 .venv
-logs/*.log
+logs/*.log*
 data/*.db.json
 data/*.txt
 **/chain*.pickle
