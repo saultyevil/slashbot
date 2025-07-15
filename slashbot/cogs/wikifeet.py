@@ -53,6 +53,7 @@ class WikiFeet(CustomCog):
             await self.database.init_database()
 
         try:
+            model = await self.database.get_model(model_name)
             model_pictures = await self.database.get_model_pictures(model_name)
         except httpx.TimeoutException:
             await deferred_error_message(
@@ -67,6 +68,13 @@ class WikiFeet(CustomCog):
             )
             return
 
+        if not model:
+            await deferred_error_message(
+                inter,
+                f"Unable to find {model_name} on WikiFeet",
+            )
+            return
+
         random_image = (
             "https://pics.wikifeet.com/"
             + self.scraper.make_url_model_name(model_name)
@@ -74,8 +82,9 @@ class WikiFeet(CustomCog):
             + str(random.choice(model_pictures).picture_id)
             + ".jpg"
         )
-
-        await inter.followup.send(f"{random_image}")
+        await inter.followup.send(
+            f"> {model.name}\n> Foot score: {model.foot_score}\n> Shoe size : {model.shoe_size + 3 / 2}\n{random_image}"
+        )
 
 
 def setup(bot: CustomInteractionBot) -> None:

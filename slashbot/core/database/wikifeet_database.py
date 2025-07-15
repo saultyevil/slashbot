@@ -341,6 +341,7 @@ class WikiFeetDatabase(Logger):
             The model instance if found, otherwise None.
 
         """
+        model_name = self.scraper.make_url_model_name(model_name).replace("_", " ")
         async with self.get_session() as session:
             query = select(WikiFeetModel).where(WikiFeetModel.name == model_name)
             result = await session.execute(query)
@@ -367,6 +368,8 @@ class WikiFeetDatabase(Logger):
             The model instance.
 
         """
+        model_name = self.scraper.make_url_model_name(model_name).replace("_", " ")
+
         # First try to get existing model
         model = await self.get_model(model_name)
         if model:
@@ -401,6 +404,7 @@ class WikiFeetDatabase(Logger):
             A list containing WikiFeetPicture objects.
 
         """
+        model_name = self.scraper.make_url_model_name(model_name).replace("_", " ")
         model = await self.get_or_create_model(model_name)
 
         async with self.get_session() as session:
@@ -423,6 +427,7 @@ class WikiFeetDatabase(Logger):
             The database ID of the model.
 
         """
+        model_name = self.scraper.make_url_model_name(model_name).replace("_", " ")
         ids_best_pictures = self.scraper.get_best_images_for_model(self.scraper.make_url_model_name(model_name))
 
         for pid in ids_best_pictures:
