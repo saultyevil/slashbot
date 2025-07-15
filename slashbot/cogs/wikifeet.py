@@ -9,7 +9,7 @@ from disnake.ext import commands
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.core.database.wikifeet_database import WikiFeetDatabase, WikiFeetScraper
+from slashbot.core.database.wikifeet import WikiFeetDatabase, WikiFeetScraper
 from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 

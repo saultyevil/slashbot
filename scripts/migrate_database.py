@@ -1,8 +1,8 @@
 import asyncio
 import datetime
 
-import slashbot.core.database as old_database
 import slashbot.core.database as new_database
+import slashbot.core.database as old_database
 from slashbot.core.logger import setup_logging
 from slashbot.settings import BotSettings
 
@@ -11,7 +11,7 @@ setup_logging()
 
 async def main():
     BotSettings.files.database = "data/slashbot.db.json"
-    db_new = await new_database.Database.open(filepath="data/slashbot_NEW.db.json")
+    db_new = await new_database.DatabaseKV.open(filepath="data/slashbot_NEW.db.json")
     users_to_migrate = old_database.get_users()
 
     for user_id, user_data in users_to_migrate.items():

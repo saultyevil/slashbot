@@ -8,7 +8,7 @@ from disnake.ext.commands import Cog
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
-from slashbot.core.database import Database
+from slashbot.core.database import DatabaseKV
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -30,7 +30,7 @@ class CustomCog(Cog, Logger):
         super().__init__(**kwargs)
         Logger.__init__(self)
         self.bot = bot
-        self.db = Database()
+        self.db = DatabaseKV()
         self.markov_seed_words = []
         self._markov_sentences = {}
 
