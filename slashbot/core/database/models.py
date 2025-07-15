@@ -77,9 +77,6 @@ class WikiFeetModel(WikiFeetSqlBase):
 
     foot_score: Mapped[float] = mapped_column(Float)
     shoe_size: Mapped[int] = mapped_column(Integer)
-    height_cm: Mapped[float] = mapped_column(Float)
-    age: Mapped[int] = mapped_column(Integer)
-    nationality: Mapped[str] = mapped_column(String)
 
     pictures: Mapped[list["WikiFeetPicture"]] = relationship(back_populates="model")
 

@@ -29,6 +29,10 @@ class ModelNotFoundInDatabaseError(Exception):
     pass
 
 
+class ModelDataParseError(Exception):
+    pass
+
+
 class DuplicateImageError(Exception):
     pass
 
@@ -42,7 +46,7 @@ class WikiFeetScraper(Logger):
 
     def __init__(self) -> None:
         """Initialise the WikiFeetScraper class."""
-        super().__init__()
+        super().__init__(prepend_msg="[WikiFeetScraper]")
 
         options = webdriver.FirefoxOptions()
         options.add_argument("--headless=new")
@@ -56,7 +60,8 @@ class WikiFeetScraper(Logger):
             self.driver = webdriver.Firefox(options=options, service=service)
         else:
             self.driver = webdriver.Firefox(options=options)
-        self.wait = WebDriverWait(self.driver, timeout=10)
+        self.driver.install_addon("data/uBlock.firefox.xpi", temporary=True)
+        self.wait = WebDriverWait(self.driver, timeout=20)
 
     def __del__(self) -> None:
         """Ensure the browser is closed when the object is destroyed."""
@@ -139,7 +144,7 @@ class WikiFeetScraper(Logger):
         """
         model_url = self.make_url_model_name(model_name)
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             try:
                 response = await client.get(f"https://wikifeet.com/{model_url}")
                 response.raise_for_status()
@@ -154,31 +159,30 @@ class WikiFeetScraper(Logger):
             exc_msg = f"Unable to parse scraped data for {model_name}"
             self.log_exception("%s", exc_msg)
             self.log_debug(f"Response: {response.text}")
-            raise ValueError(exc_msg) from e
+            raise ModelDataParseError(exc_msg) from e
+
+        if "cname" not in data:
+            exc_msg = f"{model_name} not found on WikiFeet"
+            raise ModelNotFoundOnWikiFeet(exc_msg)
 
         now = datetime.datetime.now(tz=datetime.UTC)
 
         try:
-            birthday = datetime.datetime.fromisoformat(data["bdate"].replace("Z", "+00:00"))
-            age = now.year - birthday.year - ((now.month, now.day) < (birthday.month, birthday.day))
-            height_feet = float(data["height_us"][0])
-            height_inches = float(data["height_us"][1:])
-            height_cm = height_feet * 30.48 + height_inches * 2.54
-            return WikiFeetModel(
+            model = WikiFeetModel(
                 name=data["cname"],
                 last_updated=now,
                 foot_score=data["score"],
-                shoe_size=(float(data["ssize"]) + 3) / 2,
-                height_cm=height_cm,
-                age=age,
-                nationality=data["edata"]["nationality"],
+                shoe_size=(float(data.get("ssize", -3)) + 3) / 2,
             )
-        except (KeyError, ValueError, IndexError) as e:
+            self.log_debug(f"Created model instance for {model.name}: {model}")
+        except (KeyError, ValueError, IndexError, TypeError) as e:
             exc_msg = f"Error parsing model data for {model_name}"
             self.log_exception("%s: %s", exc_msg, data)
-            raise ValueError(exc_msg) from e
+            raise ModelDataParseError(exc_msg) from e
+        else:
+            return model
 
-    def _handle_cookie_banner(self, timeout: int = 5) -> None:
+    def _handle_cookie_banner(self, timeout: int = 2) -> None:
         """Clicks the 'decline' button on a cookie banner.
 
         It waits for a short period for the banner to appear. If it's not
@@ -187,17 +191,18 @@ class WikiFeetScraper(Logger):
         Parameters
         ----------
         timeout : int, optional
-            The maximum time in seconds to wait for the banner, by default 5.
+            The maximum time in seconds to wait for the banner, by default 2.
 
         """
         try:
+            self.log_debug("Declining cookies")
             decline_button = WebDriverWait(self.driver, timeout).until(
                 expected_conditions.element_to_be_clickable((By.CLASS_NAME, "cc-nb-reject"))
             )
             decline_button.click()
+            self.log_debug("Cookies declined")
         except TimeoutException:
-            # No banner was found
-            pass
+            self.log_debug("No cookie banner to decline")
 
     def _scroll_and_click(self, by: str, value: str) -> None:
         """Scrolls to an element and clicks it.
@@ -213,6 +218,7 @@ class WikiFeetScraper(Logger):
             The locator value for the element.
 
         """
+        self.log_debug("Scrolling for sort by best")
         # First, find the element and scroll it into view
         element = self.wait.until(
             expected_conditions.presence_of_element_located((by, value)),
@@ -224,6 +230,7 @@ class WikiFeetScraper(Logger):
             expected_conditions.element_to_be_clickable((by, value)),
         )
         clickable_element.click()
+        self.log_debug("Sorted by best")
 
     def get_best_images_for_model(self, model_name_url: str) -> list[str]:
         """Get a sorted by best list of picture ids for the model.
@@ -239,8 +246,10 @@ class WikiFeetScraper(Logger):
             The list of picture ids.
 
         """
+        self.log_debug(f"Scraping {self.base_url}/{model_name_url}")
         self.driver.get(f"{self.base_url}/{model_name_url}")
 
+        # thank you to the EU
         self._handle_cookie_banner()
 
         # Sort images by "best" by clicking the filter buttons
@@ -253,6 +262,7 @@ class WikiFeetScraper(Logger):
         # Find all picture elements and extract their IDs
         picture_elements = self.driver.find_elements(By.XPATH, "//div[starts-with(@id, 'pid_')]")
         picture_ids = [elem.get_attribute("id") for elem in picture_elements]
+        self.log_debug(f"Pictures found for {self.base_url}/{model_name_url}: {picture_ids}")
 
         # Clean up the IDs and return the list
         # (e.g., transforms "pid_12345" into "12345")
@@ -285,7 +295,7 @@ class WikiFeetDatabase(Logger):
             await conn.run_sync(WikiFeetSqlBase.metadata.create_all)
 
     @asynccontextmanager
-    async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def _get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Asynchronous context manager for database session.
 
         Returns
@@ -303,7 +313,7 @@ class WikiFeetDatabase(Logger):
             finally:
                 await session.close()
 
-    async def add_new_model_info(self, model: WikiFeetModel) -> WikiFeetModel:
+    async def _add_new_model(self, model: WikiFeetModel) -> WikiFeetModel:
         """Add a WikiFeetModel instance to the database.
 
         Parameters
@@ -322,7 +332,7 @@ class WikiFeetDatabase(Logger):
             If the model already exists in the database.
 
         """
-        async with self._db_lock, self.get_session() as session:
+        async with self._get_session() as session:
             try:
                 session.add(model)
                 await session.commit()
@@ -335,7 +345,7 @@ class WikiFeetDatabase(Logger):
             else:
                 return model
 
-    async def add_model_picture(self, picture: WikiFeetPicture) -> None:
+    async def _add_model_picture(self, picture: WikiFeetPicture) -> None:
         """Add a WikiFeetPicture instance to the database.
 
         Parameters
@@ -349,7 +359,8 @@ class WikiFeetDatabase(Logger):
             If the picture already exists in the database.
 
         """
-        async with self._db_lock, self.get_session() as session:
+        self.log_debug(f"Adding picture {picture.picture_id} to model {picture.model_id}")
+        async with self._get_session() as session:
             try:
                 session.add(picture)
                 await session.commit()
@@ -359,7 +370,7 @@ class WikiFeetDatabase(Logger):
                 self.log_error("%s", exc_msg)
                 raise DuplicateImageError(exc_msg) from e
 
-    async def update_model_pictures(self, model_name: str, model_id: int) -> None:
+    async def _add_model_pictures(self, model_name: str, model_id: int) -> None:
         """Update the pictures for a model.
 
         Parameters
@@ -375,11 +386,11 @@ class WikiFeetDatabase(Logger):
 
         for pid in ids_best_pictures:
             try:
-                await self.add_model_picture(WikiFeetPicture(model_id=model_id, picture_id=pid))
+                await self._add_model_picture(WikiFeetPicture(model_id=model_id, picture_id=pid))
             except DuplicateImageError:
                 continue
 
-    async def get_or_create_model(self, model_name: str) -> WikiFeetModel:
+    async def get_model(self, model_name: str) -> WikiFeetModel:
         """Get an existing model or create a new one.
 
         Parameters
@@ -394,43 +405,23 @@ class WikiFeetDatabase(Logger):
 
         """
         model_name = self.scraper.capitalise_name(model_name)
+        self.log_debug(f"Getting model {model_name}")
 
-        # First try to get existing model from the database. If a ValueError is
-        # raised, then create the model entry
-        try:
-            model = await self.get_model(model_name)
-        except ModelNotFoundInDatabaseError:
-            model_info = await self.scraper.get_model_info(model_name)
-            model = await self.add_new_model_info(model_info)
-            await self.update_model_pictures(model_name, model.id)
-
-        return model
-
-    async def get_model(self, model_name: str) -> WikiFeetModel:
-        """Retrieve a WikiFeetModel by name.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to retrieve.
-
-        Returns
-        -------
-        WikiFeetModel
-            The model instance.
-
-        """
-        model_name = self.scraper.capitalise_name(model_name)
-
-        async with self._db_lock, self.get_session() as session:
+        async with self._get_session() as session:
             query = select(WikiFeetModel).where(WikiFeetModel.name == model_name)
             result = await session.execute(query)
             model = result.scalar_one_or_none()
             if model:
-                await session.refresh(model)
+                self.log_debug(f"Found {model_name} in database")
                 return model
-            exc_msg = f"Model {model_name} was not not found."
-            raise ModelNotFoundInDatabaseError(exc_msg)
+
+            # Create the model if missing
+            self.log_debug(f"Scraping info and images for {model_name}")
+            model_info = await self.scraper.get_model_info(model_name)
+            model = await self._add_new_model(model_info)
+            await self._add_model_pictures(model_name, model.id)
+
+            return model
 
     async def get_model_pictures(self, model_name: str) -> list[WikiFeetPicture]:
         """Retrieve a model's pictures.
@@ -447,9 +438,9 @@ class WikiFeetDatabase(Logger):
 
         """
         model_name = self.scraper.capitalise_name(model_name)
-        model = await self.get_or_create_model(model_name)
+        model = await self.get_model(model_name)
 
-        async with self.get_session() as session:
+        async with self._get_session() as session:
             stmt = (
                 select(WikiFeetModel).options(selectinload(WikiFeetModel.pictures)).where(WikiFeetModel.id == model.id)
             )

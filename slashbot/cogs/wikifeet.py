@@ -12,6 +12,7 @@ from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.core.database.wikifeet import (
     DuplicateImageError,
     DuplicateModelError,
+    ModelDataParseError,
     ModelNotFoundInDatabaseError,
     ModelNotFoundOnWikiFeet,
     WikiFeetDatabase,
@@ -62,17 +63,21 @@ class WikiFeet(CustomCog):
             model = await self.database.get_model(model_name)
             model_pictures = await self.database.get_model_pictures(model_name)
         except httpx.TimeoutException:
-            await deferred_error_message(inter, f"It took too long to get {model_name_pretty}'s feet pictures.")
+            await deferred_error_message(
+                inter, f"No feet pics for you, it took too long to get them for {model_name_pretty}!"
+            )
             return
         except ModelNotFoundOnWikiFeet:
-            await deferred_error_message(inter, f"Unable to find {model_name_pretty} on WikiFeet.")
+            await deferred_error_message(inter, f"Idiot, {model_name_pretty} is not on WikiFeet.")
             return
         except ModelNotFoundInDatabaseError:
-            await deferred_error_message(inter, f"Unable to retrieve or add {model_name_pretty} to feet database.")
+            await deferred_error_message(inter, f"Failed to store {model_name_pretty} feet pictures...")
             return
         except Exception as e:  # noqa: BLE001
-            await deferred_error_message(inter, f"Unknown error occurred!!! {e}")
-            self.log_exception("An unknown error occurred in WikiFeet.get_random_picture")
+            await deferred_error_message(
+                inter, f"An unknown error occurred trying to get delicious feet for you!!! {e}"
+            )
+            self.log_exception("An unknown error occurred in WikiFeet.get_random_picture()")
             return
 
         random_image = (
