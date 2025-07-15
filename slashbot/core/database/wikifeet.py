@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import json
 from collections.abc import AsyncGenerator
@@ -20,12 +21,26 @@ from slashbot.core.database.models import WikiFeetModel, WikiFeetPicture, WikiFe
 from slashbot.core.logger import Logger
 
 
+class ModelNotFoundOnWikiFeet(Exception):
+    pass
+
+
+class ModelNotFoundInDatabaseError(Exception):
+    pass
+
+
+class DuplicateImageError(Exception):
+    pass
+
+
+class DuplicateModelError(Exception):
+    pass
+
+
 class WikiFeetScraper(Logger):
     """A class for scraping a model's best pictures from Wikifeet."""
 
-    def __init__(
-        self,
-    ) -> None:
+    def __init__(self) -> None:
         """Initialise the WikiFeetScraper class."""
         super().__init__()
 
@@ -49,12 +64,28 @@ class WikiFeetScraper(Logger):
             self.driver.quit()
 
     @staticmethod
-    def make_url_model_name(name: str) -> str:
+    def capitalise_name(model_name: str) -> str:
+        """Capitalise a model's name.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model.
+
+        Returns
+        -------
+        str
+            The capitalised name.
+
+        """
+        return " ".join(part.capitalize() for part in model_name.split())
+
+    def make_url_model_name(self, model_name: str) -> str:
         """Convert a model's name to the WikiFeet URL format.
 
         Parameters
         ----------
-        name : str
+        model_name : str
             The name of the model.
 
         Returns
@@ -63,10 +94,10 @@ class WikiFeetScraper(Logger):
             The formatted model name for the URL.
 
         """
-        return "_".join(part.capitalize() for part in name.split())
+        return self.capitalise_name(model_name).replace(" ", "_")
 
     @staticmethod
-    def _get_model_data(html: str) -> dict:
+    def _parse_model_json_from_response(html: str) -> dict:
         """Extract model data from the WikiFeet HTML.
 
         Parameters
@@ -88,9 +119,9 @@ class WikiFeetScraper(Logger):
 
         start_index = start_index + len(json_symbol) - 1
         end_index = html.find("\n", start_index) - 1
-        actress_json_data_string = html[start_index:end_index]
+        model_json_string = html[start_index:end_index]
 
-        return json.loads(actress_json_data_string)
+        return json.loads(model_json_string)
 
     async def get_model_info(self, model_name: str) -> WikiFeetModel:
         """Get metadata info about a model.
@@ -113,15 +144,16 @@ class WikiFeetScraper(Logger):
                 response = await client.get(f"https://wikifeet.com/{model_url}")
                 response.raise_for_status()
             except httpx.HTTPError as e:
-                exc_msg = f"Unable to get webpage for {model_name}: {e}"
-                self.log_error("%s", exc_msg)
-                raise ValueError(exc_msg) from e
+                exc_msg = f"Unable to get scrape WikiFeet for {model_name}"
+                self.log_exception("%s", exc_msg)
+                raise ModelNotFoundOnWikiFeet(exc_msg) from e
 
         try:
-            data = self._get_model_data(response.text)
+            data = self._parse_model_json_from_response(response.text)
         except (ValueError, json.JSONDecodeError) as e:
-            exc_msg = f"Unable to parse model data for {model_name}: {e}"
-            self.log_error("%s", exc_msg)
+            exc_msg = f"Unable to parse scraped data for {model_name}"
+            self.log_exception("%s", exc_msg)
+            self.log_debug(f"Response: {response.text}")
             raise ValueError(exc_msg) from e
 
         now = datetime.datetime.now(tz=datetime.UTC)
@@ -129,24 +161,22 @@ class WikiFeetScraper(Logger):
         try:
             birthday = datetime.datetime.fromisoformat(data["bdate"].replace("Z", "+00:00"))
             age = now.year - birthday.year - ((now.month, now.day) < (birthday.month, birthday.day))
-
             height_feet = float(data["height_us"][0])
             height_inches = float(data["height_us"][1:])
             height_cm = height_feet * 30.48 + height_inches * 2.54
+            return WikiFeetModel(
+                name=data["cname"],
+                last_updated=now,
+                foot_score=data["score"],
+                shoe_size=(float(data["ssize"]) + 3) / 2,
+                height_cm=height_cm,
+                age=age,
+                nationality=data["edata"]["nationality"],
+            )
         except (KeyError, ValueError, IndexError) as e:
-            exc_msg = f"Error parsing model data for {model_name}: {e}"
-            self.log_error("%s", exc_msg)
+            exc_msg = f"Error parsing model data for {model_name}"
+            self.log_exception("%s: %s", exc_msg, data)
             raise ValueError(exc_msg) from e
-
-        return WikiFeetModel(
-            name=data["cname"],
-            last_updated=now,
-            foot_score=data["score"],
-            shoe_size=data["ssize"],
-            height_cm=height_cm,
-            age=age,
-            nationality=data["edata"]["nationality"],
-        )
 
     def _handle_cookie_banner(self, timeout: int = 5) -> None:
         """Clicks the 'decline' button on a cookie banner.
@@ -166,7 +196,7 @@ class WikiFeetScraper(Logger):
             )
             decline_button.click()
         except TimeoutException:
-            # No banner was found, which is fine.
+            # No banner was found
             pass
 
     def _scroll_and_click(self, by: str, value: str) -> None:
@@ -247,6 +277,7 @@ class WikiFeetDatabase(Logger):
         self.engine = create_async_engine(database_url, echo=False)
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
         self.scraper = scraper
+        self._db_lock = asyncio.Lock()
 
     async def init_database(self) -> None:
         """Initialize the database and create all tables."""
@@ -272,7 +303,7 @@ class WikiFeetDatabase(Logger):
             finally:
                 await session.close()
 
-    async def add_model(self, model: WikiFeetModel) -> WikiFeetModel:
+    async def add_new_model_info(self, model: WikiFeetModel) -> WikiFeetModel:
         """Add a WikiFeetModel instance to the database.
 
         Parameters
@@ -291,19 +322,20 @@ class WikiFeetDatabase(Logger):
             If the model already exists in the database.
 
         """
-        async with self.get_session() as session:
+        async with self._db_lock, self.get_session() as session:
             try:
                 session.add(model)
                 await session.commit()
                 await session.refresh(model)
-                return model
             except IntegrityError as e:
                 await session.rollback()
                 exc_msg = f"Model {model.name} already exists in database"
                 self.log_error("%s", exc_msg)
-                raise ValueError(exc_msg) from e
+                raise DuplicateModelError(exc_msg) from e
+            else:
+                return model
 
-    async def add_picture(self, picture: WikiFeetPicture) -> None:
+    async def add_model_picture(self, picture: WikiFeetPicture) -> None:
         """Add a WikiFeetPicture instance to the database.
 
         Parameters
@@ -317,104 +349,15 @@ class WikiFeetDatabase(Logger):
             If the picture already exists in the database.
 
         """
-        async with self.get_session() as session:
+        async with self._db_lock, self.get_session() as session:
             try:
                 session.add(picture)
                 await session.commit()
             except IntegrityError as e:
                 await session.rollback()
-                exc_msg = f"Picture {picture.picture_id} already exists in database"
+                exc_msg = f"Picture {picture.picture_id} already exists in database for model id {picture.model_id}"
                 self.log_error("%s", exc_msg)
-                raise ValueError(exc_msg) from e
-
-    async def get_model(self, model_name: str) -> WikiFeetModel | None:
-        """Retrieve a WikiFeetModel by name.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to retrieve.
-
-        Returns
-        -------
-        WikiFeetModel or None
-            The model instance if found, otherwise None.
-
-        """
-        model_name = self.scraper.make_url_model_name(model_name).replace("_", " ")
-        async with self.get_session() as session:
-            query = select(WikiFeetModel).where(WikiFeetModel.name == model_name)
-            result = await session.execute(query)
-            model = result.scalar_one_or_none()
-
-            if model:
-                # Refresh the model to ensure it's not stale
-                await session.refresh(model)
-                return model
-
-            return None
-
-    async def get_or_create_model(self, model_name: str) -> WikiFeetModel:
-        """Get an existing model or create a new one.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to retrieve or create.
-
-        Returns
-        -------
-        WikiFeetModel
-            The model instance.
-
-        """
-        model_name = self.scraper.make_url_model_name(model_name).replace("_", " ")
-
-        # First try to get existing model
-        model = await self.get_model(model_name)
-        if model:
-            return model
-
-        # Model doesn't exist, create it
-        try:
-            model_info = await self.scraper.get_model_info(model_name)
-            model = await self.add_model(model_info)
-            await self.update_model_pictures(model_name, model.id)
-
-            return model
-        except ValueError as e:
-            # If model was created by another process in the meantime, get it
-            if "already exists" in str(e):
-                model = await self.get_model(model_name)
-                if model:
-                    return model
-            raise
-
-    async def get_model_pictures(self, model_name: str) -> list[WikiFeetPicture]:
-        """Retrieve a model's pictures.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model.
-
-        Returns
-        -------
-        list[WikiFeetPicture]
-            A list containing WikiFeetPicture objects.
-
-        """
-        model_name = self.scraper.make_url_model_name(model_name).replace("_", " ")
-        model = await self.get_or_create_model(model_name)
-
-        async with self.get_session() as session:
-            stmt = (
-                select(WikiFeetModel).options(selectinload(WikiFeetModel.pictures)).where(WikiFeetModel.id == model.id)
-            )
-            result = await session.execute(stmt)
-            model_with_pictures = result.scalar_one_or_none()
-
-        return model_with_pictures.pictures if model_with_pictures else []
+                raise DuplicateImageError(exc_msg) from e
 
     async def update_model_pictures(self, model_name: str, model_id: int) -> None:
         """Update the pictures for a model.
@@ -432,6 +375,85 @@ class WikiFeetDatabase(Logger):
 
         for pid in ids_best_pictures:
             try:
-                await self.add_picture(WikiFeetPicture(model_id=model_id, picture_id=pid))
-            except ValueError:
+                await self.add_model_picture(WikiFeetPicture(model_id=model_id, picture_id=pid))
+            except DuplicateImageError:
                 continue
+
+    async def get_or_create_model(self, model_name: str) -> WikiFeetModel:
+        """Get an existing model or create a new one.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to retrieve or create.
+
+        Returns
+        -------
+        WikiFeetModel
+            The model instance.
+
+        """
+        model_name = self.scraper.capitalise_name(model_name)
+
+        # First try to get existing model from the database. If a ValueError is
+        # raised, then create the model entry
+        try:
+            model = await self.get_model(model_name)
+        except ModelNotFoundInDatabaseError:
+            model_info = await self.scraper.get_model_info(model_name)
+            model = await self.add_new_model_info(model_info)
+            await self.update_model_pictures(model_name, model.id)
+
+        return model
+
+    async def get_model(self, model_name: str) -> WikiFeetModel:
+        """Retrieve a WikiFeetModel by name.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to retrieve.
+
+        Returns
+        -------
+        WikiFeetModel
+            The model instance.
+
+        """
+        model_name = self.scraper.capitalise_name(model_name)
+
+        async with self._db_lock, self.get_session() as session:
+            query = select(WikiFeetModel).where(WikiFeetModel.name == model_name)
+            result = await session.execute(query)
+            model = result.scalar_one_or_none()
+            if model:
+                await session.refresh(model)
+                return model
+            exc_msg = f"Model {model_name} was not not found."
+            raise ModelNotFoundInDatabaseError(exc_msg)
+
+    async def get_model_pictures(self, model_name: str) -> list[WikiFeetPicture]:
+        """Retrieve a model's pictures.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model.
+
+        Returns
+        -------
+        list[WikiFeetPicture]
+            A list containing WikiFeetPicture objects.
+
+        """
+        model_name = self.scraper.capitalise_name(model_name)
+        model = await self.get_or_create_model(model_name)
+
+        async with self.get_session() as session:
+            stmt = (
+                select(WikiFeetModel).options(selectinload(WikiFeetModel.pictures)).where(WikiFeetModel.id == model.id)
+            )
+            result = await session.execute(stmt)
+            model_with_pictures = result.scalar_one_or_none()
+
+        return model_with_pictures.pictures if model_with_pictures else []

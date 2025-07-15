@@ -40,6 +40,7 @@ class ArtificialIntelligenceSettings:
 class WikiFeetSettings:
     """Settings for the WikiFeet cog."""
 
+    image_scraping: bool
     database_url: str = f"sqlite+aiosqlite:///{Path('data/wikifeet.sqlite.db').absolute()}"
 
 
@@ -181,7 +182,7 @@ class Settings:
             enable_profiling=data["cogs"]["artificial_intelligence"]["enable_profiling"],
             prefer_image_urls=data["cogs"]["artificial_intelligence"]["prefer_image_urls"],
         )
-        wikifeet = WikiFeetSettings()
+        wikifeet = WikiFeetSettings(image_scraping=data["cogs"]["wikifeet"]["image_scraping"])
         cogs = CogSettings(spellcheck=spellcheck, artificial_intelligence=artificial_intelligence, wikifeet=wikifeet)
         cooldown = CommandCooldownSettings(
             rate=data["cooldown"]["rate"],

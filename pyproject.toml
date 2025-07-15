@@ -38,6 +38,7 @@ google-genai = "^1.10.0"
 sqlalchemy = "^2.0.41"
 aiosqlite = "^0.21.0"
 selenium = "^4.34.2"
+greenlet = "^3.2.3"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
