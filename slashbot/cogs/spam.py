@@ -133,7 +133,7 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
 
         comment, user = self.get_comments_for_rule34_post(image.id)
         comment = "*Too cursed for comments*" if not comment else f'"{comment}"'
-        user = " " if not user else rf"\n\- *{user}*"
+        user = " " if not user else f" -- *{user}*"
         message = f"|| {image.file_url} ||\n>>> {comment}{user}"
 
         await inter.edit_original_message(content=message)
