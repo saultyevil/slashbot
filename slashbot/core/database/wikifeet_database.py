@@ -5,7 +5,9 @@ from contextlib import asynccontextmanager
 
 import httpx
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 from sqlalchemy import select
@@ -29,17 +31,19 @@ class WikiFeetScraper(Logger):
             A WikiFeetDatabase class to update.
 
         """
+        super().__init__()
         timeout = 10
         self.database = database
 
-        options = webdriver.ChromeOptions()
+        options = webdriver.FirefoxOptions()
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--window-size=1920,1080")
+        service = Service("/usr/local/bin/geckodriver")
 
         self.base_url = "https://wikifeet.com"
-        self.driver = webdriver.Chrome(options=options)
+        self.driver = webdriver.Firefox(options=options, service=service)
         self.wait = WebDriverWait(self.driver, timeout)
 
     @staticmethod
@@ -142,6 +146,53 @@ class WikiFeetScraper(Logger):
             nationality=data["edata"]["nationality"],
         )
 
+    def _handle_cookie_banner(self, timeout: int = 5) -> None:
+        """Clicks the 'decline' button on a cookie banner.
+
+        It waits for a short period for the banner to appear. If it's not
+        found, it assumes one doesn't exist and continues without error.
+
+        Parameters
+        ----------
+        timeout : int, optional
+            The maximum time in seconds to wait for the banner, by default 5.
+
+        """
+        try:
+            decline_button = WebDriverWait(self.driver, timeout).until(
+                expected_conditions.element_to_be_clickable((By.CLASS_NAME, "cc-nb-reject"))
+            )
+            decline_button.click()
+        except TimeoutException:
+            # No banner was found, which is fine.
+            pass
+
+    def _scroll_and_click(self, by: str, value: str) -> None:
+        """Scrolls to an element and clicks it.
+
+        This function waits for an element to be present, scrolls it into
+        view, waits until it's clickable, and then performs a click.
+
+        Parameters
+        ----------
+        by : By
+            The Selenium locator strategy (e.g., By.CSS_SELECTOR).
+        value : str
+            The locator value for the element.
+
+        """
+        # First, find the element and scroll it into view
+        element = self.wait.until(
+            expected_conditions.presence_of_element_located((by, value)),
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
+
+        # Now, wait for the element to be clickable and click it
+        clickable_element = self.wait.until(
+            expected_conditions.element_to_be_clickable((by, value)),
+        )
+        clickable_element.click()
+
     def get_best_images_for_model(self, model_name_url: str) -> list[str]:
         """Get a sorted by best list of picture ids for the model.
 
@@ -156,32 +207,24 @@ class WikiFeetScraper(Logger):
             The list of picture ids.
 
         """
-        try:
-            self.driver.get(f"{self.base_url}/{model_name_url}")
+        self.driver.get(f"{self.base_url}/{model_name_url}")
 
-            # Sort images by "best"
-            latest_div = self.wait.until(expected_conditions.element_to_be_clickable((By.CSS_SELECTOR, "div.latest")))
-            latest_div.click()
-            best_option = self.wait.until(
-                expected_conditions.element_to_be_clickable((By.XPATH, "//div[contains(text(), 'Best')]"))
-            )
-            best_option.click()
-            self.wait.until(
-                expected_conditions.presence_of_element_located((By.XPATH, "//div[starts-with(@id, 'pid_')]"))
-            )
+        self._handle_cookie_banner()
 
-            # Return list of picture ids
-            picture_ids = [
-                div.get_attribute("id")
-                for div in self.driver.find_elements(By.XPATH, "//div[starts-with(@id, 'pid_')]")
-            ]
+        # Sort images by "best" by clicking the filter buttons
+        self._scroll_and_click(By.CSS_SELECTOR, "div.latest")
+        self._scroll_and_click(By.XPATH, "//div[contains(text(), 'Best')]")
 
-            # Remove any Nones and extract just the id so we return `id` and not `pid_id`
-            return [picture_id.split("_")[-1] for picture_id in picture_ids if picture_id]
+        # Wait for the sorted pictures to be present in the DOM
+        self.wait.until(lambda driver: driver.find_element(By.XPATH, "//div[starts-with(@id, 'pid_')]"))
 
-        except Exception as e:
-            self.log_error("Error getting best images for %s: %s", model_name_url, e)
-            return []
+        # Find all picture elements and extract their IDs
+        picture_elements = self.driver.find_elements(By.XPATH, "//div[starts-with(@id, 'pid_')]")
+        picture_ids = [elem.get_attribute("id") for elem in picture_elements]
+
+        # Clean up the IDs and return the list
+        # (e.g., transforms "pid_12345" into "12345")
+        return [pid.split("_")[-1] for pid in picture_ids if pid]
 
     async def update_model_pictures(self, model_name: str, model_id: int) -> None:
         """Update the pictures for a model.

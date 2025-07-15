@@ -9,6 +9,11 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Create a virtual display, required for selenium scraping
+export DISPLAY=:0
+Xvfb :0 -ac -screen 0 1920x1080x8 &
+sleep 2
+
 # Run the bot
 if [ "$DEVELOPMENT_MODE" = true ]; then
     exec poetry run slashbot --debug

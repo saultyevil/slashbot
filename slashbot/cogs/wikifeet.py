@@ -79,7 +79,7 @@ class WikiFeet(CustomCog):
         except ValueError:
             await deferred_error_message(
                 inter,
-                f"Your request for {model_name} feet pics returned an error code",
+                f"Your request for {model_name} feet pics failed!",
             )
             return
 
