@@ -2,6 +2,7 @@ import datetime
 import json
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
 from selenium import webdriver
@@ -22,32 +23,33 @@ from slashbot.core.logger import Logger
 class WikiFeetScraper(Logger):
     """A class for scraping a model's best pictures from Wikifeet."""
 
-    def __init__(self, database: "WikiFeetDatabase") -> None:
-        """Initialise the WikiFeetScraper class with a WikiFeetDatabase.
-
-        Parameters
-        ----------
-        database : WikiFeetDatabase
-            A WikiFeetDatabase class to update.
-
-        """
+    def __init__(
+        self,
+    ) -> None:
+        """Initialise the WikiFeetScraper class."""
         super().__init__()
-        timeout = 10
-        self.database = database
 
         options = webdriver.FirefoxOptions()
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--window-size=1920,1080")
-        service = Service("/usr/local/bin/geckodriver")
 
         self.base_url = "https://wikifeet.com"
-        self.driver = webdriver.Firefox(options=options, service=service)
-        self.wait = WebDriverWait(self.driver, timeout)
+        if Path("/usr/local/bin/geckodriver").exists():
+            service = Service("/usr/local/bin/geckodriver")
+            self.driver = webdriver.Firefox(options=options, service=service)
+        else:
+            self.driver = webdriver.Firefox(options=options)
+        self.wait = WebDriverWait(self.driver, timeout=10)
+
+    def __del__(self) -> None:
+        """Ensure the browser is closed when the object is destroyed."""
+        if hasattr(self, "driver"):
+            self.driver.quit()
 
     @staticmethod
-    def _make_url_model_name(name: str) -> str:
+    def make_url_model_name(name: str) -> str:
         """Convert a model's name to the WikiFeet URL format.
 
         Parameters
@@ -104,7 +106,7 @@ class WikiFeetScraper(Logger):
             The info the model in a WikiFeetModel object.
 
         """
-        model_url = self._make_url_model_name(model_name)
+        model_url = self.make_url_model_name(model_name)
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
@@ -226,42 +228,25 @@ class WikiFeetScraper(Logger):
         # (e.g., transforms "pid_12345" into "12345")
         return [pid.split("_")[-1] for pid in picture_ids if pid]
 
-    async def update_model_pictures(self, model_name: str, model_id: int) -> None:
-        """Update the pictures for a model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model.
-        model_id : int
-            The database ID of the model.
-
-        """
-        ids_best_pictures = self.get_best_images_for_model(self._make_url_model_name(model_name))
-
-        for pid in ids_best_pictures:
-            try:
-                await self.database.add_picture(WikiFeetPicture(model_id=model_id, picture_id=pid))
-            except ValueError:
-                continue
-
 
 class WikiFeetDatabase(Logger):
     """A class to interact with the WikiFeet database."""
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(self, database_url: str, scraper: WikiFeetScraper) -> None:
         """Initialize the WikiFeetDatabase with a database URL.
 
         Parameters
         ----------
         database_url : str
             The database connection URL.
+        scraper : WikiFeetScraper
+            A WikiFeet scraper instance.
 
         """
         super().__init__(prepend_msg="[WikiFeetDatabase]")
         self.engine = create_async_engine(database_url, echo=False)
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
-        self.scraper = WikiFeetScraper(self)
+        self.scraper = scraper
 
     async def init_database(self) -> None:
         """Initialize the database and create all tables."""
@@ -391,7 +376,7 @@ class WikiFeetDatabase(Logger):
         try:
             model_info = await self.scraper.get_model_info(model_name)
             model = await self.add_model(model_info)
-            await self.scraper.update_model_pictures(model_name, model.id)
+            await self.update_model_pictures(model_name, model.id)
 
             return model
         except ValueError as e:
@@ -426,3 +411,22 @@ class WikiFeetDatabase(Logger):
             model_with_pictures = result.scalar_one_or_none()
 
         return model_with_pictures.pictures if model_with_pictures else []
+
+    async def update_model_pictures(self, model_name: str, model_id: int) -> None:
+        """Update the pictures for a model.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model.
+        model_id : int
+            The database ID of the model.
+
+        """
+        ids_best_pictures = self.scraper.get_best_images_for_model(self.scraper.make_url_model_name(model_name))
+
+        for pid in ids_best_pictures:
+            try:
+                await self.add_picture(WikiFeetPicture(model_id=model_id, picture_id=pid))
+            except ValueError:
+                continue

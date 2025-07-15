@@ -9,7 +9,7 @@ from disnake.ext import commands
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.core.database.wikifeet_database import WikiFeetDatabase
+from slashbot.core.database.wikifeet_database import WikiFeetDatabase, WikiFeetScraper
 from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 
@@ -28,24 +28,8 @@ class WikiFeet(CustomCog):
         """
         super().__init__(bot)
         self.database_init = False
-        self.database = WikiFeetDatabase(BotSettings.cogs.wikifeet.database_url)
-
-    @staticmethod
-    def _make_url_model_name(name: str) -> str:
-        """Convert a model's name to the WikiFeet URL format.
-
-        Parameters
-        ----------
-        name : str
-            The name of the model.
-
-        Returns
-        -------
-        str
-            The formatted model name for the URL.
-
-        """
-        return "_".join(part.capitalize() for part in name.split())
+        self.scraper = WikiFeetScraper()
+        self.database = WikiFeetDatabase(BotSettings.cogs.wikifeet.database_url, self.scraper)
 
     @slash_command_with_cooldown(name="wikifeet", description="Get a random foot picture.")
     async def get_random_picture(
@@ -85,7 +69,7 @@ class WikiFeet(CustomCog):
 
         random_image = (
             "https://pics.wikifeet.com/"
-            + self._make_url_model_name(model_name)
+            + self.scraper.make_url_model_name(model_name)
             + "-Feet-"
             + str(random.choice(model_pictures).picture_id)
             + ".jpg"
