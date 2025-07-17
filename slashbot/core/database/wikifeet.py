@@ -159,7 +159,7 @@ class WikiFeetScraper(Logger):
             exc_msg = f"Unable to parse scraped data for {model_name}"
             self.log_exception("%s", exc_msg)
             self.log_debug(f"Response: {response.text}")
-            raise ModelDataParseError(exc_msg) from e
+            raise ModelNotFoundOnWikiFeet(exc_msg) from e
 
         if "cname" not in data:
             exc_msg = f"{model_name} not found on WikiFeet"

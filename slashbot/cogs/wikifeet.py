@@ -64,20 +64,20 @@ class WikiFeet(CustomCog):
             model_pictures = await self.database.get_model_pictures(model_name)
         except httpx.TimeoutException:
             await deferred_error_message(
-                inter, f"No feet pics for you, it took too long to get them for {model_name_pretty}!"
+                inter, f"No feet pics for you. It took too long to get them for {model_name_pretty}!"
             )
             return
         except ModelNotFoundOnWikiFeet:
-            await deferred_error_message(inter, f"Idiot, {model_name_pretty} is not on WikiFeet.")
+            await deferred_error_message(inter, f"Idiot, fool, fopdoodle. {model_name_pretty} is not on WikiFeet.")
             return
         except ModelNotFoundInDatabaseError:
-            await deferred_error_message(inter, f"Failed to store {model_name_pretty} feet pictures...")
+            await deferred_error_message(inter, f"Failed to store {model_name_pretty} feet pictures... uh oh!")
             return
         except Exception as e:  # noqa: BLE001
-            await deferred_error_message(
-                inter, f"An unknown error occurred trying to get delicious feet for you!!! {e}"
-            )
             self.log_exception("An unknown error occurred in WikiFeet.get_random_picture()")
+            await deferred_error_message(
+                inter, f"An unknown error occurred trying to get delicious feet for you!!!\n>>> {e}"
+            )
             return
 
         random_image = (

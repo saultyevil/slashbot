@@ -18,7 +18,7 @@ async def deferred_error_message(
         An error message to send to chat.
     delay : int, optional
         The delay (in seconds) before the error message is deleted, by
-        default 10
+        default 30
 
     """
     await inter.edit_original_message(content=message)
