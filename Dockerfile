@@ -4,22 +4,32 @@ FROM python:3.11-slim-bookworm
 
 # Install dependencies for some commands
 RUN apt update && \
-    apt install -y git openssh-client wget firefox-esr tar xvfb
+    apt install -y --no-install-recommends git openssh-client wget firefox-esr tar xvfb && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.33.0/geckodriver-v0.33.0-linux-aarch64.tar.gz && \
-    tar -xzvf geckodriver-v0.33.0-linux-aarch64.tar.gz -C /usr/local/bin && \
+# Install Geckodriver which is often missing
+RUN ARCH=$(uname -m); \
+    case "$ARCH" in \
+    x86_64) GD_ARCH=linux64 ;; \
+    aarch64) GD_ARCH=linux-aarch64 ;; \
+    *) echo "Unsupported arch $ARCH, skipping geckodriver install"; exit 0 ;; \
+    esac; \
+    VERSION=v0.36.0; \
+    URL="https://github.com/mozilla/geckodriver/releases/download/$VERSION/geckodriver-$VERSION-$GD_ARCH.tar.gz"; \
+    wget -q "$URL" && \
+    tar -xzf geckodriver-$VERSION-$GD_ARCH.tar.gz -C /usr/local/bin && \
     chmod +x /usr/local/bin/geckodriver && \
-    geckodriver -V
+    rm geckodriver-$VERSION-$GD_ARCH.tar.gz && \
+    geckodriver --version
 
-# Create slashbot user, required for ssh key shenanigans and update command
-RUN useradd -m slashbot
-RUN mkdir -p /home/slashbot/.ssh
-RUN chown -R slashbot:slashbot /home/slashbot/.ssh
+# Create slashbot user, required for ssh key shenanigans and update command. Also
+# enable git to be OK with the bot directory
 
-# This enables git to be OK with adding this directory, so we can use the
-# git update command
-RUN git config --global --add safe.directory /bot
-RUN echo "slashbot ALL=(root) NOPASSWD: /usr/bin/Xvfb" >> /etc/sudoers
+RUN useradd -m slashbot && \
+    mkdir -p /home/slashbot/.ssh && \
+    chown -R slashbot:slashbot /home/slashbot/.ssh && \
+    git config --global --add safe.directory /bot && \
+    echo "slashbot ALL=(root) NOPASSWD: /usr/bin/Xvfb" >> /etc/sudoers
 
 # Install poetry via pip
 USER slashbot
