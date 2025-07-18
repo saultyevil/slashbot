@@ -21,24 +21,24 @@ from slashbot.core.database.models import WikiFeetModel, WikiFeetPicture, WikiFe
 from slashbot.core.logger import Logger
 
 
-class ModelNotFoundOnWikiFeet(Exception):
-    pass
+class ModelNotFoundOnWikiFeetError(Exception):
+    """Raised when a model is not found on WikiFeet during scraping."""
 
 
 class ModelNotFoundInDatabaseError(Exception):
-    pass
+    """Raised when a model is not found in the local database."""
 
 
 class ModelDataParseError(Exception):
-    pass
+    """Raised when there is an error parsing model data from WikiFeet."""
 
 
 class DuplicateImageError(Exception):
-    pass
+    """Raised when attempting to add a duplicate image to the database."""
 
 
 class DuplicateModelError(Exception):
-    pass
+    """Raised when attempting to add a duplicate model to the database."""
 
 
 class WikiFeetScraper(Logger):
@@ -151,7 +151,7 @@ class WikiFeetScraper(Logger):
             except httpx.HTTPError as e:
                 exc_msg = f"Unable to get scrape WikiFeet for {model_name}"
                 self.log_exception("%s", exc_msg)
-                raise ModelNotFoundOnWikiFeet(exc_msg) from e
+                raise ModelNotFoundOnWikiFeetError(exc_msg) from e
 
         try:
             data = self._parse_model_json_from_response(response.text)
@@ -159,11 +159,11 @@ class WikiFeetScraper(Logger):
             exc_msg = f"Unable to parse scraped data for {model_name}"
             self.log_exception("%s", exc_msg)
             self.log_debug(f"Response: {response.text}")
-            raise ModelNotFoundOnWikiFeet(exc_msg) from e
+            raise ModelNotFoundOnWikiFeetError(exc_msg) from e
 
         if "cname" not in data:
             exc_msg = f"{model_name} not found on WikiFeet"
-            raise ModelNotFoundOnWikiFeet(exc_msg)
+            raise ModelNotFoundOnWikiFeetError(exc_msg)
 
         now = datetime.datetime.now(tz=datetime.UTC)
 
@@ -195,14 +195,12 @@ class WikiFeetScraper(Logger):
 
         """
         try:
-            self.log_debug("Declining cookies")
             decline_button = WebDriverWait(self.driver, timeout).until(
                 expected_conditions.element_to_be_clickable((By.CLASS_NAME, "cc-nb-reject"))
             )
             decline_button.click()
-            self.log_debug("Cookies declined")
         except TimeoutException:
-            self.log_debug("No cookie banner to decline")
+            pass
 
     def _scroll_and_click(self, by: str, value: str) -> None:
         """Scrolls to an element and clicks it.
@@ -218,7 +216,6 @@ class WikiFeetScraper(Logger):
             The locator value for the element.
 
         """
-        self.log_debug("Scrolling for sort by best")
         # First, find the element and scroll it into view
         element = self.wait.until(
             expected_conditions.presence_of_element_located((by, value)),
@@ -230,7 +227,6 @@ class WikiFeetScraper(Logger):
             expected_conditions.element_to_be_clickable((by, value)),
         )
         clickable_element.click()
-        self.log_debug("Sorted by best")
 
     def get_best_images_for_model(self, model_name_url: str) -> list[str]:
         """Get a sorted by best list of picture ids for the model.
@@ -359,7 +355,6 @@ class WikiFeetDatabase(Logger):
             If the picture already exists in the database.
 
         """
-        self.log_debug(f"Adding picture {picture.picture_id} to model {picture.model_id}")
         async with self._get_session() as session:
             try:
                 session.add(picture)
@@ -405,14 +400,12 @@ class WikiFeetDatabase(Logger):
 
         """
         model_name = self.scraper.capitalise_name(model_name)
-        self.log_debug(f"Getting model {model_name}")
 
         async with self._get_session() as session:
             query = select(WikiFeetModel).where(WikiFeetModel.name == model_name)
             result = await session.execute(query)
             model = result.scalar_one_or_none()
             if model:
-                self.log_debug(f"Found {model_name} in database")
                 return model
 
             # Create the model if missing

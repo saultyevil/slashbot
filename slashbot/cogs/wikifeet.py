@@ -10,11 +10,8 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.core.database.wikifeet import (
-    DuplicateImageError,
-    DuplicateModelError,
-    ModelDataParseError,
     ModelNotFoundInDatabaseError,
-    ModelNotFoundOnWikiFeet,
+    ModelNotFoundOnWikiFeetError,
     WikiFeetDatabase,
     WikiFeetScraper,
 )
@@ -67,7 +64,7 @@ class WikiFeet(CustomCog):
                 inter, f"No feet pics for you. It took too long to get them for {model_name_pretty}!"
             )
             return
-        except ModelNotFoundOnWikiFeet:
+        except ModelNotFoundOnWikiFeetError:
             await deferred_error_message(inter, f"Idiot, fool, fopdoodle. {model_name_pretty} is not on WikiFeet.")
             return
         except ModelNotFoundInDatabaseError:
