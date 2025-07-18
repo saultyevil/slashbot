@@ -11,7 +11,7 @@ from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
 
-class Database(Logger):
+class DatabaseKV(Logger):
     """Asynchronous database class."""
 
     USER_DATA_KEY = "user_data"
@@ -78,7 +78,7 @@ class Database(Logger):
         return self._tables[self.USER_DATA_KEY][user_id]
 
     @classmethod
-    async def open(cls, *, filepath: str | Path | None = None) -> "Database":
+    async def open(cls, *, filepath: str | Path | None = None) -> "DatabaseKV":
         """Open the database.
 
         Parameters

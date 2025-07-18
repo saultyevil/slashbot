@@ -2,7 +2,6 @@ import logging
 import pathlib
 import textwrap
 from logging import FileHandler
-from logging.handlers import RotatingFileHandler
 from typing import Any
 
 from slashbot.settings import BotSettings
@@ -54,22 +53,11 @@ def setup_logging() -> None:
         "%Y-%m-%d %H:%M:%S",
     )
 
-    debug_console_handler = logging.StreamHandler()
-    debug_console_handler.setFormatter(formatter)
-    debug_console_handler.setLevel(logging.DEBUG)
-    debug_console_handler.set_name("debug-console")
-    logger.addHandler(debug_console_handler)
-
-    debug_file_handler = RotatingFileHandler(
-        filename=BotSettings.logging.debug_log_location,
-        encoding="utf-8",
-        maxBytes=int(10 * 1e6),  # 10 MB
-        backupCount=2,
-    )
-    debug_file_handler.setFormatter(formatter)
-    debug_file_handler.setLevel(logging.DEBUG)
-    debug_file_handler.set_name(DEBUG_FILE_LOG_HANDLER_NAME)
-    logger.addHandler(debug_file_handler)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+    console_handler.set_name("console")
+    logger.addHandler(console_handler)
 
     file_handler = FileHandler(
         filename=BotSettings.logging.log_location,
@@ -145,13 +133,13 @@ class Logger:
         middle_trimmed = textwrap.shorten(middle_text, width=remaining, placeholder="...\n")
         return first + middle_trimmed + last
 
-    def _get_debug_file_handler(self) -> logging.FileHandler:
-        handler = next((x for x in self._logger.handlers if x.name == DEBUG_FILE_LOG_HANDLER_NAME), None)
+    def _get_file_handler(self) -> logging.FileHandler:
+        handler = next((x for x in self._logger.handlers if x.name == USER_LOG_HANDLER_NAME), None)
         if handler is None:
-            msg = f"Unable to find `{DEBUG_FILE_LOG_HANDLER_NAME}` in logger"
+            msg = f"Unable to find `{USER_LOG_HANDLER_NAME}` in logger"
             raise ValueError(msg)
         if not isinstance(handler, logging.FileHandler):
-            msg = f"The logging handler named `{DEBUG_FILE_LOG_HANDLER_NAME}` is not a file handler"
+            msg = f"The logging handler named `{USER_LOG_HANDLER_NAME}` is not a file handler"
             raise TypeError(msg)
         return handler
 
@@ -261,7 +249,7 @@ class Logger:
             An empty string if no error found, or the (truncated) error message.
 
         """
-        handler = self._get_debug_file_handler()
+        handler = self._get_file_handler()
         path = pathlib.Path(handler.baseFilename)
 
         with path.open(encoding="utf-8") as file_in:
