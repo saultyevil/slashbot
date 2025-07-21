@@ -59,6 +59,7 @@ class WikiFeet(CustomCog):
         try:
             model = await self.database.get_model(model_name)
             model_pictures = await self.database.get_model_pictures(model_name)
+            model_comments = await self.database.get_model_comments(model_name)
         except httpx.TimeoutException:
             await deferred_error_message(
                 inter, f"No feet pics for you. It took too long to get them for {model_name_pretty}!"
@@ -84,7 +85,17 @@ class WikiFeet(CustomCog):
             + str(random.choice(model_pictures).picture_id)
             + ".jpg"
         )
-        await inter.followup.send(f"> {model.name}\n> Foot score: {model.foot_score}\n{random_image}")
+
+        random_comment = random.choice(model_comments)
+        if random_comment:
+            comment = (
+                f"> Random comment: {random_comment.comment.strip()} *[{random_comment.user}"
+                f"{f' - {random_comment.user_title}' if random_comment.user_title else ''}]*\n"
+            )
+        else:
+            comment = ""
+
+        await inter.followup.send(f"> {model.name}\n> Foot score: {model.foot_score}\n{comment}{random_image}")
 
 
 def setup(bot: CustomInteractionBot) -> None:

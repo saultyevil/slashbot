@@ -79,6 +79,7 @@ class WikiFeetModel(WikiFeetSqlBase):
     shoe_size: Mapped[int] = mapped_column(Integer)
 
     pictures: Mapped[list["WikiFeetPicture"]] = relationship(back_populates="model")
+    comments: Mapped[list["WikiFeetComment"]] = relationship(back_populates="model")
 
 
 class WikiFeetPicture(WikiFeetSqlBase):
@@ -90,3 +91,17 @@ class WikiFeetPicture(WikiFeetSqlBase):
     model_id: Mapped[int] = mapped_column(ForeignKey("wikifeet_models.id"))
     picture_id: Mapped[int] = mapped_column(Integer, unique=True)
     model: Mapped["WikiFeetModel"] = relationship(back_populates="pictures")
+
+
+class WikiFeetComment(WikiFeetSqlBase):
+    """SQLAlchemy ORM model for comments on WikiFeet."""
+
+    __tablename__ = "wikifeet_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    model_id: Mapped[int] = mapped_column(ForeignKey("wikifeet_models.id"))
+
+    comment: Mapped[str] = mapped_column(String(512), unique=True)  # comment
+    user: Mapped[str] = mapped_column(String(64))  # nickname
+    user_title: Mapped[str] = mapped_column(String(64))  # title
+    model: Mapped["WikiFeetModel"] = relationship(back_populates="comments")
