@@ -84,9 +84,7 @@ class WikiFeet(CustomCog):
             + str(random.choice(model_pictures).picture_id)
             + ".jpg"
         )
-        await inter.followup.send(
-            f"> {model.name}\n> Foot score: {model.foot_score}\n> Shoe size : {(model.shoe_size + 3) / 2} US\n{random_image}"
-        )
+        await inter.followup.send(f"> {model.name}\n> Foot score: {model.foot_score}\n{random_image}")
 
 
 def setup(bot: CustomInteractionBot) -> None:
