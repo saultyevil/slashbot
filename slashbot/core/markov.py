@@ -26,6 +26,14 @@ MARKOV_MODEL = None
 MARKOV_BANK = None
 
 
+class MarkovGenerator(Logger):
+    def __init__(self):
+        super().__init__()
+
+        self.markov_chain = None
+        self.markov_bank = None
+
+
 def _search_for_seed_in_markov_bank(seed_word: str) -> str:
     """Search for a sentence in the markov bank for a given seed word.
 
