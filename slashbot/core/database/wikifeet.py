@@ -4,6 +4,7 @@ import json
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import httpx
 from selenium import webdriver
@@ -128,6 +129,31 @@ class WikiFeetScraper(Logger):
 
         return json.loads(model_json_string)
 
+    @staticmethod
+    def _get_model_data(data: dict, key: str, default: Any) -> Any:
+        """Extract data from a model dict and set a default if missing.
+
+        Parameters
+        ----------
+        data : dict
+            The dict containing the model data.
+        key : str
+            The key of the dict to extract.
+        default : Any
+            A default value if key is missing a value or is null.
+
+        Returns
+        -------
+        Any
+            The value of key or the default value provided.
+
+        """
+        value = data.get(key, default)
+        if not value:
+            value = default
+
+        return value
+
     async def get_model_info(self, model_name: str) -> WikiFeetModel:
         """Get metadata info about a model.
 
@@ -171,13 +197,13 @@ class WikiFeetScraper(Logger):
             model = WikiFeetModel(
                 name=data["cname"],
                 last_updated=now,
-                foot_score=data["score"],
-                shoe_size=(float(data.get("ssize", -3)) + 3) / 2,
+                foot_score=self._get_model_data(data, "score", 0),
+                shoe_size=(float(self._get_model_data(data, "ssize", -3) + 3)) / 2,
             )
             self.log_debug(f"Created model instance for {model.name}: {model}")
         except (KeyError, ValueError, IndexError, TypeError) as e:
             exc_msg = f"Error parsing model data for {model_name}"
-            self.log_exception("%s: %s", exc_msg, data)
+            self.log_exception("%s %s: %s", e, exc_msg, data)
             raise ModelDataParseError(exc_msg) from e
         else:
             return model
