@@ -86,7 +86,7 @@ class WikiFeet(CustomCog):
             + ".jpg"
         )
 
-        random_comment = random.choice(model_comments)
+        random_comment = random.choice(model_comments if model_comments else [])
         if random_comment:
             comment = (
                 f"> Random comment: {random_comment.comment.strip()} *[{random_comment.user}"
