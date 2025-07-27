@@ -2,6 +2,10 @@
 
 set -e
 
+# Clean up Xvfb if it's running
+pkill Xvfb || true
+rm -f /tmp/.X0-lock
+
 # Create a virtual display, required for selenium scraping
 export DISPLAY=:0
 Xvfb :0 -ac -screen 0 1920x1080x8 &
