@@ -20,30 +20,30 @@ class GeminiClient(TextGenerationAbstractClient):
         "gemini-1.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
-        "gemini-2.5-flash-preview-04-17",
-        "gemini-2.5-pro-preview-03-25",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
     )
     VISION_MODELS = (
         "gemini-1.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
-        "gemini-2.5-flash-preview-04-17",
-        "gemini-2.5-pro-preview-03-25",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
     )
-    SEARCH_MODELS = ()
+    SEARCH_MODELS = ("gemini-2.5-flash",)
     AUDIO_MODELS = (
         "gemini-1.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
-        "gemini-2.5-flash-preview-04-17",
-        "gemini-2.5-pro-preview-03-25",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
     )
     VIDEO_MODELS = (
         "gemini-1.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
-        "gemini-2.5-flash-preview-04-17",
-        "gemini-2.5-pro-preview-03-25",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
     )
 
     def __init__(self, model_name: str, **kwargs: Any) -> None:
@@ -243,6 +243,11 @@ class GeminiClient(TextGenerationAbstractClient):
                 ],
             }
 
+        if self.model_name in self.SEARCH_MODELS:
+            request["tools"] = {  # type:ignore
+                "google_search": {},
+            }
+
         return request
 
     async def generate_response_with_context(
@@ -302,6 +307,10 @@ class GeminiClient(TextGenerationAbstractClient):
             },
             "contents": [],
         }
+        if self.model_name in self.SEARCH_MODELS:
+            self._context["tools"] = {  # type:ignore
+                "google_search": {},
+            }
 
         self._setup_response_logger(model_name)
 
