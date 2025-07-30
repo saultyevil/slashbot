@@ -178,7 +178,11 @@ class Reminders(CustomCog):
             The reminder to set.
 
         """
-        future_time = self.convert_user_requested_time_to_datetime(when)
+        try:
+            future_time = self.convert_user_requested_time_to_datetime(when)
+        except ValueError:
+            await inter.response.send_message(f'Unable to understand timestamp "{when}"', ephemeral=True)
+            return
         if not future_time:
             await inter.response.send_message(f'Unable to understand timestamp "{when}"', ephemeral=True)
             return
