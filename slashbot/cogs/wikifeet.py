@@ -1,6 +1,7 @@
 """Commands for searching WikiFeet."""
 
 import random
+import re
 
 import disnake
 import httpx
@@ -34,6 +35,26 @@ class WikiFeet(CustomCog):
         super().__init__(bot)
         self.database_init = False
         self.database = WikiFeetDatabase(BotSettings.cogs.wikifeet.database_url, WikiFeetScraper())
+
+    @staticmethod
+    def clean_comment_for_discord(text: str) -> str:
+        """Clean up a WikiFeet comment ready for discord.
+
+        This removes links and newline characters.
+
+        Parameters
+        ----------
+        text : str
+            The input text to clean up.
+
+        Returns
+        -------
+        str
+            The cleaned up text.
+
+        """
+        text = re.sub(r"(https?://\S+)", r"<\1>", text)
+        return re.sub(r"\s+", " ", text).strip()
 
     @slash_command_with_cooldown(name="wikifeet", description="Get a random foot picture.")
     async def get_random_picture(
@@ -88,8 +109,9 @@ class WikiFeet(CustomCog):
 
         if model_comments:
             random_comment = random.choice(model_comments)
+            comment = self.clean_comment_for_discord(random_comment.comment)
             comment = (
-                f"> Random comment: {random_comment.comment.strip()} *[{random_comment.user}"
+                f"> Random comment: {comment} *[{random_comment.user}"
                 f"{f' - {random_comment.user_title}' if random_comment.user_title else ''}]*\n"
             )
         else:

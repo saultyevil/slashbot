@@ -5,8 +5,10 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+from venv import logger
 
 import httpx
+from nameparser import HumanName
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -73,8 +75,7 @@ class WikiFeetScraper(Logger):
         if hasattr(self, "driver"):
             self.driver.quit()
 
-    @staticmethod
-    def capitalise_name(model_name: str) -> str:
+    def capitalise_name(self, model_name: str) -> str:
         """Capitalise a model's name.
 
         Parameters
@@ -88,7 +89,10 @@ class WikiFeetScraper(Logger):
             The capitalised name.
 
         """
-        return " ".join(part.capitalize() for part in model_name.split())
+        name = HumanName(model_name)
+        name.capitalize()
+        first = f"{name.first} '{name.nickname}'" if name.nickname else name.first
+        return " ".join(part for part in [first, name.middle, name.last] if part)
 
     def make_url_model_name(self, model_name: str) -> str:
         """Convert a model's name to the WikiFeet URL format.
