@@ -86,8 +86,8 @@ class WikiFeet(CustomCog):
             + ".jpg"
         )
 
-        random_comment = random.choice(model_comments)
-        if random_comment:
+        if model_comments:
+            random_comment = random.choice(model_comments)
             comment = (
                 f"> Random comment: {random_comment.comment.strip()} *[{random_comment.user}"
                 f"{f' - {random_comment.user_title}' if random_comment.user_title else ''}]*\n"
@@ -95,7 +95,7 @@ class WikiFeet(CustomCog):
         else:
             comment = ""
 
-        await inter.followup.send(f"> {model.name}\n> Foot score: {model.foot_score}\n{comment}{random_image}")
+        await inter.followup.send(f"> {model.name}\n> Foot score: {model.foot_score}/5\n{comment}{random_image}")
 
 
 def setup(bot: CustomInteractionBot) -> None:
