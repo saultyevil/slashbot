@@ -19,6 +19,28 @@ from slashbot.core.database.wikifeet import (
 from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 
+GLOBAL_WIKIFEET_DATABASE = WikiFeetDatabase(BotSettings.cogs.wikifeet.database_url, WikiFeetScraper())
+
+
+async def autocomplete_model_names(_: disnake.ApplicationCommandInteraction, user_input: str) -> list[str]:
+    """Auto-completion for populating with model names in the database.
+
+    Parameters
+    ----------
+    _ : disnake.ApplicationCommandInteraction
+        The interaction the autocompletion is for.
+    user_input : str
+        The user input.
+
+    Returns
+    -------
+    list[str]
+        A list of model names.
+
+    """
+    model_names = [name for name in await GLOBAL_WIKIFEET_DATABASE.get_model_names() if user_input in name]
+    return sorted(random.sample(model_names, k=min(25, len(model_names))))
+
 
 class WikiFeet(CustomCog):
     """Cog for searching WikiFeet."""
@@ -34,7 +56,7 @@ class WikiFeet(CustomCog):
         """
         super().__init__(bot)
         self.database_init = False
-        self.database = WikiFeetDatabase(BotSettings.cogs.wikifeet.database_url, WikiFeetScraper())
+        self.database = GLOBAL_WIKIFEET_DATABASE
 
     @staticmethod
     def clean_comment_for_discord(text: str) -> str:
@@ -60,7 +82,7 @@ class WikiFeet(CustomCog):
     async def get_random_picture(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        model_name: str = commands.Param(description="The name of the model."),
+        model_name: str = commands.Param(description="The name of the model.", autocomplete=autocomplete_model_names),
     ) -> None:
         """Get a random foot picture for the provided model.
 

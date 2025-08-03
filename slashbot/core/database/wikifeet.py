@@ -5,7 +5,6 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
-from venv import logger
 
 import httpx
 from nameparser import HumanName
@@ -76,23 +75,18 @@ class WikiFeetScraper(Logger):
             self.driver.quit()
 
     def capitalise_name(self, model_name: str) -> str:
-        """Capitalise a model's name.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model.
-
-        Returns
-        -------
-        str
-            The capitalised name.
-
-        """
-        name = HumanName(model_name)
+        """Capitalise a model's name."""
+        name = HumanName(model_name.strip())
         name.capitalize()
-        first = f"{name.first} '{name.nickname}'" if name.nickname else name.first
-        return " ".join(part for part in [first, name.middle, name.last] if part)
+
+        def fix_hyphenated(part: str) -> str:
+            return "-".join(p.capitalize() for p in part.split("-")) if part else ""
+
+        first = f"{fix_hyphenated(name.first)} '{name.nickname}'" if name.nickname else fix_hyphenated(name.first)
+        middle = fix_hyphenated(name.middle)
+        last = fix_hyphenated(name.last)
+
+        return " ".join(part for part in [first, middle, last] if part)
 
     def make_url_model_name(self, model_name: str) -> str:
         """Convert a model's name to the WikiFeet URL format.
@@ -490,6 +484,21 @@ class WikiFeetDatabase(Logger):
                 )
             except DuplicateCommentError:
                 continue
+
+    async def get_model_names(self) -> list[str]:
+        """Get a list of model names in the database.
+
+        Returns
+        -------
+        list[str]
+            A list of model names in the database.
+
+        """
+        async with self._get_session() as session:
+            query = await session.execute(select(WikiFeetModel))
+            models = query.scalars().all()
+
+        return [model.name for model in models]
 
     async def get_model(self, model_name: str) -> WikiFeetModel:
         """Get an existing model or create a new one.
