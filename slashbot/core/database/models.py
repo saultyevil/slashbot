@@ -73,6 +73,7 @@ class WikiFeetModel(WikiFeetSqlBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)
+    model_name: Mapped[str] = mapped_column(String, unique=True)
     last_updated: Mapped[datetime] = mapped_column(DateTime)
 
     foot_score: Mapped[float] = mapped_column(Float)

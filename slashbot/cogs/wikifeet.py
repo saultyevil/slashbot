@@ -38,7 +38,7 @@ async def autocomplete_model_names(_: disnake.ApplicationCommandInteraction, use
         A list of model names.
 
     """
-    model_names = [name for name in await GLOBAL_WIKIFEET_DATABASE.get_model_names() if user_input in name]
+    model_names = [name for name in await GLOBAL_WIKIFEET_DATABASE.get_model_names() if user_input in name.lower()]
     return sorted(random.sample(model_names, k=min(25, len(model_names))))
 
 

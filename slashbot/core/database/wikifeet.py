@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 import datetime
 import json
 from collections.abc import AsyncGenerator
@@ -69,8 +70,15 @@ class WikiFeetScraper(Logger):
         self.driver.install_addon("data/uBlock.firefox.xpi", temporary=True)
         self.wait = WebDriverWait(self.driver, timeout=20)
 
+        atexit.register(self._cleanup_after)
+
     def __del__(self) -> None:
         """Ensure the browser is closed when the object is destroyed."""
+        if hasattr(self, "driver"):
+            self.driver.quit()
+
+    def _cleanup_after(self) -> None:
+        """Ensure the browser is closed at exit."""
         if hasattr(self, "driver"):
             self.driver.quit()
 
@@ -158,6 +166,21 @@ class WikiFeetScraper(Logger):
         return value
 
     async def _extract_json_from_model_page(self, model_name: str, extract_pattern: str) -> dict:
+        """Extract JSON data from a WikiFeet model page.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to scrape.
+        extract_pattern : str
+            The pattern to extract JSON data from the HTML response.
+
+        Returns
+        -------
+        dict
+            The extracted JSON data as a dictionary.
+
+        """
         model_url = self.make_url_model_name(model_name)
 
         async with httpx.AsyncClient(timeout=15) as client:
@@ -179,64 +202,7 @@ class WikiFeetScraper(Logger):
 
         return data
 
-    async def get_model_info(self, model_name: str) -> WikiFeetModel:
-        """Get metadata info about a model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model.
-
-        Returns
-        -------
-        WikiFeetModel
-            The info the model in a WikiFeetModel object.
-
-        """
-        data = await self._extract_json_from_model_page(model_name, "tdata = ")
-        if "cname" not in data:
-            exc_msg = f"{model_name} not found on WikiFeet"
-            raise ModelNotFoundOnWikiFeetError(exc_msg)
-
-        now = datetime.datetime.now(tz=datetime.UTC)
-
-        try:
-            model = WikiFeetModel(
-                name=data["cname"],
-                last_updated=now,
-                foot_score=self._get_model_data(data, "score", 0),
-                shoe_size=(float(self._get_model_data(data, "ssize", -3) + 3)) / 2,
-            )
-            self.log_debug(f"Created model instance for {model.name}: {model}")
-        except (KeyError, ValueError, IndexError, TypeError) as e:
-            exc_msg = f"Error parsing model data for {model_name}"
-            self.log_exception("%s %s: %s", e, exc_msg, data)
-            raise ModelDataParseError(exc_msg) from e
-
-        return model
-
-    async def get_model_comments(self, model_name: str) -> list[dict]:
-        """Get comments about the model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to get comments for.
-
-        Returns
-        -------
-        list[dict]
-            A list of comments.
-
-        """
-        data = await self._extract_json_from_model_page(model_name, "tdata = ")
-        if "cname" not in data:
-            exc_msg = f"{model_name} not found on WikiFeet"
-            raise ModelNotFoundOnWikiFeetError(exc_msg)
-
-        return data.get("comments", {}).get("threads", [])
-
-    def _handle_cookie_banner(self, timeout: int = 2) -> None:
+    def _handle_cookie_banner(self, timeout: int = 1) -> None:
         """Clicks the 'decline' button on a cookie banner.
 
         It waits for a short period for the banner to appear. If it's not
@@ -281,6 +247,64 @@ class WikiFeetScraper(Logger):
             expected_conditions.element_to_be_clickable((by, value)),
         )
         clickable_element.click()
+
+    async def get_model_info(self, model_name: str) -> WikiFeetModel:
+        """Get metadata info about a model.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model.
+
+        Returns
+        -------
+        WikiFeetModel
+            The info the model in a WikiFeetModel object.
+
+        """
+        data = await self._extract_json_from_model_page(model_name, "tdata = ")
+        if "cname" not in data:
+            exc_msg = f"{model_name} not found on WikiFeet"
+            raise ModelNotFoundOnWikiFeetError(exc_msg)
+
+        now = datetime.datetime.now(tz=datetime.UTC)
+
+        try:
+            model = WikiFeetModel(
+                name=model_name.lower(),
+                model_name=data["cname"],
+                last_updated=now,
+                foot_score=self._get_model_data(data, "score", 0),
+                shoe_size=(float(self._get_model_data(data, "ssize", -3) + 3)) / 2,
+            )
+            self.log_debug(f"Created model instance for {model.name}: {model}")
+        except (KeyError, ValueError, IndexError, TypeError) as e:
+            exc_msg = f"Error parsing model data for {model_name}"
+            self.log_exception("%s %s: %s", e, exc_msg, data)
+            raise ModelDataParseError(exc_msg) from e
+
+        return model
+
+    async def get_model_comments(self, model_name: str) -> list[dict]:
+        """Get comments about the model.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to get comments for.
+
+        Returns
+        -------
+        list[dict]
+            A list of comments.
+
+        """
+        data = await self._extract_json_from_model_page(model_name, "tdata = ")
+        if "cname" not in data:
+            exc_msg = f"{model_name} not found on WikiFeet"
+            raise ModelNotFoundOnWikiFeetError(exc_msg)
+
+        return data.get("comments", {}).get("threads", [])
 
     def get_best_images_for_model(self, model_name_url: str) -> list[str]:
         """Get a sorted by best list of picture ids for the model.
@@ -498,7 +522,7 @@ class WikiFeetDatabase(Logger):
             query = await session.execute(select(WikiFeetModel))
             models = query.scalars().all()
 
-        return [model.name for model in models]
+        return [model.model_name for model in models]
 
     async def get_model(self, model_name: str) -> WikiFeetModel:
         """Get an existing model or create a new one.
@@ -514,10 +538,8 @@ class WikiFeetDatabase(Logger):
             The model instance.
 
         """
-        model_name = self.scraper.capitalise_name(model_name)
-
         async with self._get_session() as session:
-            query = select(WikiFeetModel).where(WikiFeetModel.name == model_name)
+            query = select(WikiFeetModel).where(WikiFeetModel.name == model_name.lower())
             result = await session.execute(query)
             model = result.scalar_one_or_none()
             if model:
@@ -546,8 +568,7 @@ class WikiFeetDatabase(Logger):
             A list containing WikiFeetPicture objects.
 
         """
-        model_name = self.scraper.capitalise_name(model_name)
-        model = await self.get_model(model_name)
+        model = await self.get_model(model_name.lower())
 
         async with self._get_session() as session:
             stmt = (
@@ -572,8 +593,7 @@ class WikiFeetDatabase(Logger):
             A list containing wikiFeetcomment objects.
 
         """
-        model_name = self.scraper.capitalise_name(model_name)
-        model = await self.get_model(model_name)
+        model = await self.get_model(model_name.lower())
 
         async with self._get_session() as session:
             stmt = (
