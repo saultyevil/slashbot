@@ -101,8 +101,8 @@ class WikiFeet(CustomCog):
             await self.database.init_database()
         try:
             model = await self.database.get_model(model_name)
-            model_pictures = await self.database.get_model_pictures(model_name)
-            model_comments = await self.database.get_model_comments(model_name)
+            model_pictures = await self.database.get_model_pictures(model.name)
+            model_comments = await self.database.get_model_comments(model.name)
         except httpx.TimeoutException:
             await deferred_error_message(
                 inter, f"No feet pics for you. It took too long to get them for {model_name_pretty}!"
