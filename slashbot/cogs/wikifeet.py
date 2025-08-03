@@ -139,7 +139,7 @@ class WikiFeet(CustomCog):
         else:
             comment = ""
 
-        await inter.followup.send(f"> {model.name}\n> Foot score: {model.foot_score}/5\n{comment}{random_image}")
+        await inter.followup.send(f"> {model.model_name}\n> Foot score: {model.foot_score}/5\n{comment}{random_image}")
 
 
 def setup(bot: CustomInteractionBot) -> None:
