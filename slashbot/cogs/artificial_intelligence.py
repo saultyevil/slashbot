@@ -18,10 +18,12 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.core import markov
-from slashbot.core.ai import AIChat, AIChatSummary, SummaryMessage
-from slashbot.core.text_generation import (
+from slashbot.core.ai import (
     SUPPORTED_MODELS,
+    AIChat,
+    AIChatSummary,
     GenerationFailureError,
+    SummaryMessage,
     TextGenerationInput,
     VisionImage,
     VisionVideo,

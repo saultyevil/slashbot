@@ -6,7 +6,6 @@ location into a latitude and longitude for OpenWeatherMap.
 
 import datetime
 import json
-from os import error
 
 import disnake
 import requests

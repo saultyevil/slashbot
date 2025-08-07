@@ -5,8 +5,8 @@ import yaml
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+from slashbot.core.ai.prompts import create_prompt_dict, read_in_prompt
 from slashbot.core.logger import Logger
-from slashbot.core.text_generation.prompts import create_prompt_dict, read_in_prompt
 from slashbot.settings import BotSettings
 
 AVAILABLE_LLM_PROMPTS = create_prompt_dict()
