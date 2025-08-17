@@ -1,3 +1,5 @@
+from typing import cast
+
 from slashbot.core.ai.clients.gemini_client import GeminiClient
 from slashbot.core.ai.clients.openai_client import OpenAIClient
 from slashbot.core.ai.models import TextGenerationInput, TextGenerationResponse
@@ -34,6 +36,7 @@ class TextGenerator(Logger):
         super().__init__(prepend_msg=extra_print)
         model: str = model_name or BotSettings.cogs.artificial_intelligence.default_model
         self._extra_print: str = extra_print
+        self._client = cast(OpenAIClient | GeminiClient, None)
         self.set_model(model)
 
     # --------------------------------------------------------------------------
@@ -137,8 +140,15 @@ class TextGenerator(Logger):
             The name of the model to use.
 
         """
+        # If the new and old models are both openai, we can change the model
+        # name on the fly. We can't do this for a gemini model because some
+        # don't support certain tools like web searching. In that case, we have
+        # to create a new client and destroy the old context
         if model in self.SUPPORTED_OPENAI_MODELS:
-            self._client = OpenAIClient(model)
+            if self._client and self._client.client_type == "openai":
+                self._client.model_name = model
+            else:
+                self._client = OpenAIClient(model)
         elif model in self.SUPPORTED_GOOGLE_MODELS:
             self._client = GeminiClient(model)
         else:

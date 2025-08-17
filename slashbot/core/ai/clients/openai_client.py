@@ -118,6 +118,11 @@ class OpenAIClient(TextGenerationAbstractClient):
         """Get the context, minus the system prompt."""
         return self._context[1:]
 
+    @property
+    def client_type(self) -> str:
+        """Get the model type."""
+        return "openai"
+
     # --------------------------------------------------------------------------
 
     def count_tokens_for_message(self, messages: dict | list[dict[str, str]] | str) -> int:
@@ -257,6 +262,10 @@ class OpenAIClient(TextGenerationAbstractClient):
             model=self.model_name,
             messages=content,  # type: ignore
             max_completion_tokens=self._max_completion_tokens,
+            temperature=BotSettings.cogs.artificial_intelligence.model_temperature,
+            top_p=BotSettings.cogs.artificial_intelligence.model_top_p,
+            frequency_penalty=BotSettings.cogs.artificial_intelligence.model_frequency_penalty,
+            presence_penalty=BotSettings.cogs.artificial_intelligence.model_presence_penalty,
         )
         await self._log_response("%s", content)
 

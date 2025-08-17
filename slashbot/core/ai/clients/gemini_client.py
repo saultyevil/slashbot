@@ -170,6 +170,11 @@ class GeminiClient(TextGenerationAbstractClient):
         """Get the context, minus the system prompt."""
         return self._context["contents"]
 
+    @property
+    def client_type(self) -> str:
+        """Get the model type."""
+        return "gemini"
+
     def count_tokens_for_message(self, messages: dict | list[dict[str, str]] | str) -> int:
         """Count the number of tokens in a message.
 
