@@ -5,10 +5,7 @@ import atexit
 import random
 
 import aiofiles
-import defusedxml
-import defusedxml.ElementTree
 import disnake
-import requests
 import rule34 as r34
 from disnake.ext import commands, tasks
 
@@ -101,43 +98,6 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
             f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",
         )
 
-    @slash_command_with_cooldown(name="rule34", description="search for a naughty image")
-    async def rule34(
-        self,
-        inter: disnake.ApplicationCommandInteraction,
-        query: str = commands.Param(
-            description="The search query as you would on rule34.xxx, e.g. furry+donald_trump or ada_wong.",
-        ),
-    ) -> None:
-        """Get an image from rule34 and a random comment.
-
-        Parameters
-        ----------
-        inter: disnake.ApplicationCommandInteraction
-            The interaction to possibly remove the cooldown from.
-        query: str
-            The properly formatted query to search for.
-
-        """
-        await inter.response.defer()
-
-        results = await self.rule34_api.getImages(query, fuzzy=False, randomPID=True)
-        if not results:
-            await inter.edit_original_message(f"No results found for `{query}`.")
-            return
-
-        choices = [result for result in results if result.has_comments]
-        if len(choices) == 0:
-            choices = results
-        image = random.choice(choices)
-
-        comment, user = self.get_comments_for_rule34_post(image.id)
-        comment = "*Too cursed for comments*" if not comment else f'"{comment}"'
-        user = " " if not user else f" -- *{user}*"
-        message = f"|| {image.file_url} ||\n>>> {comment}{user}"
-
-        await inter.edit_original_message(content=message)
-
     # Listeners ---------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
@@ -185,51 +145,6 @@ class Spam(CustomCog):  # pylint: disable=too-many-instance-attributes,too-many-
                 return
 
         self.markov_training_sample.pop(message.id, None)
-
-    # Utility functions --------------------------------------------------------
-
-    def get_comments_for_rule34_post(self, post_id: int | str) -> tuple[str | None, str | None]:
-        """Get a random comment from a rule34.xxx post.
-
-        Parameters
-        ----------
-        post_id: int | str
-            The post ID number.
-
-        Returns
-        -------
-        comment: str
-            The comment.
-
-        """
-        try:
-            request_url = f"https://api.rule34.xxx/index.php?page=dapi&s=comment&q=index&post_id={post_id}"
-            self.log_debug("Rule34 API request to %s", request_url)
-            response = requests.get(request_url, timeout=5)
-            response.raise_for_status()
-        except requests.exceptions.Timeout:
-            self.log_exception("Request to Rule34 API timed out")
-            raise
-        except requests.exceptions.RequestException as exc:
-            status = getattr(exc.response, "status_code", "unknown")
-            self.log_exception("Rule34 API returned %d: unable to get comments for post", status)
-            raise
-
-        # the response from the rule34 api is XML, so we have to try and parse that
-        try:
-            parsed_comment_xml = defusedxml.ElementTree.fromstring(response.content)
-        except defusedxml.ElementTree.ParseError:
-            self.log_exception("Unable to parse Rule34 comment API return from string into XML %s", response.content)
-            raise
-
-        post_comments = [
-            (element.get("body"), element.get("creator")) for element in parsed_comment_xml.iter("comment")
-        ]
-        if not post_comments:
-            self.log_error("Unable to find any comments in parsed XML comments %s", response.content)
-            return EMPTY_STRING, EMPTY_STRING
-
-        return random.choice(post_comments)
 
     # Scheduled tasks ----------------------------------------------------------
 
