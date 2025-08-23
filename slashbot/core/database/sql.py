@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -11,19 +10,21 @@ from slashbot.core.logger import Logger
 class DatabaseSQL(Logger):
     """Asynchronous database class, using SQLite."""
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(self, database_url: str, logger_label: str = "[DatabaseSQL]") -> None:
         """Initialize the database.
 
         Parameters
         ----------
         database_url : str
             The database connection URL.
+        logger_label : str
+            A label to prepend to all logging output to indicate where the
+            log entry came from.
 
         """
-        super().__init__(prepend_msg="[DatabaseSQL]")
+        super().__init__(prepend_msg=logger_label)
         self.engine = create_async_engine(database_url, echo=False)
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
-        self._db_lock = asyncio.Lock()
 
     async def init(self) -> None:
         """Initialize the database and create all tables."""
