@@ -16,33 +16,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
+from slashbot.core.database.error import (
+    WikiFeetDataParseError,
+    WikiFeetDuplicateCommentError,
+    WikiFeetDuplicateImageError,
+    WikiFeetDuplicateModelError,
+    WikiFeetModelNotFoundError,
+)
 from slashbot.core.database.models import WikiFeetComment, WikiFeetModel, WikiFeetPicture
 from slashbot.core.database.sql import DatabaseSQL
 from slashbot.core.logger import Logger
-
-
-class ModelNotFoundOnWikiFeetError(Exception):
-    """Raised when a model is not found on WikiFeet during scraping."""
-
-
-class ModelNotFoundInDatabaseError(Exception):
-    """Raised when a model is not found in the local database."""
-
-
-class ModelDataParseError(Exception):
-    """Raised when there is an error parsing model data from WikiFeet."""
-
-
-class DuplicateCommentError(Exception):
-    """Raised when attempting to add a duplicate comment to the database."""
-
-
-class DuplicateImageError(Exception):
-    """Raised when attempting to add a duplicate image to the database."""
-
-
-class DuplicateModelError(Exception):
-    """Raised when attempting to add a duplicate model to the database."""
 
 
 class WikiFeetScraper(Logger):
@@ -187,7 +170,7 @@ class WikiFeetScraper(Logger):
             except httpx.HTTPError as e:
                 exc_msg = f"Unable to get scrape WikiFeet for {model_name}"
                 self.log_exception("%s", exc_msg)
-                raise ModelNotFoundOnWikiFeetError(exc_msg) from e
+                raise WikiFeetModelNotFoundError(exc_msg) from e
 
         try:
             data = self._parse_model_json_from_response(response.text, extract_pattern)
@@ -195,7 +178,7 @@ class WikiFeetScraper(Logger):
             exc_msg = f"Unable to parse scraped data for {model_name}"
             self.log_exception("%s", exc_msg)
             self.log_debug(f"Response: {response.text}")
-            raise ModelNotFoundOnWikiFeetError(exc_msg) from e
+            raise WikiFeetModelNotFoundError(exc_msg) from e
 
         return data
 
@@ -262,7 +245,7 @@ class WikiFeetScraper(Logger):
         data = await self._extract_json_from_model_page(model_name, "tdata = ")
         if "cname" not in data:
             exc_msg = f"{model_name} not found on WikiFeet"
-            raise ModelNotFoundOnWikiFeetError(exc_msg)
+            raise WikiFeetModelNotFoundError(exc_msg)
 
         now = datetime.datetime.now(tz=datetime.UTC)
 
@@ -278,7 +261,7 @@ class WikiFeetScraper(Logger):
         except (KeyError, ValueError, IndexError, TypeError) as e:
             exc_msg = f"Error parsing model data for {model_name}"
             self.log_exception("%s %s: %s", e, exc_msg, data)
-            raise ModelDataParseError(exc_msg) from e
+            raise WikiFeetDataParseError(exc_msg) from e
 
         return model
 
@@ -299,7 +282,7 @@ class WikiFeetScraper(Logger):
         data = await self._extract_json_from_model_page(model_name, "tdata = ")
         if "cname" not in data:
             exc_msg = f"{model_name} not found on WikiFeet"
-            raise ModelNotFoundOnWikiFeetError(exc_msg)
+            raise WikiFeetModelNotFoundError(exc_msg)
 
         return data.get("comments", {}).get("threads", [])
 
@@ -354,7 +337,7 @@ class WikiFeetDatabase(DatabaseSQL):
             A WikiFeet scraper instance.
 
         """
-        super().__init__(database_url=database_url)
+        super().__init__(database_url=database_url, logger_label="[WikiFeetDatabase]")
         self.scraper = scraper
 
     async def _add_new_model(self, model: WikiFeetModel) -> WikiFeetModel:
@@ -385,7 +368,7 @@ class WikiFeetDatabase(DatabaseSQL):
                 await session.rollback()
                 exc_msg = f"Model {model.name} already exists in database"
                 self.log_error("%s", exc_msg)
-                raise DuplicateModelError(exc_msg) from e
+                raise WikiFeetDuplicateModelError(exc_msg) from e
             else:
                 return model
 
@@ -411,7 +394,7 @@ class WikiFeetDatabase(DatabaseSQL):
                 await session.rollback()
                 exc_msg = f"Picture {picture.picture_id} already exists in database for model id {picture.model_id}"
                 self.log_error("%s", exc_msg)
-                raise DuplicateImageError(exc_msg) from e
+                raise WikiFeetDuplicateImageError(exc_msg) from e
 
     async def _add_model_comment(self, comment: WikiFeetComment) -> None:
         """Add a WikiFeetPicture instance to the database.
@@ -430,7 +413,7 @@ class WikiFeetDatabase(DatabaseSQL):
                 await session.rollback()
                 exc_msg = f"Comment already exists in database for model id {comment.model_id}"
                 self.log_error("%s", exc_msg)
-                raise DuplicateCommentError(exc_msg) from e
+                raise WikiFeetDuplicateCommentError(exc_msg) from e
 
     async def _add_model_pictures(self, model_name: str, model_id: int) -> None:
         """Update the pictures for a model.
@@ -449,7 +432,7 @@ class WikiFeetDatabase(DatabaseSQL):
         for pid in ids_best_pictures:
             try:
                 await self._add_model_picture(WikiFeetPicture(model_id=model_id, picture_id=pid))
-            except DuplicateImageError:
+            except WikiFeetDuplicateImageError:
                 continue
 
     async def _add_model_comments(self, model_name: str, model_id: int) -> None:
@@ -476,7 +459,7 @@ class WikiFeetDatabase(DatabaseSQL):
                         user_title=comment.get("title", ""),
                     )
                 )
-            except DuplicateCommentError:
+            except WikiFeetDuplicateCommentError:
                 continue
 
     async def get_model_names(self) -> list[str]:
