@@ -1,9 +1,6 @@
-import asyncio
 import atexit
 import datetime
 import json
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -17,10 +14,10 @@ from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import selectinload
 
-from slashbot.core.database.models import WikiFeetComment, WikiFeetModel, WikiFeetPicture, WikiFeetSqlBase
+from slashbot.core.database.models import WikiFeetComment, WikiFeetModel, WikiFeetPicture
+from slashbot.core.database.sql import DatabaseSQL
 from slashbot.core.logger import Logger
 
 
@@ -343,7 +340,7 @@ class WikiFeetScraper(Logger):
         return [pid.split("_")[-1] for pid in picture_ids if pid]
 
 
-class WikiFeetDatabase(Logger):
+class WikiFeetDatabase(DatabaseSQL):
     """A class to interact with the WikiFeet database."""
 
     def __init__(self, database_url: str, scraper: WikiFeetScraper) -> None:
@@ -357,35 +354,8 @@ class WikiFeetDatabase(Logger):
             A WikiFeet scraper instance.
 
         """
-        super().__init__(prepend_msg="[WikiFeetDatabase]")
-        self.engine = create_async_engine(database_url, echo=False)
-        self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
+        super().__init__(database_url=database_url)
         self.scraper = scraper
-        self._db_lock = asyncio.Lock()
-
-    async def init_database(self) -> None:
-        """Initialize the database and create all tables."""
-        async with self.engine.begin() as conn:
-            await conn.run_sync(WikiFeetSqlBase.metadata.create_all)
-
-    @asynccontextmanager
-    async def _get_session(self) -> AsyncGenerator[AsyncSession, None]:
-        """Asynchronous context manager for database session.
-
-        Returns
-        -------
-        AsyncGenerator[AsyncSession, None]
-            An async generator yielding an AsyncSession.
-
-        """
-        async with self.session_factory() as session:
-            try:
-                yield session
-            except Exception:
-                await session.rollback()
-                raise
-            finally:
-                await session.close()
 
     async def _add_new_model(self, model: WikiFeetModel) -> WikiFeetModel:
         """Add a WikiFeetModel instance to the database.

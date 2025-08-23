@@ -41,7 +41,7 @@ class BaseDataClass:
 
 
 @dataclass
-class User(BaseDataClass):
+class UserKV(BaseDataClass):
     """User dataclass."""
 
     user_id: int
@@ -52,7 +52,7 @@ class User(BaseDataClass):
 
 
 @dataclass
-class Reminder(BaseDataClass):
+class ReminderKV(BaseDataClass):
     """Reminder dataclass."""
 
     user_id: int
@@ -63,10 +63,40 @@ class Reminder(BaseDataClass):
     reminder_id: int = ID_UNSET
 
 
-WikiFeetSqlBase = declarative_base()
+DeclarativeBase = declarative_base()
 
 
-class WikiFeetModel(WikiFeetSqlBase):
+class User(DeclarativeBase):
+    """SQLAlchemy ORM model for a user."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    discord_id: Mapped[int] = mapped_column(Integer, unique=True)
+    user_name: Mapped[str] = mapped_column(String(64))
+    city: Mapped[str] = mapped_column(String(64), default=None)
+    country_code: Mapped[str] = mapped_column(String(64), default=None)
+    bad_word: Mapped[str] = mapped_column(String(64), default=None)
+
+    reminders: Mapped[list["Reminder"]] = relationship(back_populates="user")
+
+
+class Reminder(DeclarativeBase):
+    """SQLAlchemy ORM model for a reminder."""
+
+    __tablename__ = "reminders"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    channel_id: Mapped[int] = mapped_column(Integer)
+    date_iso: Mapped[str] = mapped_column(String(64))
+    content: Mapped[str] = mapped_column(String(1024))
+    tagged_users: Mapped[str] = mapped_column(String(256))
+
+    user: Mapped["User"] = relationship(back_populates="reminders")
+
+
+class WikiFeetModel(DeclarativeBase):
     """SQLAlchemy ORM model for a model on WikiFeet."""
 
     __tablename__ = "wikifeet_models"
@@ -83,7 +113,7 @@ class WikiFeetModel(WikiFeetSqlBase):
     comments: Mapped[list["WikiFeetComment"]] = relationship(back_populates="model")
 
 
-class WikiFeetPicture(WikiFeetSqlBase):
+class WikiFeetPicture(DeclarativeBase):
     """SQLAlchemy ORM model for an image from WikiFeet."""
 
     __tablename__ = "wikifeet_pictures"
@@ -94,7 +124,7 @@ class WikiFeetPicture(WikiFeetSqlBase):
     model: Mapped["WikiFeetModel"] = relationship(back_populates="pictures")
 
 
-class WikiFeetComment(WikiFeetSqlBase):
+class WikiFeetComment(DeclarativeBase):
     """SQLAlchemy ORM model for comments on WikiFeet."""
 
     __tablename__ = "wikifeet_comments"

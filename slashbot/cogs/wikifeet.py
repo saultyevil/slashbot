@@ -102,7 +102,7 @@ class WikiFeet(CustomCog):
         model_name_pretty = self.database.scraper.capitalise_name(model_name)
 
         if not self.database_init:
-            await self.database.init_database()
+            await self.database.init()
         try:
             model = await self.database.get_model(model_name)
             model_pictures = await self.database.get_model_pictures(model.name)
