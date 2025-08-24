@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -10,29 +11,35 @@ from slashbot.core.logger import Logger
 class BaseDatabaseSQL(Logger):
     """Asynchronous database class, using SQLite."""
 
-    def __init__(self, database_url: str, logger_label: str = "[DatabaseSQL]") -> None:
+    def __init__(self, database_location: str | Path, logger_label: str = "[DatabaseSQL]") -> None:
         """Initialize the database.
 
         Parameters
         ----------
-        database_url : str
-            The database connection URL.
+        database_location : str | Path
+            The location of the database on the file system.
         logger_label : str
             A label to prepend to all logging output to indicate where the
             log entry came from.
 
         """
         super().__init__(prepend_msg=logger_label)
+
+        database_url = f"sqlite+aiosqlite:///{Path(database_location).absolute()}"
         self.engine = create_async_engine(database_url, echo=False)
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
+        self.initialised = False
 
     async def init(self) -> None:
         """Initialize the database and create all tables."""
+        if self.initialised:
+            return
         async with self.engine.begin() as conn:
             await conn.run_sync(DeclarativeBase.metadata.create_all)
+        self.initialised = True
 
     @asynccontextmanager
-    async def _get_session(self) -> AsyncGenerator[AsyncSession, None]:
+    async def _get_async_session(self) -> AsyncGenerator[AsyncSession, None]:
         """Asynchronous context manager for database session.
 
         Returns

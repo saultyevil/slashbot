@@ -7,6 +7,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import convert_string_to_lower
+from slashbot.core.database import User
 
 USER_OPTIONS = [
     disnake.OptionChoice("City", "city"),
@@ -61,7 +62,14 @@ class Users(CustomCog):
             The thing to show saved values for.
 
         """
-        user = await self.db.get_user(inter.author.id)
+        user = await self.db.get_user_by_discord_id(inter.author.id)
+        if not user:
+            user = await self.db.add_user(
+                User(
+                    discord_id=inter.author.id,
+                    username=inter.author.name,
+                )
+            )
 
         match thing:
             case "city":

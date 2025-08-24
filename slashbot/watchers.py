@@ -64,7 +64,7 @@ class ScheduledPostWatcher(FileSystemEventHandler):
             return
         self.last_restart_time = time.time()
 
-        if event.src_path == str(BotSettings.file_locations.scheduled_posts):
+        if event.src_path == str(BotSettings.files.scheduled_posts):
             self.parent.get_scheduled_posts()
             if self.parent.post_loop.is_running():
                 self.parent.post_loop.cancel()

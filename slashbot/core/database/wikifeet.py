@@ -326,18 +326,18 @@ class WikiFeetScraper(Logger):
 class WikiFeetDatabase(BaseDatabaseSQL):
     """A class to interact with the WikiFeet database."""
 
-    def __init__(self, database_url: str, scraper: WikiFeetScraper) -> None:
+    def __init__(self, database_location: str | Path, scraper: WikiFeetScraper) -> None:
         """Initialize the WikiFeetDatabase with a database URL.
 
         Parameters
         ----------
-        database_url : str
-            The database connection URL.
+        database_location : str | Path
+            The location of the database on the file system.
         scraper : WikiFeetScraper
             A WikiFeet scraper instance.
 
         """
-        super().__init__(database_url=database_url, logger_label="[WikiFeetDatabase]")
+        super().__init__(database_location=database_location, logger_label="[WikiFeetDatabase]")
         self.scraper = scraper
 
     async def _add_new_model(self, model: WikiFeetModel) -> WikiFeetModel:
@@ -359,7 +359,7 @@ class WikiFeetDatabase(BaseDatabaseSQL):
             If the model already exists in the database.
 
         """
-        async with self._get_session() as session:
+        async with self._get_async_session() as session:
             try:
                 session.add(model)
                 await session.commit()
@@ -386,7 +386,7 @@ class WikiFeetDatabase(BaseDatabaseSQL):
             If the picture already exists in the database.
 
         """
-        async with self._get_session() as session:
+        async with self._get_async_session() as session:
             try:
                 session.add(picture)
                 await session.commit()
@@ -405,7 +405,7 @@ class WikiFeetDatabase(BaseDatabaseSQL):
             The comment instance to add.
 
         """
-        async with self._get_session() as session:
+        async with self._get_async_session() as session:
             try:
                 session.add(comment)
                 await session.commit()
@@ -471,7 +471,7 @@ class WikiFeetDatabase(BaseDatabaseSQL):
             A list of model names in the database.
 
         """
-        async with self._get_session() as session:
+        async with self._get_async_session() as session:
             query = await session.execute(select(WikiFeetModel))
             models = query.scalars().all()
 
@@ -491,7 +491,7 @@ class WikiFeetDatabase(BaseDatabaseSQL):
             The model instance.
 
         """
-        async with self._get_session() as session:
+        async with self._get_async_session() as session:
             query = select(WikiFeetModel).where(WikiFeetModel.name == model_name.lower())
             result = await session.execute(query)
             model = result.scalar_one_or_none()
@@ -523,7 +523,7 @@ class WikiFeetDatabase(BaseDatabaseSQL):
         """
         model = await self.get_model(model_name.lower())
 
-        async with self._get_session() as session:
+        async with self._get_async_session() as session:
             stmt = (
                 select(WikiFeetModel).options(selectinload(WikiFeetModel.pictures)).where(WikiFeetModel.id == model.id)
             )
@@ -548,7 +548,7 @@ class WikiFeetDatabase(BaseDatabaseSQL):
         """
         model = await self.get_model(model_name.lower())
 
-        async with self._get_session() as session:
+        async with self._get_async_session() as session:
             stmt = (
                 select(WikiFeetModel).options(selectinload(WikiFeetModel.comments)).where(WikiFeetModel.id == model.id)
             )

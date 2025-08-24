@@ -41,7 +41,7 @@ class BaseDataClass:
 
 
 @dataclass
-class UserKV(BaseDataClass):
+class UserKVModel(BaseDataClass):
     """User dataclass."""
 
     user_id: int
@@ -52,7 +52,7 @@ class UserKV(BaseDataClass):
 
 
 @dataclass
-class ReminderKV(BaseDataClass):
+class ReminderKVModel(BaseDataClass):
     """Reminder dataclass."""
 
     user_id: int
@@ -73,7 +73,7 @@ class User(DeclarativeBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     discord_id: Mapped[int] = mapped_column(Integer, unique=True)
-    user_name: Mapped[str] = mapped_column(String(64))
+    username: Mapped[str] = mapped_column(String(64))
     city: Mapped[str] = mapped_column(String(64), default=None)
     country_code: Mapped[str] = mapped_column(String(64), default=None)
     bad_word: Mapped[str] = mapped_column(String(64), default=None)

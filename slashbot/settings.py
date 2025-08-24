@@ -37,20 +37,11 @@ class ArtificialIntelligenceSettings:
 
 
 @dataclass
-class WikiFeetSettings:
-    """Settings for the WikiFeet cog."""
-
-    image_scraping: bool
-    database_url: str = f"sqlite+aiosqlite:///{Path('data/wikifeet.sqlite.db').absolute()}"
-
-
-@dataclass
 class CogSettings:
     """Cog settings."""
 
     spellcheck: SpellcheckSettings
     artificial_intelligence: ArtificialIntelligenceSettings
-    wikifeet: WikiFeetSettings
 
 
 @dataclass
@@ -98,7 +89,7 @@ class DiscordSettings:
 
 
 @dataclass
-class FileLocations:
+class Files:
     """File locations and settings."""
 
     database: Path
@@ -148,7 +139,7 @@ class Settings:
     cogs: CogSettings
     cooldown: CommandCooldownSettings
     discord: DiscordSettings
-    file_locations: FileLocations
+    files: Files
     logging: LoggingSettings
     markov: MarkovSettings
     keys: KeyStore
@@ -182,7 +173,6 @@ class Settings:
             enable_profiling=data["cogs"]["artificial_intelligence"]["enable_profiling"],
             prefer_image_urls=data["cogs"]["artificial_intelligence"]["prefer_image_urls"],
         )
-        wikifeet = WikiFeetSettings(image_scraping=data["cogs"]["wikifeet"]["image_scraping"])
         cogs = CogSettings(spellcheck=spellcheck, artificial_intelligence=artificial_intelligence, wikifeet=wikifeet)
         cooldown = CommandCooldownSettings(
             rate=data["cooldown"]["rate"],
@@ -194,7 +184,7 @@ class Settings:
             max_chars=data["discord"]["max_chars"],
             development_servers=data["discord"]["development_servers"],
         )
-        files = FileLocations(
+        files = Files(
             database=Path(data["files"]["database"]).absolute(),
             bad_words=Path(data["files"]["bad_words"]).absolute(),
             god_words=Path(data["files"]["god_words"]).absolute(),
@@ -215,7 +205,7 @@ class Settings:
             cogs=cogs,
             cooldown=cooldown,
             discord=discord,
-            file_locations=files,
+            files=files,
             logging=logging,
             markov=markov,
             keys=keys,

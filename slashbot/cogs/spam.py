@@ -24,7 +24,7 @@ class Spam(CustomCog):
             The interaction to possibly remove the cooldown from.
 
         """
-        async with aiofiles.open(BotSettings.file_locations.bad_words, encoding="utf-8") as file_in:
+        async with aiofiles.open(BotSettings.files.bad_words, encoding="utf-8") as file_in:
             bad_words = await file_in.readlines()
         bad_word = random.choice(bad_words).strip()
         await inter.response.send_message(f"{bad_word.capitalize()}.")
@@ -57,7 +57,7 @@ class Spam(CustomCog):
             The interaction to possibly remove the cooldown from.
 
         """
-        async with aiofiles.open(BotSettings.file_locations.god_words, encoding="utf-8") as file_in:
+        async with aiofiles.open(BotSettings.files.god_words, encoding="utf-8") as file_in:
             oracle_words = await file_in.readlines()
 
         await inter.response.send_message(

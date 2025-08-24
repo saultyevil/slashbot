@@ -10,16 +10,15 @@ from disnake.ext import commands
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.core.database.wikifeet import (
-    WikiFeetDatabase,
+from slashbot.core.database.error import (
     WikiFeetModelNotFoundError,
     WikiFeetModelNotInDatabaseError,
-    WikiFeetScraper,
 )
+from slashbot.core.database.wikifeet import WikiFeetDatabase, WikiFeetScraper
 from slashbot.errors import deferred_error_message
 from slashbot.settings import BotSettings
 
-GLOBAL_WIKIFEET_DATABASE = WikiFeetDatabase(BotSettings.cogs.wikifeet.database_url, WikiFeetScraper())
+GLOBAL_WIKIFEET_DATABASE = WikiFeetDatabase(BotSettings.files.database, WikiFeetScraper())
 
 
 async def autocomplete_model_names(_: disnake.ApplicationCommandInteraction, user_input: str) -> list[str]:

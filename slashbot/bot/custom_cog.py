@@ -8,7 +8,7 @@ from disnake.ext.commands import Cog
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
-from slashbot.core.database import DatabaseKV
+from slashbot.core.database import Database
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -30,7 +30,7 @@ class CustomCog(Cog, Logger):
         super().__init__(**kwargs)
         Logger.__init__(self)
         self.bot = bot
-        self.db = DatabaseKV()
+        self.db = Database(BotSettings.files.database)
         self.markov_seed_words = []
         self._markov_sentences = {}
 
@@ -45,7 +45,8 @@ class CustomCog(Cog, Logger):
             - Starts all tasks
         """
         await self.bot.wait_until_first_connect()
-        self.db = self.bot.db
+        self.db = self.bot.db or self.db
+        await self.db.init()
         if self.bot.use_markov_cache and self.markov_seed_words:
             self.log_info("Generating markov sentence cache")
             self._populate_markov_cache()
