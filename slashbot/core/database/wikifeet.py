@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
+from slashbot.core.database.base_sql import BaseDatabaseSQL
 from slashbot.core.database.error import (
     WikiFeetDataParseError,
     WikiFeetDuplicateCommentError,
@@ -24,7 +25,6 @@ from slashbot.core.database.error import (
     WikiFeetModelNotFoundError,
 )
 from slashbot.core.database.models import WikiFeetComment, WikiFeetModel, WikiFeetPicture
-from slashbot.core.database.sql import DatabaseSQL
 from slashbot.core.logger import Logger
 
 
@@ -323,7 +323,7 @@ class WikiFeetScraper(Logger):
         return [pid.split("_")[-1] for pid in picture_ids if pid]
 
 
-class WikiFeetDatabase(DatabaseSQL):
+class WikiFeetDatabase(BaseDatabaseSQL):
     """A class to interact with the WikiFeet database."""
 
     def __init__(self, database_url: str, scraper: WikiFeetScraper) -> None:
