@@ -4,6 +4,8 @@ import random
 
 import aiofiles
 import disnake
+from ddgs import DDGS
+from disnake.ext import commands
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
@@ -63,6 +65,28 @@ class Spam(CustomCog):
         await inter.response.send_message(
             f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",
         )
+
+    @slash_command_with_cooldown(
+        name="image", description="search for an image", guilds=BotSettings.discord.development_servers
+    )
+    async def image_search(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        query: str = commands.Param(description="your search query for an image"),
+    ) -> None:
+        """Search for an image using DDGS.
+
+        Parameters
+        ----------
+        inter: disnake.ApplicationCommandInteraction
+            The interaction to respond to.
+        query : str
+            The image search query.
+
+        """
+        image_results = DDGS().images(query, max_results=10)
+        image = random.choice(image_results)
+        await inter.response.send_message(image["image"])
 
 
 def setup(bot: CustomInteractionBot) -> None:
