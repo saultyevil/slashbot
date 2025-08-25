@@ -1,3 +1,4 @@
+import datetime
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -90,8 +91,15 @@ class Database(BaseDatabaseSQL):
                 select(User).where(User.id == id),
             )
 
-    async def get_all_reminders(self) -> list[Reminder]:
+    async def get_all_reminders(self, *, include_stale: bool = False) -> list[Reminder]:
         """Get all reminders in the database.
+
+        Parameters
+        ----------
+        include_stale : bool, optional
+            Whether to include stale reminders, e.g. those which have already
+            been sent to users. By default, only non-stale reminders are
+            retrieved.
 
         Returns
         -------
@@ -100,15 +108,15 @@ class Database(BaseDatabaseSQL):
 
         """
         async with self._get_async_session() as session:
-            return list(
-                (
-                    await session.execute(
-                        select(
-                            Reminder,
-                        )
-                    )
-                ).scalars()
+            statement = (
+                select(Reminder)
+                if include_stale
+                else select(Reminder).where(
+                    Reminder.notified == False,  # noqa: E712
+                )
             )
+            result = await session.execute(statement)
+            return list(result.scalars().all())
 
     async def get_all_users(self) -> list[User]:
         """Get all users in the database.
@@ -218,7 +226,58 @@ class Database(BaseDatabaseSQL):
                 )
             ).scalar_one_or_none()
 
-    async def update_user(self, id: int, field: str, value: Any) -> User:
+    async def get_users_reminders(self, id: int, after: datetime.datetime | None = None) -> list[Reminder]:
+        """Get the active reminders for a user.
+
+        Parameters
+        ----------
+        id : int
+            The Discord ID of the user.
+        after : datetime | None
+            Get reminders after this datetime. By default, it will get any
+            reminders set for after the current UTC time.
+
+        Returns
+        -------
+        list[Reminder]
+            A list of reminders for the user.
+
+        """
+        async with self._get_async_session() as session:
+            return list(
+                (
+                    await session.execute(
+                        select(
+                            Reminder,
+                        ).where(Reminder.notified == False)  # noqa: E712
+                    )
+                ).scalars()
+            )
+
+    async def mark_reminder_as_notified(self, id: int) -> None:
+        """Update the "notified" column for a reminder.
+
+        Parameters
+        ----------
+        id : int
+            The ID of the reminder to update.
+
+        """
+        async with self._get_async_session() as session:
+            reminder = (
+                await session.execute(
+                    select(Reminder).where(Reminder.id == id),
+                )
+            ).scalar_one_or_none()
+            if not reminder:
+                msg = f"No reminder with ID {id}"
+                raise ValueError(msg)
+            reminder.notified = True
+            session.add(reminder)
+            await session.commit()
+            await session.refresh(reminder)
+
+    async def update_user_by_discord_id(self, id: int, field: str, value: Any) -> User:
         """Update a field for a user.
 
         Parameters

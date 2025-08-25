@@ -1,7 +1,7 @@
+import datetime
 from dataclasses import asdict, dataclass
-from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 ID_UNSET = -1
@@ -74,9 +74,9 @@ class User(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     discord_id: Mapped[int] = mapped_column(Integer, unique=True)
     username: Mapped[str] = mapped_column(String(64))
-    city: Mapped[str] = mapped_column(String(64), default=None)
-    country_code: Mapped[str] = mapped_column(String(64), default=None)
-    bad_word: Mapped[str] = mapped_column(String(64), default=None)
+    city: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
+    country_code: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
+    bad_word: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
 
     reminders: Mapped[list["Reminder"]] = relationship(back_populates="user")
 
@@ -89,9 +89,10 @@ class Reminder(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     channel_id: Mapped[int] = mapped_column(Integer)
-    date_iso: Mapped[str] = mapped_column(String(64))
+    date: Mapped[datetime.datetime] = mapped_column(DateTime)
     content: Mapped[str] = mapped_column(String(1024))
-    tagged_users: Mapped[str] = mapped_column(String(256))
+    tagged_users: Mapped[str] = mapped_column(String(256), nullable=True)
+    notified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped["User"] = relationship(back_populates="reminders")
 
@@ -104,7 +105,7 @@ class WikiFeetModel(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     model_name: Mapped[str] = mapped_column(String, unique=True)
-    last_updated: Mapped[datetime] = mapped_column(DateTime)
+    last_updated: Mapped[datetime.datetime] = mapped_column(DateTime)
 
     foot_score: Mapped[float] = mapped_column(Float)
     shoe_size: Mapped[int] = mapped_column(Integer)
@@ -135,4 +136,5 @@ class WikiFeetComment(DeclarativeBase):
     comment: Mapped[str] = mapped_column(String(512), unique=True)  # comment
     user: Mapped[str] = mapped_column(String(64))  # nickname
     user_title: Mapped[str] = mapped_column(String(64))  # title
+
     model: Mapped["WikiFeetModel"] = relationship(back_populates="comments")

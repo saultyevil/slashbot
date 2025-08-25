@@ -12,7 +12,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import get_user_reminders
-from slashbot.core.database import ReminderKVModel
+from slashbot.core.database import Reminder, User
 
 
 class Reminders(CustomCog):
@@ -114,46 +114,51 @@ class Reminders(CustomCog):
 
     # Tasks --------------------------------------------------------------------
 
-    @tasks.loop(seconds=1)
+    CHECK_PERIOD = 1
+
+    @tasks.loop(seconds=CHECK_PERIOD)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
         await self.bot.wait_until_first_connect()
-        reminders = await self.db.get_reminders()
+        dt_now = datetime.datetime.now(tz=datetime.UTC)
+        reminders = await self.db.get_all_reminders()
+
         if len(reminders) == 0:
             return
-        dt_now = datetime.datetime.now(tz=datetime.UTC)
 
         for reminder in reminders:
-            reminder_date = datetime.datetime.fromisoformat(reminder.date_iso).replace(tzinfo=datetime.UTC)
+            # Be careful, reminders are stored as UTC+0, so we don't need to
+            # convert the times back to UTC!!!! But we still need to make it
+            # timezone aware.
+            reminder_date = reminder.date.replace(tzinfo=datetime.UTC)
+            if reminder_date >= dt_now and not reminder.notified:
+                continue
 
-            if reminder_date <= dt_now:
-                try:
-                    user = await self.bot.fetch_user(reminder.user_id)
-                except disnake.NotFound:
-                    self.log_error("User %s not found when trying to send reminder", reminder.user_id)
-                    await self.db.remove_reminder(reminder.reminder_id)
-                    continue
+            try:
+                user = await self.bot.fetch_user(reminder.user_id)
+            except disnake.NotFound:
+                self.log_error("User %s not found when trying to send reminder", reminder.user_id)
+                continue
 
-                embed = disnake.Embed(title=reminder.content, color=disnake.Color.default())
-                embed.set_thumbnail(url=user.display_avatar.url)
-                message = f"{user.mention}"
-                if reminder.tagged_users:
-                    message = f"{message}, {reminder.tagged_users}"
+            embed = disnake.Embed(title=reminder.content, color=disnake.Color.default())
+            embed.set_thumbnail(url=user.display_avatar.url)
+            embed.set_footer(text=f"Reminder date: {reminder_date.strftime(r'%d/%m/%Y %H:%H:%S %Z')}")
+            message = f"{user.mention}"
+            if reminder.tagged_users:
+                message = f"{message}, {reminder.tagged_users}"
 
-                try:
-                    channel = await self.bot.fetch_channel(reminder.channel_id)
-                except (disnake.NotFound, disnake.Forbidden):
-                    self.log_error("Channel %s not found when trying to send reminder", reminder.channel_id)
-                    await self.db.remove_reminder(reminder.reminder_id)
-                    continue
+            try:
+                channel = await self.bot.fetch_channel(reminder.channel_id)
+            except (disnake.NotFound, disnake.Forbidden):
+                self.log_error("Channel %s not found when trying to send reminder", reminder.channel_id)
+                continue
 
-                if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
-                    self.log_error("Channel %s is not a text channel when trying to send reminder", channel.id)
-                    await self.db.remove_reminder(reminder.reminder_id)
-                    continue
+            if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                self.log_error("Channel %s is not a text channel when trying to send reminder", channel.id)
+                continue
 
-                await channel.send(f"Here's your reminder, {message}", embed=embed)
-                await self.db.remove_reminder(reminder.reminder_id)
+            await channel.send(f"Here's your reminder, {message}", embed=embed)
+            await self.db.mark_reminder_as_notified(reminder.id)
 
     # Commands -----------------------------------------------------------------
 
@@ -164,7 +169,7 @@ class Reminders(CustomCog):
         when: str = commands.Param(
             description="Timestamp for when you want to be reminded (UK time zone unless otherwise specified)",
         ),
-        reminder: str = commands.Param(description="Your reminder", max_length=1024),
+        reminder_content: str = commands.Param(name="reminder", description="Your reminder", max_length=1024),
     ) -> None:
         """Set a reminder.
 
@@ -174,39 +179,42 @@ class Reminders(CustomCog):
             The interaction object for the command.
         when: float
             The time stamp for when to be reminded.
-        reminder: str
+        reminder_content: str
             The reminder to set.
 
         """
         try:
-            future_time = self.convert_user_requested_time_to_datetime(when)
+            reminder_date = self.convert_user_requested_time_to_datetime(when)
         except ValueError:
             await inter.response.send_message(f'Unable to understand timestamp "{when}"', ephemeral=True)
             return
-        if not future_time:
+        if not reminder_date:
             await inter.response.send_message(f'Unable to understand timestamp "{when}"', ephemeral=True)
             return
-        if not future_time.tzinfo:
-            future_time = future_time.replace(tzinfo=self.my_timezone)
+        if not reminder_date.tzinfo:
+            reminder_date = reminder_date.replace(tzinfo=self.my_timezone)
         now = datetime.datetime.now(tz=self.my_timezone)
-        if future_time < now:
-            date_string = future_time.strftime(r"%H:%M UTC%z %d %B %Y")
+        if reminder_date < now:
+            date_string = reminder_date.strftime(r"%H:%M UTC%z %d %B %Y")
             await inter.response.send_message(f"{date_string} is in the past.", ephemeral=True)
             return
+        reminder_date = reminder_date.replace(microsecond=0)
+        self.log_debug("Reminder date %s in UTC is %s", reminder_date, reminder_date.astimezone(datetime.UTC))
 
-        tagged_users, reminder = await self.replace_mentions_with_display_names(inter.guild, reminder)
+        tagged_users, reminder_content = await self.replace_mentions_with_display_names(inter.guild, reminder_content)
 
         await self.db.add_reminder(
-            ReminderKVModel(
-                inter.author.id,
-                inter.channel.id,
-                future_time.astimezone(datetime.UTC).isoformat(),
-                reminder,
-                tagged_users if tagged_users else None,
+            Reminder(
+                user_id=inter.author.id,
+                channel_id=inter.channel.id,
+                date=reminder_date.astimezone(datetime.UTC),
+                content=reminder_content,
+                tagged_users=tagged_users if tagged_users else None,
             )
         )
 
-        await inter.response.send_message(f"Your reminder has been set for {when}.", ephemeral=True)
+        response = reminder_date.strftime(r"%d/%m/%Y %H:%M:%S %Z")
+        await inter.response.send_message(f"Your reminder has been set for {response}.", ephemeral=True)
 
     @slash_command_with_cooldown(name="forget_reminder", description="Forget one of your reminders.")
     async def forget_reminder(
@@ -229,8 +237,8 @@ class Reminders(CustomCog):
         """
         reminder_to_remove = list(
             filter(
-                lambda r: f"{r.date_iso}: {r.content}" == reminder,
-                await self.db.get_reminders_for_user(inter.author.id),
+                lambda r: f"{r.date}: {r.content}" == reminder,
+                (await self.get_or_add_user_in_db(inter)).reminders,
             ),
         )
         if not reminder_to_remove:
@@ -243,7 +251,7 @@ class Reminders(CustomCog):
             self.log_exception("Failed to index of reminder when trying to delete it from the database")
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
-        await self.db.remove_reminder(reminder_to_remove.reminder_id)
+        await self.db.delete_reminder(reminder_to_remove.reminder_id)
 
         await inter.response.send_message("Your reminder has been removed.", ephemeral=True)
 
@@ -257,7 +265,15 @@ class Reminders(CustomCog):
             The interaction object for the command.
 
         """
-        reminders = await self.db.get_reminders_for_user(inter.author.id)
+        user = await self.db.get_user_by_discord_id(inter.author.id)
+        if not user:
+            user = await self.db.add_user(
+                User(
+                    discord_id=inter.author.id,
+                    username=inter.author.name,
+                )
+            )
+        reminders = user.reminders
         if not reminders:
             await inter.response.send_message("You don't have any reminders.", ephemeral=True)
             return

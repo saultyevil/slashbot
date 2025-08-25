@@ -173,7 +173,7 @@ class Settings:
             enable_profiling=data["cogs"]["artificial_intelligence"]["enable_profiling"],
             prefer_image_urls=data["cogs"]["artificial_intelligence"]["prefer_image_urls"],
         )
-        cogs = CogSettings(spellcheck=spellcheck, artificial_intelligence=artificial_intelligence, wikifeet=wikifeet)
+        cogs = CogSettings(spellcheck=spellcheck, artificial_intelligence=artificial_intelligence)
         cooldown = CommandCooldownSettings(
             rate=data["cooldown"]["rate"],
             standard=data["cooldown"]["standard"],

@@ -8,7 +8,7 @@ from disnake.ext.commands import Cog
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
-from slashbot.core.database import Database
+from slashbot.core.database import Database, User
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -168,3 +168,27 @@ class CustomCog(Cog, Logger):
         for seed_word in self.markov_seed_words:
             if len(self._markov_sentences[seed_word]) < BotSettings.markov.pregenerate_limit:
                 self._populate_markov_cache(seed_words=[seed_word])
+
+    async def get_or_add_user_in_db(self, inter: disnake.ApplicationCommandInteraction) -> User:
+        """Get or add a user to the database.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The disnake interact for the user.
+
+        Returns
+        -------
+        User
+            The user associated with the interaction.
+
+        """
+        user = await self.db.get_user_by_discord_id(inter.author.id)
+        if not user:
+            user = await self.db.add_user(
+                User(
+                    discord_id=inter.author.id,
+                    username=inter.author.name,
+                )
+            )
+        return user
