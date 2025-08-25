@@ -66,9 +66,7 @@ class Spam(CustomCog):
             f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",
         )
 
-    @slash_command_with_cooldown(
-        name="image", description="search for an image", guilds=BotSettings.discord.development_servers
-    )
+    @slash_command_with_cooldown(name="image", description="search for an image")
     async def image_search(
         self,
         inter: disnake.ApplicationCommandInteraction,
