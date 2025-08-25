@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "slashbot"
-version = "2.7.0"
+version = "2.8.0"
 description = "A (useless) discord bot designed around slash commands."
 authors = ["Edward J. Parkinson"]
 readme = "README.md"
