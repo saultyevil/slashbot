@@ -15,7 +15,7 @@ class FirefoxWebScraper(Logger):
     """A class for scraping web content using Firefox."""
 
     def __init__(self, log_label: str = "[FirefoxWebScraper]") -> None:
-        """Initialise the WikiFeetScraper class.
+        """Initialise the scraper class.
 
         Parameters
         ----------
