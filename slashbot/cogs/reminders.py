@@ -238,7 +238,7 @@ class Reminders(CustomCog):
         reminder_to_remove = list(
             filter(
                 lambda r: f"{r.date}: {r.content}" == reminder,
-                (await self.get_or_add_user_in_db(inter)).reminders,
+                await self.db.get_users_reminders(inter.author.id),
             ),
         )
         if not reminder_to_remove:
@@ -251,7 +251,7 @@ class Reminders(CustomCog):
             self.log_exception("Failed to index of reminder when trying to delete it from the database")
             await inter.response.send_message("Something went wrong with finding the reminder.", ephemeral=True)
             return
-        await self.db.delete_reminder(reminder_to_remove.reminder_id)
+        await self.db.delete_reminder(reminder_to_remove.id)
 
         await inter.response.send_message("Your reminder has been removed.", ephemeral=True)
 
@@ -273,15 +273,12 @@ class Reminders(CustomCog):
                     username=inter.author.name,
                 )
             )
-        reminders = user.reminders
+        reminders = await self.bot.db.get_users_reminders(inter.author.id)
         if not reminders:
             await inter.response.send_message("You don't have any reminders.", ephemeral=True)
             return
         reminders = sorted(
-            [
-                (datetime.datetime.fromisoformat(reminder.date_iso).astimezone(datetime.UTC), reminder.content)
-                for reminder in reminders
-            ],
+            [(reminder.date.replace(tzinfo=datetime.UTC), reminder.content) for reminder in reminders],
             key=lambda entry: entry[0],
         )
         reminders = [(entry[0].strftime(r"%H:%M %d %B %Y (UTC)"), entry[1]) for entry in reminders]

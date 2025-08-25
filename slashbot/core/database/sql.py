@@ -76,6 +76,7 @@ class Database(BaseDatabaseSQL):
             await session.execute(
                 delete(Reminder).where(Reminder.id == id),
             )
+            await session.commit()
 
     async def delete_user(self, id: int) -> None:
         """Delete a user from the database.
@@ -90,6 +91,7 @@ class Database(BaseDatabaseSQL):
             await session.execute(
                 select(User).where(User.id == id),
             )
+            await session.commit()
 
     async def get_all_reminders(self, *, include_stale: bool = False) -> list[Reminder]:
         """Get all reminders in the database.
@@ -226,16 +228,17 @@ class Database(BaseDatabaseSQL):
                 )
             ).scalar_one_or_none()
 
-    async def get_users_reminders(self, id: int, after: datetime.datetime | None = None) -> list[Reminder]:
+    async def get_users_reminders(self, id: int, *, include_stale: bool = False) -> list[Reminder]:
         """Get the active reminders for a user.
 
         Parameters
         ----------
         id : int
             The Discord ID of the user.
-        after : datetime | None
-            Get reminders after this datetime. By default, it will get any
-            reminders set for after the current UTC time.
+        include_stale : bool, optional
+            Whether to include stale reminders, e.g. those which have already
+            been sent to users. By default, only non-stale reminders are
+            retrieved.
 
         Returns
         -------
@@ -244,15 +247,15 @@ class Database(BaseDatabaseSQL):
 
         """
         async with self._get_async_session() as session:
-            return list(
-                (
-                    await session.execute(
-                        select(
-                            Reminder,
-                        ).where(Reminder.notified == False)  # noqa: E712
-                    )
-                ).scalars()
+            statement = (
+                select(Reminder).where(Reminder.user_id == id)
+                if include_stale
+                else select(Reminder).where(
+                    Reminder.notified == False and Reminder.user_id == id,  # noqa: E712
+                )
             )
+            result = await session.execute(statement)
+            return list(result.scalars().all())
 
     async def mark_reminder_as_notified(self, id: int) -> None:
         """Update the "notified" column for a reminder.
