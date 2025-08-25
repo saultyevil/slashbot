@@ -36,7 +36,7 @@ max_chars = 1950
 development_servers = [815237689775357992]
 
 [files]
-database = "data/slashbot.sqlite"
+database = "data/slashbot.sqlite.db"
 bad_words = "data/text/badwords.txt"
 god_words = "data/text/godwords.txt"
 scheduled_posts = "data/scheduled_posts.yaml"
