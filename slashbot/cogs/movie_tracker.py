@@ -112,8 +112,10 @@ class MovieTracker(CustomCog):
                 title = movie_entry["letterboxd_filmtitle"]
                 if title == last_movie_title:
                     break
-                new_movies.append(self._add_movie_to_database(letterboxd_username, movie_entry))
-            results[letterboxd_username] = new_movies[0]  # Just return the latest one for now...
+                new_movies.append(await self._add_movie_to_database(letterboxd_username, movie_entry))
+            results[letterboxd_username] = (
+                new_movies[0] if len(new_movies) > 0 else []
+            )  # Just return the latest one for now...
 
         return results
 
