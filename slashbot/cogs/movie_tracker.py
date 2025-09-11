@@ -72,7 +72,7 @@ class MovieTracker(CustomCog):
             The rating depicted as a number of stars.
 
         """
-        if rating == 0:
+        if not rating:
             return "Unrated"
         full_stars = int(rating)
         half_star = rating - full_stars >= 0.5  # noqa: PLR2004
@@ -110,8 +110,12 @@ class MovieTracker(CustomCog):
 
             for movie_entry in feed.entries:
                 title = movie_entry["letterboxd_filmtitle"]
+                # Early exit to avoid sending all movies watched
                 if title == last_movie_title:
                     break
+                # This is not a movie then, but probably a tv show
+                if "tmdb_movieid" not in movie_entry:
+                    continue
                 new_movies.append(await self._add_movie_to_database(letterboxd_username, movie_entry))
             results[letterboxd_username] = (
                 new_movies[0] if len(new_movies) > 0 else []
@@ -124,9 +128,6 @@ class MovieTracker(CustomCog):
         """Periodically check for new logged movies."""
         letterboxd_users = await self.db.get_letterboxd_users()
         letterboxd_to_discord = {user.letterboxd_user: user.discord_id for user in letterboxd_users}
-        self.log_debug(
-            "Checking Letterboxd RSS feed for discord users: %s", [user.username for user in letterboxd_users]
-        )
         new_movies_watched = await self.get_latest_movies_watched([user.letterboxd_user for user in letterboxd_users])
         self.log_debug("New movies to post: %s", new_movies_watched)
 
