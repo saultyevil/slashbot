@@ -387,7 +387,10 @@ class Database(BaseDatabaseSQL):
                     select(WatchedMovie)
                     .join(User, WatchedMovie.user_id == User.id)
                     .where(User.letterboxd_user == letterboxd_username)
-                    .order_by(WatchedMovie.watched_date.desc())
+                    .order_by(
+                        WatchedMovie.watched_date.desc(),
+                        WatchedMovie.id.desc(),  # Order by PK as tiebreaker
+                    )
                     .limit(1)
                 )
             ).scalar_one_or_none()

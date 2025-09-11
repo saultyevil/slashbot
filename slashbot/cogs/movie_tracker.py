@@ -54,6 +54,7 @@ class MovieTracker(CustomCog):
             poster_url=poster_url,
         )
         new_movie = await self.db.add_watched_movie(movie)
+        self.log_debug("Added movie %s to database", movie.title)
 
         return new_movie  # noqa: RET504
 
@@ -115,6 +116,7 @@ class MovieTracker(CustomCog):
                     break
                 # This is not a movie then, but probably a tv show
                 if "tmdb_movieid" not in movie_entry:
+                    self.log_debug("%s is not a movie", movie_entry["letterboxd_filmtitle"])
                     continue
                 new_movies.append(await self._add_movie_to_database(letterboxd_username, movie_entry))
             results[letterboxd_username] = (
@@ -123,7 +125,7 @@ class MovieTracker(CustomCog):
 
         return results
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(seconds=3)
     async def check_for_new_watches(self) -> None:
         """Periodically check for new logged movies."""
         letterboxd_users = await self.db.get_letterboxd_users()
