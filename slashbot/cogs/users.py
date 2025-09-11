@@ -7,12 +7,12 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import convert_string_to_lower
-from slashbot.core.database import User
 
 USER_OPTIONS = [
     disnake.OptionChoice("City", "city"),
     disnake.OptionChoice("Country code", "country_code"),
     disnake.OptionChoice("Bad word", "bad_word"),
+    disnake.OptionChoice("Letterboxd Username", "letterboxd_user"),
 ]
 
 

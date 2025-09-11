@@ -25,6 +25,9 @@ custom_dictionary = "data/slash_dict.txt"
 users = [357550184655224833, 151378138612367360, 284782689226063874]
 post_channel = 710120383235227670
 
+[cogs.movie_tracker]
+channel = 612390886785024043
+
 [cooldown]
 rate = 3
 standard = 60

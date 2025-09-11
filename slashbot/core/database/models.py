@@ -1,7 +1,7 @@
 import datetime
 from dataclasses import asdict, dataclass
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 ID_UNSET = -1
@@ -108,8 +108,10 @@ class WatchedMovie(DeclarativeBase):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     username: Mapped[str] = mapped_column(String(64))
     title: Mapped[str] = mapped_column(String(128))
-    date: Mapped[datetime.datetime] = mapped_column(DateTime)
-    tmbd_id: Mapped[int] = mapped_column(Integer)
+    film_year: Mapped[int] = mapped_column(Integer)
+    user_rating: Mapped[float] = mapped_column(Float, nullable=False)
+    watched_date: Mapped[datetime.datetime] = mapped_column(DateTime, nullable=True, default=None)
+    tmdb_id: Mapped[int] = mapped_column(Integer)
     url: Mapped[str] = mapped_column(String(512))
     poster_url: Mapped[str] = mapped_column(String(512))
 

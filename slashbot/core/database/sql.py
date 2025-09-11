@@ -4,11 +4,37 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from slashbot.core.database.base_sql import BaseDatabaseSQL
-from slashbot.core.database.models import Reminder, User
+from slashbot.core.database.models import Reminder, User, WatchedMovie
 
 
 class Database(BaseDatabaseSQL):
     """Main database for storing user information."""
+
+    async def add_watched_movie(self, movie: WatchedMovie) -> WatchedMovie:
+        """Add a watched movie to the database.
+
+        Parameters
+        ----------
+        movie : WatchedMovie
+            The movie to add.
+
+        Returns
+        -------
+        WatchedMovie
+            The movie added to the database.
+
+        """
+        async with self._get_async_session() as session:
+            try:
+                session.add(movie)
+                await session.commit()
+                await session.refresh(movie)
+            except IntegrityError as exc:
+                await session.rollback()
+                self.log_error(f"Integrity error when adding movie: {exc}")
+                raise
+            else:
+                return movie
 
     async def add_reminder(self, reminder: Reminder) -> Reminder:
         """Add a reminder to the database.
@@ -205,6 +231,28 @@ class Database(BaseDatabaseSQL):
                 )
             ).scalar_one_or_none()
 
+    async def get_user_by_letterboxd_username(self, username: str) -> User | None:
+        """Get a user by their Letterboxd user.
+
+        Parameters
+        ----------
+        username : str
+            The Letterboxd username for the user.
+
+        Returns
+        -------
+        User | None
+            The retrieved user, or None if there is no user with the given
+            Letterboxd username.
+
+        """
+        async with self._get_async_session() as session:
+            return (
+                await session.execute(
+                    select(User).where(User.letterboxd_user == username),
+                )
+            ).scalar_one_or_none()
+
     async def get_user_by_username(self, username: str) -> User | None:
         """Get a user by their username.
 
@@ -331,5 +379,15 @@ class Database(BaseDatabaseSQL):
                 ).scalars()
             )
 
-    async def get_last_movie_for_user(self) -> None:
+    async def get_last_movie_for_user(self, letterboxd_username: str) -> WatchedMovie | None:
         """Get the last movie a user logged on Letterboxd."""
+        async with self._get_async_session() as session:
+            return (
+                await session.execute(
+                    select(WatchedMovie)
+                    .join(User, WatchedMovie.user_id == User.id)
+                    .where(User.letterboxd_user == letterboxd_username)
+                    .order_by(WatchedMovie.watched_date.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
