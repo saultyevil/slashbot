@@ -77,8 +77,10 @@ class User(DeclarativeBase):
     city: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     country_code: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     bad_word: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
+    letterboxd_user: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
 
     reminders: Mapped[list["Reminder"]] = relationship(back_populates="user")
+    movies: Mapped[list["WatchedMovie"]] = relationship(back_populates="user")
 
 
 class Reminder(DeclarativeBase):
@@ -95,3 +97,20 @@ class Reminder(DeclarativeBase):
     notified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped["User"] = relationship(back_populates="reminders")
+
+
+class WatchedMovie(DeclarativeBase):
+    """SQLAlchemy ORM model for a watched movie."""
+
+    __tablename__ = "movies_watched"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    username: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(128))
+    date: Mapped[datetime.datetime] = mapped_column(DateTime)
+    tmbd_id: Mapped[int] = mapped_column(Integer)
+    url: Mapped[str] = mapped_column(String(512))
+    poster_url: Mapped[str] = mapped_column(String(512))
+
+    user: Mapped["User"] = relationship(back_populates="movies")
