@@ -10,7 +10,8 @@ from typing import Any
 class MovieTrackerSettings:
     """Settings for the movie tracker cog."""
 
-    channel: int
+    update_interval: float
+    channels: list[int]
 
 
 @dataclass
@@ -181,7 +182,10 @@ class Settings:
             enable_profiling=data["cogs"]["artificial_intelligence"]["enable_profiling"],
             prefer_image_urls=data["cogs"]["artificial_intelligence"]["prefer_image_urls"],
         )
-        movie_tracker = MovieTrackerSettings(channel=data["cogs"]["movie_tracker"]["channel"])
+        movie_tracker = MovieTrackerSettings(
+            update_interval=data["cogs"]["movie_tracker"]["update_interval"],
+            channels=data["cogs"]["movie_tracker"]["channels"],
+        )
         cogs = CogSettings(
             spellcheck=spellcheck, artificial_intelligence=artificial_intelligence, movie_tracker=movie_tracker
         )
