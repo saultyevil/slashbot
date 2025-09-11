@@ -146,7 +146,7 @@ class MovieTracker(CustomCog):
                 continue
             discord_id = letterboxd_to_discord[username]
             discord_user = await self.bot.fetch_user(discord_id)
-            embed = disnake.Embed(title=f"{movie.username.capitalize()} watched a new film", url=movie.url)
+            embed = disnake.Embed(title=f"{movie.username.capitalize()} watched a film", url=movie.url)
             embed.add_field(name="Film title", value=movie.title, inline=False)
             embed.add_field(name="Release year", value=movie.film_year, inline=False)
             if movie.watched_date:
