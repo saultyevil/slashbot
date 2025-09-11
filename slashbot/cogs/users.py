@@ -64,16 +64,12 @@ class Users(CustomCog):
 
         """
         user = await self.get_or_add_user_in_db(inter)
-        match thing:
-            case "city":
-                value = user.city
-            case "country_code":
-                value = user.country_code
-            case "bad_word":
-                value = user.bad_word
-            case _:
-                msg = f"Unknown choice of thing '{thing}'"
-                raise ValueError(msg)
+        if thing not in user.__table__.columns:
+            msg = f"{thing} is not a valid attribute for a user"
+            self.log_error("%s", msg)
+            await inter.response.send_message(msg)
+            return
+        value = getattr(user, thing)
         await inter.response.send_message(f"{thing.capitalize()} is set to '{value}'.", ephemeral=True)
 
 
