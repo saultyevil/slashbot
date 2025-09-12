@@ -1,7 +1,7 @@
 import datetime
 from dataclasses import asdict, dataclass
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 ID_UNSET = -1
@@ -77,8 +77,10 @@ class User(DeclarativeBase):
     city: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     country_code: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     bad_word: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
+    letterboxd_user: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
 
     reminders: Mapped[list["Reminder"]] = relationship(back_populates="user")
+    movies: Mapped[list["WatchedMovie"]] = relationship(back_populates="user")
 
 
 class Reminder(DeclarativeBase):
@@ -95,3 +97,22 @@ class Reminder(DeclarativeBase):
     notified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     user: Mapped["User"] = relationship(back_populates="reminders")
+
+
+class WatchedMovie(DeclarativeBase):
+    """SQLAlchemy ORM model for a watched movie."""
+
+    __tablename__ = "watched_movies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    username: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(128))
+    film_year: Mapped[int] = mapped_column(Integer)
+    user_rating: Mapped[float] = mapped_column(Float, default=None, nullable=True)
+    watched_date: Mapped[datetime.datetime] = mapped_column(DateTime, default=None, nullable=True)
+    tmdb_id: Mapped[int] = mapped_column(Integer)
+    url: Mapped[str] = mapped_column(String(512))
+    poster_url: Mapped[str] = mapped_column(String(512))
+
+    user: Mapped["User"] = relationship(back_populates="movies")
