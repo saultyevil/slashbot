@@ -389,7 +389,10 @@ class Database(BaseDatabaseSQL):
                     .where(User.letterboxd_user == letterboxd_username)
                     .order_by(
                         WatchedMovie.watched_date.desc(),
-                        WatchedMovie.id.desc(),  # Order by PK as tiebreaker
+                        # Order by PK as tiebreaker. We have used an ascending
+                        # order because newer movies are will have a lower primary
+                        # key because of the order they are added
+                        WatchedMovie.id.asc(),
                     )
                     .limit(1)
                 )
