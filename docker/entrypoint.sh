@@ -27,6 +27,12 @@ if ! poetry install >poetry_install.log 2>&1; then
     exit 1
 fi
 
+# Run database migrations
+if ! poetry run alembic upgrade head; then
+    echo "Alembic migrations failed"
+    exit 1
+fi
+
 # Run the bot
 if [ "$DEVELOPMENT_MODE" = true ]; then
     exec poetry run slashbot --debug
