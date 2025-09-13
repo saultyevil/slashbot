@@ -56,8 +56,9 @@ class MovieTracker(CustomCog):
             poster_url=poster_url,
         )
         new_movie = await self.db.add_watched_movie(movie)
+        self.log_debug("Added new movie %s (%s) for %s", movie.title, movie.watched_date, letterboxd_username)
 
-        return new_movie  # noqa: RET504
+        return new_movie
 
     @staticmethod
     def _convert_rating_to_stars(rating: float) -> str:
@@ -136,8 +137,7 @@ class MovieTracker(CustomCog):
         embed.add_field(
             name="User rating", value=self._convert_rating_to_stars(watched_movie.user_rating), inline=False
         )
-        embed.set_image(watched_movie.poster_url)
-        embed.set_thumbnail(url=discord_user.display_avatar.url)
+        embed.set_thumbnail(url=watched_movie.poster_url)
 
         return embed
 
@@ -164,6 +164,7 @@ class MovieTracker(CustomCog):
         for letterboxd_username in letterboxd_usernames:
             user_feed = feedparser.parse(f"https://letterboxd.com/{letterboxd_username}/rss/")
             if not user_feed.entries:
+                self.log_warning("%s has not logged any content in letterboxd", letterboxd_username)
                 results[letterboxd_username] = []
                 continue
 
@@ -181,9 +182,16 @@ class MovieTracker(CustomCog):
                     continue
                 new_movies_watched.append(await self._add_watched_movie_to_database(letterboxd_username, movie_entry))
 
-            results[letterboxd_username] = (
-                new_movies_watched[0] if len(new_movies_watched) > 0 else []
-            )  # Just return the latest one for now...
+            # If the user has just been added then there will be no last movie
+            # watched. To avoid sending the last movie they watched before tracking
+            # began, we'll send an empty list back
+            if not last_movie_title:
+                results[letterboxd_username] = []
+                self.log_warning("%s has just been created, sending back empty watchlist", letterboxd_username)
+            else:
+                results[letterboxd_username] = (
+                    new_movies_watched[0] if len(new_movies_watched) > 0 else []
+                )  # Just return the latest one for now...
 
         return results
 
@@ -191,11 +199,14 @@ class MovieTracker(CustomCog):
     async def check_for_new_watched_movies(self) -> None:
         """Periodically check for new logged movies."""
         letterboxd_users = await self.db.get_letterboxd_users()
-        letterboxd_to_discord_map = {user.letterboxd_user: user.discord_id for user in letterboxd_users}
         new_movies_watched = await self.get_most_recent_movie_watched(
             [user.letterboxd_user for user in letterboxd_users]
         )
+        if not new_movies_watched:
+            return
+        self.log_debug("New movie watches: %s", new_movies_watched)
         channels = await self._get_channels()
+        letterboxd_to_discord_map = {user.letterboxd_user: user.discord_id for user in letterboxd_users}
 
         for letterboxd_username, watched_movie in new_movies_watched.items():
             if not watched_movie:
@@ -204,7 +215,9 @@ class MovieTracker(CustomCog):
             embed = self._create_watched_movie_embed(discord_user, watched_movie)
 
             for channel in channels:
-                await channel.send(embed=embed)
+                in_guild = channel.guild.get_member(discord_user.id)
+                if in_guild:
+                    await channel.send(embed=embed)
 
 
 def setup(bot: CustomInteractionBot) -> None:

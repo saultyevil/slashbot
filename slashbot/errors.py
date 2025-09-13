@@ -3,10 +3,10 @@
 from slashbot.bot.custom_types import ApplicationCommandInteraction
 
 
-async def deferred_error_message(
+async def deferred_error_response(
     inter: ApplicationCommandInteraction,
     message: str,
-    delay: int = 30,
+    delay: int = 10,
 ) -> None:
     """Send and delete an error message for a delayed response.
 

@@ -1,48 +1,11 @@
 import os
 import shutil
-from pathlib import Path
 
-import aiofiles
 import git
 
 from slashbot.core.logger import Logger
-from slashbot.settings import BotSettings
 
 logger = Logger()
-
-
-async def get_logfile_tail(logfile_path: Path, num_lines: int) -> str:
-    """Get the last `num_lines` lines of the Slashbot logfile.
-
-    Parameters
-    ----------
-    logfile_path : Path
-        The path to the log file.
-    num_lines : int
-        The number of lines to retrieve.
-
-    Returns
-    -------
-    str
-        The last `num_lines` lines of the log file.
-
-    """
-    async with aiofiles.open(logfile_path, encoding="utf-8") as file_in:
-        log_file = await file_in.read()
-    log_lines = log_file.splitlines()
-
-    tail = []
-    num_chars = 0
-    for i in range(1, num_lines + 1):
-        try:
-            num_chars += len(log_lines[-i])
-        except IndexError:
-            break
-        if num_chars > BotSettings.discord.max_chars:
-            break
-        tail.append(log_lines[-i])
-
-    return "\n".join(tail[::-1])
 
 
 def restart_bot(arguments: list[str]) -> None:

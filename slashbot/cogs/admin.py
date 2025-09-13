@@ -7,11 +7,7 @@ import disnake
 from disnake.ext import commands
 from git.exc import GitCommandError
 
-from slashbot.admin import (
-    get_logfile_tail,
-    restart_bot,
-    update_local_repository,
-)
+from slashbot.admin import restart_bot, update_local_repository
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
@@ -314,31 +310,6 @@ class AdminTools(CustomCog):
         await inter.edit_original_message(
             content=f"```{last_error}```" if last_error else "There have been no errors since the last restart.",
         )
-
-    @slash_command_with_cooldown(name="logfile")
-    async def print_logfile_tail(
-        self,
-        inter: ApplicationCommandInteraction,
-        num_lines: int = commands.Param(
-            default=10,
-            description="The number of lines to include in the tail of the log file.",
-            max_value=50,
-            min_value=1,
-        ),
-    ) -> None:
-        """Print the tail of the logfile.
-
-        Parameters
-        ----------
-        inter : ApplicationCommandInteraction
-            The interaction to respond to.
-        num_lines: int
-            The number of lines to print.
-
-        """
-        await inter.response.defer(ephemeral=True)
-        tail = await get_logfile_tail(Path(BotSettings.logging.log_location), num_lines)
-        await inter.edit_original_message(f"```{tail}```")
 
     @slash_command_with_cooldown()
     async def restart_bot(

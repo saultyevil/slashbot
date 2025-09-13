@@ -44,7 +44,7 @@ class CustomCog(Cog, Logger):
             - Pre-generated markov sentences, if enabled
             - Starts all tasks
         """
-        await self.bot.wait_until_first_connect()
+        await self.bot.wait_until_ready()
         self.db = self.bot.db or self.db
         await self.db.init()
         if self.bot.use_markov_cache and self.markov_seed_words:

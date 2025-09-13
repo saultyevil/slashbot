@@ -61,16 +61,16 @@ def setup_logging() -> None:
 
     file_handler = FileHandler(
         filename=BotSettings.logging.log_location,
-        mode="w",
+        mode="a",
         encoding="utf-8",
     )
     file_handler.setFormatter(
-        ConditionalFormatter(
+        logging.Formatter(
             "%(asctime)s | %(levelname)s | %(message)s",
             "%Y-%m-%d %H:%M:%S",
         ),
     )
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
     file_handler.set_name(USER_LOG_HANDLER_NAME)
     logger.addHandler(file_handler)
 
