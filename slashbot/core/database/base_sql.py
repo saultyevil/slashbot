@@ -60,7 +60,7 @@ class BaseDatabaseSQL(Logger):
             finally:
                 await session.close()
 
-    async def update_row(
+    async def upsert_row(
         self, model: UserSQL | ReminderSQL | WatchedMovieSQL
     ) -> UserSQL | ReminderSQL | WatchedMovieSQL:
         """Add a new row to the database.

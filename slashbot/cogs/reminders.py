@@ -202,7 +202,7 @@ class Reminders(CustomCog):
 
         tagged_users, reminder_content = await self.replace_mentions_with_display_names(inter.guild, reminder_content)
 
-        await self.db.add_reminder(
+        await self.db.upsert_row(
             ReminderSQL(
                 user_id=inter.author.id,
                 channel_id=inter.channel.id,
@@ -264,9 +264,9 @@ class Reminders(CustomCog):
             The interaction object for the command.
 
         """
-        user = await self.db.get_user_by_discord_id(inter.author.id)
+        user = await self.db.get_user("discord_id", inter.author.id)
         if not user:
-            user = await self.db.add_user(
+            user = await self.db.upsert_row(
                 UserSQL(
                     discord_id=inter.author.id,
                     username=inter.author.name,

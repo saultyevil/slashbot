@@ -308,7 +308,7 @@ class Weather(CustomCog):
             exc_msg = "No location provided to forecast"
             error_msg = "You need to either specify a city, or set your location using /set_info."
             try:
-                user = await self.get_or_add_user_in_db(inter)
+                user = await self.get_user_db_from_inter(inter)
                 location = user.city
             except KeyError as exc:
                 await deferred_error_response(

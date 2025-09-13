@@ -43,7 +43,7 @@ class Users(CustomCog):
             The value of the thing to set.
 
         """
-        user = await self.get_or_add_user_in_db(inter)
+        user = await self.get_user_db_from_inter(inter)
         await self.db.update_user_by_discord_id(user.discord_id, thing, value)
         await inter.response.send_message(f"{thing.capitalize()} has been set to '{value}'.", ephemeral=True)
 
@@ -63,7 +63,7 @@ class Users(CustomCog):
             The thing to show saved values for.
 
         """
-        user = await self.get_or_add_user_in_db(inter)
+        user = await self.get_user_db_from_inter(inter)
         if thing not in user.__table__.columns:
             msg = f"{thing} is not a valid attribute for a user"
             self.log_error("%s", msg)

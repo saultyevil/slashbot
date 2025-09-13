@@ -59,9 +59,9 @@ async def get_user_reminders(inter: ApplicationCommandInteraction, _: str) -> li
         A list of reminders
 
     """
-    user = await inter.bot.db.get_user_by_discord_id(inter.author.id)  # type: ignore
+    user = await inter.bot.db.get_user("discord_id", inter.author.id)  # type: ignore
     if not user:
-        user = await inter.bot.db.add_user(  # type: ignore
+        user = await inter.bot.db.upsert_row(  # type: ignore
             UserSQL(
                 discord_id=inter.author.id,
                 username=inter.author.name,

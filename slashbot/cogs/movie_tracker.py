@@ -33,7 +33,7 @@ class MovieTracker(CustomCog):
             The movie added to the database.
 
         """
-        user_db = await self.db.get_user_by_letterboxd_username(letterboxd_username)
+        user_db = await self.db.get_user("letterboxd_username", letterboxd_username)
         if not user_db:
             exc_msg = f"Letterboxd user {letterboxd_username} was not in the database"
             self.log_error("%s", exc_msg)
@@ -55,7 +55,7 @@ class MovieTracker(CustomCog):
             url=movie_entry["link"],
             poster_url=poster_url,
         )
-        new_movie = await self.db.add_watched_movie(movie)
+        new_movie = await self.db.upsert_row(movie)
         self.log_debug("Added new movie %s (%s) for %s", movie.title, movie.watched_date, letterboxd_username)
 
         return new_movie
@@ -169,7 +169,7 @@ class MovieTracker(CustomCog):
                 continue
 
             new_movies_watched = []
-            last_movie_watched = await self.db.get_last_movie_for_user(letterboxd_username)
+            last_movie_watched = await self.db.get_last_movie_for_letterboxd_user(letterboxd_username)
             last_movie_title = last_movie_watched.title if last_movie_watched else None
 
             for movie_entry in user_feed.entries:
@@ -198,15 +198,15 @@ class MovieTracker(CustomCog):
     @tasks.loop(minutes=BotSettings.cogs.movie_tracker.update_interval)
     async def check_for_new_watched_movies(self) -> None:
         """Periodically check for new logged movies."""
-        letterboxd_users = await self.db.get_letterboxd_users()
+        letterboxd_users = await self.db.get_letterboxd_usernames()
         new_movies_watched = await self.get_most_recent_movie_watched(
-            [user.letterboxd_user for user in letterboxd_users]
+            [user.letterboxd_username for user in letterboxd_users]
         )
         if not new_movies_watched:
             return
         self.log_debug("New movie watches: %s", new_movies_watched)
         channels = await self._get_channels()
-        letterboxd_to_discord_map = {user.letterboxd_user: user.discord_id for user in letterboxd_users}
+        letterboxd_to_discord_map = {user.letterboxd_username: user.discord_id for user in letterboxd_users}
 
         for letterboxd_username, watched_movie in new_movies_watched.items():
             if not watched_movie:

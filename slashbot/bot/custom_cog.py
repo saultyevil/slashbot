@@ -169,8 +169,11 @@ class CustomCog(Cog, Logger):
             if len(self._markov_sentences[seed_word]) < BotSettings.markov.pregenerate_limit:
                 self._populate_markov_cache(seed_words=[seed_word])
 
-    async def get_or_add_user_in_db(self, inter: disnake.ApplicationCommandInteraction) -> UserSQL:
-        """Get or add a user to the database.
+    async def get_user_db_from_inter(self, inter: disnake.ApplicationCommandInteraction) -> UserSQL:
+        """Get the associated user in the database from an interaction.
+
+        If the user does not exist, then a new row will be populated in the
+        database.
 
         Parameters
         ----------
@@ -183,9 +186,9 @@ class CustomCog(Cog, Logger):
             The user associated with the interaction.
 
         """
-        user = await self.db.get_user_by_discord_id(inter.author.id)
+        user = await self.db.get_user("discord_id", inter.author.id)
         if not user:
-            user = await self.db.add_user(
+            user = await self.db.upsert_row(
                 UserSQL(
                     discord_id=inter.author.id,
                     username=inter.author.name,
