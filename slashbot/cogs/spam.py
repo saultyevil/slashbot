@@ -11,7 +11,7 @@ from disnake.ext import commands
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.errors import deferred_error_message
+from slashbot.errors import deferred_error_response
 from slashbot.settings import BotSettings
 
 
@@ -91,11 +91,11 @@ class Spam(CustomCog):
                 DDGS(timeout=5).images(query, max_results=15, backend="duckduckgo", safesearch="off", region="uk-en")
             )
         except DDGSException as exc:
-            await deferred_error_message(inter, f"Exception rasied by image querier: {exc}")
+            await deferred_error_response(inter, f"Exception rasied by image querier: {exc}")
             return
 
         if not image_results:
-            await deferred_error_message(inter, "No image results found.")
+            await deferred_error_response(inter, "No image results found.")
             return
 
         image = random.choice(image_results)

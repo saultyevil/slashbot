@@ -18,7 +18,7 @@ import markovify
 
 from slashbot.bot.custom_types import ApplicationCommandInteraction
 from slashbot.core.logger import Logger
-from slashbot.errors import deferred_error_message
+from slashbot.errors import deferred_error_response
 from slashbot.settings import BotSettings
 
 LOGGER = Logger()
@@ -309,7 +309,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
 
     if len(new_messages) == 0:
         if inter:
-            await deferred_error_message(inter, "No new messages to update chain with.")
+            await deferred_error_response(inter, "No new messages to update chain with.")
             return None
         LOGGER.log_info("No sentences to update chain with")
         return None
@@ -319,7 +319,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
 
     if num_messages == 0:
         if inter:
-            await deferred_error_message(inter, "No new messages to update chain with.")
+            await deferred_error_response(inter, "No new messages to update chain with.")
             return None
         LOGGER.log_info("No sentences to update chain with")
         return None
@@ -329,7 +329,7 @@ async def update_markov_chain_for_model(  # noqa: PLR0911
         new_model = markovify.NewlineText("\n".join(messages), state_size=state_size if state_size != 0 else 2)
     except KeyError:  # I can't remember what causes this... but it can happen when indexing new words
         if inter:
-            await deferred_error_message(inter, "The interim model failed to train.")
+            await deferred_error_response(inter, "The interim model failed to train.")
             return None
         LOGGER.log_exception("The interim model failed to train.")
         return None

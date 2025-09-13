@@ -16,7 +16,7 @@ from geopy.location import Location
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.errors import deferred_error_message
+from slashbot.errors import deferred_error_response
 from slashbot.settings import BotSettings
 
 
@@ -311,13 +311,13 @@ class Weather(CustomCog):
                 user = await self.get_or_add_user_in_db(inter)
                 location = user.city
             except KeyError as exc:
-                await deferred_error_message(
+                await deferred_error_response(
                     inter,
                     error_msg,
                 )
                 raise NoLocationProvidedError(exc_msg) from exc
             if not location:
-                await deferred_error_message(
+                await deferred_error_response(
                     inter,
                     error_msg,
                 )
@@ -326,10 +326,10 @@ class Weather(CustomCog):
         try:
             location, forecast = self.call_api(location, units, request_type)
         except (LocationNotFoundError, GeocodeError):
-            await deferred_error_message(inter, f"Unable to find the location '{location.capitalize()}'.")
+            await deferred_error_response(inter, f"Unable to find the location '{location.capitalize()}'.")
             raise
         except (OneCallError, requests.Timeout):
-            await deferred_error_message(inter, "Open Weather Map did not respond to the request.")
+            await deferred_error_response(inter, "Open Weather Map did not respond to the request.")
             raise
 
         return location, forecast
