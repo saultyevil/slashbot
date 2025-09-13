@@ -17,7 +17,7 @@ class UserSQL(DeclarativeBase):
     city: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     country_code: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     bad_word: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
-    letterboxd_username: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
+    letterboxd_username: Mapped[str] = mapped_column(String(64), default=None, nullable=True, unique=True)
 
     reminders: Mapped[list["ReminderSQL"]] = relationship(back_populates="user")
     watched_movies: Mapped[list["WatchedMovieSQL"]] = relationship(back_populates="user")
