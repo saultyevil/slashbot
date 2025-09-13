@@ -137,8 +137,7 @@ class MovieTracker(CustomCog):
         embed.add_field(
             name="User rating", value=self._convert_rating_to_stars(watched_movie.user_rating), inline=False
         )
-        embed.set_image(watched_movie.poster_url)
-        embed.set_thumbnail(url=discord_user.display_avatar.url)
+        embed.set_thumbnail(url=watched_movie.poster_url)
 
         return embed
 
