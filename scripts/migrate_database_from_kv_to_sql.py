@@ -2,7 +2,7 @@ import asyncio
 import datetime
 from pathlib import Path
 
-from slashbot.core.database import DatabaseKV, DatabaseSQL, ReminderKV, ReminderSQL, UserKV, UserSQL
+from slashbot.core.database import DatabaseKV, DatabaseSQL, ReminderSQL, UserSQL
 from slashbot.core.logger import setup_logging
 from slashbot.settings import BotSettings
 
@@ -17,7 +17,7 @@ async def main():
 
     users_kv = await database_kv.get_users()
     for user in users_kv:
-        await database_sql.add_user(
+        await database_sql.upsert_row(
             UserSQL(
                 discord_id=user.user_id,
                 username=user.user_name,
@@ -29,7 +29,7 @@ async def main():
 
     reminders_kv = await database_kv.get_reminders()
     for reminder in reminders_kv:
-        await database_sql.add_reminder(
+        await database_sql.upsert_row(
             ReminderSQL(
                 user_id=reminder.user_id,
                 channel_id=reminder.channel_id,
