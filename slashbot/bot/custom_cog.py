@@ -8,7 +8,7 @@ from disnake.ext.commands import Cog
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
-from slashbot.core.database import DatabaseSQL, UserSQL
+from slashbot.core.database import DatabaseSQL, DeclarativeBase, UserSQL
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -30,7 +30,7 @@ class CustomCog(Cog, Logger):
         super().__init__(**kwargs)
         Logger.__init__(self)
         self.bot = bot
-        self.db = DatabaseSQL(BotSettings.files.database)
+        self.db = DatabaseSQL(BotSettings.files.database, DeclarativeBase)
         self.markov_seed_words = []
         self._markov_sentences = {}
 
@@ -52,6 +52,7 @@ class CustomCog(Cog, Logger):
             self._populate_markov_cache()
             self.check_markov_cache_size.start()
         self._start_all_tasks()
+        self.log_info("Loaded cog: %s", self.__cog_name__)
 
     def _start_all_tasks(self) -> None:
         """Start all tasks in the cog."""

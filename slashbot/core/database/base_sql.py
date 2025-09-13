@@ -6,15 +6,18 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeMeta
 
-from slashbot.core.database.sql_models import DeclarativeBase, ReminderSQL, UserSQL, WatchedMovieSQL
+from slashbot.core.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
 from slashbot.core.logger import Logger
 
 
 class BaseDatabaseSQL(Logger):
     """Asynchronous database class, using SQLite."""
 
-    def __init__(self, database_location: str | Path, logger_label: str = "[DatabaseSQL]") -> None:
+    def __init__(
+        self, database_location: str | Path, declarative_base: DeclarativeMeta, logger_label: str = "[DatabaseSQL]"
+    ) -> None:
         """Initialize the database.
 
         Parameters
@@ -28,8 +31,9 @@ class BaseDatabaseSQL(Logger):
         """
         super().__init__(prepend_msg=logger_label)
 
-        database_url = f"sqlite+aiosqlite:///{Path(database_location).absolute()}"
-        self.engine = create_async_engine(database_url, echo=False)
+        self.declarative_base = declarative_base
+        self.database_url = f"sqlite+aiosqlite:///{Path(database_location).absolute()}"
+        self.engine = create_async_engine(self.database_url, echo=False)
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
         self.initialised = False
 
@@ -38,7 +42,7 @@ class BaseDatabaseSQL(Logger):
         if self.initialised:
             return
         async with self.engine.begin() as conn:
-            await conn.run_sync(DeclarativeBase.metadata.create_all)
+            await conn.run_sync(self.declarative_base.metadata.create_all)
         self.initialised = True
 
     @asynccontextmanager
