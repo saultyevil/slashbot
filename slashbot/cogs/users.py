@@ -67,7 +67,7 @@ class Users(CustomCog):
         if thing not in user.__table__.columns:
             msg = f"{thing} is not a valid attribute for a user"
             self.log_error("%s", msg)
-            await inter.response.send_message(msg)
+            await inter.response.send_message(msg, ephemeral=True)
             return
         value = getattr(user, thing)
         await inter.response.send_message(f"{thing.capitalize()} is set to '{value}'.", ephemeral=True)
