@@ -65,6 +65,13 @@ class BaseDatabaseSQL(Logger):
     ) -> UserSQL | ReminderSQL | WatchedMovieSQL:
         """Add a new row to the database.
 
+        Update a user row:
+            user.username = "new_name"
+            updated_user = await db.update_row(user)
+        Add a new reminder:
+            reminder = ReminderSQL(user_id=1, message="Hello")
+            saved_reminder = await db.update_row(reminder)
+
         Parameters
         ----------
         model : User | Reminder | WatchedMovie
@@ -96,6 +103,11 @@ class BaseDatabaseSQL(Logger):
 
     async def delete_row(self, model: UserSQL | ReminderSQL | WatchedMovieSQL) -> None:
         """Remove a row from the database.
+
+        Delete a user row:
+            await db.delete_row(user)
+        Delete a watched movie row:
+            await db.delete_row(movie)
 
         Parameters
         ----------
