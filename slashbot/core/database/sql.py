@@ -10,6 +10,56 @@ from slashbot.core.database.models import Reminder, User, WatchedMovie
 class Database(BaseDatabaseSQL):
     """Main database for storing user information."""
 
+    async def update_row(self, model: User | Reminder | WatchedMovie) -> User | Reminder | WatchedMovie:
+        """Add a new row to the database.
+
+        Parameters
+        ----------
+        model : User | Reminder | WatchedMovie
+            An SQLAlchemy ORM object representing the row to either add or
+            update.
+
+        Returns
+        -------
+        User | Reminder | WatchedMovie
+            The updated instance, e.g. with primary key.
+
+        """
+        if not isinstance(model, User | Reminder | WatchedMovie):
+            exc_msg = f"Unknown model '{type(model)}' for database"
+            raise TypeError(exc_msg)
+        async with self._get_async_session() as session:
+            try:
+                session.add(model)
+                await session.commit()
+                await session.refresh(model)
+            except IntegrityError as exc:
+                await session.rollback()
+                self.log_error(
+                    "Integrity error when adding %s to %s: %s", type(model).__name__, model.__tablename__, exc
+                )
+                raise
+            else:
+                return model
+
+    async def delete_row(self, model: User | Reminder | WatchedMovie) -> None:
+        """Remove a row from the database.
+
+        Parameters
+        ----------
+        model : User | Reminder | WatchedMovie
+            An SQLAlchemy ORM object representing the row to remove.
+
+        """
+        model_cls = type(model)
+        pk_cols = [col.name for col in model_cls.__table__.primary_key.columns]
+        filters = [getattr(model_cls, col) == getattr(model, col) for col in pk_cols]
+        async with self._get_async_session() as session:
+            await session.execute(
+                delete(model_cls).where(*filters),
+            )
+            await session.commit()
+
     async def add_watched_movie(self, movie: WatchedMovie) -> WatchedMovie:
         """Add a watched movie to the database.
 
