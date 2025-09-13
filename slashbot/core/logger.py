@@ -65,7 +65,7 @@ def setup_logging() -> None:
         encoding="utf-8",
     )
     file_handler.setFormatter(
-        ConditionalFormatter(
+        logging.Formatter(
             "%(asctime)s | %(levelname)s | %(message)s",
             "%Y-%m-%d %H:%M:%S",
         ),
