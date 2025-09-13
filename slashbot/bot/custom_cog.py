@@ -8,7 +8,7 @@ from disnake.ext.commands import Cog
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.core import markov
-from slashbot.core.database import Database, User
+from slashbot.core.database import DatabaseSQL, DeclarativeBase, UserSQL
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -30,7 +30,7 @@ class CustomCog(Cog, Logger):
         super().__init__(**kwargs)
         Logger.__init__(self)
         self.bot = bot
-        self.db = Database(BotSettings.files.database)
+        self.db = DatabaseSQL(BotSettings.files.database, DeclarativeBase)
         self.markov_seed_words = []
         self._markov_sentences = {}
 
@@ -52,6 +52,7 @@ class CustomCog(Cog, Logger):
             self._populate_markov_cache()
             self.check_markov_cache_size.start()
         self._start_all_tasks()
+        self.log_info("Loaded cog: %s", self.__cog_name__)
 
     def _start_all_tasks(self) -> None:
         """Start all tasks in the cog."""
@@ -169,8 +170,11 @@ class CustomCog(Cog, Logger):
             if len(self._markov_sentences[seed_word]) < BotSettings.markov.pregenerate_limit:
                 self._populate_markov_cache(seed_words=[seed_word])
 
-    async def get_or_add_user_in_db(self, inter: disnake.ApplicationCommandInteraction) -> User:
-        """Get or add a user to the database.
+    async def get_user_db_from_inter(self, inter: disnake.ApplicationCommandInteraction) -> UserSQL:
+        """Get the associated user in the database from an interaction.
+
+        If the user does not exist, then a new row will be populated in the
+        database.
 
         Parameters
         ----------
@@ -183,10 +187,10 @@ class CustomCog(Cog, Logger):
             The user associated with the interaction.
 
         """
-        user = await self.db.get_user_by_discord_id(inter.author.id)
+        user = await self.db.get_user("discord_id", inter.author.id)
         if not user:
-            user = await self.db.add_user(
-                User(
+            user = await self.db.upsert_row(
+                UserSQL(
                     discord_id=inter.author.id,
                     username=inter.author.name,
                 )

@@ -6,7 +6,7 @@ from typing import Any
 from disnake.ext.commands import InteractionBot
 
 from slashbot.core import markov
-from slashbot.core.database import Database
+from slashbot.core.database import DatabaseSQL, DeclarativeBase
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -33,7 +33,7 @@ class CustomInteractionBot(InteractionBot, Logger):
         Logger.__init__(self)
         self.cleanup_functions = []
         self.times_connected = 0
-        self.db = Database(BotSettings.files.database)
+        self.db = DatabaseSQL(BotSettings.files.database, DeclarativeBase)
         self.use_markov_cache = enable_markov_cache and markov.MARKOV_MODEL
         if markov.MARKOV_MODEL:
             self.log_info(
@@ -77,5 +77,5 @@ class CustomInteractionBot(InteractionBot, Logger):
 
         """
         if not self.db:
-            self.db = Database(BotSettings.files.database)
+            self.db = DatabaseSQL(BotSettings.files.database, DeclarativeBase)
         await self.db.init()

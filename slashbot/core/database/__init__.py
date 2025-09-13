@@ -1,15 +1,17 @@
 """Asynchronous database module, using a JSON backend as key-value store."""
 
-from .kv import DatabaseKV
-from .models import Reminder, ReminderKVModel, User, UserKVModel, WatchedMovie
-from .sql import Database
+from .kv_database import DatabaseKV
+from .kv_models import ReminderKV, UserKV
+from .sql_database import DatabaseSQL
+from .sql_models import DeclarativeBase, ReminderSQL, UserSQL, WatchedMovieSQL
 
 __all__ = [
-    "Database",
     "DatabaseKV",
-    "Reminder",
-    "ReminderKVModel",
-    "User",
-    "UserKVModel",
-    "WatchedMovie",
+    "DatabaseSQL",
+    "DeclarativeBase",
+    "ReminderKV",
+    "ReminderSQL",
+    "UserKV",
+    "UserSQL",
+    "WatchedMovieSQL",
 ]

@@ -12,7 +12,7 @@ USER_OPTIONS = [
     disnake.OptionChoice("City", "city"),
     disnake.OptionChoice("Country code", "country_code"),
     disnake.OptionChoice("Bad word", "bad_word"),
-    disnake.OptionChoice("Letterboxd Username", "letterboxd_user"),
+    disnake.OptionChoice("Letterboxd Username", "letterboxd_username"),
 ]
 
 
@@ -43,8 +43,8 @@ class Users(CustomCog):
             The value of the thing to set.
 
         """
-        user = await self.get_or_add_user_in_db(inter)
-        await self.db.update_user_by_discord_id(user.discord_id, thing, value)
+        user = await self.get_user_db_from_inter(inter)
+        await self.db.update_user("discord_id", user.discord_id, thing, value)
         await inter.response.send_message(f"{thing.capitalize()} has been set to '{value}'.", ephemeral=True)
 
     @slash_command_with_cooldown(name="show_info", description="View data you set to be remembered about you")
@@ -63,14 +63,39 @@ class Users(CustomCog):
             The thing to show saved values for.
 
         """
-        user = await self.get_or_add_user_in_db(inter)
+        user = await self.get_user_db_from_inter(inter)
         if thing not in user.__table__.columns:
             msg = f"{thing} is not a valid attribute for a user"
             self.log_error("%s", msg)
-            await inter.response.send_message(msg)
+            await inter.response.send_message(msg, ephemeral=True)
             return
         value = getattr(user, thing)
         await inter.response.send_message(f"{thing.capitalize()} is set to '{value}'.", ephemeral=True)
+
+    @slash_command_with_cooldown(name="forget_info", description="Forget some data remembered about you")
+    async def forget_info(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        thing: str = commands.Param(description="The thing to forget the value of.", choices=USER_OPTIONS),
+    ) -> None:
+        """Forget a user set value.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The disnake interaction.
+        thing : str, optional
+            The thing to forget the set value for.
+
+        """
+        user = await self.get_user_db_from_inter(inter)
+        if thing not in user.__table__.columns:
+            msg = f"{thing} is not a valid attribute for a user"
+            self.log_error("%s", msg)
+            await inter.response.send_message(msg, ephemeral=True)
+            return
+        await self.db.update_user("discord_id", inter.author.id, thing, None)
+        await inter.response.send_message(f"{thing.capitalize()} has been forgotten.", ephemeral=True)
 
 
 def setup(bot: CustomInteractionBot) -> None:

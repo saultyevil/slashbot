@@ -1,72 +1,12 @@
 import datetime
-from dataclasses import asdict, dataclass
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
-ID_UNSET = -1
-
-
-@dataclass
-class BaseDataClass:
-    """Base dataclass model."""
-
-    def to_dict(self) -> dict:
-        """Return the dataclass as a dict.
-
-        Returns
-        -------
-        dict
-            Dict representation of the dataclass.
-
-        """
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "BaseDataClass":
-        """Initialise the dataclass from a dict.
-
-        Parameters
-        ----------
-        data : dict
-            Dict representation of the dataclass.
-
-        Returns
-        -------
-        cls
-            The dataclass initialised from the dict.
-
-        """
-        return cls(**data)
-
-
-@dataclass
-class UserKVModel(BaseDataClass):
-    """User dataclass."""
-
-    user_id: int
-    user_name: str
-    city: str = ""
-    country_code: str = ""
-    bad_word: str = ""
-
-
-@dataclass
-class ReminderKVModel(BaseDataClass):
-    """Reminder dataclass."""
-
-    user_id: int
-    channel_id: int
-    date_iso: str
-    content: str
-    tagged_users: str | None = None
-    reminder_id: int = ID_UNSET
-
-
 DeclarativeBase = declarative_base()
 
 
-class User(DeclarativeBase):
+class UserSQL(DeclarativeBase):
     """SQLAlchemy ORM model for a user."""
 
     __tablename__ = "users"
@@ -77,13 +17,13 @@ class User(DeclarativeBase):
     city: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     country_code: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     bad_word: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
-    letterboxd_user: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
+    letterboxd_username: Mapped[str] = mapped_column(String(64), default=None, nullable=True, unique=True)
 
-    reminders: Mapped[list["Reminder"]] = relationship(back_populates="user")
-    movies: Mapped[list["WatchedMovie"]] = relationship(back_populates="user")
+    reminders: Mapped[list["ReminderSQL"]] = relationship(back_populates="user")
+    watched_movies: Mapped[list["WatchedMovieSQL"]] = relationship(back_populates="user")
 
 
-class Reminder(DeclarativeBase):
+class ReminderSQL(DeclarativeBase):
     """SQLAlchemy ORM model for a reminder."""
 
     __tablename__ = "reminders"
@@ -96,10 +36,10 @@ class Reminder(DeclarativeBase):
     tagged_users: Mapped[str] = mapped_column(String(256), nullable=True)
     notified: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    user: Mapped["User"] = relationship(back_populates="reminders")
+    user: Mapped["UserSQL"] = relationship(back_populates="reminders")
 
 
-class WatchedMovie(DeclarativeBase):
+class WatchedMovieSQL(DeclarativeBase):
     """SQLAlchemy ORM model for a watched movie."""
 
     __tablename__ = "watched_movies"
@@ -115,4 +55,4 @@ class WatchedMovie(DeclarativeBase):
     url: Mapped[str] = mapped_column(String(512))
     poster_url: Mapped[str] = mapped_column(String(512))
 
-    user: Mapped["User"] = relationship(back_populates="movies")
+    user: Mapped["UserSQL"] = relationship(back_populates="watched_movies")
