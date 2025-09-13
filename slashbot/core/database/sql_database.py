@@ -1,5 +1,7 @@
 from typing import Any
 
+from sqlalchemy import select
+
 from slashbot.core.database.base_sql import BaseDatabaseSQL
 from slashbot.core.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
 
@@ -171,19 +173,23 @@ class DatabaseSQL(BaseDatabaseSQL):
 
         Returns
         -------
-        WatchedMovieSQL | None
+        WatchedMovieSQLSQL | None
             The most recent watched movie, or None if not found.
 
         """
-        movies = await self.query(
-            WatchedMovieSQL,
-            UserSQL.letterboxd_username == username,
-        )
-        # Fallback to manual sort if needed, or use a custom query if join/order needed
-        if not movies:
-            return None
-        return sorted(
-            movies,
-            key=lambda m: (getattr(m, "watched_date", None), getattr(m, "id", None)),
-            reverse=True,
-        )[0]
+        async with self._get_async_session() as session:
+            return (
+                await session.execute(
+                    select(WatchedMovieSQL)
+                    .join(UserSQL, WatchedMovieSQL.user_id == UserSQL.id)
+                    .where(UserSQL.letterboxd_username == username)
+                    .order_by(
+                        WatchedMovieSQL.watched_date.desc(),
+                        # Order by PK as tiebreaker. We have used an ascending
+                        # order because newer movies are will have a lower primary
+                        # key because of the order they are added
+                        WatchedMovieSQL.id.asc(),
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
