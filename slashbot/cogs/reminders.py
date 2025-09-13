@@ -119,7 +119,6 @@ class Reminders(CustomCog):
     @tasks.loop(seconds=CHECK_PERIOD)
     async def check_reminders(self) -> None:
         """Check if any reminders need to be sent wherever needed."""
-        await self.bot.wait_until_first_connect()
         dt_now = datetime.datetime.now(tz=datetime.UTC)
         reminders = await self.db.get_all_reminders()
 
