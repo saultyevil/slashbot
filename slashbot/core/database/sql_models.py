@@ -55,4 +55,4 @@ class WatchedMovieSQL(DeclarativeBase):
     url: Mapped[str] = mapped_column(String(512))
     poster_url: Mapped[str] = mapped_column(String(512))
 
-    user: Mapped["UserSQL"] = relationship(back_populates="movies")
+    user: Mapped["UserSQL"] = relationship(back_populates="watched_movies")
