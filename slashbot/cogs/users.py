@@ -12,7 +12,7 @@ USER_OPTIONS = [
     disnake.OptionChoice("City", "city"),
     disnake.OptionChoice("Country code", "country_code"),
     disnake.OptionChoice("Bad word", "bad_word"),
-    disnake.OptionChoice("Letterboxd Username", "letterboxd_user"),
+    disnake.OptionChoice("Letterboxd Username", "letterboxd_username"),
 ]
 
 
@@ -44,7 +44,7 @@ class Users(CustomCog):
 
         """
         user = await self.get_user_db_from_inter(inter)
-        await self.db.update_user_by_discord_id(user.discord_id, thing, value)
+        await self.db.update_user("discord_id", user.discord_id, thing, value)
         await inter.response.send_message(f"{thing.capitalize()} has been set to '{value}'.", ephemeral=True)
 
     @slash_command_with_cooldown(name="show_info", description="View data you set to be remembered about you")
