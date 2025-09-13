@@ -70,7 +70,7 @@ def setup_logging() -> None:
             "%Y-%m-%d %H:%M:%S",
         ),
     )
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
     file_handler.set_name(USER_LOG_HANDLER_NAME)
     logger.addHandler(file_handler)
 
