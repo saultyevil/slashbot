@@ -20,7 +20,7 @@ class UserSQL(DeclarativeBase):
     letterboxd_user: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
 
     reminders: Mapped[list["ReminderSQL"]] = relationship(back_populates="user")
-    movies: Mapped[list["WatchedMovieSQL"]] = relationship(back_populates="user")
+    watched_movies: Mapped[list["WatchedMovieSQL"]] = relationship(back_populates="user")
 
 
 class ReminderSQL(DeclarativeBase):
