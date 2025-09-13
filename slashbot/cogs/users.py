@@ -72,6 +72,31 @@ class Users(CustomCog):
         value = getattr(user, thing)
         await inter.response.send_message(f"{thing.capitalize()} is set to '{value}'.", ephemeral=True)
 
+    @slash_command_with_cooldown(name="forget_info", description="Forget some data remembered about you")
+    async def forget_info(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        thing: str = commands.Param(description="The thing to forget the value of.", choices=USER_OPTIONS),
+    ) -> None:
+        """Forget a user set value.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The disnake interaction.
+        thing : str, optional
+            The thing to forget the set value for.
+
+        """
+        user = await self.get_user_db_from_inter(inter)
+        if thing not in user.__table__.columns:
+            msg = f"{thing} is not a valid attribute for a user"
+            self.log_error("%s", msg)
+            await inter.response.send_message(msg, ephemeral=True)
+            return
+        await self.db.update_user("discord_id", inter.author.id, thing, None)
+        await inter.response.send_message(f"{thing.capitalize()} has been forgotten.", ephemeral=True)
+
 
 def setup(bot: CustomInteractionBot) -> None:
     """Set up cogs in this module.
