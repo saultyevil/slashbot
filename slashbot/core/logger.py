@@ -61,7 +61,7 @@ def setup_logging() -> None:
 
     file_handler = FileHandler(
         filename=BotSettings.logging.log_location,
-        mode="w",
+        mode="a",
         encoding="utf-8",
     )
     file_handler.setFormatter(
