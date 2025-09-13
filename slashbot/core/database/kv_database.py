@@ -6,7 +6,7 @@ from pathlib import Path
 
 import aiofiles
 
-from slashbot.core.database.models import ReminderKVModel, UserKVModel
+from slashbot.core.database.kv_models import ReminderKV, UserKV
 from slashbot.core.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -51,10 +51,10 @@ class DatabaseKV(Logger):
                 data = {self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}
 
             self._tables[self.USER_DATA_KEY] = {
-                int(k): UserKVModel.from_dict(v) for k, v in data[self.USER_DATA_KEY].items()
+                int(k): UserKV.from_dict(v) for k, v in data[self.USER_DATA_KEY].items()
             }
             self._tables[self.REMINDERS_KEY] = {
-                int(k): ReminderKVModel.from_dict(v) for k, v in data[self.REMINDERS_KEY].items()
+                int(k): ReminderKV.from_dict(v) for k, v in data[self.REMINDERS_KEY].items()
             }
 
     async def _save_database(self) -> None:
@@ -71,8 +71,8 @@ class DatabaseKV(Logger):
             async with aiofiles.open(self._filename, mode="w") as file_out:
                 await file_out.write(json.dumps(serialisable_tables, indent=4))
 
-    async def _create_empty_user(self, user_id: int, user_name: str) -> UserKVModel:
-        new_user = UserKVModel(user_id, user_name)
+    async def _create_empty_user(self, user_id: int, user_name: str) -> UserKV:
+        new_user = UserKV(user_id, user_name)
         async with self._lock:
             self._tables[self.USER_DATA_KEY][user_id] = new_user
         await self._save_database()
@@ -101,7 +101,7 @@ class DatabaseKV(Logger):
 
         return self
 
-    async def add_reminder(self, reminder: ReminderKVModel) -> ReminderKVModel:
+    async def add_reminder(self, reminder: ReminderKV) -> ReminderKV:
         """Add a reminder to the database.
 
         Parameters
@@ -122,7 +122,7 @@ class DatabaseKV(Logger):
 
         return reminder
 
-    async def add_user(self, user_id: int, user_name: str) -> UserKVModel:
+    async def add_user(self, user_id: int, user_name: str) -> UserKV:
         """Add a user to the database.
 
         This will create an empty user in the database, populating only the
@@ -147,7 +147,7 @@ class DatabaseKV(Logger):
 
         return await self._create_empty_user(user_id, user_name)
 
-    async def get_reminder(self, reminder_id: int) -> ReminderKVModel:
+    async def get_reminder(self, reminder_id: int) -> ReminderKV:
         """Get a reminder from the database.
 
         Parameters
@@ -167,7 +167,7 @@ class DatabaseKV(Logger):
             self.log_error("Reminder %s not found in database", reminder_id)
             raise
 
-    async def get_reminders(self) -> list[ReminderKVModel]:
+    async def get_reminders(self) -> list[ReminderKV]:
         """Get all the reminders in the database.
 
         Returns
@@ -178,7 +178,7 @@ class DatabaseKV(Logger):
         """
         return list(self._tables[self.REMINDERS_KEY].values())
 
-    async def get_user(self, user_id: int) -> UserKVModel:
+    async def get_user(self, user_id: int) -> UserKV:
         """Get a user from the database.
 
         Parameters
@@ -198,7 +198,7 @@ class DatabaseKV(Logger):
             self.log_error("User %s not found in database", user_id)
             raise
 
-    async def get_users(self) -> list[UserKVModel]:
+    async def get_users(self) -> list[UserKV]:
         """Get all the users in the database.
 
         Returns
@@ -209,7 +209,7 @@ class DatabaseKV(Logger):
         """
         return list(self._tables[self.USER_DATA_KEY].values())
 
-    async def get_reminders_for_user(self, user_id: int) -> list[ReminderKVModel]:
+    async def get_reminders_for_user(self, user_id: int) -> list[ReminderKV]:
         """Get all reminders set for a given user.
 
         Parameters
@@ -225,7 +225,7 @@ class DatabaseKV(Logger):
         """
         return list(filter(lambda r: r.user_id == user_id, await self.get_reminders()))
 
-    async def remove_reminder(self, reminder_id: int) -> ReminderKVModel:
+    async def remove_reminder(self, reminder_id: int) -> ReminderKV:
         """Remove a reminder from the database.
 
         Parameters
@@ -248,7 +248,7 @@ class DatabaseKV(Logger):
             await self._save_database()
             return removed_reminder
 
-    async def remove_user(self, user_id: int) -> UserKVModel:
+    async def remove_user(self, user_id: int) -> UserKV:
         """Remove a user from the database.
 
         Parameters
@@ -271,7 +271,7 @@ class DatabaseKV(Logger):
             await self._save_database()
             return removed_user
 
-    async def update_user(self, user_id: int, field: str, value: str) -> UserKVModel:
+    async def update_user(self, user_id: int, field: str, value: str) -> UserKV:
         """Update a user in the database.
 
         Parameters
@@ -289,7 +289,7 @@ class DatabaseKV(Logger):
             The user that was updated in the database.
 
         """
-        if field not in [f.name for f in fields(UserKVModel)]:
+        if field not in [f.name for f in fields(UserKV)]:
             msg = f"{field} is an unknown field"
             raise ValueError(msg)
         user = await self.get_user(user_id)

@@ -8,7 +8,7 @@ from feedparser import FeedParserDict
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
-from slashbot.core.database.models import WatchedMovie
+from slashbot.core.database.sql_models import WatchedMovieSQL
 from slashbot.settings import BotSettings
 
 
@@ -17,7 +17,7 @@ class MovieTracker(CustomCog):
 
     async def _add_watched_movie_to_database(
         self, letterboxd_username: str, movie_entry: FeedParserDict
-    ) -> WatchedMovie:
+    ) -> WatchedMovieSQL:
         """Add a RSS feed movie entry into the database.
 
         Parameters
@@ -44,7 +44,7 @@ class MovieTracker(CustomCog):
         watched_date_str = movie_entry.get("letterboxd_watcheddate", None)
         watched_date = datetime.datetime.strptime(watched_date_str, r"%Y-%m-%d") if watched_date_str else None  # type: ignore # noqa: DTZ007
 
-        movie = WatchedMovie(
+        movie = WatchedMovieSQL(
             user_id=user_db.id,
             username=letterboxd_username,
             title=movie_entry["letterboxd_filmtitle"],
@@ -110,7 +110,7 @@ class MovieTracker(CustomCog):
 
         return channels
 
-    def _create_watched_movie_embed(self, discord_user: disnake.User, watched_movie: WatchedMovie) -> disnake.Embed:
+    def _create_watched_movie_embed(self, discord_user: disnake.User, watched_movie: WatchedMovieSQL) -> disnake.Embed:
         """Create an embed instance for a watched movie and user.
 
         Parameters
@@ -141,7 +141,7 @@ class MovieTracker(CustomCog):
 
         return embed
 
-    async def get_most_recent_movie_watched(self, letterboxd_usernames: list[str] | str) -> dict[str, WatchedMovie]:
+    async def get_most_recent_movie_watched(self, letterboxd_usernames: list[str] | str) -> dict[str, WatchedMovieSQL]:
         """Get the latest watched movies for some Letterboxd users.
 
         This will return only the latest movie for the user. Therefore if a user

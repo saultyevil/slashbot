@@ -4,63 +4,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from slashbot.core.database.base_sql import BaseDatabaseSQL
-from slashbot.core.database.models import Reminder, User, WatchedMovie
+from slashbot.core.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
 
 
-class Database(BaseDatabaseSQL):
+class DatabaseSQL(BaseDatabaseSQL):
     """Main database for storing user information."""
 
-    async def update_row(self, model: User | Reminder | WatchedMovie) -> User | Reminder | WatchedMovie:
-        """Add a new row to the database.
-
-        Parameters
-        ----------
-        model : User | Reminder | WatchedMovie
-            An SQLAlchemy ORM object representing the row to either add or
-            update.
-
-        Returns
-        -------
-        User | Reminder | WatchedMovie
-            The updated instance, e.g. with primary key.
-
-        """
-        if not isinstance(model, User | Reminder | WatchedMovie):
-            exc_msg = f"Unknown model '{type(model)}' for database"
-            raise TypeError(exc_msg)
-        async with self._get_async_session() as session:
-            try:
-                session.add(model)
-                await session.commit()
-                await session.refresh(model)
-            except IntegrityError as exc:
-                await session.rollback()
-                self.log_error(
-                    "Integrity error when adding %s to %s: %s", type(model).__name__, model.__tablename__, exc
-                )
-                raise
-            else:
-                return model
-
-    async def delete_row(self, model: User | Reminder | WatchedMovie) -> None:
-        """Remove a row from the database.
-
-        Parameters
-        ----------
-        model : User | Reminder | WatchedMovie
-            An SQLAlchemy ORM object representing the row to remove.
-
-        """
-        model_cls = type(model)
-        pk_cols = [col.name for col in model_cls.__table__.primary_key.columns]
-        filters = [getattr(model_cls, col) == getattr(model, col) for col in pk_cols]
-        async with self._get_async_session() as session:
-            await session.execute(
-                delete(model_cls).where(*filters),
-            )
-            await session.commit()
-
-    async def add_watched_movie(self, movie: WatchedMovie) -> WatchedMovie:
+    async def add_watched_movie(self, movie: WatchedMovieSQL) -> WatchedMovieSQL:
         """Add a watched movie to the database.
 
         Parameters
@@ -86,7 +36,7 @@ class Database(BaseDatabaseSQL):
             else:
                 return movie
 
-    async def add_reminder(self, reminder: Reminder) -> Reminder:
+    async def add_reminder(self, reminder: ReminderSQL) -> ReminderSQL:
         """Add a reminder to the database.
 
         Parameters
@@ -112,7 +62,7 @@ class Database(BaseDatabaseSQL):
             else:
                 return reminder
 
-    async def add_user(self, user: User) -> User:
+    async def add_user(self, user: UserSQL) -> UserSQL:
         """Add a user to the database.
 
         Parameters
@@ -149,7 +99,7 @@ class Database(BaseDatabaseSQL):
         """
         async with self._get_async_session() as session:
             await session.execute(
-                delete(Reminder).where(Reminder.id == reminder_id),
+                delete(ReminderSQL).where(ReminderSQL.id == reminder_id),
             )
             await session.commit()
 
@@ -164,11 +114,11 @@ class Database(BaseDatabaseSQL):
         """
         async with self._get_async_session() as session:
             await session.execute(
-                select(User).where(User.id == user_id),
+                select(UserSQL).where(UserSQL.id == user_id),
             )
             await session.commit()
 
-    async def get_all_reminders(self, *, include_stale: bool = False) -> list[Reminder]:
+    async def get_all_reminders(self, *, include_stale: bool = False) -> list[ReminderSQL]:
         """Get all reminders in the database.
 
         Parameters
@@ -186,16 +136,16 @@ class Database(BaseDatabaseSQL):
         """
         async with self._get_async_session() as session:
             statement = (
-                select(Reminder)
+                select(ReminderSQL)
                 if include_stale
-                else select(Reminder).where(
-                    Reminder.notified == False,  # noqa: E712
+                else select(ReminderSQL).where(
+                    ReminderSQL.notified == False,  # noqa: E712
                 )
             )
             result = await session.execute(statement)
             return list(result.scalars().all())
 
-    async def get_all_users(self) -> list[User]:
+    async def get_all_users(self) -> list[UserSQL]:
         """Get all users in the database.
 
         Returns
@@ -209,13 +159,13 @@ class Database(BaseDatabaseSQL):
                 (
                     await session.execute(
                         select(
-                            User,
+                            UserSQL,
                         )
                     )
                 ).scalars()
             )
 
-    async def get_reminder(self, reminder_id: int) -> Reminder | None:
+    async def get_reminder(self, reminder_id: int) -> ReminderSQL | None:
         """Get a reminder from the database.
 
         Parameters
@@ -233,11 +183,11 @@ class Database(BaseDatabaseSQL):
         async with self._get_async_session() as session:
             return (
                 await session.execute(
-                    select(Reminder).where(Reminder.id == reminder_id),
+                    select(ReminderSQL).where(ReminderSQL.id == reminder_id),
                 )
             ).scalar_one_or_none()
 
-    async def get_user_by_id(self, user_id: int) -> User | None:
+    async def get_user_by_id(self, user_id: int) -> UserSQL | None:
         """Get a user by their ID in the database.
 
         Parameters
@@ -255,11 +205,11 @@ class Database(BaseDatabaseSQL):
         async with self._get_async_session() as session:
             return (
                 await session.execute(
-                    select(User).where(User.id == user_id),
+                    select(UserSQL).where(UserSQL.id == user_id),
                 )
             ).scalar_one_or_none()
 
-    async def get_user_by_discord_id(self, discord_id: int) -> User | None:
+    async def get_user_by_discord_id(self, discord_id: int) -> UserSQL | None:
         """Get a user by their Discord ID.
 
         Parameters
@@ -277,11 +227,11 @@ class Database(BaseDatabaseSQL):
         async with self._get_async_session() as session:
             return (
                 await session.execute(
-                    select(User).where(User.discord_id == discord_id),
+                    select(UserSQL).where(UserSQL.discord_id == discord_id),
                 )
             ).scalar_one_or_none()
 
-    async def get_user_by_letterboxd_username(self, username: str) -> User | None:
+    async def get_user_by_letterboxd_username(self, username: str) -> UserSQL | None:
         """Get a user by their Letterboxd user.
 
         Parameters
@@ -299,11 +249,11 @@ class Database(BaseDatabaseSQL):
         async with self._get_async_session() as session:
             return (
                 await session.execute(
-                    select(User).where(User.letterboxd_user == username),
+                    select(UserSQL).where(UserSQL.letterboxd_user == username),
                 )
             ).scalar_one_or_none()
 
-    async def get_user_by_username(self, username: str) -> User | None:
+    async def get_user_by_username(self, username: str) -> UserSQL | None:
         """Get a user by their username.
 
         Parameters
@@ -321,11 +271,11 @@ class Database(BaseDatabaseSQL):
         async with self._get_async_session() as session:
             return (
                 await session.execute(
-                    select(User).where(User.username == username),
+                    select(UserSQL).where(UserSQL.username == username),
                 )
             ).scalar_one_or_none()
 
-    async def get_users_reminders(self, discord_id: int, *, include_stale: bool = False) -> list[Reminder]:
+    async def get_users_reminders(self, discord_id: int, *, include_stale: bool = False) -> list[ReminderSQL]:
         """Get the active reminders for a user.
 
         Parameters
@@ -345,10 +295,10 @@ class Database(BaseDatabaseSQL):
         """
         async with self._get_async_session() as session:
             statement = (
-                select(Reminder).where(Reminder.user_id == discord_id)
+                select(ReminderSQL).where(ReminderSQL.user_id == discord_id)
                 if include_stale
-                else select(Reminder).where(
-                    Reminder.notified == False and Reminder.user_id == discord_id,  # noqa: E712
+                else select(ReminderSQL).where(
+                    ReminderSQL.notified == False and ReminderSQL.user_id == discord_id,  # noqa: E712
                 )
             )
             result = await session.execute(statement)
@@ -366,7 +316,7 @@ class Database(BaseDatabaseSQL):
         async with self._get_async_session() as session:
             reminder = (
                 await session.execute(
-                    select(Reminder).where(Reminder.id == reminder_id),
+                    select(ReminderSQL).where(ReminderSQL.id == reminder_id),
                 )
             ).scalar_one_or_none()
             if not reminder:
@@ -377,7 +327,7 @@ class Database(BaseDatabaseSQL):
             await session.commit()
             await session.refresh(reminder)
 
-    async def update_user_by_discord_id(self, discord_id: int, field: str, value: Any) -> User:
+    async def update_user_by_discord_id(self, discord_id: int, field: str, value: Any) -> UserSQL:
         """Update a field for a user.
 
         Parameters
@@ -395,7 +345,7 @@ class Database(BaseDatabaseSQL):
             The updated user.
 
         """
-        if field not in User.__table__.columns:
+        if field not in UserSQL.__table__.columns:
             msg = f"{field} is not a valid attribute for a user"
             raise ValueError(msg)
         user = await self.get_user_by_discord_id(discord_id)
@@ -409,7 +359,7 @@ class Database(BaseDatabaseSQL):
             await session.refresh(user)
         return user
 
-    async def get_letterboxd_users(self) -> list[User]:
+    async def get_letterboxd_users(self) -> list[UserSQL]:
         """Get a list of users with Letterboxd accounts.
 
         Returns
@@ -423,23 +373,23 @@ class Database(BaseDatabaseSQL):
                 (
                     await session.execute(
                         select(
-                            User,
-                        ).where(User.letterboxd_user != None)  # noqa: E711
+                            UserSQL,
+                        ).where(UserSQL.letterboxd_user != None)  # noqa: E711
                     )
                 ).scalars()
             )
 
-    async def get_last_movie_for_user(self, letterboxd_username: str) -> WatchedMovie | None:
+    async def get_last_movie_for_user(self, letterboxd_username: str) -> WatchedMovieSQL | None:
         """Get the last movie a user logged on Letterboxd."""
         async with self._get_async_session() as session:
             return (
                 await session.execute(
-                    select(WatchedMovie)
-                    .join(User, WatchedMovie.user_id == User.id)
-                    .where(User.letterboxd_user == letterboxd_username)
+                    select(WatchedMovieSQL)
+                    .join(UserSQL, WatchedMovieSQL.user_id == UserSQL.id)
+                    .where(UserSQL.letterboxd_user == letterboxd_username)
                     .order_by(
-                        WatchedMovie.watched_date.desc(),
-                        WatchedMovie.id.desc(),  # Order by PK as tiebreaker
+                        WatchedMovieSQL.watched_date.desc(),
+                        WatchedMovieSQL.id.desc(),  # Order by PK as tiebreaker
                     )
                     .limit(1)
                 )

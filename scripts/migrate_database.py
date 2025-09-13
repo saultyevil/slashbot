@@ -31,7 +31,7 @@ async def main():
         content = reminder["reminder"]
         tagged_users = reminder["tagged_users"]
 
-        new_reminder = new_database.ReminderKVModel(user_id, channel_id, date, content, tagged_users)
+        new_reminder = new_database.ReminderKV(user_id, channel_id, date, content, tagged_users)
         await db_new.add_reminder(new_reminder)
 
     print(await db_new.get_reminders())

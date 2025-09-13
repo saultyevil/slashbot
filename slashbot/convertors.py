@@ -1,7 +1,7 @@
 from typing import Any
 
 from slashbot.bot.custom_types import ApplicationCommandInteraction
-from slashbot.core.database import User
+from slashbot.core.database import UserSQL
 
 
 def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any) -> Any:
@@ -62,7 +62,7 @@ async def get_user_reminders(inter: ApplicationCommandInteraction, _: str) -> li
     user = await inter.bot.db.get_user_by_discord_id(inter.author.id)  # type: ignore
     if not user:
         user = await inter.bot.db.add_user(  # type: ignore
-            User(
+            UserSQL(
                 discord_id=inter.author.id,
                 username=inter.author.name,
             ),

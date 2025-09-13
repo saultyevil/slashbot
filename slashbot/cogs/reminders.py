@@ -12,7 +12,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import get_user_reminders
-from slashbot.core.database import Reminder, User
+from slashbot.core.database import ReminderSQL, UserSQL
 
 
 class Reminders(CustomCog):
@@ -204,7 +204,7 @@ class Reminders(CustomCog):
         tagged_users, reminder_content = await self.replace_mentions_with_display_names(inter.guild, reminder_content)
 
         await self.db.add_reminder(
-            Reminder(
+            ReminderSQL(
                 user_id=inter.author.id,
                 channel_id=inter.channel.id,
                 date=reminder_date.astimezone(datetime.UTC),
@@ -268,7 +268,7 @@ class Reminders(CustomCog):
         user = await self.db.get_user_by_discord_id(inter.author.id)
         if not user:
             user = await self.db.add_user(
-                User(
+                UserSQL(
                     discord_id=inter.author.id,
                     username=inter.author.name,
                 )
