@@ -8,7 +8,7 @@ import datetime
 import json
 
 import disnake
-import requests
+import httpx
 from disnake.ext import commands
 from geopy import GoogleV3
 from geopy.location import Location
@@ -213,7 +213,7 @@ class Weather(CustomCog):
 
         return embed
 
-    def call_api(self, location: str, units: str, forecast_type: str | list | tuple) -> tuple[str, dict]:
+    async def _call_api(self, location: str, units: str, forecast_type: str | list | tuple) -> tuple[str, dict]:
         """Query the OpenWeatherMap API for the weather.
 
         Parameters
@@ -250,12 +250,13 @@ class Weather(CustomCog):
         location_string += f"\n({lat}, {lon})"
         api_units = "metric" if units == "mixed" else units
 
-        weather_response = requests.get(
-            f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={BotSettings.keys.openweathermap}",
-            timeout=5,
-        )
-        if weather_response.status_code != requests.codes.ok:
-            if weather_response.status_code == requests.codes.not_found:
+        async with httpx.AsyncClient() as client:
+            weather_response = await client.get(
+                f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&units={api_units}&exclude=minutely&appid={BotSettings.keys.openweathermap}",
+                timeout=5,
+            )
+        if weather_response.status_code != httpx.codes.OK:
+            if weather_response.status_code == httpx.codes.NOT_FOUND:
                 msg = f"{location} could not be found"
                 self.log_error("%s", msg)
                 raise LocationNotFoundError(msg)
@@ -324,11 +325,11 @@ class Weather(CustomCog):
                 raise NoLocationProvidedError(exc_msg)
 
         try:
-            location, forecast = self.call_api(location, units, request_type)
+            location, forecast = await self._call_api(location, units, request_type)
         except (LocationNotFoundError, GeocodeError):
             await deferred_error_response(inter, f"Unable to find the location '{location.capitalize()}'.")
             raise
-        except (OneCallError, requests.Timeout):
+        except (OneCallError, httpx.TimeoutException):
             await deferred_error_response(inter, "Open Weather Map did not respond to the request.")
             raise
 
@@ -484,7 +485,7 @@ class Weather(CustomCog):
             location, forecast = await self.get_weather_forecast_for_location(
                 inter, user_location, units, forecast_type
             )
-        except (NoLocationProvidedError, LocationNotFoundError, GeocodeError, OneCallError, requests.Timeout):
+        except (NoLocationProvidedError, LocationNotFoundError, GeocodeError, OneCallError, httpx.TimeoutException):
             return
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
@@ -531,7 +532,7 @@ class Weather(CustomCog):
             location, weather_return = await self.get_weather_forecast_for_location(
                 inter, user_location, units, ["current", "daily", "alerts"]
             )
-        except (NoLocationProvidedError, LocationNotFoundError, GeocodeError, OneCallError, requests.Timeout):
+        except (NoLocationProvidedError, LocationNotFoundError, GeocodeError, OneCallError, httpx.TimeoutException):
             return
 
         embed = disnake.Embed(title=f"{location}", color=disnake.Color.default())
