@@ -8,7 +8,7 @@ from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
 
-from slashbot.core.logger import Logger
+from slashbot.logger import Logger
 
 
 class FirefoxWebScraper(Logger):

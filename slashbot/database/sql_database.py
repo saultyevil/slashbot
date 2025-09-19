@@ -2,8 +2,8 @@ from typing import Any
 
 from sqlalchemy import select
 
-from slashbot.core.database.base_sql import BaseDatabaseSQL
-from slashbot.core.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
+from slashbot.database.base_sql import BaseDatabaseSQL
+from slashbot.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
 
 
 class DatabaseSQL(BaseDatabaseSQL):

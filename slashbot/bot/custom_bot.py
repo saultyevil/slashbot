@@ -5,9 +5,9 @@ from typing import Any
 
 from disnake.ext.commands import InteractionBot
 
-from slashbot.core import markov
-from slashbot.core.database import DatabaseSQL, DeclarativeBase
-from slashbot.core.logger import Logger
+from slashbot import markov
+from slashbot.database import DatabaseSQL, DeclarativeBase
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
 

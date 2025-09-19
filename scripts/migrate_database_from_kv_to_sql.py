@@ -2,8 +2,8 @@ import asyncio
 import datetime
 from pathlib import Path
 
-from slashbot.core.database import DatabaseKV, DatabaseSQL, ReminderSQL, UserSQL
-from slashbot.core.logger import setup_logging
+from slashbot.database import DatabaseKV, DatabaseSQL, ReminderSQL, UserSQL
+from slashbot.logger import setup_logging
 from slashbot.settings import BotSettings
 
 setup_logging()

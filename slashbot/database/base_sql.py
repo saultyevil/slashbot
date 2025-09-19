@@ -8,8 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeMeta
 
-from slashbot.core.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
-from slashbot.core.logger import Logger
+from slashbot.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
+from slashbot.logger import Logger
 
 
 class BaseDatabaseSQL(Logger):

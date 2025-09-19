@@ -4,14 +4,14 @@ import logging.handlers
 from abc import ABCMeta, abstractmethod
 from typing import Any
 
-from slashbot.core.ai.models import (
+from slashbot.ai.models import (
     TextGenerationInput,
     TextGenerationResponse,
     VisionImage,
     VisionVideo,
 )
-from slashbot.core.ai.prompts import read_in_prompt
-from slashbot.core.logger import Logger
+from slashbot.ai.prompts import read_in_prompt
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
 

@@ -1,9 +1,9 @@
 from typing import cast
 
-from slashbot.core.ai.clients.gemini_client import GeminiClient
-from slashbot.core.ai.clients.openai_client import OpenAIClient
-from slashbot.core.ai.models import TextGenerationInput, TextGenerationResponse
-from slashbot.core.logger import Logger
+from slashbot.ai.clients.gemini_client import GeminiClient
+from slashbot.ai.clients.openai_client import OpenAIClient
+from slashbot.ai.models import TextGenerationInput, TextGenerationResponse
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
 

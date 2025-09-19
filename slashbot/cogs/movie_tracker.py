@@ -8,7 +8,7 @@ from feedparser import FeedParserDict
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
-from slashbot.core.database.sql_models import WatchedMovieSQL
+from slashbot.database.sql_models import WatchedMovieSQL
 from slashbot.settings import BotSettings
 
 

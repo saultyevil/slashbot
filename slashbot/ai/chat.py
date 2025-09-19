@@ -1,5 +1,5 @@
-from slashbot.core.ai.models import TextGenerationInput
-from slashbot.core.ai.text_generator import TextGenerator
+from slashbot.ai.models import TextGenerationInput
+from slashbot.ai.text_generator import TextGenerator
 
 
 class AIChat(TextGenerator):

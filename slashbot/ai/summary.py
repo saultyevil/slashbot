@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from slashbot.core.ai import GenerationFailureError, TextGenerationInput
-from slashbot.core.ai.prompts import read_in_prompt
-from slashbot.core.ai.text_generator import TextGenerator
+from slashbot.ai import GenerationFailureError, TextGenerationInput
+from slashbot.ai.prompts import read_in_prompt
+from slashbot.ai.text_generator import TextGenerator
 
 
 @dataclass

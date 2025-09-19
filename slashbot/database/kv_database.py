@@ -6,8 +6,8 @@ from pathlib import Path
 
 import aiofiles
 
-from slashbot.core.database.kv_models import ReminderKV, UserKV
-from slashbot.core.logger import Logger
+from slashbot.database.kv_models import ReminderKV, UserKV
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
 

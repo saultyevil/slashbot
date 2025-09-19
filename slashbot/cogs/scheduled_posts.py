@@ -12,7 +12,7 @@ import slashbot.watchers
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.clock import calculate_seconds_until
-from slashbot.core.markov import generate_text_from_markov_chain
+from slashbot.markov import generate_text_from_markov_chain
 from slashbot.settings import BotSettings
 from slashbot.validation import ScheduledPost
 from slashbot.watchers import ScheduledPostWatcher

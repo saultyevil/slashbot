@@ -3,10 +3,10 @@ import asyncio
 import disnake
 from disnake.ext import commands, tasks
 
+from slashbot import markov
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.clock import calculate_seconds_until
-from slashbot.core import markov
 from slashbot.settings import BotSettings
 
 

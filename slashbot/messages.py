@@ -1,7 +1,7 @@
 """Module for general purpose message handling."""
 
 from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
-from slashbot.core.logger import Logger
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
 LOGGER = Logger()

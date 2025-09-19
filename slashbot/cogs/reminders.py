@@ -12,7 +12,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import get_user_reminders
-from slashbot.core.database import ReminderSQL, UserSQL
+from slashbot.database import ReminderSQL, UserSQL
 
 
 class Reminders(CustomCog):

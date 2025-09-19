@@ -3,7 +3,7 @@ import shutil
 
 import git
 
-from slashbot.core.logger import Logger
+from slashbot.logger import Logger
 
 logger = Logger()
 

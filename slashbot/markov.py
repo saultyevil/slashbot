@@ -17,8 +17,8 @@ from textwrap import shorten
 import markovify
 
 from slashbot.bot.custom_types import ApplicationCommandInteraction
-from slashbot.core.logger import Logger
 from slashbot.errors import deferred_error_response
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
 LOGGER = Logger()

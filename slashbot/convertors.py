@@ -1,7 +1,7 @@
 from typing import Any
 
 from slashbot.bot.custom_types import ApplicationCommandInteraction
-from slashbot.core.database import UserSQL
+from slashbot.database import UserSQL
 
 
 def convert_string_to_lower(_inter: ApplicationCommandInteraction, variable: Any) -> Any:

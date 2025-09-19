@@ -13,12 +13,8 @@ from disnake.ext import commands
 from pyinstrument import Profiler
 
 import slashbot.watchers
-from slashbot.bot.custom_bot import CustomInteractionBot
-from slashbot.bot.custom_cog import CustomCog
-from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
-from slashbot.core import markov
-from slashbot.core.ai import (
+from slashbot import markov
+from slashbot.ai import (
     SUPPORTED_MODELS,
     AIChat,
     AIChatSummary,
@@ -29,6 +25,10 @@ from slashbot.core.ai import (
     VisionVideo,
     read_in_prompt,
 )
+from slashbot.bot.custom_bot import CustomInteractionBot
+from slashbot.bot.custom_cog import CustomCog
+from slashbot.bot.custom_command import slash_command_with_cooldown
+from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.messages import send_message_to_channel
 from slashbot.responses import is_reply_to_slash_command_response
 from slashbot.settings import BotSettings

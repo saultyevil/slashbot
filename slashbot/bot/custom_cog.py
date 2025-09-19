@@ -6,10 +6,10 @@ import disnake
 from disnake.ext import tasks
 from disnake.ext.commands import Cog
 
+from slashbot import markov
 from slashbot.bot.custom_bot import CustomInteractionBot
-from slashbot.core import markov
-from slashbot.core.database import DatabaseSQL, DeclarativeBase, UserSQL
-from slashbot.core.logger import Logger
+from slashbot.database import DatabaseSQL, DeclarativeBase, UserSQL
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
 
