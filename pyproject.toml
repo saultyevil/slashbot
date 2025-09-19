@@ -40,6 +40,7 @@ nameparser = "^1.1.3"
 ddgs = "^9.5.4"
 feedparser = "^6.0.12"
 alembic = "^1.16.5"
+rule34-posts-wrapper = "^0.1.1.1"
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.13.2"
