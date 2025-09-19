@@ -16,7 +16,7 @@ class BaseDatabaseSQL(Logger):
     """Asynchronous database class, using SQLite."""
 
     def __init__(
-        self, database_location: str | Path, declarative_base: DeclarativeMeta, logger_label: str = "[DatabaseSQL]"
+        self, database_location: str | Path, declarative_base: DeclarativeMeta, logger_label: str = "[BaseDatabaseSQL]"
     ) -> None:
         """Initialize the database.
 
@@ -24,6 +24,8 @@ class BaseDatabaseSQL(Logger):
         ----------
         database_location : str | Path
             The location of the database on the file system.
+        declarative_base : DeclarativeMeta
+            Declarative base class for SQL models for this database.
         logger_label : str
             A label to prepend to all logging output to indicate where the
             log entry came from.
