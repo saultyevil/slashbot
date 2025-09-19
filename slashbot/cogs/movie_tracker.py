@@ -180,7 +180,12 @@ class MovieTracker(CustomCog):
                 # This is not a movie then, but probably a tv show
                 if "tmdb_movieid" not in movie_entry:
                     continue
-                new_movies_watched.append(await self._add_watched_movie_to_database(letterboxd_username, movie_entry))
+                try:
+                    new_movies_watched.append(
+                        await self._add_watched_movie_to_database(letterboxd_username, movie_entry)
+                    )
+                except Exception as exc:
+                    self.log_error("Failed to add %s: %s", title, exc)
 
             # If the user has just been added then there will be no last movie
             # watched. To avoid sending the last movie they watched before tracking
