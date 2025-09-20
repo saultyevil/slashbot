@@ -2,6 +2,7 @@ import logging
 import pathlib
 import textwrap
 from logging import FileHandler
+from pathlib import Path
 from typing import Any
 
 from slashbot.settings import BotSettings
@@ -61,18 +62,28 @@ def setup_logging() -> None:
 
     file_handler = FileHandler(
         filename=BotSettings.logging.log_location,
-        mode="a",
+        mode="w",
         encoding="utf-8",
     )
     file_handler.setFormatter(
-        logging.Formatter(
-            "%(asctime)s | %(levelname)s | %(message)s",
+        ConditionalFormatter(
+            "%(asctime)s | %(message)s",
             "%Y-%m-%d %H:%M:%S",
-        ),
+        )
     )
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.INFO)
     file_handler.set_name(USER_LOG_HANDLER_NAME)
     logger.addHandler(file_handler)
+
+    debug_handler = FileHandler(
+        filename=Path(BotSettings.logging.log_location).parent / "slashbot-debug.log",
+        mode="a",
+        encoding="utf-8",
+    )
+    debug_handler.setFormatter(formatter)
+    debug_handler.setLevel(logging.DEBUG)
+    debug_handler.set_name(DEBUG_FILE_LOG_HANDLER_NAME)
+    logger.addHandler(debug_handler)
 
     logger.info("Loaded config file %s", BotSettings.config_file)
 
@@ -237,7 +248,7 @@ class Logger:
 
         """
         for handler in self._logger.handlers:
-            if handler.name != USER_LOG_HANDLER_NAME:
+            if handler.name not in [USER_LOG_HANDLER_NAME, DEBUG_FILE_LOG_HANDLER_NAME]:
                 handler.setLevel(level)
 
     def get_last_error(self) -> str:
