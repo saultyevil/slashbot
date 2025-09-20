@@ -1,13 +1,16 @@
 import asyncio
 import datetime
+import logging
+import os
 import random
+import shutil
 from pathlib import Path
 
 import disnake
+import git
 from disnake.ext import commands
 from git.exc import GitCommandError
 
-from slashbot.admin import restart_bot, update_local_repository
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
@@ -15,6 +18,41 @@ from slashbot.bot.custom_types import ApplicationCommandInteraction
 from slashbot.settings import BotSettings
 
 JERMA_GIFS = list(Path("data/images").glob("jerma*.gif"))
+
+
+def restart_bot(arguments: list[str]) -> None:
+    """Restart the current process with the given arguments.
+
+    Parameters
+    ----------
+    arguments : list[str]
+        Additional arguments to pass to the new process.
+
+    """
+    logger = logging.getLogger(BotSettings.logging.logger_name)
+    poetry_executable = shutil.which("poetry")
+    if poetry_executable is None:
+        logger.error("Could not find the poetry executable")
+        return
+    command = [poetry_executable, "run", *arguments]
+    logger.info("Restarting with command %s", command)
+    os.execv(command[0], command)  # noqa: S606
+
+
+def update_local_repository(branch: str) -> None:
+    """Update the local git repository to `branch` and pull in changes.
+
+    Parameters
+    ----------
+    branch : str
+        The branch to switch to.
+
+    """
+    repo = git.Repo(".", search_parent_directories=True)
+    if repo.active_branch != branch:
+        target_branch = repo.heads[branch]
+        target_branch.checkout()
+    repo.remotes.origin.pull()
 
 
 def ordinal_suffix(n: int) -> str:
