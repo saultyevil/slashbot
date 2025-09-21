@@ -50,6 +50,7 @@ class MovieTracker(CustomCog):
             title=movie_entry["letterboxd_filmtitle"],
             film_year=movie_entry["letterboxd_filmyear"],
             user_rating=movie_entry.get("letterboxd_memberrating", None),
+            published_date=datetime.datetime.strptime(movie_entry["published"], "%a, %d %b %Y %H:%M:%S %z"),  # type: ignore
             watched_date=watched_date,
             tmdb_id=movie_entry["tmdb_movieid"],
             url=movie_entry["link"],
@@ -111,7 +112,7 @@ class MovieTracker(CustomCog):
 
         return channels
 
-    def _create_watched_movie_embed(self, discord_user: disnake.User, watched_movie: WatchedMovieSQL) -> disnake.Embed:
+    def _create_watched_movie_embed(self, watched_movie: WatchedMovieSQL) -> disnake.Embed:
         """Create an embed instance for a watched movie and user.
 
         Parameters
@@ -141,7 +142,9 @@ class MovieTracker(CustomCog):
 
         return embed
 
-    async def get_most_recent_movie_watched(self, letterboxd_usernames: list[str] | str) -> dict[str, WatchedMovieSQL]:
+    async def get_most_recent_movie_watched(
+        self, letterboxd_usernames: list[str] | str
+    ) -> dict[str, list[WatchedMovieSQL] | list]:
         """Get the latest watched movies for some Letterboxd users.
 
         This will return only the latest movie for the user. Therefore if a user
@@ -155,7 +158,7 @@ class MovieTracker(CustomCog):
 
         Returns
         -------
-        dict[str, list]
+        dict[str, list[WatchedMovieSQL] | list]
             A mapping of username to movies watched.
 
         """
@@ -170,6 +173,11 @@ class MovieTracker(CustomCog):
 
             new_movies_watched = []
             last_movie_watched = await self.db.get_last_movie_for_letterboxd_user(letterboxd_username)
+            self.log_debug(
+                "Last movie watched for %s is %s",
+                letterboxd_username,
+                last_movie_watched.__dict__ if last_movie_watched else None,
+            )
             last_movie_title = last_movie_watched.title if last_movie_watched else None
 
             for movie_entry in user_feed.entries:
@@ -184,8 +192,8 @@ class MovieTracker(CustomCog):
                     new_movies_watched.append(
                         await self._add_watched_movie_to_database(letterboxd_username, movie_entry)
                     )
-                except Exception as exc:
-                    self.log_error("Failed to add %s: %s", title, exc)
+                except Exception as exc:  # noqa: BLE001
+                    self.log_error("Failed to add movie %s for %s: %s", title, letterboxd_username, exc)
 
             # If the user has just been added then there will be no last movie
             # watched. To avoid sending the last movie they watched before tracking
@@ -195,7 +203,7 @@ class MovieTracker(CustomCog):
                 self.log_warning("%s has just been created, sending back empty watchlist", letterboxd_username)
             else:
                 results[letterboxd_username] = (
-                    new_movies_watched[0] if len(new_movies_watched) > 0 else []
+                    [new_movies_watched[0]] if len(new_movies_watched) > 0 else []
                 )  # Just return the latest one for now...
 
         return results
@@ -209,20 +217,24 @@ class MovieTracker(CustomCog):
         )
         if not new_movies_watched:
             return
-        self.log_debug("New movie watches: %s", new_movies_watched)
+        self.log_debug(
+            "New movies watched: %s",
+            [{user: [movie.__dict__ for movie in movies]} for user, movies in new_movies_watched.items()],
+        )
         channels = await self._get_channels()
         letterboxd_to_discord_map = {user.letterboxd_username: user.discord_id for user in letterboxd_users}
 
-        for letterboxd_username, watched_movie in new_movies_watched.items():
-            if not watched_movie:
+        for letterboxd_username, watched_movies in new_movies_watched.items():
+            if not watched_movies:
                 continue
             discord_user = await self.bot.fetch_user(letterboxd_to_discord_map[letterboxd_username])
-            embed = self._create_watched_movie_embed(discord_user, watched_movie)
+            for watched_movie in watched_movies:
+                embed = self._create_watched_movie_embed(watched_movie)
 
-            for channel in channels:
-                in_guild = channel.guild.get_member(discord_user.id)
-                if in_guild:
-                    await channel.send(embed=embed)
+                for channel in channels:
+                    in_guild = channel.guild.get_member(discord_user.id)
+                    if in_guild:
+                        await channel.send(embed=embed)
 
 
 def setup(bot: CustomInteractionBot) -> None:

@@ -49,6 +49,7 @@ class WatchedMovieSQL(DeclarativeBase):
     username: Mapped[str] = mapped_column(String(64))
     title: Mapped[str] = mapped_column(String(128))
     film_year: Mapped[int] = mapped_column(Integer)
+    published_date: Mapped[datetime.datetime] = mapped_column(DateTime)
     user_rating: Mapped[float] = mapped_column(Float, default=None, nullable=True)
     watched_date: Mapped[datetime.datetime] = mapped_column(DateTime, default=None, nullable=True)
     tmdb_id: Mapped[int] = mapped_column(Integer)
