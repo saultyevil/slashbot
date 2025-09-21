@@ -7,6 +7,24 @@ from typing import Any
 
 
 @dataclass
+class EnabledCogs:
+    """Settings for if a cog is enabled or not."""
+
+    admin: bool
+    artificial_intelligence: bool
+    markov: bool
+    movie_tracker: bool
+    reminders: bool
+    scheduled_posts: bool
+    spam: bool
+    spelling: bool
+    tools: bool
+    users: bool
+    videos: bool
+    weather: bool
+
+
+@dataclass
 class MovieTrackerSettings:
     """Settings for the movie tracker cog."""
 
@@ -48,7 +66,8 @@ class ArtificialIntelligenceSettings:
 class CogSettings:
     """Cog settings."""
 
-    spellcheck: SpellcheckSettings
+    enabled: EnabledCogs
+    spelling: SpellcheckSettings
     artificial_intelligence: ArtificialIntelligenceSettings
     movie_tracker: MovieTrackerSettings
 
@@ -160,10 +179,10 @@ class Settings:
         with config_path.open("rb") as f:
             data = tomllib.load(f)
 
-        spellcheck = SpellcheckSettings(
-            enabled=data["cogs"]["spellcheck"]["enabled"],
-            guilds=data["cogs"]["spellcheck"]["servers"],
-            custom_dictionary=data["cogs"]["spellcheck"]["custom_dictionary"],
+        spelling = SpellcheckSettings(
+            enabled=data["cogs"]["spelling"]["enabled"],
+            guilds=data["cogs"]["spelling"]["servers"],
+            custom_dictionary=data["cogs"]["spelling"]["custom_dictionary"],
         )
         artificial_intelligence = ArtificialIntelligenceSettings(
             token_window_size=data["cogs"]["artificial_intelligence"]["token_window_size"],
@@ -187,7 +206,23 @@ class Settings:
             channels=data["cogs"]["movie_tracker"]["channels"],
         )
         cogs = CogSettings(
-            spellcheck=spellcheck, artificial_intelligence=artificial_intelligence, movie_tracker=movie_tracker
+            enabled=EnabledCogs(
+                admin=data["cogs"]["admin"]["enabled"],
+                artificial_intelligence=data["cogs"]["artificial_intelligence"]["enabled"],
+                markov=data["cogs"]["admin"]["enabled"],
+                movie_tracker=data["cogs"]["admin"]["enabled"],
+                reminders=data["cogs"]["admin"]["enabled"],
+                scheduled_posts=data["cogs"]["admin"]["enabled"],
+                spam=data["cogs"]["admin"]["enabled"],
+                spelling=data["cogs"]["admin"]["enabled"],
+                tools=data["cogs"]["admin"]["enabled"],
+                users=data["cogs"]["admin"]["enabled"],
+                videos=data["cogs"]["admin"]["enabled"],
+                weather=data["cogs"]["admin"]["enabled"],
+            ),
+            spelling=spelling,
+            artificial_intelligence=artificial_intelligence,
+            movie_tracker=movie_tracker,
         )
         cooldown = CommandCooldownSettings(
             rate=data["cooldown"]["rate"],

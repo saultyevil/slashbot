@@ -7,6 +7,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import convert_string_to_lower
+from slashbot.settings import BotSettings
 
 USER_OPTIONS = [
     disnake.OptionChoice("City", "city"),
@@ -107,4 +108,6 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.users:
+        return
     bot.add_cog(Users(bot))

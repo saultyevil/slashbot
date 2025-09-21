@@ -13,6 +13,7 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import get_user_reminders
 from slashbot.database import ReminderSQL, UserSQL
+from slashbot.settings import BotSettings
 
 
 class Reminders(CustomCog):
@@ -304,4 +305,6 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.reminders:
+        return
     bot.add_cog(Reminders(bot))

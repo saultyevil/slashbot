@@ -120,4 +120,6 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.tools:
+        return
     bot.add_cog(Tools(bot))

@@ -9,6 +9,7 @@ import disnake
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
+from slashbot.settings import BotSettings
 
 
 class Videos(CustomCog):
@@ -95,4 +96,6 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.videos:
+        return
     bot.add_cog(Videos(bot))

@@ -438,4 +438,6 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.admin:
+        return
     bot.add_cog(AdminTools(bot))

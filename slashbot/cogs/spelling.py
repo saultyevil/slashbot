@@ -17,7 +17,7 @@ from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.clock import calculate_seconds_until
 from slashbot.settings import BotSettings
 
-SPELLING_GUILDS = [int(guild_id) for guild_id in BotSettings.cogs.spellcheck.guilds]
+SPELLING_GUILDS = [int(guild_id) for guild_id in BotSettings.cogs.spelling.guilds]
 
 
 @dataclass
@@ -111,7 +111,7 @@ class SpellCheck(CustomCog):
             await inter.response.send_message(f"The word '{word}' is already in the dictionary.", ephemeral=True)
             return
         self.custom_words.append(word_lower)
-        async with aiofiles.open(BotSettings.cogs.spellcheck.custom_dictionary, "w", encoding="utf-8") as file_out:
+        async with aiofiles.open(BotSettings.cogs.spelling.custom_dictionary, "w", encoding="utf-8") as file_out:
             await file_out.write("\n".join(self.custom_words))
 
         await inter.response.send_message(f"Added '{word_lower}' to dictionary.", ephemeral=True)
@@ -146,7 +146,7 @@ class SpellCheck(CustomCog):
             await inter.response.send_message(f"The word '{word}' is not in the dictionary.", ephemeral=True)
             return
         self.custom_words.remove(word_lower)
-        async with aiofiles.open(BotSettings.cogs.spellcheck.custom_dictionary, "w", encoding="utf-8") as file_out:
+        async with aiofiles.open(BotSettings.cogs.spelling.custom_dictionary, "w", encoding="utf-8") as file_out:
             await file_out.write("\n".join(self.custom_words))
 
         await inter.response.send_message(f"Removed '{word_lower}' from dictionary.", ephemeral=True)
@@ -163,10 +163,10 @@ class SpellCheck(CustomCog):
 
         """
         try:
-            with Path(BotSettings.cogs.spellcheck.custom_dictionary).open(encoding="utf-8") as file_in:
+            with Path(BotSettings.cogs.spelling.custom_dictionary).open(encoding="utf-8") as file_in:
                 return list({line.strip() for line in file_in})
         except OSError:
-            self.log_exception("No dictionary found at %s", BotSettings.cogs.spellcheck.custom_dictionary)
+            self.log_exception("No dictionary found at %s", BotSettings.cogs.spelling.custom_dictionary)
             return []
 
     @staticmethod
@@ -208,14 +208,14 @@ class SpellCheck(CustomCog):
             The message to check.
 
         """
-        if not BotSettings.cogs.spellcheck.enabled:
+        if not BotSettings.cogs.spelling.enabled:
             return
         if not message.guild or message.author.bot:
             return
         guild_key = str(message.guild.id)
-        if guild_key not in BotSettings.cogs.spellcheck.guilds:
+        if guild_key not in BotSettings.cogs.spelling.guilds:
             return
-        if message.author.id not in BotSettings.cogs.spellcheck.guilds[guild_key]["users"]:
+        if message.author.id not in BotSettings.cogs.spelling.guilds[guild_key]["users"]:
             return
 
         cleaned_content = self.cleanup_message(message.content)
@@ -230,7 +230,7 @@ class SpellCheck(CustomCog):
 
         The summary will be in a single message. This will run everyday at 5pm.
         """
-        if not BotSettings.cogs.spellcheck.enabled:
+        if not BotSettings.cogs.spelling.enabled:
             return
 
         sleep_time = calculate_seconds_until(weekday=-1, hour=17, minute=0, frequency_days=1)
@@ -280,7 +280,7 @@ class SpellCheck(CustomCog):
             if len(embeds) == 0:
                 continue
 
-            channel = await self.bot.fetch_channel(BotSettings.cogs.spellcheck.guilds[str(guild_id)]["post_channel"])
+            channel = await self.bot.fetch_channel(BotSettings.cogs.spelling.guilds[str(guild_id)]["post_channel"])
             if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
                 self.log_warning(
                     "Spelling summary has invalid channel %s for guild %s",
@@ -307,4 +307,6 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.spelling:
+        return
     bot.add_cog(SpellCheck(bot))

@@ -246,4 +246,6 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.movie_tracker:
+        return
     bot.add_cog(MovieTracker(bot))

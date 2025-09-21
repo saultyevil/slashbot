@@ -561,6 +561,8 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.weather:
+        return
     if BotSettings.keys.google and BotSettings.keys.openweathermap:
         bot.add_cog(Weather(bot))
     else:

@@ -107,4 +107,6 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.markov:
+        return
     bot.add_cog(Markov(bot))

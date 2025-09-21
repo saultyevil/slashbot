@@ -699,6 +699,8 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
+    if not BotSettings.cogs.enabled.artificial_intelligence:
+        return
     try:
         bot.add_cog(ArtificialIntelligence(bot))
     except:  # noqa: E722
