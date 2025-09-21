@@ -184,14 +184,7 @@ class DatabaseSQL(BaseDatabaseSQL):
                     .join(UserSQL, WatchedMovieSQL.user_id == UserSQL.id)
                     .where(UserSQL.letterboxd_username == username)
                     .order_by(
-                        # Order first by when the movie was watched, then the
-                        # published date.
-                        WatchedMovieSQL.watched_date.desc(),
                         WatchedMovieSQL.published_date.desc(),
-                        # Order by PK as tiebreaker. We have used an ascending
-                        # order because newer movies are will have a lower primary
-                        # key because of the order they are added
-                        WatchedMovieSQL.id.asc(),
                     )
                     .limit(1)
                 )

@@ -128,7 +128,7 @@ class MovieTracker(CustomCog):
             The created embed.
 
         """
-        embed = disnake.Embed(title=f"{watched_movie.username.capitalize()} watched a film", url=watched_movie.url)
+        embed = disnake.Embed(title=f"{watched_movie.username.capitalize()} added a film", url=watched_movie.url)
         embed.add_field(name="Film title", value=watched_movie.title, inline=False)
         embed.add_field(name="Release year", value=watched_movie.film_year, inline=False)
         if watched_movie.watched_date:
@@ -232,9 +232,9 @@ class MovieTracker(CustomCog):
                 embed = self._create_watched_movie_embed(watched_movie)
 
                 for channel in channels:
-                    in_guild = channel.guild.get_member(discord_user.id)
-                    if in_guild:
-                        await channel.send(embed=embed)
+                    # in_guild = channel.guild.get_member(discord_user.id)
+                    # if in_guild:
+                    await channel.send(embed=embed)
 
 
 def setup(bot: CustomInteractionBot) -> None:
