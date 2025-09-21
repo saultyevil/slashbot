@@ -17,6 +17,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.errors import deferred_error_response
+from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 
@@ -562,6 +563,7 @@ def setup(bot: CustomInteractionBot) -> None:
 
     """
     if not BotSettings.cogs.enabled.weather:
+        logger.log_warning("%s has been disabled in the configuration file", Weather.__cog_name__)
         return
     if BotSettings.keys.google and BotSettings.keys.openweathermap:
         bot.add_cog(Weather(bot))

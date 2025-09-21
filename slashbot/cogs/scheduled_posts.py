@@ -13,6 +13,7 @@ import slashbot.watchers
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.clock import calculate_seconds_until
+from slashbot.logger import logger
 from slashbot.markov import generate_text_from_markov_chain
 from slashbot.settings import BotSettings
 from slashbot.watchers import ScheduledPostWatcher
@@ -227,5 +228,6 @@ def setup(bot: CustomInteractionBot) -> None:
 
     """
     if not BotSettings.cogs.enabled.scheduled_posts:
+        logger.log_warning("%s has been disabled in the configuration file", ScheduledPosts.__cog_name__)
         return
     bot.add_cog(ScheduledPosts(bot))

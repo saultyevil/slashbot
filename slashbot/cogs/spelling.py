@@ -15,6 +15,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.clock import calculate_seconds_until
+from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 SPELLING_GUILDS = [int(guild_id) for guild_id in BotSettings.cogs.spelling.guilds]
@@ -28,7 +29,7 @@ class UserSpellCheck:
     incorrect: list[str]
 
 
-class SpellCheck(CustomCog):
+class Spelling(CustomCog):
     """A cog for bullying people.
 
     The purpose of this cog is to bully Pip for his poor spelling.
@@ -308,5 +309,6 @@ def setup(bot: CustomInteractionBot) -> None:
 
     """
     if not BotSettings.cogs.enabled.spelling:
+        logger.log_warning("%s has been disabled in the configuration file", Spelling.__cog_name__)
         return
-    bot.add_cog(SpellCheck(bot))
+    bot.add_cog(Spelling(bot))

@@ -82,6 +82,8 @@ class Slashbot:
             else:
                 bot.log_info("Bot reconnected")
 
+            bot.log_info("Available cogs: %s", list(bot.cogs.keys()))
+
         return on_ready
 
     def create_on_error(self, bot: CustomInteractionBot) -> Callable:

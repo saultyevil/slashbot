@@ -7,6 +7,7 @@ from slashbot import markov
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.clock import calculate_seconds_until
+from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 
@@ -108,5 +109,6 @@ def setup(bot: CustomInteractionBot) -> None:
 
     """
     if not BotSettings.cogs.enabled.markov:
+        logger.log_warning("%s has been disabled in the configuration file", Markov.__cog_name__)
         return
     bot.add_cog(Markov(bot))

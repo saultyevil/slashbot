@@ -29,6 +29,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.bot.custom_types import ApplicationCommandInteraction, InteractionReference, Message
+from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
@@ -700,6 +701,7 @@ def setup(bot: CustomInteractionBot) -> None:
 
     """
     if not BotSettings.cogs.enabled.artificial_intelligence:
+        logger.log_warning("%s has been disabled in the configuration file", ArtificialIntelligence.__cog_name__)
         return
     try:
         bot.add_cog(ArtificialIntelligence(bot))

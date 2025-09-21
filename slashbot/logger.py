@@ -271,3 +271,6 @@ class Logger:
             return ""
 
         return self._truncate_error_block(error_lines, limit=BotSettings.discord.max_chars)
+
+
+logger = Logger()

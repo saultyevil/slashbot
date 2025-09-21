@@ -9,6 +9,7 @@ from feedparser import FeedParserDict
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.database.sql_models import WatchedMovieSQL
+from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 
@@ -232,9 +233,9 @@ class MovieTracker(CustomCog):
                 embed = self._create_watched_movie_embed(watched_movie)
 
                 for channel in channels:
-                    # in_guild = channel.guild.get_member(discord_user.id)
-                    # if in_guild:
-                    await channel.send(embed=embed)
+                    in_guild = channel.guild.get_member(discord_user.id)
+                    if in_guild:
+                        await channel.send(embed=embed)
 
 
 def setup(bot: CustomInteractionBot) -> None:
@@ -247,5 +248,6 @@ def setup(bot: CustomInteractionBot) -> None:
 
     """
     if not BotSettings.cogs.enabled.movie_tracker:
+        logger.log_warning("%s has been disabled in the configuration file", MovieTracker.__cog_name__)
         return
     bot.add_cog(MovieTracker(bot))

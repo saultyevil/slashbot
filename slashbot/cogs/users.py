@@ -7,6 +7,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import convert_string_to_lower
+from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 USER_OPTIONS = [
@@ -17,7 +18,7 @@ USER_OPTIONS = [
 ]
 
 
-class Users(CustomCog):
+class UserInfo(CustomCog):
     """Cog for commands used to save user data."""
 
     # Commands -----------------------------------------------------------------
@@ -109,5 +110,6 @@ def setup(bot: CustomInteractionBot) -> None:
 
     """
     if not BotSettings.cogs.enabled.users:
+        logger.log_warning("%s has been disabled in the configuration file", UserInfo.__cog_name__)
         return
-    bot.add_cog(Users(bot))
+    bot.add_cog(UserInfo(bot))
