@@ -439,7 +439,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.admin:
+    if not BotSettings.cogs.admin.enabled:
         logger.log_warning("%s has been disabled in the configuration file", AdminTools.__cog_name__)
         return
     bot.add_cog(AdminTools(bot))

@@ -1,49 +1,75 @@
 import os
 import sys
 import tomllib
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
-@dataclass
-class EnabledCogs:
-    """Settings for if a cog is enabled or not."""
-
-    admin: bool
-    artificial_intelligence: bool
-    markov: bool
-    movie_tracker: bool
-    reminders: bool
-    scheduled_posts: bool
-    spam: bool
-    spelling: bool
-    tools: bool
-    users: bool
-    videos: bool
-    weather: bool
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class MovieTrackerSettings:
-    """Settings for the movie tracker cog."""
+class BaseCogSettings(BaseModel):
+    """Base class for settings for a cog.
 
-    update_interval: float
-    channels: list[int]
+    Attributes
+    ----------
+    enabled : bool
+        Whether the cog is enabled.
 
-
-@dataclass
-class SpellcheckSettings:
-    """Settings for the spellcheck cog."""
+    """
 
     enabled: bool
-    guilds: dict[str, Any]
-    custom_dictionary: str
 
 
-@dataclass
-class ArtificialIntelligenceSettings:
-    """Settings for LLM text generation."""
+class AdminCogSettings(BaseCogSettings):
+    """Settings for the admin cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the admin cog is enabled.
+
+    """
+
+
+class ChatBotCogSettings(BaseCogSettings):
+    """Settings for chatbot cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the chatbot cog is enabled.
+    token_window_size : int
+        Number of tokens to keep in context window.
+    max_images_in_window : int
+        Maximum number of images allowed in context window.
+    max_output_tokens : int
+        Maximum number of tokens in model output.
+    model_temperature : float
+        Sampling temperature for model generation.
+    model_top_p : float
+        Nucleus sampling parameter for model generation.
+    model_frequency_penalty : float
+        Penalty for frequent tokens in model output.
+    model_presence_penalty : float
+        Penalty for new tokens in model output.
+    default_model : str
+        Name of the default chat model to use.
+    default_chat_prompt : str
+        Default prompt for chat.
+    random_response_chance : float
+        Chance to send a random response.
+    random_response_use_n_messages : int
+        Number of messages to consider for random response.
+    response_rate_limit : int
+        Maximum responses to a user allowed per interval.
+    rate_limit_interval : int
+        Time interval for rate limiting (seconds).
+    enable_profiling : bool
+        Whether to enable profiling for chat response time.
+    prefer_image_urls : bool
+        Prefer using image URLs in request to chat API.
+
+    """
 
     token_window_size: int
     max_images_in_window: int
@@ -62,19 +88,191 @@ class ArtificialIntelligenceSettings:
     prefer_image_urls: bool
 
 
-@dataclass
-class CogSettings:
-    """Cog settings."""
+class MarkovCogSettings(BaseCogSettings):
+    """Settings for the markov cog.
 
-    enabled: EnabledCogs
-    spelling: SpellcheckSettings
-    artificial_intelligence: ArtificialIntelligenceSettings
-    movie_tracker: MovieTrackerSettings
+    Attributes
+    ----------
+    enabled : bool
+        Whether the markov cog is enabled.
+
+    """
 
 
-@dataclass
-class CommandCooldownSettings:
-    """Command cooldown settings."""
+class MovieTrackerCogSettings(BaseCogSettings):
+    """Settings for the movie tracker cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the movie tracker cog is enabled.
+    update_interval : float
+        Interval (minutes) between updates.
+    channels : list[int]
+        List of channel IDs to post updates to.
+
+    """
+
+    update_interval: float
+    channels: list[int]
+
+
+class RemindersCogSettings(BaseCogSettings):
+    """Settings for the reminders cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the reminders cog is enabled.
+
+    """
+
+
+class ScheduledPostsCogSettings(BaseCogSettings):
+    """Settings for the scheduled posts cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the scheduled posts cog is enabled.
+
+    """
+
+
+class SpamCogSettings(BaseCogSettings):
+    """Settings for the spam cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the spam cog is enabled.
+
+    """
+
+
+class SpellcheckCogSettings(BaseCogSettings):
+    """Settings for the spellcheck cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the spellcheck cog is enabled.
+    servers : dict[str, Any]
+        Dictionary of spellcheck servers and users in that server enabled for.
+    custom_dictionary : str
+        Path to custom dictionary file.
+
+    """
+
+    servers: dict[str, Any]
+    custom_dictionary: str
+
+
+class ToolsCogSettings(BaseCogSettings):
+    """Settings for the tools cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the tools cog is enabled.
+
+    """
+
+
+class UsersCogSettings(BaseCogSettings):
+    """Settings for the users cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the users cog is enabled.
+
+    """
+
+
+class VideosCogSettings(BaseCogSettings):
+    """Settings for the videos cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the videos cog is enabled.
+
+    """
+
+
+class WeatherCogSettings(BaseCogSettings):
+    """Settings for the weather cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the weather cog is enabled.
+
+    """
+
+
+class CogSettings(BaseModel):
+    """Cog settings.
+
+    Attributes
+    ----------
+    admin : AdminCogSettings
+        Settings for the admin cog.
+    chatbot : ChatBotCogSettings
+        Settings for the chatbot cog.
+    markov : MarkovCogSettings
+        Settings for the markov cog.
+    movie_tracker : MovieTrackerCogSettings
+        Settings for the movie tracker cog.
+    reminders : RemindersCogSettings
+        Settings for the reminders cog.
+    scheduled_posts : ScheduledPostsCogSettings
+        Settings for the scheduled posts cog.
+    spam : SpamCogSettings
+        Settings for the spam cog.
+    spelling : SpellcheckCogSettings
+        Settings for the spellcheck cog.
+    tools : ToolsCogSettings
+        Settings for the tools cog.
+    users : UsersCogSettings
+        Settings for the users cog.
+    videos : VideosCogSettings
+        Settings for the videos cog.
+    weather : WeatherCogSettings
+        Settings for the weather cog.
+
+    """
+
+    admin: AdminCogSettings
+    chatbot: ChatBotCogSettings
+    markov: MarkovCogSettings
+    movie_tracker: MovieTrackerCogSettings
+    reminders: RemindersCogSettings
+    scheduled_posts: ScheduledPostsCogSettings
+    spam: SpamCogSettings
+    spelling: SpellcheckCogSettings
+    tools: ToolsCogSettings
+    users: UsersCogSettings
+    videos: VideosCogSettings
+    weather: WeatherCogSettings
+
+
+class CooldownSettings(BaseModel):
+    """Command cooldown settings.
+
+    Attributes
+    ----------
+    rate : int
+        Number of allowed commands per interval.
+    standard : int
+        Standard cooldown time (seconds).
+    no_cooldown_users : list[int]
+        List of user IDs exempt from cooldown.
+    no_cooldown_servers : list[int]
+        List of server IDs exempt from cooldown.
+
+    """
 
     rate: int
     standard: int
@@ -82,43 +280,91 @@ class CommandCooldownSettings:
     no_cooldown_servers: list[int]
 
 
-@dataclass
-class UserIDs:
-    """User IDs."""
+class DiscordUserIds(BaseModel):
+    """User IDs.
+
+    Attributes
+    ----------
+    saultyevil : int
+        Discord user ID for saultyevil.
+    adam : int
+        Discord user ID for adam.
+    seventytwo : int
+        Discord user ID for seventytwo.
+
+    """
 
     saultyevil: int = 151378138612367360
     adam: int = 261097001301704704
     seventytwo: int = 176722208243187712
 
 
-@dataclass
-class ChannelIDs:
-    """Channel IDs."""
+class DiscordChannelIds(BaseModel):
+    """Channel IDs.
+
+    Attributes
+    ----------
+    idiots : int
+        Discord channel ID for idiots channel.
+
+    """
 
     idiots: int = 237647756049514498
 
 
-@dataclass
-class ServerIDs:
-    """Server IDs."""
+class DiscordServerIds(BaseModel):
+    """Server IDs.
+
+    Attributes
+    ----------
+    adult_children : int
+        Discord server ID for adult_children server.
+
+    """
 
     adult_children: int = 237647756049514498
 
 
-@dataclass
-class DiscordSettings:
-    """Discord specific settings."""
+class DiscordSettings(BaseModel):
+    """Discord specific settings.
+
+    Attributes
+    ----------
+    max_chars : int
+        Maximum number of characters allowed in a message.
+    development_servers : list[int]
+        List of server IDs for development.
+    users : DiscordUserIds
+        User IDs for Discord users.
+    channels : DiscordChannelIds
+        Channel IDs for Discord channels.
+    servers : DiscordServerIds
+        Server IDs for Discord servers.
+
+    """
 
     max_chars: int
     development_servers: list[int]
-    users: UserIDs = field(default_factory=UserIDs)
-    channels: ChannelIDs = field(default_factory=ChannelIDs)
-    servers: ServerIDs = field(default_factory=ServerIDs)
+    users: DiscordUserIds = Field(default_factory=DiscordUserIds)
+    channels: DiscordChannelIds = Field(default_factory=DiscordChannelIds)
+    servers: DiscordServerIds = Field(default_factory=DiscordServerIds)
 
 
-@dataclass
-class Files:
-    """File locations and settings."""
+class Files(BaseModel):
+    """File locations and settings.
+
+    Attributes
+    ----------
+    database : Path
+        Path to the database file.
+    bad_words : Path
+        Path to the bad words file.
+    god_words : Path
+        Path to the god words file.
+    scheduled_posts : Path
+        Path to the scheduled posts file.
+
+    """
 
     database: Path
     bad_words: Path
@@ -126,140 +372,134 @@ class Files:
     scheduled_posts: Path
 
 
-@dataclass
-class LoggingSettings:
-    """Logfile settings."""
+class LoggingSettings(BaseModel):
+    """Logfile settings.
+
+    Attributes
+    ----------
+    log_location : str
+        Path to the main log file.
+    debug_log_location : str
+        Path to the debug log file.
+    logger_name : str
+        Name of the logger.
+
+    """
 
     log_location: str = "logs/slashbot.log"
     debug_log_location: str = "logs/slashbot_debug.log"
     logger_name: str = "slashbot"
 
 
-@dataclass
-class MarkovSettings:
-    """Settings related to Markov generation."""
+class MarkovSettings(BaseModel):
+    """Settings related to Markov generation.
+
+    Attributes
+    ----------
+    enable_markov_training : bool
+        Whether Markov training is enabled.
+    enable_pregen_sentences : bool
+        Whether pregeneration of sentences is enabled.
+    num_pregen_sentences : int
+        Number of pregenerated sentences to generate.
+    pregenerate_limit : int
+        Minimum number of sentences allowed before pre-generating more.
+    current_chain_location : Path
+        Path to the current Markov chain file.
+
+    """
 
     enable_markov_training: bool
     enable_pregen_sentences: bool
     num_pregen_sentences: int
     pregenerate_limit: int
-    current_chain_location: str | Path = Path("data/markov/chain.pickle")
+    current_chain_location: Path = Path("data/markov/chain.pickle")
 
 
-@dataclass
-class KeyStore:
-    """Storage for API keys and the like."""
+class KeyStore(BaseModel):
+    """Storage for API keys and the like.
 
-    run_token = os.getenv("BOT_RUN_TOKEN")
-    development_token = os.getenv("BOT_DEVELOPMENT_TOKEN")
-    openai = os.getenv("BOT_OPENAI_API_KEY")
-    openweathermap = os.getenv("BOT_OWM_API_KEY")
-    google = os.getenv("BOT_GOOGLE_API_KEY")
-    wolframalpha = os.getenv("BOT_WOLFRAM_API_KEY")
-    gemini = os.getenv("BOT_GEMINI_API_KEY")
+    Attributes
+    ----------
+    run_token : str | None
+        Token for running the bot.
+    development_token : str | None
+        Token for development environment.
+    openai : str | None
+        OpenAI API key.
+    openweathermap : str | None
+        OpenWeatherMap API key.
+    google : str | None
+        Google API key.
+    wolframalpha : str | None
+        WolframAlpha API key.
+    gemini : str | None
+        Gemini API key.
+
+    """
+
+    run_token: str | None = os.getenv("BOT_RUN_TOKEN")
+    development_token: str | None = os.getenv("BOT_DEVELOPMENT_TOKEN")
+    openai: str | None = os.getenv("BOT_OPENAI_API_KEY")
+    openweathermap: str | None = os.getenv("BOT_OWM_API_KEY")
+    google: str | None = os.getenv("BOT_GOOGLE_API_KEY")
+    wolframalpha: str | None = os.getenv("BOT_WOLFRAM_API_KEY")
+    gemini: str | None = os.getenv("BOT_GEMINI_API_KEY")
 
 
-@dataclass
-class Settings:
-    """Global settings dataclass."""
+class Settings(BaseModel):
+    """Settings for the bot.
+
+    Attributes
+    ----------
+    config_file : str
+        The path to the config file.
+    cogs : CogSettings
+        Settings for each cog.
+    cooldown : CooldownSettings
+        Settings for controlling global command cooldown.
+    discord : DiscordSettings
+        Settings specific for the bot's interaction with Discord.
+    files : Files
+        Locations of important files.
+    logging : LoggingSettings
+        Settings which configure the logging.
+    markov : MarkovSettings
+        Settings for Markov chain generation.
+    key : KeyStore
+        API keys.
+
+    """
 
     config_file: str
     cogs: CogSettings
-    cooldown: CommandCooldownSettings
+    cooldown: CooldownSettings
     discord: DiscordSettings
     files: Files
     logging: LoggingSettings
     markov: MarkovSettings
-    keys: KeyStore
+    keys: KeyStore = Field(default_factory=KeyStore)
 
     @classmethod
     def from_toml(cls, config_path: str | Path) -> "Settings":
-        """Load the settings from a TOML file."""
+        """Load the settings from a TOML file.
+
+        Parameters
+        ----------
+        config_path : str | Path
+            The path to the config file to load.
+
+        Returns
+        -------
+        Settings
+            A populated instance of the Settings class.
+
+        """
         config_path = Path(config_path)
         with config_path.open("rb") as f:
             data = tomllib.load(f)
 
-        spelling = SpellcheckSettings(
-            enabled=data["cogs"]["spelling"]["enabled"],
-            guilds=data["cogs"]["spelling"]["servers"],
-            custom_dictionary=data["cogs"]["spelling"]["custom_dictionary"],
-        )
-        artificial_intelligence = ArtificialIntelligenceSettings(
-            token_window_size=data["cogs"]["artificial_intelligence"]["token_window_size"],
-            max_images_in_window=data["cogs"]["artificial_intelligence"]["max_images_in_window"],
-            max_output_tokens=data["cogs"]["artificial_intelligence"]["max_output_tokens"],
-            model_temperature=data["cogs"]["artificial_intelligence"]["model_temperature"],
-            model_top_p=data["cogs"]["artificial_intelligence"]["model_top_p"],
-            model_frequency_penalty=data["cogs"]["artificial_intelligence"]["model_frequency_penalty"],
-            model_presence_penalty=data["cogs"]["artificial_intelligence"]["model_presence_penalty"],
-            default_model=data["cogs"]["artificial_intelligence"]["default_model"],
-            default_chat_prompt=data["cogs"]["artificial_intelligence"]["default_chat_prompt"],
-            random_response_chance=data["cogs"]["artificial_intelligence"]["random_response_chance"],
-            response_rate_limit=data["cogs"]["artificial_intelligence"]["response_rate_limit"],
-            random_response_use_n_messages=data["cogs"]["artificial_intelligence"]["random_response_use_n_messages"],
-            rate_limit_interval=data["cogs"]["artificial_intelligence"]["rate_limit_interval"],
-            enable_profiling=data["cogs"]["artificial_intelligence"]["enable_profiling"],
-            prefer_image_urls=data["cogs"]["artificial_intelligence"]["prefer_image_urls"],
-        )
-        movie_tracker = MovieTrackerSettings(
-            update_interval=data["cogs"]["movie_tracker"]["update_interval"],
-            channels=data["cogs"]["movie_tracker"]["channels"],
-        )
-        cogs = CogSettings(
-            enabled=EnabledCogs(
-                admin=data["cogs"]["admin"]["enabled"],
-                artificial_intelligence=data["cogs"]["artificial_intelligence"]["enabled"],
-                markov=data["cogs"]["markov"]["enabled"],
-                movie_tracker=data["cogs"]["movie_tracker"]["enabled"],
-                reminders=data["cogs"]["reminders"]["enabled"],
-                scheduled_posts=data["cogs"]["scheduled_posts"]["enabled"],
-                spam=data["cogs"]["spam"]["enabled"],
-                spelling=data["cogs"]["spelling"]["enabled"],
-                tools=data["cogs"]["tools"]["enabled"],
-                users=data["cogs"]["users"]["enabled"],
-                videos=data["cogs"]["videos"]["enabled"],
-                weather=data["cogs"]["weather"]["enabled"],
-            ),
-            spelling=spelling,
-            artificial_intelligence=artificial_intelligence,
-            movie_tracker=movie_tracker,
-        )
-        cooldown = CommandCooldownSettings(
-            rate=data["cooldown"]["rate"],
-            standard=data["cooldown"]["standard"],
-            no_cooldown_users=data["cooldown"]["no_cooldown_users"],
-            no_cooldown_servers=data["cooldown"]["no_cooldown_servers"],
-        )
-        discord = DiscordSettings(
-            max_chars=data["discord"]["max_chars"],
-            development_servers=data["discord"]["development_servers"],
-        )
-        files = Files(
-            database=Path(data["files"]["database"]).absolute(),
-            bad_words=Path(data["files"]["bad_words"]).absolute(),
-            god_words=Path(data["files"]["god_words"]).absolute(),
-            scheduled_posts=Path(data["files"]["scheduled_posts"]).absolute(),
-        )
-        logging = LoggingSettings(
-            log_location=data["logfile"]["log_location"],
-        )
-        markov = MarkovSettings(
-            enable_markov_training=data["markov"]["enable_markov_training"],
-            enable_pregen_sentences=data["markov"]["enable_pregen_sentences"],
-            num_pregen_sentences=data["markov"]["num_pregen_sentences"],
-            pregenerate_limit=data["markov"]["pregenerate_limit"],
-        )
-        keys = KeyStore()
-        return cls(
-            config_file=str(config_path.resolve()),
-            cogs=cogs,
-            cooldown=cooldown,
-            discord=discord,
-            files=files,
-            logging=logging,
-            markov=markov,
-            keys=keys,
-        )
+        return cls(config_file=str(config_path.resolve()), **data)
 
 
 def load_settings() -> Settings:
@@ -268,12 +508,15 @@ def load_settings() -> Settings:
     Returns
     -------
     Settings
-        The settings from the TOML file, as a Settings dataclass.
+        The settings from the TOML file, as a Settings object.
 
     """
     config_path = Path(os.getenv("BOT_CONFIG", "./bot-config.toml"))
     if not config_path.is_file():
-        print(f"Failed to load config file defined in $BOT_CONFIG {config_path} or default location")  # noqa: T201
+        print(  # noqa: T201
+            f"Failed to load config file defined in $BOT_CONFIG {config_path} or default location",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     return Settings.from_toml(config_path)

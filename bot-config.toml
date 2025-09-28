@@ -3,7 +3,7 @@
 [cogs.admin]
 enabled = true
 
-[cogs.artificial_intelligence]
+[cogs.chatbot]
 enabled = true
 token_window_size = 4096
 max_images_in_window = 3
@@ -74,7 +74,7 @@ bad_words = "data/text/badwords.txt"
 god_words = "data/text/godwords.txt"
 scheduled_posts = "data/scheduled_posts.yaml"
 
-[logfile]
+[logging]
 log_location = "logs/slashbot.log"
 
 [markov]

@@ -227,7 +227,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.scheduled_posts:
+    if not BotSettings.cogs.scheduled_posts.enabled:
         logger.log_warning("%s has been disabled in the configuration file", ScheduledPosts.__cog_name__)
         return
     bot.add_cog(ScheduledPosts(bot))

@@ -151,7 +151,7 @@ class Cooldown:
     last_interaction: datetime.datetime
 
 
-class ArtificialIntelligence(CustomCog):
+class ChatBot(CustomCog):
     """AI chat features powered by OpenAI."""
 
     def __init__(self, bot: CustomInteractionBot) -> None:
@@ -178,7 +178,7 @@ class ArtificialIntelligence(CustomCog):
         self._profiler_logger.setLevel(logging.INFO)
 
     def _start_profiler(self) -> None:
-        if not BotSettings.cogs.artificial_intelligence.enable_profiling:
+        if not BotSettings.cogs.chatbot.enable_profiling:
             return
         if self._profiler.is_running:
             self._profiler.stop()
@@ -186,7 +186,7 @@ class ArtificialIntelligence(CustomCog):
         self._profiler.start()
 
     def _stop_profiler(self) -> None:
-        if not BotSettings.cogs.artificial_intelligence.enable_profiling:
+        if not BotSettings.cogs.chatbot.enable_profiling:
             return
         if not self._profiler.is_running:
             self.log_error("Attempted to stop the profiler when it's not running -- resetting profiler")
@@ -218,7 +218,7 @@ class ArtificialIntelligence(CustomCog):
             extra_print = f"{obj.channel.id}"
 
         self.channel_histories[context_id] = AIChatSummary(
-            token_window_size=BotSettings.cogs.artificial_intelligence.token_window_size,
+            token_window_size=BotSettings.cogs.chatbot.token_window_size,
             extra_print=extra_print,
         )
         return self.channel_histories[context_id]
@@ -262,9 +262,9 @@ class ArtificialIntelligence(CustomCog):
         time_difference = (current_time - user_cooldown.last_interaction).seconds
 
         # Check if exceeded rate limit
-        if user_cooldown.count > BotSettings.cogs.artificial_intelligence.response_rate_limit:
+        if user_cooldown.count > BotSettings.cogs.chatbot.response_rate_limit:
             # If exceeded rate limit, check if cooldown period has passed
-            if time_difference > BotSettings.cogs.artificial_intelligence.rate_limit_interval:
+            if time_difference > BotSettings.cogs.chatbot.rate_limit_interval:
                 # reset count and update last_interaction time
                 user_cooldown.count = 1
                 user_cooldown.last_interaction = current_time
@@ -320,7 +320,7 @@ class ArtificialIntelligence(CustomCog):
         images = []
         for url in image_urls:
             image = VisionImage(url)
-            if not BotSettings.cogs.artificial_intelligence.prefer_image_urls:
+            if not BotSettings.cogs.chatbot.prefer_image_urls:
                 try:
                     await image.download_and_encode()
                 except Exception:  # noqa: BLE001
@@ -529,7 +529,7 @@ class ArtificialIntelligence(CustomCog):
             await self._respond_to_prompted_message(message, message_in_dm=message_in_dm)
             return
 
-        if random.random() < BotSettings.cogs.artificial_intelligence.random_response_chance:
+        if random.random() < BotSettings.cogs.chatbot.random_response_chance:
             await self._respond_to_unprompted_message(message)
 
     # Commands -----------------------------------------------------------------
@@ -700,10 +700,10 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.artificial_intelligence:
-        logger.log_warning("%s has been disabled in the configuration file", ArtificialIntelligence.__cog_name__)
+    if not BotSettings.cogs.chatbot.enabled:
+        logger.log_warning("%s has been disabled in the configuration file", ChatBot.__cog_name__)
         return
     try:
-        bot.add_cog(ArtificialIntelligence(bot))
+        bot.add_cog(ChatBot(bot))
     except:  # noqa: E722
         bot.log_error("Failed to initialise ArtificialIntelligence cog, probably due to a missing API key")
