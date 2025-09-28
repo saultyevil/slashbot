@@ -18,7 +18,7 @@ from slashbot.clock import calculate_seconds_until
 from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
-SPELLING_GUILDS = [int(guild_id) for guild_id in BotSettings.cogs.spelling.guilds]
+SPELLING_GUILDS = [int(guild_id) for guild_id in BotSettings.cogs.spelling.servers]
 
 
 @dataclass
@@ -214,9 +214,9 @@ class Spelling(CustomCog):
         if not message.guild or message.author.bot:
             return
         guild_key = str(message.guild.id)
-        if guild_key not in BotSettings.cogs.spelling.guilds:
+        if guild_key not in BotSettings.cogs.spelling.servers:
             return
-        if message.author.id not in BotSettings.cogs.spelling.guilds[guild_key]["users"]:
+        if message.author.id not in BotSettings.cogs.spelling.servers[guild_key]["users"]:
             return
 
         cleaned_content = self.cleanup_message(message.content)
@@ -281,7 +281,7 @@ class Spelling(CustomCog):
             if len(embeds) == 0:
                 continue
 
-            channel = await self.bot.fetch_channel(BotSettings.cogs.spelling.guilds[str(guild_id)]["post_channel"])
+            channel = await self.bot.fetch_channel(BotSettings.cogs.spelling.servers[str(guild_id)]["post_channel"])
             if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
                 self.log_warning(
                     "Spelling summary has invalid channel %s for guild %s",
@@ -308,7 +308,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.spelling:
+    if not BotSettings.cogs.spelling.enabled:
         logger.log_warning("%s has been disabled in the configuration file", Spelling.__cog_name__)
         return
     bot.add_cog(Spelling(bot))

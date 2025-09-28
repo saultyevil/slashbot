@@ -306,7 +306,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.reminders:
+    if not BotSettings.cogs.reminders.enabled:
         logger.log_warning("%s has been disabled in the configuration file", Reminders.__cog_name__)
         return
     bot.add_cog(Reminders(bot))

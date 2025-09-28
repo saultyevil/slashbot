@@ -112,7 +112,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.spam:
+    if not BotSettings.cogs.spam.enabled:
         logger.log_warning("%s has been disabled in the configuration file", Spam.__cog_name__)
         return
     bot.add_cog(Spam(bot))

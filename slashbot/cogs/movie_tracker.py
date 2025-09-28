@@ -247,7 +247,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.movie_tracker:
+    if not BotSettings.cogs.movie_tracker.enabled:
         logger.log_warning("%s has been disabled in the configuration file", MovieTracker.__cog_name__)
         return
     bot.add_cog(MovieTracker(bot))

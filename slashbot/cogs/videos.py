@@ -97,7 +97,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.videos:
+    if not BotSettings.cogs.videos.enabled:
         logger.log_warning("%s has been disabled in the configuration file", Videos.__cog_name__)
         return
     bot.add_cog(Videos(bot))

@@ -108,7 +108,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.markov:
+    if not BotSettings.cogs.markov.enabled:
         logger.log_warning("%s has been disabled in the configuration file", Markov.__cog_name__)
         return
     bot.add_cog(Markov(bot))

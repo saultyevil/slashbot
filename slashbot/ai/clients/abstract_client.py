@@ -18,7 +18,7 @@ from slashbot.settings import BotSettings
 class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
     """Abstract class for a TextGenerationClient."""
 
-    DEFAULT_SYSTEM_PROMPT = read_in_prompt(BotSettings.cogs.artificial_intelligence.default_chat_prompt)
+    DEFAULT_SYSTEM_PROMPT = read_in_prompt(BotSettings.cogs.chatbot.default_chat_prompt)
 
     def __init__(self, model_name: str, **kwargs: Any) -> None:
         """Initialise the text generation class.
@@ -40,8 +40,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         self.system_prompt = kwargs.get("system_prompt", self.DEFAULT_SYSTEM_PROMPT.prompt)
         self.system_prompt_name = kwargs.get("system_prompt_name", self.DEFAULT_SYSTEM_PROMPT.name)
         self.token_size = self.count_tokens_for_message(self.system_prompt)
-        self._token_window_size = BotSettings.cogs.artificial_intelligence.token_window_size
-        self._max_completion_tokens = BotSettings.cogs.artificial_intelligence.max_output_tokens
+        self._token_window_size = BotSettings.cogs.chatbot.token_window_size
+        self._max_completion_tokens = BotSettings.cogs.chatbot.max_output_tokens
         self._response_logger = logging.getLogger(f"TextGenerationAbstractClient-{model_name}")
         self._logger_lock = asyncio.Lock()
         self.init_client(self.model_name)

@@ -562,7 +562,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.enabled.weather:
+    if not BotSettings.cogs.weather.enabled:
         logger.log_warning("%s has been disabled in the configuration file", Weather.__cog_name__)
         return
     if BotSettings.keys.google and BotSettings.keys.openweathermap:
