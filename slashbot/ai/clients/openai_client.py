@@ -58,7 +58,7 @@ class OpenAIClient(TextGenerationAbstractClient):
             if not isinstance(contents, str):
                 if self._content_contains_image_type(contents):
                     num_images += 1
-                if num_images > BotSettings.cogs.artificial_intelligence.max_images_in_window:
+                if num_images > BotSettings.cogs.chatbot.max_images_in_window:
                     self._remove_message(i)
             i += 1
 
@@ -262,10 +262,9 @@ class OpenAIClient(TextGenerationAbstractClient):
             model=self.model_name,
             messages=content,  # type: ignore
             max_completion_tokens=self._max_completion_tokens,
-            temperature=BotSettings.cogs.artificial_intelligence.model_temperature,
-            top_p=BotSettings.cogs.artificial_intelligence.model_top_p,
-            frequency_penalty=BotSettings.cogs.artificial_intelligence.model_frequency_penalty,
-            presence_penalty=BotSettings.cogs.artificial_intelligence.model_presence_penalty,
+            temperature=BotSettings.cogs.chatbot.model_temperature,
+            frequency_penalty=BotSettings.cogs.chatbot.model_frequency_penalty,
+            presence_penalty=BotSettings.cogs.chatbot.model_presence_penalty,
         )
         await self._log_response("%s", content)
 

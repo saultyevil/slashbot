@@ -34,7 +34,7 @@ class TextGenerator(Logger):
 
         """
         super().__init__(prepend_msg=extra_print)
-        model: str = model_name or BotSettings.cogs.artificial_intelligence.default_model
+        model: str = model_name or BotSettings.cogs.chatbot.default_model
         self._extra_print: str = extra_print
         self._client = cast(OpenAIClient | GeminiClient, None)
         self.set_model(model)

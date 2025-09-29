@@ -100,7 +100,7 @@ class GeminiClient(TextGenerationAbstractClient):
             content = self._context["contents"][i]
             if self._content_contains_image_type(content):
                 num_images += 1
-            if num_images > BotSettings.cogs.artificial_intelligence.max_images_in_window:
+            if num_images > BotSettings.cogs.chatbot.max_images_in_window:
                 self._remove_message(i)
             i += 1
 
