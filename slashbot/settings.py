@@ -88,6 +88,17 @@ class ChatBotCogSettings(BaseCogSettings):
     prefer_image_urls: bool
 
 
+class ImageGenerationCogSettings(BaseCogSettings):
+    """Settings for the image generation cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the image generation cog is enabled.
+
+    """
+
+
 class MarkovCogSettings(BaseCogSettings):
     """Settings for the markov cog.
 
@@ -246,6 +257,7 @@ class CogSettings(BaseModel):
 
     admin: AdminCogSettings
     chatbot: ChatBotCogSettings
+    image_generation: ImageGenerationCogSettings
     markov: MarkovCogSettings
     movie_tracker: MovieTrackerCogSettings
     reminders: RemindersCogSettings
