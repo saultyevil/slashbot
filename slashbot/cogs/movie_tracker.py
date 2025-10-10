@@ -201,11 +201,9 @@ class MovieTracker(CustomCog):
             # began, we'll send an empty list back
             if not last_movie_title:
                 results[letterboxd_username] = []
-                self.log_warning("%s has just been created, sending back empty watchlist", letterboxd_username)
+                self.log_warning("%s has probably just been created, sending back empty watchlist", letterboxd_username)
             else:
-                results[letterboxd_username] = (
-                    [new_movies_watched[0]] if len(new_movies_watched) > 0 else []
-                )  # Just return the latest one for now...
+                results[letterboxd_username] = new_movies_watched
 
         return results
 
@@ -229,13 +227,12 @@ class MovieTracker(CustomCog):
             if not watched_movies:
                 continue
             discord_user = await self.bot.fetch_user(letterboxd_to_discord_map[letterboxd_username])
-            for watched_movie in watched_movies:
-                embed = self._create_watched_movie_embed(watched_movie)
-
-                for channel in channels:
-                    in_guild = channel.guild.get_member(discord_user.id)
-                    if in_guild:
-                        await channel.send(embed=embed)
+            # limit watched movies to first 10, as that is the embed limit
+            embeds = [self._create_watched_movie_embed(watched_movie) for watched_movie in watched_movies[:10]]
+            for channel in channels:
+                in_guild = channel.guild.get_member(discord_user.id)
+                if in_guild:
+                    await channel.send(embeds=embeds)
 
 
 def setup(bot: CustomInteractionBot) -> None:
