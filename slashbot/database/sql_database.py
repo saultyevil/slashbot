@@ -100,7 +100,7 @@ class DatabaseSQL(BaseDatabaseSQL):
         Parameters
         ----------
         lookup_field : str
-            The field to look up the user by.
+            The field to look up the user by: id, discord_id, username"
         lookup_value : Any
             The value to look up the user by.
         field : str
