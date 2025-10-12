@@ -1,11 +1,19 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.11-slim-bookworm
+FROM python:3.14.0-slim-bookworm
 
 # Install dependencies for some commands
 RUN apt update && \
-    apt install -y --no-install-recommends git openssh-client wget firefox-esr tar xvfb && \
-    rm -rf /var/lib/apt/lists/*
+    apt install -y --no-install-recommends git \
+    openssh-client \
+    wget \
+    firefox-esr \
+    tar \
+    xvfb \
+    gcc \
+    build-essential \
+    libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Geckodriver which is often missing
 RUN ARCH=$(uname -m); \
