@@ -147,7 +147,7 @@ class DatabaseSQL(BaseDatabaseSQL):
             The retrieved user, or None if not found.
 
         """
-        if field not in ["id", "discord_id", "username"]:
+        if field not in ["id", "discord_id", "username", "letterboxd_username"]:
             msg = f"{field} is not a valid query field for a user"
             raise ValueError(msg)
         user = await self.query(UserSQL, getattr(UserSQL, field) == value)
