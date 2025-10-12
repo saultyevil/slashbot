@@ -303,7 +303,7 @@ class AdminTools(CustomCog):
     @slash_command_with_cooldown(
         name="remove_bot_messages",
         description="Remove all of the bot's messages since the last restart.",
-        dm_permission=False,
+        contexts=disnake.InteractionContextTypes(guild=True),
     )
     async def remove_bot_messages(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clean up the bot responses.

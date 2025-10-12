@@ -537,7 +537,7 @@ class ChatBot(CustomCog):
     @slash_command_with_cooldown(
         name="generate_chat_summary",
         description="Generate a summary of the conversation",
-        dm_permission=False,
+        contexts=disnake.InteractionContextTypes(guild=True),
     )
     async def chat_generate_summary(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Summarize the chat history.
