@@ -183,6 +183,7 @@ class ScheduledPosts(CustomCog):
             await asyncio.sleep(sleep_for)
 
             if post.markov_seed_word:
+                # MARKOV: set markov model here based on settings
                 markov_sentence = generate_text_from_markov_chain(None, post.markov_seed_word, 1)
                 markov_sentence = markov_sentence.replace(  # type: ignore
                     post.markov_seed_word,
@@ -190,27 +191,29 @@ class ScheduledPosts(CustomCog):
                 )
             else:
                 markov_sentence = ""
+            markov_sentence = markov_sentence.strip()
 
-            message = ""
+            post_message = ""
             if post.users:
-                message += " ".join([(await self.bot.fetch_user(user)).mention for user in post.users])
+                post_message += " ".join([(await self.bot.fetch_user(user)).mention for user in post.users])
             if post.message:
-                message += f" {post.message}"
+                post_message += f" {post.message}"
+            post_message = post_message.strip()
 
             for channel in post.channels:
                 channel = await self.bot.fetch_channel(channel)  # noqa: PLW2901
                 if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
-                    self.log_warning("Scheduled post '%s' has invalid channel %s", post.title, channel)
+                    self.log_error("Scheduled post '%s' has invalid channel %s", post.title, channel)
                     continue
                 # Check in this case, just to be safe as I don't want
                 # disnake.File to complain if it gets nothing
                 if post.files:
                     await channel.send(
-                        f"{message} {markov_sentence}",
+                        f"{post_message} {markov_sentence}",
                         files=[disnake.File(file) for file in post.files],
                     )
                 else:
-                    await channel.send(f"{message} {markov_sentence}")
+                    await channel.send(f"{post_message} {markov_sentence}")
 
     @post_loop.before_loop
     async def wait(self) -> None:
