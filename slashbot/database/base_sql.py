@@ -134,7 +134,7 @@ class BaseDatabaseSQL(Logger):
         self,
         model_cls: type[UserSQL] | type[ReminderSQL] | type[WatchedMovieSQL],
         *filters: Any,
-    ) -> list[UserSQL | ReminderSQL | WatchedMovieSQL]:
+    ) -> list[UserSQL | ReminderSQL | WatchedMovieSQL] | UserSQL | ReminderSQL | WatchedMovieSQL | None:
         """Query rows from the database.
 
         Query all users:
@@ -151,15 +151,16 @@ class BaseDatabaseSQL(Logger):
 
         Returns
         -------
-        list[User | Reminder | WatchedMovie]
-            List of ORM objects matching the query.
+        list[User | Reminder | WatchedMovie] | None
+            List of ORM objects matching the query. If the query returned no
+            results, then None is returned.
 
         """
         async with self._get_async_session() as session:
             statement = select(model_cls)
             if filters:
                 statement = statement.where(*filters)
-            return list(
+            result = list(
                 (
                     await session.execute(
                         statement,
@@ -168,3 +169,8 @@ class BaseDatabaseSQL(Logger):
                 .scalars()
                 .all()
             )
+        if len(result) > 1:
+            return result
+        if len(result) == 1:
+            return result[0]
+        return None

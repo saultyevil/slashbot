@@ -20,7 +20,7 @@ class DatabaseSQL(BaseDatabaseSQL):
         """
         reminders = await self.query(ReminderSQL, ReminderSQL.id == reminder_id)
         if reminders:
-            await self.delete_row(reminders[0])
+            await self.delete_row(reminders)
 
     async def get_all_reminders(self, *, include_stale: bool = False) -> list[ReminderSQL]:
         """Get all reminders in the database using query.
@@ -55,7 +55,7 @@ class DatabaseSQL(BaseDatabaseSQL):
 
         """
         reminders = await self.query(ReminderSQL, ReminderSQL.id == reminder_id)
-        return reminders[0] if reminders else None
+        return reminders if reminders else None
 
     async def get_users_reminders(self, discord_id: int, *, include_stale: bool = False) -> list[ReminderSQL]:
         """Get the active reminders for a user using query.
@@ -86,11 +86,13 @@ class DatabaseSQL(BaseDatabaseSQL):
             The ID of the reminder to mark as notified.
 
         """
-        reminders = await self.query(ReminderSQL, ReminderSQL.id == reminder_id)
-        if not reminders:
+        reminder = await self.query(ReminderSQL, ReminderSQL.id == reminder_id)
+        if not reminder:
             msg = f"No reminder with ID {reminder_id}"
             raise ValueError(msg)
-        reminder = reminders[0]
+        if not isinstance(reminder, ReminderSQL):
+            msg = "Internal error: query returned a row from the wrong table"
+            raise TypeError(msg)
         reminder.notified = True
         await self.upsert_row(reminder)
 
@@ -145,11 +147,11 @@ class DatabaseSQL(BaseDatabaseSQL):
             The retrieved user, or None if not found.
 
         """
-        if field not in UserSQL.__table__.columns:
-            msg = f"{field} is not a valid attribute for a user"
+        if field not in ["id", "discord_id", "username"]:
+            msg = f"{field} is not a valid query field for a user"
             raise ValueError(msg)
-        users = await self.query(UserSQL, getattr(UserSQL, field) == value)
-        return users[0] if users else None
+        user = await self.query(UserSQL, getattr(UserSQL, field) == value)
+        return user if user else None
 
     async def get_letterboxd_usernames(self) -> list[UserSQL]:
         """Get a list of users with Letterboxd accounts using query.
