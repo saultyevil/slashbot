@@ -64,9 +64,11 @@ async def is_reply_to_slash_command_response(message: Message) -> bool:
     # chat cog won't work at all) but should take into account just in case
     if not old_message:
         return False
+    if not old_message.interaction_metadata:
+        return False
 
-    # if old_message is an interaction response, this will return true
-    return isinstance(old_message.interaction, InteractionReference)
+    # if old_message is an interaction response/appliucation command, this will return true
+    return old_message.interaction_metadata.type == disnake.InteractionType.application_command
 
 
 def split_text_into_chunks(text: str, chunk_length: int) -> list:
