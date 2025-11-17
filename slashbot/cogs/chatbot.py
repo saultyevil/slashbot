@@ -28,7 +28,7 @@ from slashbot.ai import (
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.bot.custom_types import ApplicationCommandInteraction, InteractionReference, Message
+from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
 from slashbot.logger import logger
 from slashbot.settings import BotSettings
 

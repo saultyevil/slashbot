@@ -1,6 +1,5 @@
 from typing import Any
 
-from outcome import Value
 from sqlalchemy import select
 
 from slashbot.database.base_sql import BaseDatabaseSQL
