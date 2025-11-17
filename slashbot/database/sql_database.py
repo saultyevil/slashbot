@@ -1,5 +1,6 @@
 from typing import Any
 
+from outcome import Value
 from sqlalchemy import select
 
 from slashbot.database.base_sql import BaseDatabaseSQL
@@ -122,11 +123,13 @@ class DatabaseSQL(BaseDatabaseSQL):
         if lookup_field not in UserSQL.__table__.columns:
             msg = f"{lookup_field} is not a valid lookup attribute for a user"
             raise ValueError(msg)
-        users = await self.query(UserSQL, getattr(UserSQL, lookup_field) == lookup_value)
-        if not users:
+        user = await self.query(UserSQL, getattr(UserSQL, lookup_field) == lookup_value)
+        if not user:
             msg = f"No user in database with {lookup_field}={lookup_value}"
             raise ValueError(msg)
-        user = users[0]
+        if not isinstance(user, UserSQL):
+            msg = f"User is not the correct SQL type: {type(user)}"
+            raise TypeError(msg)
         setattr(user, field, value)
         user = await self.upsert_row(user)
         return user
