@@ -31,6 +31,24 @@ class AdminCogSettings(BaseCogSettings):
     """
 
 
+class BackloggdCogSettings(BaseCogSettings):
+    """Settings for the backloggd cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the admin cog is enabled.
+    update_interval : float
+        Interval (minutes) between updates.
+    channels : list[int]
+        List of channel IDs to post updates to.
+
+    """
+
+    update_interval: float
+    channels: list[int]
+
+
 class ChatBotCogSettings(BaseCogSettings):
     """Settings for chatbot cog.
 
@@ -88,18 +106,7 @@ class ChatBotCogSettings(BaseCogSettings):
     prefer_image_urls: bool
 
 
-class MarkovCogSettings(BaseCogSettings):
-    """Settings for the markov cog.
-
-    Attributes
-    ----------
-    enabled : bool
-        Whether the markov cog is enabled.
-
-    """
-
-
-class MovieTrackerCogSettings(BaseCogSettings):
+class LetterboxdCogSettings(BaseCogSettings):
     """Settings for the movie tracker cog.
 
     Attributes
@@ -115,6 +122,17 @@ class MovieTrackerCogSettings(BaseCogSettings):
 
     update_interval: float
     channels: list[int]
+
+
+class MarkovCogSettings(BaseCogSettings):
+    """Settings for the markov cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the markov cog is enabled.
+
+    """
 
 
 class RemindersCogSettings(BaseCogSettings):
@@ -245,9 +263,10 @@ class CogSettings(BaseModel):
     """
 
     admin: AdminCogSettings
+    backloggd: BackloggdCogSettings
     chatbot: ChatBotCogSettings
+    letterboxd: LetterboxdCogSettings
     markov: MarkovCogSettings
-    movie_tracker: MovieTrackerCogSettings
     reminders: RemindersCogSettings
     scheduled_posts: ScheduledPostsCogSettings
     spam: SpamCogSettings

@@ -3,7 +3,7 @@ from typing import Any
 from sqlalchemy import select
 
 from slashbot.database.base_sql import BaseDatabaseSQL
-from slashbot.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
+from slashbot.database.sql_models import LoggedGameSQL, ReminderSQL, UserSQL, WatchedMovieSQL
 
 
 class DatabaseSQL(BaseDatabaseSQL):
@@ -155,6 +155,18 @@ class DatabaseSQL(BaseDatabaseSQL):
         user = await self.query(UserSQL, getattr(UserSQL, field) == value)
         return user if user else None
 
+    async def get_backloggd_usernames(self) -> list[UserSQL]:
+        """Get a list of users with Backloggd accounts using query.
+
+        Returns
+        -------
+        list[UserSQL]
+            A list of users with a Backloggd account.
+
+        """
+        usernames = await self.query(UserSQL, UserSQL.backloggd_username != None)  # noqa: E711
+        return usernames
+
     async def get_letterboxd_usernames(self) -> list[UserSQL]:
         """Get a list of users with Letterboxd accounts using query.
 
@@ -164,7 +176,7 @@ class DatabaseSQL(BaseDatabaseSQL):
             A list of users with a Letterboxd account.
 
         """
-        usernames = await self.query(UserSQL, UserSQL.letterboxd_username != None)  # noqa: E711
+        usernames = await self.query(UserSQL, UserSQL.backlogged != None)  # noqa: E711
         return usernames
 
     async def get_last_movie_for_letterboxd_user(self, username: str) -> WatchedMovieSQL | None:
@@ -177,7 +189,7 @@ class DatabaseSQL(BaseDatabaseSQL):
 
         Returns
         -------
-        WatchedMovieSQLSQL | None
+        WatchedMovieSQL | None
             The most recent watched movie, or None if not found.
 
         """
@@ -186,9 +198,36 @@ class DatabaseSQL(BaseDatabaseSQL):
                 await session.execute(
                     select(WatchedMovieSQL)
                     .join(UserSQL, WatchedMovieSQL.user_id == UserSQL.id)
-                    .where(UserSQL.letterboxd_username == username)
+                    .where(UserSQL.backlogged == username)
                     .order_by(
                         WatchedMovieSQL.published_date.desc(),
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+
+    async def get_last_game_for_backloggd_user(self, username: str) -> LoggedGameSQL | None:
+        """Get the last game a user logged on Backloggd using query.
+
+        Parameters
+        ----------
+        username : str
+            The Backloggd username of the user.
+
+        Returns
+        -------
+        LoggedGameSQL | None
+            The most recent logged game, or None if not found.
+
+        """
+        async with self._get_async_session() as session:
+            return (
+                await session.execute(
+                    select(LoggedGameSQL)
+                    .join(UserSQL, LoggedGameSQL.user_id == UserSQL.id)
+                    .where(UserSQL.backloggd_username == username)
+                    .order_by(
+                        LoggedGameSQL.published_date.desc(),
                     )
                     .limit(1)
                 )

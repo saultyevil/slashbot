@@ -13,7 +13,7 @@ from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 
-class MovieTracker(CustomCog):
+class LetterboxdTracker(CustomCog):
     """Cog for posting when a user has logged a new movie on Letterboxd."""
 
     async def _add_watched_movie_to_database(
@@ -100,7 +100,7 @@ class MovieTracker(CustomCog):
             return [await self.bot.fetch_channel(1117059319230382140)]  # type: ignore
 
         channels = []
-        for channel_id in BotSettings.cogs.movie_tracker.channels:
+        for channel_id in BotSettings.cogs.letterboxd.channels:
             channel = await self.bot.fetch_channel(channel_id)
             if not isinstance(channel, disnake.TextChannel):
                 self.log_error("Channel %d for movie tracking is not a server text channel", channel)
@@ -207,13 +207,11 @@ class MovieTracker(CustomCog):
 
         return results
 
-    @tasks.loop(minutes=BotSettings.cogs.movie_tracker.update_interval)
+    @tasks.loop(minutes=BotSettings.cogs.letterboxd.update_interval)
     async def check_for_new_watched_movies(self) -> None:
         """Periodically check for new logged movies."""
         letterboxd_users = await self.db.get_letterboxd_usernames()
-        new_movies_watched = await self.get_most_recent_movie_watched(
-            [user.letterboxd_username for user in letterboxd_users]
-        )
+        new_movies_watched = await self.get_most_recent_movie_watched([user.backlogged for user in letterboxd_users])
         if not new_movies_watched:
             return
         self.log_debug(
@@ -221,7 +219,7 @@ class MovieTracker(CustomCog):
             [{user: [movie.__dict__ for movie in movies]} for user, movies in new_movies_watched.items()],
         )
         channels = await self._get_channels()
-        letterboxd_to_discord_map = {user.letterboxd_username: user.discord_id for user in letterboxd_users}
+        letterboxd_to_discord_map = {user.backlogged: user.discord_id for user in letterboxd_users}
 
         for letterboxd_username, watched_movies in new_movies_watched.items():
             if not watched_movies:
@@ -244,7 +242,7 @@ def setup(bot: CustomInteractionBot) -> None:
         The bot to pass to the cog.
 
     """
-    if not BotSettings.cogs.movie_tracker.enabled:
-        logger.log_warning("%s has been disabled in the configuration file", MovieTracker.__cog_name__)
+    if not BotSettings.cogs.letterboxd.enabled:
+        logger.log_warning("%s has been disabled in the configuration file", LetterboxdTracker.__cog_name__)
         return
-    bot.add_cog(MovieTracker(bot))
+    bot.add_cog(LetterboxdTracker(bot))
