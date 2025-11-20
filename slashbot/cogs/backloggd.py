@@ -38,12 +38,25 @@ class BackloggdTracker(CustomCog):
             self.log_error("%s", exc_msg)
             raise ValueError(exc_msg)
 
-        poster_url_regex = re.search(r'src="([^"]+)"', game_entry["summary"])  # type: ignore
-        poster_url = poster_url_regex.group(1) if poster_url_regex else None
-        watched_date_str = game_entry.get("letterboxd_watcheddate", None)
-        watched_date = datetime.datetime.strptime(watched_date_str, r"%Y-%m-%d") if watched_date_str else None  # type: ignore # noqa: DTZ007
+        m = re.match(r"^(.*?) \(\d{4}\)", str(game_entry["title"]))
+        title = m.group(1) if m else None
 
-        game_row = LoggedGameSQL()
+        m = re.search(r"\((\d{4})\)", str(game_entry["title"]))
+        year = m.group(1) if m else None
+
+        date_str = game_entry.get("published", None)
+        date = datetime.datetime.strptime(date_str, r"%a, %d %b %Y %H:%M:%S %z") if date_str else None  # type: ignore # noqa: DTZ007
+
+        game_row = LoggedGameSQL(
+            user_id=user_db.id,
+            username=backloggd_username,
+            title=title,
+            game_year=year,
+            published_date=date,
+            user_rating=float(str(game_entry["backloggd_user_rating"])) / 2,
+            url=game_entry["link"],
+            poster_url=game_entry["href"],
+        )
         new_game = await self.db.upsert_row(game_row)
         self.log_debug("Added new game %s (%s) for %s", game_row.title, game_row.published_date, backloggd_username)
 
@@ -90,12 +103,12 @@ class BackloggdTracker(CustomCog):
         for channel_id in BotSettings.cogs.letterboxd.channels:
             channel = await self.bot.fetch_channel(channel_id)
             if not isinstance(channel, disnake.TextChannel):
-                self.log_error("Channel %d for movie tracking is not a server text channel", channel)
+                self.log_error("Channel %d for game tracking is not a server text channel", channel)
                 continue
             channels.append(channel)
 
         if len(channels) == 0:
-            exc_msg = "No compatible channels found for movie tracking"
+            exc_msg = "No compatible channels found for game tracking"
             raise ValueError(exc_msg)
 
         return channels
@@ -116,13 +129,12 @@ class BackloggdTracker(CustomCog):
             The created embed.
 
         """
-        embed = disnake.Embed(title=f"{logged_game.username.capitalize()} added a film", url=logged_game.url)
+        embed = disnake.Embed(title=f"{logged_game.username.capitalize()} logged a game", url=logged_game.url)
         embed.add_field(name="Game title", value=logged_game.title, inline=False)
         embed.add_field(name="Release year", value=logged_game.game_year, inline=False)
-        if logged_game.watched_date:
-            embed.add_field(
-                name="Published date", value=datetime.datetime.strftime(logged_game.watched_date, r"%d/%m/%Y")
-            )
+        embed.add_field(
+            name="Published date", value=datetime.datetime.strftime(logged_game.published_date, r"%d/%m/%Y")
+        )
         embed.add_field(name="User rating", value=self._convert_rating_to_stars(logged_game.user_rating), inline=False)
         embed.set_thumbnail(url=logged_game.poster_url)
 
@@ -153,7 +165,7 @@ class BackloggdTracker(CustomCog):
         for backloggd_username in backloggd_usernames:
             user_feed = feedparser.parse(f"https://backloggd.com/u/{backloggd_username}/reviews/rss/")
             if not user_feed.entries:
-                self.log_warning("%s has not logged any content in letterboxd", backloggd_username)
+                self.log_warning("%s has not logged any content in backloggd", backloggd_username)
                 results[backloggd_username] = []
                 continue
 
@@ -166,25 +178,26 @@ class BackloggdTracker(CustomCog):
             )
             last_game_title = last_game_logged.title if last_game_logged else None
 
-            for movie_entry in user_feed.entries:
-                title = movie_entry["letterboxd_filmtitle"]
-                # Early exit to avoid sending all movies watched
-                if title == last_game_title:
-                    break
-                # This is not a movie then, but probably a tv show
-                if "tmdb_movieid" not in movie_entry:
+            for game_entry in user_feed.entries:
+                m = re.match(r"^(.*?) \(\d{4}\)", str(game_entry["title"]))
+                title = m.group(1) if m else None
+                if not title:
+                    self.log_error("Unable to parse game's title %s for %s", game_entry["title"], backloggd_username)
                     continue
+                # Early exit to avoid sending all games
+                # if title == last_game_title:
+                #     break
                 try:
-                    new_games_logged.append(await self._add_game_to_database(backloggd_username, movie_entry))
+                    new_games_logged.append(await self._add_game_to_database(backloggd_username, game_entry))
                 except Exception as exc:  # noqa: BLE001
-                    self.log_error("Failed to add movie %s for %s: %s", title, backloggd_username, exc)
+                    self.log_error("Failed to add game %s for %s: %s", title, backloggd_username, exc)
 
             # If the user has just been added then there will be no last movie
             # watched. To avoid sending the last movie they watched before tracking
             # began, we'll send an empty list back
             if not last_game_title:
                 results[backloggd_username] = []
-                self.log_warning("%s has probably just been created, sending back empty watchlist", backloggd_username)
+                self.log_warning("%s has probably just been created, sending back empty log list", backloggd_username)
             else:
                 results[backloggd_username] = new_games_logged
 
@@ -194,11 +207,13 @@ class BackloggdTracker(CustomCog):
     async def check_for_new_logged_games(self) -> None:
         """Periodically check for new logged games."""
         backloggd_users = await self.db.get_backloggd_usernames()
+        if not backloggd_users:
+            return
         new_games_logged = await self.get_most_recent_logged_game([user.backloggd_username for user in backloggd_users])
         if not new_games_logged:
             return
         self.log_debug(
-            "New games watched: %s",
+            "New games logged: %s",
             [{user: [movie.__dict__ for movie in games]} for user, games in new_games_logged.items()],
         )
         channels = await self._get_channels()
@@ -211,9 +226,9 @@ class BackloggdTracker(CustomCog):
             # limit watched movies to first 10, as that is the embed limit
             embeds = [self._create_logged_game_embed(watched_movie) for watched_movie in logged_games[:10]]
             for channel in channels:
-                in_guild = channel.guild.get_member(discord_user.id)
-                if in_guild:
-                    await channel.send(embeds=embeds)
+                # in_guild = channel.guild.get_member(discord_user.id)
+                # if in_guild:
+                await channel.send(embeds=embeds)
 
 
 def setup(bot: CustomInteractionBot) -> None:

@@ -3,6 +3,12 @@
 [cogs.admin]
 enabled = true
 
+[cogs.backloggd]
+enabled = true
+update_interval = 5
+# channels = [237647756049514498, 710120383235227670]
+channels = [1117059319230382140]
+
 [cogs.chatbot]
 enabled = true
 token_window_size = 2048
@@ -21,13 +27,13 @@ rate_limit_interval = 5
 enable_profiling = false
 prefer_image_urls = false
 
-[cogs.markov]
-enabled = true
-
-[cogs.movie_tracker]
+[cogs.letterboxd]
 enabled = true
 update_interval = 5
 channels = [237647756049514498, 710120383235227670]
+
+[cogs.markov]
+enabled = true
 
 [cogs.reminders]
 enabled = true

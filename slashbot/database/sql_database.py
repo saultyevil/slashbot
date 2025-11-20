@@ -149,7 +149,7 @@ class DatabaseSQL(BaseDatabaseSQL):
             The retrieved user, or None if not found.
 
         """
-        if field not in ["id", "discord_id", "username", "letterboxd_username"]:
+        if field not in ["id", "discord_id", "username", "letterboxd_username", "backloggd_username"]:
             msg = f"{field} is not a valid query field for a user"
             raise ValueError(msg)
         user = await self.query(UserSQL, getattr(UserSQL, field) == value)
@@ -165,6 +165,8 @@ class DatabaseSQL(BaseDatabaseSQL):
 
         """
         usernames = await self.query(UserSQL, UserSQL.backloggd_username != None)  # noqa: E711
+        if not isinstance(usernames, list):
+            usernames = [usernames]
         return usernames
 
     async def get_letterboxd_usernames(self) -> list[UserSQL]:
@@ -176,7 +178,9 @@ class DatabaseSQL(BaseDatabaseSQL):
             A list of users with a Letterboxd account.
 
         """
-        usernames = await self.query(UserSQL, UserSQL.backlogged != None)  # noqa: E711
+        usernames = await self.query(UserSQL, UserSQL.letterboxd_username != None)  # noqa: E711
+        if not isinstance(usernames, list):
+            usernames = [usernames]
         return usernames
 
     async def get_last_movie_for_letterboxd_user(self, username: str) -> WatchedMovieSQL | None:
@@ -198,7 +202,7 @@ class DatabaseSQL(BaseDatabaseSQL):
                 await session.execute(
                     select(WatchedMovieSQL)
                     .join(UserSQL, WatchedMovieSQL.user_id == UserSQL.id)
-                    .where(UserSQL.backlogged == username)
+                    .where(UserSQL.letterboxd_username == username)
                     .order_by(
                         WatchedMovieSQL.published_date.desc(),
                     )

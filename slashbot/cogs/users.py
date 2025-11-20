@@ -15,6 +15,7 @@ USER_OPTIONS = [
     disnake.OptionChoice("Country code", "country_code"),
     disnake.OptionChoice("Bad word", "bad_word"),
     disnake.OptionChoice("Letterboxd Username", "letterboxd_username"),
+    disnake.OptionChoice("Backloggd Username", "backloggd_username"),
 ]
 
 

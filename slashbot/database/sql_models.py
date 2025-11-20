@@ -40,7 +40,7 @@ class UserSQL(DeclarativeBase):
     city: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     country_code: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     bad_word: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
-    backlogged: Mapped[str] = mapped_column(String(64), default=None, nullable=True, unique=True)
+    letterboxd_username: Mapped[str] = mapped_column(String(64), default=None, nullable=True, unique=True)
     backloggd_username: Mapped[str] = mapped_column(String(64), default=None, nullable=True, unique=True)
 
     reminders: Mapped[list["ReminderSQL"]] = relationship(back_populates="user")

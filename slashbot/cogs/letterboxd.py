@@ -211,7 +211,9 @@ class LetterboxdTracker(CustomCog):
     async def check_for_new_watched_movies(self) -> None:
         """Periodically check for new logged movies."""
         letterboxd_users = await self.db.get_letterboxd_usernames()
-        new_movies_watched = await self.get_most_recent_movie_watched([user.backlogged for user in letterboxd_users])
+        new_movies_watched = await self.get_most_recent_movie_watched(
+            [user.letterboxd_username for user in letterboxd_users]
+        )
         if not new_movies_watched:
             return
         self.log_debug(
@@ -219,7 +221,7 @@ class LetterboxdTracker(CustomCog):
             [{user: [movie.__dict__ for movie in movies]} for user, movies in new_movies_watched.items()],
         )
         channels = await self._get_channels()
-        letterboxd_to_discord_map = {user.backlogged: user.discord_id for user in letterboxd_users}
+        letterboxd_to_discord_map = {user.letterboxd_username: user.discord_id for user in letterboxd_users}
 
         for letterboxd_username, watched_movies in new_movies_watched.items():
             if not watched_movies:

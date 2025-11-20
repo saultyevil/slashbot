@@ -237,12 +237,14 @@ class CogSettings(BaseModel):
     ----------
     admin : AdminCogSettings
         Settings for the admin cog.
+    backlogged: BackloggdCogSettings
+        Settings for the backloggd cog.
     chatbot : ChatBotCogSettings
         Settings for the chatbot cog.
+    letterboxd: LetterboxdCogSettings
+        Settings for the movie tracker cog.
     markov : MarkovCogSettings
         Settings for the markov cog.
-    movie_tracker : MovieTrackerCogSettings
-        Settings for the movie tracker cog.
     reminders : RemindersCogSettings
         Settings for the reminders cog.
     scheduled_posts : ScheduledPostsCogSettings
