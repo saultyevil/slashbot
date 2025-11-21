@@ -6,8 +6,7 @@ enabled = true
 [cogs.backloggd]
 enabled = true
 update_interval = 5
-# channels = [237647756049514498, 710120383235227670]
-channels = [1117059319230382140]
+channels = [710120383235227670]
 
 [cogs.chatbot]
 enabled = true

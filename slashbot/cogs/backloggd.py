@@ -45,7 +45,7 @@ class BackloggdTracker(CustomCog):
         year = m.group(1) if m else None
 
         date_str = game_entry.get("published", None)
-        date = datetime.datetime.strptime(date_str, r"%a, %d %b %Y %H:%M:%S %z") if date_str else None  # type: ignore # noqa: DTZ007
+        date = datetime.datetime.strptime(date_str, r"%a, %d %b %Y %H:%M:%S %z") if date_str else None  # type: ignore
 
         game_row = LoggedGameSQL(
             user_id=user_db.id,
@@ -185,8 +185,8 @@ class BackloggdTracker(CustomCog):
                     self.log_error("Unable to parse game's title %s for %s", game_entry["title"], backloggd_username)
                     continue
                 # Early exit to avoid sending all games
-                # if title == last_game_title:
-                #     break
+                if title == last_game_title:
+                    break
                 try:
                     new_games_logged.append(await self._add_game_to_database(backloggd_username, game_entry))
                 except Exception as exc:  # noqa: BLE001
@@ -226,9 +226,9 @@ class BackloggdTracker(CustomCog):
             # limit watched movies to first 10, as that is the embed limit
             embeds = [self._create_logged_game_embed(watched_movie) for watched_movie in logged_games[:10]]
             for channel in channels:
-                # in_guild = channel.guild.get_member(discord_user.id)
-                # if in_guild:
-                await channel.send(embeds=embeds)
+                in_guild = channel.guild.get_member(discord_user.id)
+                if in_guild:
+                    await channel.send(embeds=embeds)
 
 
 def setup(bot: CustomInteractionBot) -> None:
