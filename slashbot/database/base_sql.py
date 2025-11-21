@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeMeta
 
-from slashbot.database.sql_models import ReminderSQL, UserSQL, WatchedMovieSQL
+from slashbot.database.sql_models import LoggedGameSQL, ReminderSQL, UserSQL, WatchedMovieSQL
 from slashbot.logger import Logger
 
 
@@ -90,7 +90,7 @@ class BaseDatabaseSQL(Logger):
             The updated instance, e.g. with primary key.
 
         """
-        if not isinstance(model, UserSQL | ReminderSQL | WatchedMovieSQL):
+        if not isinstance(model, UserSQL | ReminderSQL | WatchedMovieSQL | LoggedGameSQL):
             exc_msg = f"Unknown model '{type(model)}' for database"
             raise TypeError(exc_msg)
         async with self._get_async_session() as session:

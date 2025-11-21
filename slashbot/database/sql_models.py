@@ -41,9 +41,11 @@ class UserSQL(DeclarativeBase):
     country_code: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     bad_word: Mapped[str] = mapped_column(String(64), default=None, nullable=True)
     letterboxd_username: Mapped[str] = mapped_column(String(64), default=None, nullable=True, unique=True)
+    backloggd_username: Mapped[str] = mapped_column(String(64), default=None, nullable=True, unique=True)
 
     reminders: Mapped[list["ReminderSQL"]] = relationship(back_populates="user")
     watched_movies: Mapped[list["WatchedMovieSQL"]] = relationship(back_populates="user")
+    logged_games: Mapped[list["LoggedGameSQL"]] = relationship(back_populates="user")
 
 
 class ReminderSQL(DeclarativeBase):
@@ -130,3 +132,22 @@ class WatchedMovieSQL(DeclarativeBase):
     poster_url: Mapped[str] = mapped_column(String(512))
 
     user: Mapped["UserSQL"] = relationship(back_populates="watched_movies")
+
+
+class LoggedGameSQL(DeclarativeBase):
+    """SQLAlchemy ORM model for a logged game."""
+
+    __tablename__ = "logged_games"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+
+    username: Mapped[str] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(128))
+    game_year: Mapped[int] = mapped_column(Integer)
+    published_date: Mapped[datetime.datetime] = mapped_column(DateTime)
+    user_rating: Mapped[float] = mapped_column(Float, default=None, nullable=True)
+    url: Mapped[str] = mapped_column(String(512))
+    poster_url: Mapped[str] = mapped_column(String(512))
+
+    user: Mapped["UserSQL"] = relationship(back_populates="logged_games")
