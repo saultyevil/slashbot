@@ -165,7 +165,7 @@ class DatabaseSQL(BaseDatabaseSQL):
 
         """
         usernames = await self.query(UserSQL, UserSQL.backloggd_username != None)  # noqa: E711
-        if not isinstance(usernames, list):
+        if not isinstance(usernames, list | None):
             usernames = [usernames]
         return usernames
 
@@ -179,7 +179,7 @@ class DatabaseSQL(BaseDatabaseSQL):
 
         """
         usernames = await self.query(UserSQL, UserSQL.letterboxd_username != None)  # noqa: E711
-        if not isinstance(usernames, list):
+        if not isinstance(usernames, list | None):
             usernames = [usernames]
         return usernames
 
