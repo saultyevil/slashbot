@@ -2,6 +2,7 @@ import logging
 import pathlib
 import textwrap
 from logging import FileHandler
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 
@@ -75,10 +76,12 @@ def setup_logging() -> None:
     file_handler.set_name(USER_LOG_HANDLER_NAME)
     logger.addHandler(file_handler)
 
-    debug_handler = FileHandler(
+    debug_handler = RotatingFileHandler(
         filename=Path(BotSettings.logging.log_location).parent / "slashbot-debug.log",
         mode="a",
         encoding="utf-8",
+        maxBytes=10485760,  # 10 MB
+        backupCount=5,
     )
     debug_handler.setFormatter(formatter)
     debug_handler.setLevel(logging.DEBUG)
