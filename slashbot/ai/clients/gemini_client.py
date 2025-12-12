@@ -1,6 +1,7 @@
 from typing import Any
 
 import httpx
+from outcome import Value
 
 from slashbot.ai.clients.abstract_client import TextGenerationAbstractClient
 from slashbot.ai.models import (
@@ -347,10 +348,17 @@ class GeminiClient(TextGenerationAbstractClient):
             else:
                 self.log_error("Gemini API request failed: %s", error_response)
             status_code = response.status_code
-            msg = f"Gemini API request failed with {response.json()['error']['message']}"
-            raise GenerationFailureError(msg, code=status_code)
+            exc_msg = f"Gemini API request failed with {response.json()['error']['message']}"
+            raise GenerationFailureError(exc_msg, code=status_code)
 
         response_json = response.json()
+
+        if "parts" not in response_json["candidates"][0]["content"]:
+            self.log_error("Malformed/incorrect response from Gemini API. Response: %s", response_json)
+            return TextGenerationResponse(
+                "Uh oh, something went wrong with the Gemini response!",
+                0,
+            )
 
         return TextGenerationResponse(
             response_json["candidates"][0]["content"]["parts"][0]["text"],
