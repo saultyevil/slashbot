@@ -2,7 +2,6 @@ from typing import Any
 
 import httpx
 
-from slashbot import bot, settings
 from slashbot.ai.clients.abstract_client import TextGenerationAbstractClient
 from slashbot.ai.models import (
     GenerationFailureError,
