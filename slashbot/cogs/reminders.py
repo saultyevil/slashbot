@@ -124,6 +124,8 @@ class Reminders(CustomCog):
         dt_now = datetime.datetime.now(tz=datetime.UTC)
         reminders = await self.db.get_all_reminders()
 
+        if not reminders:
+            return
         if len(reminders) == 0:
             return
 
