@@ -86,6 +86,8 @@ class ChatBotCogSettings(BaseCogSettings):
         Whether to enable profiling for chat response time.
     prefer_image_urls : bool
         Prefer using image URLs in request to chat API.
+    enable_google_maps : bool
+        Enable using Google Maps grounding with the Gemini API.
 
     """
 
@@ -104,6 +106,7 @@ class ChatBotCogSettings(BaseCogSettings):
     rate_limit_interval: int
     enable_profiling: bool
     prefer_image_urls: bool
+    enable_google_maps: bool
 
 
 class LetterboxdCogSettings(BaseCogSettings):
