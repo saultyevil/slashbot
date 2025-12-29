@@ -17,32 +17,36 @@ class GeminiClient(TextGenerationAbstractClient):
     """Asynchronous Gemini client."""
 
     SUPPORTED_MODELS = (
-        "gemini-1.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
         "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
         "gemini-2.5-pro",
     )
     VISION_MODELS = (
-        "gemini-1.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
         "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
         "gemini-2.5-pro",
     )
-    SEARCH_MODELS = ("gemini-2.5-flash",)
+    SEARCH_MODELS = (
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+    )
     AUDIO_MODELS = (
-        "gemini-1.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
         "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
         "gemini-2.5-pro",
     )
     VIDEO_MODELS = (
-        "gemini-1.5-flash",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
         "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
         "gemini-2.5-pro",
     )
 
@@ -252,6 +256,8 @@ class GeminiClient(TextGenerationAbstractClient):
             request["tools"] = {  # type:ignore
                 "google_search": {},
             }
+            if BotSettings.cogs.chatbot.enable_google_maps:
+                request["tools"]["googleMaps"] = {}
 
         return request
 
@@ -316,6 +322,8 @@ class GeminiClient(TextGenerationAbstractClient):
             self._context["tools"] = {  # type:ignore
                 "google_search": {},
             }
+            if BotSettings.cogs.chatbot.enable_google_maps:
+                self._context["tools"]["googleMaps"] = {}
 
         self._setup_response_logger(model_name)
 
@@ -347,10 +355,17 @@ class GeminiClient(TextGenerationAbstractClient):
             else:
                 self.log_error("Gemini API request failed: %s", error_response)
             status_code = response.status_code
-            msg = f"Gemini API request failed with {response.json()['error']['message']}"
-            raise GenerationFailureError(msg, code=status_code)
+            exc_msg = f"Gemini API request failed with {response.json()['error']['message']}"
+            raise GenerationFailureError(exc_msg, code=status_code)
 
         response_json = response.json()
+
+        if "parts" not in response_json["candidates"][0]["content"]:
+            self.log_error("Malformed/incorrect response from Gemini API. Response: %s", response_json)
+            return TextGenerationResponse(
+                "Uh oh, something went wrong with the Gemini response!",
+                0,
+            )
 
         return TextGenerationResponse(
             response_json["candidates"][0]["content"]["parts"][0]["text"],
