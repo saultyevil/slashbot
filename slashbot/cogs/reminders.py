@@ -278,6 +278,8 @@ class Reminders(CustomCog):
         if not reminders:
             await inter.response.send_message("You don't have any reminders.", ephemeral=True)
             return
+        if not isinstance(reminders, list):
+            reminders = [reminders]
         reminders = sorted(
             [(reminder.date.replace(tzinfo=datetime.UTC), reminder.content) for reminder in reminders],
             key=lambda entry: entry[0],
