@@ -8,7 +8,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeMeta
 
-from slashbot.database.sql_models import LoggedGameSQL, ReminderSQL, UserSQL, WatchedMovieSQL
+from slashbot.database.sql_models import (
+    # LoggedGameSQL,
+    ReminderSQL,
+    UserSQL,
+    WatchedMovieSQL,
+)
 from slashbot.logger import Logger
 
 
@@ -16,7 +21,10 @@ class BaseDatabaseSQL(Logger):
     """Asynchronous database class, using SQLite."""
 
     def __init__(
-        self, database_location: str | Path, declarative_base: DeclarativeMeta, logger_label: str = "[BaseDatabaseSQL]"
+        self,
+        database_location: str | Path,
+        declarative_base: DeclarativeMeta,
+        logger_label: str = "[BaseDatabaseSQL]",
     ) -> None:
         """Initialize the database.
 
@@ -90,9 +98,9 @@ class BaseDatabaseSQL(Logger):
             The updated instance, e.g. with primary key.
 
         """
-        if not isinstance(model, UserSQL | ReminderSQL | WatchedMovieSQL | LoggedGameSQL):
-            exc_msg = f"Unknown model '{type(model)}' for database"
-            raise TypeError(exc_msg)
+        # if not isinstance(model, UserSQL | ReminderSQL | WatchedMovieSQL | LoggedGameSQL):
+        #     exc_msg = f"Unknown model '{type(model)}' for database"
+        #     raise TypeError(exc_msg)
         async with self._get_async_session() as session:
             try:
                 session.add(model)
@@ -101,7 +109,10 @@ class BaseDatabaseSQL(Logger):
             except IntegrityError as exc:
                 await session.rollback()
                 self.log_error(
-                    "Integrity error when adding %s to %s: %s", type(model).__name__, model.__tablename__, exc
+                    "Integrity error when adding %s to %s: %s",
+                    type(model).__name__,
+                    model.__tablename__,
+                    exc,
                 )
                 raise
             else:
@@ -134,7 +145,13 @@ class BaseDatabaseSQL(Logger):
         self,
         model_cls: type[UserSQL] | type[ReminderSQL] | type[WatchedMovieSQL],
         *filters: Any,
-    ) -> list[UserSQL | ReminderSQL | WatchedMovieSQL] | UserSQL | ReminderSQL | WatchedMovieSQL | None:
+    ) -> (
+        list[UserSQL | ReminderSQL | WatchedMovieSQL]
+        | UserSQL
+        | ReminderSQL
+        | WatchedMovieSQL
+        | None
+    ):
         """Query rows from the database.
 
         Query all users:
