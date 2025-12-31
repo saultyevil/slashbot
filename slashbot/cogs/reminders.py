@@ -141,6 +141,7 @@ class Reminders(CustomCog):
                 user = await self.bot.fetch_user(reminder.user_id)
             except disnake.NotFound:
                 self.log_error("User %s not found when trying to send reminder", reminder.user_id)
+                await self.db.mark_reminder_as_notified(reminder.id)
                 continue
 
             embed = disnake.Embed(title=reminder.content, color=disnake.Color.default())
@@ -154,10 +155,12 @@ class Reminders(CustomCog):
                 channel = await self.bot.fetch_channel(reminder.channel_id)
             except (disnake.NotFound, disnake.Forbidden):
                 self.log_error("Channel %s not found when trying to send reminder", reminder.channel_id)
+                await self.db.mark_reminder_as_notified(reminder.id)
                 continue
 
             if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
                 self.log_error("Channel %s is not a text channel when trying to send reminder", channel.id)
+                await self.db.mark_reminder_as_notified(reminder.id)
                 continue
 
             await channel.send(f"Here's your reminder, {message}", embed=embed)
