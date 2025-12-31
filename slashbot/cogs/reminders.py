@@ -126,6 +126,8 @@ class Reminders(CustomCog):
 
         if not reminders:
             return
+        if isinstance(reminders, ReminderSQL):
+            reminders = [reminders]
         if len(reminders) == 0:
             return
 
