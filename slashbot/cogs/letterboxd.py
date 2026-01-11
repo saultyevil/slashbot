@@ -54,7 +54,7 @@ class LetterboxdTracker(CustomCog):
             published_date=datetime.datetime.strptime(movie_entry["published"], "%a, %d %b %Y %H:%M:%S %z"),  # type: ignore
             watched_date=watched_date,
             tmdb_id=movie_entry["tmdb_movieid"],
-            url=movie_entry["link"],
+            url=str(movie_entry["link"]).replace(f"{letterboxd_username}/", ""),
             poster_url=poster_url,
         )
         new_movie = await self.db.upsert_row(movie)
