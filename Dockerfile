@@ -40,5 +40,6 @@ RUN useradd -m slashbot && \
 
 # Switch to slashbot and run bot
 WORKDIR /bot
+RUN mkdir /venv && chown slashbot:slashbot /venv
 USER slashbot
 CMD ["./docker/entrypoint.sh"]

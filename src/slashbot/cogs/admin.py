@@ -31,7 +31,7 @@ def restart_bot(arguments: list[str]) -> None:
 
     """
     logger = logging.getLogger(BotSettings.logging.logger_name)
-    poetry_executable = shutil.which("poetry")
+    poetry_executable = shutil.which("uv")
     if poetry_executable is None:
         logger.error("Could not find the poetry executable")
         return

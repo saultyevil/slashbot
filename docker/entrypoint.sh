@@ -20,7 +20,7 @@ if [ $timeout -eq 0 ]; then
 fi
 
 # Install package dependencies
-export UV_PROJECT_ENVIRONMENT=/bot/docker-venv
+export UV_PROJECT_ENVIRONMENT=/venv
 uv sync --link-mode=copy
 
 # Run the bot

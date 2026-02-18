@@ -170,13 +170,13 @@ class Slashbot:
             markov.MARKOV_BANK = markov.load_markov_bank("data/markov/markov-sentences.json")
 
         package = "slashbot.cogs"
-
         cogs_path = Path(__file__).parent.parent / "cogs"
+        cogs_to_load = cogs_path.glob("*.py")
 
-        for file in cogs_path.glob("*.py"):
-            if file.name.startswith("_"):
+        for cog_file_path in cogs_to_load:
+            if cog_file_path.name.startswith("_"):
                 continue
-            module = f"{package}.{file.stem}"
+            module = f"{package}.{cog_file_path.stem}"
             bot.load_extension(module)
 
         bot.add_listener(self.create_on_ready(bot))
