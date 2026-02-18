@@ -1,5 +1,6 @@
 .env*
 .venv
+venv/
 logs/*.log*
 data/*.db.json
 data/*.txt
