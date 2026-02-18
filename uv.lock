@@ -1811,7 +1811,7 @@ wheels = [
 [[package]]
 name = "slashbot"
 version = "2.10.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiosqlite" },
@@ -1834,6 +1834,7 @@ dependencies = [
     { name = "pyowm" },
     { name = "pyspellchecker" },
     { name = "pytest-asyncio" },
+    { name = "ruff" },
     { name = "rule34" },
     { name = "rule34-posts-wrapper" },
     { name = "selenium" },
@@ -1877,6 +1878,7 @@ requires-dist = [
     { name = "pyowm", specifier = "==3.3.0" },
     { name = "pyspellchecker", specifier = ">=0.7.2,<0.8" },
     { name = "pytest-asyncio", specifier = ">=1.2.0,<2" },
+    { name = "ruff", specifier = ">=0.9.10" },
     { name = "rule34", specifier = "==1.8.1" },
     { name = "rule34-posts-wrapper", specifier = ">=0.1.1.1,<0.2" },
     { name = "selenium", specifier = ">=4.34.2,<5" },

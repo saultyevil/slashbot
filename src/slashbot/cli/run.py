@@ -14,6 +14,7 @@ import logging
 import time
 import traceback
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import disnake
@@ -161,12 +162,23 @@ class Slashbot:
         bot.log_info("Initializing... %s", args)
         bot.log_info("Config file: %s", BotSettings.config_file)
 
+        # TODO: file paths should be based on an env var or relative to this file
+
         if args.on_the_fly_markov:
             markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle")
         else:
             markov.MARKOV_BANK = markov.load_markov_bank("data/markov/markov-sentences.json")
 
-        bot.load_extensions("slashbot/cogs")
+        package = "slashbot.cogs"
+
+        cogs_path = Path(__file__).parent.parent / "cogs"
+
+        for file in cogs_path.glob("*.py"):
+            if file.name.startswith("_"):
+                continue
+            module = f"{package}.{file.stem}"
+            bot.load_extension(module)
+
         bot.add_listener(self.create_on_ready(bot))
         bot.add_listener(self.create_on_error(bot))
         bot.add_listener(self.create_on_slash_command_error(bot))

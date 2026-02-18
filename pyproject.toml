@@ -35,6 +35,7 @@ dependencies = [
     "alembic>=1.16.5,<2",
     "rule34-posts-wrapper>=0.1.1.1,<0.2",
     "pytest-asyncio>=1.2.0,<2",
+    "ruff>=0.9.10",
 ]
 
 [project.scripts]
@@ -51,13 +52,14 @@ dev = [
 ]
 
 [tool.uv]
+package = true
 
 [tool.uv.sources]
 markovify = { git = "https://github.com/saultyevil/markovify.git" }
 
 [tool.uv.build-backend]
 module-name = ["slashbot"]
-module-root = ""
+module-root = "src"
 
 [tool.isort]
 profile = "ruff"
