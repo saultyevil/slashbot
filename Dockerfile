@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.14.0-slim-bookworm
+FROM ghcr.io/astral-sh/uv:python3.13-trixie-slim
 
 # Install dependencies for some commands
 RUN apt update && \
@@ -32,22 +32,13 @@ RUN ARCH=$(uname -m); \
 
 # Create slashbot user, required for ssh key shenanigans and update command. Also
 # enable git to be OK with the bot directory
-
 RUN useradd -m slashbot && \
     mkdir -p /home/slashbot/.ssh && \
     chown -R slashbot:slashbot /home/slashbot/.ssh && \
     git config --global --add safe.directory /bot && \
     echo "slashbot ALL=(root) NOPASSWD: /usr/bin/Xvfb" >> /etc/sudoers
 
-# Install poetry via pip
-USER slashbot
-RUN pip install poetry
-ENV PATH="/home/slashbot/.local/bin:$PATH"
-
-# Copy the poetry files to cache them in docker layer
-WORKDIR /bot
-COPY poetry.lock pyproject.toml README.md ./
-RUN poetry install --no-interaction --no-ansi --no-root
-
 # Switch to slashbot and run bot
+WORKDIR /bot
+USER slashbot
 CMD ["./docker/entrypoint.sh"]

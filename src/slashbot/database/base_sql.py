@@ -145,13 +145,7 @@ class BaseDatabaseSQL(Logger):
         self,
         model_cls: type[UserSQL] | type[ReminderSQL] | type[WatchedMovieSQL],
         *filters: Any,
-    ) -> (
-        list[UserSQL | ReminderSQL | WatchedMovieSQL]
-        | UserSQL
-        | ReminderSQL
-        | WatchedMovieSQL
-        | None
-    ):
+    ) -> list[UserSQL | ReminderSQL | WatchedMovieSQL] | UserSQL | ReminderSQL | WatchedMovieSQL | None:
         """Query rows from the database.
 
         Query all users:

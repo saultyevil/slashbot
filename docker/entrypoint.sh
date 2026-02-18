@@ -19,23 +19,13 @@ if [ $timeout -eq 0 ]; then
   exit 1
 fi
 
-# Install missing python dependencies as the Dockerfile uses --no-root. Capture
-# the output and only print if something went wrong
-if ! poetry install >poetry_install.log 2>&1; then
-    echo "Poetry install failed, see poetry_install.log:"
-    cat poetry_install.log
-    exit 1
-fi
-
-# Run database migrations
-if ! poetry run alembic upgrade head; then
-    echo "Alembic migrations failed"
-    exit 1
-fi
+# Install package dependencies
+export UV_PROJECT_ENVIRONMENT=/bot/docker-venv
+uv sync --link-mode=copy
 
 # Run the bot
 if [ "$DEVELOPMENT_MODE" = true ]; then
-    exec poetry run slashbot --debug
+    exec uv run slashbot --debug
 else
-    exec poetry run slashbot
+    exec uv run slashbot
 fi

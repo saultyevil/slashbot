@@ -1,55 +1,65 @@
-[tool.poetry]
+[project]
 name = "slashbot"
-version = "2.9.0"
+version = "2.10.0"
 description = "A (useless) discord bot designed around slash commands."
-authors = ["Edward J. Parkinson"]
+authors = [{ name = "Edward J. Parkinson" }]
+requires-python = ">=3.11,<3.14"
 readme = "README.md"
-packages = [
-    { include = "slashbot" },
+dependencies = [
+    "unidecode==1.3.6",
+    "prettytable==3.6.0",
+    "rule34==1.8.1",
+    "wolframalpha==5.0.0",
+    "disnake==2.11.0",
+    "pyowm==3.3.0",
+    "dateparser>=1.1.8,<2",
+    "tiktoken==0.12.0",
+    "watchdog>=3.0.0,<4",
+    "geopy>=2.3.0,<3",
+    "pyspellchecker>=0.7.2,<0.8",
+    "httpx>=0.28.1,<0.29",
+    "openai==1.61.0",
+    "aiofiles>=23.2.1,<24",
+    "defusedxml>=0.7.1,<0.8",
+    "pyinstrument>=5.0.0,<6",
+    "gitpython>=3.1.44,<4",
+    "markovify",
+    "pydantic>=2.11.3,<3",
+    "sqlalchemy>=2.0.41,<3",
+    "aiosqlite>=0.21.0,<0.22",
+    "selenium>=4.34.2,<5",
+    "greenlet>=3.2.3,<4",
+    "nameparser>=1.1.3,<2",
+    "ddgs>=9.5.4,<10",
+    "feedparser>=6.0.12,<7",
+    "alembic>=1.16.5,<2",
+    "rule34-posts-wrapper>=0.1.1.1,<0.2",
+    "pytest-asyncio>=1.2.0,<2",
+    "ruff>=0.9.10",
 ]
 
-[tool.poetry.scripts]
+[project.scripts]
 slashbot = "slashbot.cli.run:entry_point"
 
-[tool.poetry.dependencies]
-python = ">=3.11,<3.14"
-unidecode = "1.3.6"
-prettytable = "3.6.0"
-rule34 = "1.8.1"
-wolframalpha = "5.0.0"
-disnake = "2.11.0"
-pyowm = "3.3.0"
-dateparser = "^1.1.8"
-tiktoken = "0.12.0"
-watchdog = "^3.0.0"
-geopy = "^2.3.0"
-pyspellchecker = "^0.7.2"
-httpx = "^0.28.1"
-openai = "1.61.0"
-aiofiles = "^23.2.1"
-defusedxml = "^0.7.1"
-pyinstrument = "^5.0.0"
-gitpython = "^3.1.44"
-markovify = {git = "https://github.com/saultyevil/markovify.git"}
-pydantic = "^2.11.3"
-sqlalchemy = "^2.0.41"
-aiosqlite = "^0.21.0"
-selenium = "^4.34.2"
-greenlet = "^3.2.3"
-nameparser = "^1.1.3"
-ddgs = "^9.5.4"
-feedparser = "^6.0.12"
-alembic = "^1.16.5"
-rule34-posts-wrapper = "^0.1.1.1"
-pytest-asyncio = "^1.2.0"
+[dependency-groups]
+dev = [
+    "ipython>=8.13.2,<9",
+    "pre-commit>=3.3.3,<4",
+    "isort>=5.12.0,<6",
+    "ruff>=0.9.9,<0.10",
+    "pytest>=8.2.2,<9",
+    "pytest-asyncio==1.2.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-ipython = "^8.13.2"
-pre-commit = "^3.3.3"
-isort = "^5.12.0"
-ruff = "^0.9.9"
-pytest = "^8.2.2"
-pytest-asyncio = "1.2.0"
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+markovify = { git = "https://github.com/saultyevil/markovify.git" }
+
+[tool.uv.build-backend]
+module-name = ["slashbot"]
+module-root = "src"
 
 [tool.isort]
 profile = "ruff"
