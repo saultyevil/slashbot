@@ -1,8 +1,7 @@
 # syntax=docker/dockerfile:1
-
 FROM ghcr.io/astral-sh/uv:python3.13-trixie-slim
 
-# Install dependencies for some commands
+# Install dependencies for git and selenium functionality
 RUN apt update && \
     apt install -y --no-install-recommends git \
     openssh-client \
@@ -15,12 +14,14 @@ RUN apt update && \
     libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Geckodriver which is often missing
+# If on aarch65, we have to install Geckodriver ourselves. But we'll automate
+# installing it for x64 and aarch64, as it's probably less confusing when
+# debugging build issues why it only happens on aarch64
 RUN ARCH=$(uname -m); \
     case "$ARCH" in \
     x86_64) GD_ARCH=linux64 ;; \
     aarch64) GD_ARCH=linux-aarch64 ;; \
-    *) echo "Unsupported arch $ARCH, skipping geckodriver install"; exit 0 ;; \
+    *) echo "Unsupported arch $ARCH"; exit 0 ;; \
     esac; \
     VERSION=v0.36.0; \
     URL="https://github.com/mozilla/geckodriver/releases/download/$VERSION/geckodriver-$VERSION-$GD_ARCH.tar.gz"; \
@@ -38,8 +39,12 @@ RUN useradd -m slashbot && \
     git config --global --add safe.directory /bot && \
     echo "slashbot ALL=(root) NOPASSWD: /usr/bin/Xvfb" >> /etc/sudoers
 
-# Switch to slashbot and run bot
-WORKDIR /bot
+# Creating a directory for the uv venv. This is on the container, to doesn't
+# interfere with the venv in the project directory due to the bind mount
 RUN mkdir /venv && chown slashbot:slashbot /venv
+
+# Switch to slashbot and /bot working directory and launch the bot via the
+# entrypoint script
 USER slashbot
+WORKDIR /bot
 CMD ["./docker/entrypoint.sh"]

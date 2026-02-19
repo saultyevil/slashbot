@@ -1,15 +1,17 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
-# Clean up Xvfb if it's running
+# Clean up Xvfb if it's already running, otherwise we won't be able to start a
+# virtual display with the correct DISPLAY variable (required for Firefox for
+# Selenium scraping)
 pkill Xvfb || true
 rm -f /tmp/.X0-lock
 
-# Create a virtual display, required for selenium scraping
+# Now create a new virtual display, 1920x1080 so it's big enough
 export DISPLAY=:0
 Xvfb :0 -ac -screen 0 1920x1080x8 &
-timeout=10
+timeout=10  # count down from 10 seconds
 while [ ! -e /tmp/.X11-unix/X0 ] && [ $timeout -gt 0 ]; do
   sleep 1
   timeout=$((timeout - 1))
@@ -19,11 +21,10 @@ if [ $timeout -eq 0 ]; then
   exit 1
 fi
 
-# Install package dependencies
+# Finally: tell uv where to create a venv, then sync the packages and run the
+# bot
 export UV_PROJECT_ENVIRONMENT=/venv
 uv sync --link-mode=copy
-
-# Run the bot
 if [ "$DEVELOPMENT_MODE" = true ]; then
     exec uv run slashbot --debug
 else
