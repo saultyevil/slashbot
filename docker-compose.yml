@@ -1,12 +1,14 @@
 services:
   bot:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     container_name: slashbot
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      - DEVELOPMENT_MODE=false
+      - DEBUG=${DEBUG:-false}
     volumes:
       - .:/bot
       - ~/.ssh:/home/slashbot/.ssh:ro

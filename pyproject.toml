@@ -33,9 +33,6 @@ dependencies = [
     "ddgs>=9.5.4,<10",
     "feedparser>=6.0.12,<7",
     "alembic>=1.16.5,<2",
-    "rule34-posts-wrapper>=0.1.1.1,<0.2",
-    "pytest-asyncio>=1.2.0,<2",
-    "ruff>=0.9.10",
 ]
 
 [project.scripts]
