@@ -41,10 +41,20 @@ RUN useradd -m slashbot && \
 
 # Creating a directory for the uv venv. This is on the container, to doesn't
 # interfere with the venv in the project directory due to the bind mount
-RUN mkdir /venv && chown slashbot:slashbot /venv
+ENV UV_PROJECT_ENVIORNMENT=/venv
+RUN mkdir ${UV_PROJECT_ENVIORNMENT} && chown slashbot:slashbot ${UV_PROJECT_ENVIORNMENT}
+
+# Prepare virtual screen for selenium
+COPY ./docker/prepare-virtual-screen.sh ./
+RUN ./prepare-virtual-screen.sh
+
+# Prepare python virtual environment: install packages and correct python version
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --link-mode=copy --no-dev
 
 # Switch to slashbot and /bot working directory and launch the bot via the
 # entrypoint script
 USER slashbot
 WORKDIR /bot
+
 CMD ["./docker/entrypoint.sh"]
