@@ -78,6 +78,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         image_content = []
         video_content = []
 
+        self.log_debug("Creating request payload for %s using %s", self.model_name, messages)
+
         for message in messages:
             text_content.append(self._create_text_payload(message.text))
             if message.images:
