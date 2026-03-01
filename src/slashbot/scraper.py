@@ -26,10 +26,14 @@ class FirefoxWebScraper(Logger):
         super().__init__(prepend_msg=log_label)
 
         options = webdriver.FirefoxOptions()
-        options.add_argument("--headless=new")
+        options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--window-size=1920,1080")
+        options.set_preference("browser.startup.homepage", "about:blank")
+        options.set_preference("startup.homepage_welcome_url", "about:blank")
+        options.set_preference("browser.cache.disk.enable", False)
+        options.set_preference("browser.shell.checkDefaultBrowser", False)
 
         if Path("/usr/local/bin/geckodriver").exists():
             service = Service("/usr/local/bin/geckodriver")
