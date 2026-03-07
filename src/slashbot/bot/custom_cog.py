@@ -59,8 +59,7 @@ class CustomCog(Cog, Logger):
         for attr in dir(self):
             task_candidate = getattr(self, attr)
             if isinstance(task_candidate, tasks.Loop) and not task_candidate.is_running():
-                if task_candidate._error is None:  # noqa: SLF001
-                    task_candidate.error(self._default_task_error_handler)
+                task_candidate.error(self._default_task_error_handler)
                 self.log_debug("Starting task: %s", attr)
                 task_candidate.start()
 
