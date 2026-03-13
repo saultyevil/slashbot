@@ -469,6 +469,7 @@ class KeyStore(BaseModel):
     google: str | None = os.getenv("BOT_GOOGLE_API_KEY")
     wolframalpha: str | None = os.getenv("BOT_WOLFRAM_API_KEY")
     gemini: str | None = os.getenv("BOT_GEMINI_API_KEY")
+    claude: str | None = os.getenv("BOT_ANTHROPIC_API_KEY")
 
 
 class Settings(BaseModel):

@@ -1,7 +1,8 @@
 from typing import cast
 
-from slashbot.ai.clients.gemini_client import GeminiClient
-from slashbot.ai.clients.openai_client import OpenAIClient
+from slashbot.ai.clients.claude import ClaudeClient
+from slashbot.ai.clients.gemini import GeminiClient
+from slashbot.ai.clients.openai import OpenAIClient
 from slashbot.ai.models import TextGenerationInput, TextGenerationResponse
 from slashbot.logger import Logger
 from slashbot.settings import BotSettings
