@@ -1,5 +1,4 @@
 import openai
-import tiktoken
 
 from slashbot.ai.clients.abstract_client import TextGenerationAbstractClient
 from slashbot.ai.models import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
@@ -55,6 +54,7 @@ class OpenAIClient(TextGenerationAbstractClient):
                     num_images += 1
                 if num_images > BotSettings.cogs.chatbot.max_images_in_window:
                     self._remove_message(i)
+                    continue
             i += 1
 
         # But we still include new video request here, we are only removing OLD
@@ -134,28 +134,17 @@ class OpenAIClient(TextGenerationAbstractClient):
             The count of tokens in the given message for the current model.
 
         """
-        try:
-            encoding = tiktoken.encoding_for_model(self.model_name)
-        except KeyError:
-            encoding = tiktoken.get_encoding("o200k_base")  # Fallback to this base
+        if not self._client:
+            msg = "No API client is available to query the tokens endpoint"
+            raise ValueError(msg)
+        if isinstance(messages, str):
+            messages = [{"role": "user", "content": messages}]
 
-        if isinstance(messages, list):
-            num_tokens = 0
-            # Handle case where there are images and messages. Images are a fixed
-            # cost of something like 85 tokens so we don't need to encode those
-            # using tiktoken.
-            for content in messages:
-                if content["type"] == "text":
-                    num_tokens += len(encoding.encode(content["text"]))
-                else:
-                    num_tokens += self.OPENAI_LOW_DETAIL_IMAGE_TOKENS if content["type"] == "image_url" else 0
-        elif isinstance(messages, str):
-            num_tokens = len(encoding.encode(messages))
-        else:
-            msg = f"Expected a string or list of strings for encoding, got {type(messages)}"
-            raise TypeError(msg)
+        client = openai.Client(api_key=self._client.api_key, base_url=self._client.base_url)
+        response = client.responses.input_tokens.count(model=self.model_name, input=messages)
+        self.log_debug("Count token response %s for messages %s", response, messages)
 
-        return num_tokens
+        return response.input_tokens
 
     def create_request_json(
         self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
@@ -225,18 +214,24 @@ class OpenAIClient(TextGenerationAbstractClient):
 
         return response
 
-    def init_client(self, model_name: str) -> None:
+    def init_client(self, model_name: str, *, base_url: str | None = None) -> None:
         """Initialise the client to use a model.
 
         Parameters
         ----------
         model_name : str
             The name of the model to initialise the client for.
+        base_url : str | None
+            The base URL of the API service. By default None, which means the
+            default URL of the relevant SDK is used.
 
         """
         self.model_name = model_name
-        self._base_url = "https://api.openai.com/v1"
-        self._client = openai.AsyncClient(api_key=BotSettings.keys.openai)
+        if base_url is None:
+            self._base_url = "https://api.openai.com/v1"
+        else:
+            self._base_url = base_url
+        self._client = openai.AsyncClient(api_key=BotSettings.keys.openai, base_url=self._base_url)
         self._context = [{"role": "system", "content": self.system_prompt}]
         self._setup_response_logger(model_name)
 
@@ -261,7 +256,7 @@ class OpenAIClient(TextGenerationAbstractClient):
             frequency_penalty=BotSettings.cogs.chatbot.model_frequency_penalty,
             presence_penalty=BotSettings.cogs.chatbot.model_presence_penalty,
         )
-        await self._log_response("%s", content)
+        await self._log_response("%s", response)
 
         assistant_response = response.choices[0].message.content
         if not assistant_response:

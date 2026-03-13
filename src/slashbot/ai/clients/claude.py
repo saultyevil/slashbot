@@ -1,5 +1,4 @@
-import openai
-import tiktoken
+from anthropic import Anthropic, AsyncAnthropic
 
 from slashbot.ai.clients.abstract_client import TextGenerationAbstractClient
 from slashbot.ai.models import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
@@ -9,12 +8,14 @@ from slashbot.settings import BotSettings
 class ClaudeClient(TextGenerationAbstractClient):
     """Asynchronous Claude client."""
 
-    OPENAI_LOW_DETAIL_IMAGE_TOKENS = 85
     SUPPORTED_MODELS = (
-        "claude-haiku-4-6",
+        "claude-haiku-4-5",
         "claude-sonnet-4-6",
     )
-    VISION_MODELS = SUPPORTED_MODELS
+    VISION_MODELS = (
+        "claude-haiku-4-5",
+        "claude-sonnet-4-6",
+    )
     SEARCH_MODELS = ()
     AUDIO_MODELS = ()
     VIDEO_MODELS = ()
@@ -30,19 +31,19 @@ class ClaudeClient(TextGenerationAbstractClient):
             The length of the conversation.
 
         """
-        return len(self._context[1:])
+        return len(self._context)
 
     # --------------------------------------------------------------------------
 
     def _content_contains_image_type(self, contents: list[dict]) -> bool:
-        return any(content["type"] == "image_url" for content in contents)
+        return any(content["type"] == "image" for content in contents)
 
     def _add_to_contents(self, new_content: dict) -> None:
         # Keep some variable amount of images in the request. If we have too
         # many images, then the latency is too high
         i = 0
         num_images = 0
-        while i < len(self._context[1:]):
+        while i < len(self._context):
             contents = self._context[i]["content"]
             # can only be an image of contents is a dict or a list
             if not isinstance(contents, str):
@@ -50,6 +51,7 @@ class ClaudeClient(TextGenerationAbstractClient):
                     num_images += 1
                 if num_images > BotSettings.cogs.chatbot.max_images_in_window:
                     self._remove_message(i)
+                    continue  # don't increment as the lift has been shifted
             i += 1
 
         # But we still include new video request here, we are only removing OLD
@@ -67,10 +69,11 @@ class ClaudeClient(TextGenerationAbstractClient):
             images = [images]
         return [
             {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/{image.mime_type};base64,{image.b64image}" if image.b64image else image.url,
-                    "detail": "low",
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": f"image/{image.mime_type}",
+                    "data": f"{image.b64image}",
                 },
             }
             for image in images
@@ -90,8 +93,6 @@ class ClaudeClient(TextGenerationAbstractClient):
         return []
 
     def _remove_message(self, index: int) -> dict:
-        if index == 0:
-            index = 1
         if index < 0:
             msg = "Cannot remove message at negative index"
             raise IndexError(msg)
@@ -106,12 +107,12 @@ class ClaudeClient(TextGenerationAbstractClient):
     @property
     def context(self) -> list[dict]:
         """Get the context, minus the system prompt."""
-        return self._context[1:]
+        return self._context
 
     @property
     def client_type(self) -> str:
         """Get the model type."""
-        return "openai"
+        return "claude"
 
     # --------------------------------------------------------------------------
 
@@ -129,28 +130,17 @@ class ClaudeClient(TextGenerationAbstractClient):
             The count of tokens in the given message for the current model.
 
         """
-        try:
-            encoding = tiktoken.encoding_for_model(self.model_name)
-        except KeyError:
-            encoding = tiktoken.get_encoding("o200k_base")  # Fallback to this base
+        if not self._client:
+            msg = "No API client is available to query the tokens endpoint"
+            raise ValueError(msg)
+        if isinstance(messages, str):
+            messages = [{"role": "user", "content": messages}]
 
-        if isinstance(messages, list):
-            num_tokens = 0
-            # Handle case where there are images and messages. Images are a fixed
-            # cost of something like 85 tokens so we don't need to encode those
-            # using tiktoken.
-            for content in messages:
-                if content["type"] == "text":
-                    num_tokens += len(encoding.encode(content["text"]))
-                else:
-                    num_tokens += self.OPENAI_LOW_DETAIL_IMAGE_TOKENS if content["type"] == "image_url" else 0
-        elif isinstance(messages, str):
-            num_tokens = len(encoding.encode(messages))
-        else:
-            msg = f"Expected a string or list of strings for encoding, got {type(messages)}"
-            raise TypeError(msg)
+        client = Anthropic(api_key=self._client.api_key, base_url=self._client.base_url)
+        response = client.messages.count_tokens(model=self.model_name, messages=messages)
+        self.log_debug("Count token response %s for messages %s", response, messages)
 
-        return num_tokens
+        return response.input_tokens
 
     def create_request_json(
         self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
@@ -177,11 +167,7 @@ class ClaudeClient(TextGenerationAbstractClient):
                 part = self._create_assistant_text_payload(message.text)
             content.append(part)
 
-        request = content
-        if system_prompt:
-            request.insert(0, {"role": "system", "content": system_prompt})
-
-        return request
+        return content
 
     async def generate_response_with_context(
         self, messages: TextGenerationInput | list[TextGenerationInput]
@@ -212,7 +198,7 @@ class ClaudeClient(TextGenerationAbstractClient):
 
         response = await self.send_response_request(self._context)
         if not response.message:
-            msg = "A valid response was not generated by the OpenAI client."
+            msg = "A valid response was not generated by the Anthropic client."
             raise ValueError(msg)
 
         self._context.append(self._create_assistant_text_payload(response.message))
@@ -220,19 +206,25 @@ class ClaudeClient(TextGenerationAbstractClient):
 
         return response
 
-    def init_client(self, model_name: str) -> None:
+    def init_client(self, model_name: str, *, base_url: str | None = None) -> None:
         """Initialise the client to use a model.
 
         Parameters
         ----------
         model_name : str
             The name of the model to initialise the client for.
+        base_url : str | None
+            The base URL of the API service. By default None, which means the
+            default URL of the relevant SDK is used.
 
         """
         self.model_name = model_name
-        self._base_url = "https://api.anthropic.com/v1/"
-        self._client = openai.AsyncClient(api_key=BotSettings.keys.claude, base_url=self._base_url)
-        self._context = [{"role": "system", "content": self.system_prompt}]
+        if base_url is None:
+            self._base_url = "https://api.anthropic.com/v1/"
+        else:
+            self._base_url = base_url
+        self._client = AsyncAnthropic(api_key=BotSettings.keys.claude)
+        self._context = []
         self._setup_response_logger(model_name)
 
     async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
@@ -248,19 +240,21 @@ class ClaudeClient(TextGenerationAbstractClient):
             self.init_client(self.model_name)
 
         await self._log_request("%s", content)
-        response = await self._client.chat.completions.create(
+        response = await self._client.messages.create(
             model=self.model_name,
             messages=content,  # type: ignore
-            max_completion_tokens=self._max_completion_tokens,
+            max_tokens=self._max_completion_tokens,
             temperature=BotSettings.cogs.chatbot.model_temperature,
+            system=self.system_prompt,
         )
-        await self._log_response("%s", content)
+        await self._log_response("%s", response)
 
-        assistant_response = response.choices[0].message.content
-        if not assistant_response:
-            msg = "A valid response was not generated by the OpenAI client."
+        if not response.content:
+            msg = "A valid response was not generated by the Anthropic client."
             raise ValueError(msg)
-        token_usage = response.usage.total_tokens if response.usage else self.token_size
+
+        assistant_response = response.content[0].text
+        token_usage = response.usage.input_tokens + response.usage.output_tokens if response.usage else self.token_size
 
         return TextGenerationResponse(assistant_response, token_usage)
 
@@ -277,5 +271,5 @@ class ClaudeClient(TextGenerationAbstractClient):
         """
         self.system_prompt = prompt
         self.system_prompt_name = prompt_name
-        self._context = [{"role": "system", "content": prompt}]
+        self._context = []
         self.token_size = self.count_tokens_for_message(prompt)

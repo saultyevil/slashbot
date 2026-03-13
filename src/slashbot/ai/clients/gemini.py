@@ -286,13 +286,16 @@ class GeminiClient(TextGenerationAbstractClient):
 
         return response
 
-    def init_client(self, model_name: str) -> None:
+    def init_client(self, model_name: str, *, base_url: str | None = None) -> None:
         """Initialise the client to use a model.
 
         Parameters
         ----------
         model_name : str
             The name of the model to initialise the client for.
+        base_url : str | None
+            The base URL of the API service. By default None, which means the
+            default URL of the relevant SDK is used.
 
         """
         self.model_name = model_name

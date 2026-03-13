@@ -18,7 +18,7 @@ dependencies = [
     "geopy>=2.3.0,<3",
     "pyspellchecker>=0.7.2,<0.8",
     "httpx>=0.28.1,<0.29",
-    "openai==1.61.0",
+    "openai==2.26.0",
     "aiofiles>=23.2.1,<24",
     "defusedxml>=0.7.1,<0.8",
     "pyinstrument>=5.0.0,<6",
@@ -33,6 +33,7 @@ dependencies = [
     "ddgs>=9.5.4,<10",
     "feedparser>=6.0.12,<7",
     "alembic>=1.16.5,<2",
+    "anthropic[aiohttp]>=0.84.0",
 ]
 
 [project.scripts]
