@@ -101,7 +101,7 @@ class MediaTrackers(CustomCog):
             return [await self.bot.fetch_channel(1117059319230382140)]  # type: ignore
 
         channels = []
-        for channel_id in BotSettings.cogs.letterboxd.channels:
+        for channel_id in BotSettings.cogs.media_tracker.letterboxd_channels:
             channel = await self.bot.fetch_channel(channel_id)
             if not isinstance(channel, disnake.TextChannel):
                 self.log_error("Channel %d for movie tracking is not a server text channel", channel)
@@ -208,7 +208,7 @@ class MediaTrackers(CustomCog):
 
         return results
 
-    @tasks.loop(minutes=BotSettings.cogs.letterboxd.update_interval)
+    @tasks.loop(minutes=BotSettings.cogs.media_tracker.update_interval)
     async def check_for_new_watched_movies(self) -> None:
         """Periodically check for new logged movies."""
         letterboxd_users = await self.db.get_letterboxd_usernames()
@@ -318,7 +318,7 @@ class MediaTrackers(CustomCog):
             return [await self.bot.fetch_channel(1117059319230382140)]  # type: ignore
 
         channels = []
-        for channel_id in BotSettings.cogs.letterboxd.channels:
+        for channel_id in BotSettings.cogs.media_tracker.letterboxd_channels:
             channel = await self.bot.fetch_channel(channel_id)
             if not isinstance(channel, disnake.TextChannel):
                 self.log_error("Channel %d for game tracking is not a server text channel", channel)
@@ -421,7 +421,7 @@ class MediaTrackers(CustomCog):
 
         return results
 
-    @tasks.loop(minutes=BotSettings.cogs.backloggd.update_interval)
+    @tasks.loop(minutes=BotSettings.cogs.media_tracker.update_interval)
     async def check_for_new_logged_games(self) -> None:
         """Periodically check for new logged games."""
         backloggd_users = await self.db.get_backloggd_usernames()
