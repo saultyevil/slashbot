@@ -247,12 +247,11 @@ class GeminiClient(TextGenerationAbstractClient):
                 ],
             }
 
-        if self.model_name in self.SEARCH_MODELS:
+        if BotSettings.cogs.chatbot.enable_web_search and self.model_name in self.SEARCH_MODELS:
             request["tools"] = {  # type:ignore
                 "google_search": {},
+                "googleMaps": {},
             }
-            if BotSettings.cogs.chatbot.enable_google_maps:
-                request["tools"]["googleMaps"] = {}
 
         return request
 
@@ -302,9 +301,12 @@ class GeminiClient(TextGenerationAbstractClient):
             default URL of the relevant SDK is used.
 
         """
-        self.model_name = model_name
         gen_ai_url = "https://generativelanguage.googleapis.com/v1beta/models"
-        self._base_url = f"{gen_ai_url}/{model_name}:generateContent?key={BotSettings.keys.gemini}"
+        self.model_name = model_name
+        if base_url:
+            self._base_url = base_url
+        else:
+            self._base_url = f"{gen_ai_url}/{model_name}:generateContent?key={BotSettings.keys.gemini}"
         self._count_tokens_url = f"{gen_ai_url}/{model_name}:countTokens?key={BotSettings.keys.gemini}"
         self._context = {
             "system_instruction": {
@@ -319,12 +321,12 @@ class GeminiClient(TextGenerationAbstractClient):
                 "temperature": str(BotSettings.cogs.chatbot.model_temperature),
             },
         }
-        if self.model_name in self.SEARCH_MODELS:
+
+        if BotSettings.cogs.chatbot.enable_web_search and self.model_name in self.SEARCH_MODELS:
             self._context["tools"] = {  # type:ignore
                 "google_search": {},
+                "googleMaps": {},
             }
-            if BotSettings.cogs.chatbot.enable_google_maps:
-                self._context["tools"]["googleMaps"] = {}
 
         self._setup_response_logger(model_name)
 
