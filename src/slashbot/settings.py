@@ -31,24 +31,6 @@ class AdminCogSettings(BaseCogSettings):
     """
 
 
-class BackloggdCogSettings(BaseCogSettings):
-    """Settings for the backloggd cog.
-
-    Attributes
-    ----------
-    enabled : bool
-        Whether the admin cog is enabled.
-    update_interval : float
-        Interval (minutes) between updates.
-    channels : list[int]
-        List of channel IDs to post updates to.
-
-    """
-
-    update_interval: float
-    channels: list[int]
-
-
 class ChatBotCogSettings(BaseCogSettings):
     """Settings for chatbot cog.
 
@@ -100,24 +82,6 @@ class ChatBotCogSettings(BaseCogSettings):
     enable_google_maps: bool
 
 
-class LetterboxdCogSettings(BaseCogSettings):
-    """Settings for the movie tracker cog.
-
-    Attributes
-    ----------
-    enabled : bool
-        Whether the movie tracker cog is enabled.
-    update_interval : float
-        Interval (minutes) between updates.
-    channels : list[int]
-        List of channel IDs to post updates to.
-
-    """
-
-    update_interval: float
-    channels: list[int]
-
-
 class MarkovCogSettings(BaseCogSettings):
     """Settings for the markov cog.
 
@@ -127,6 +91,27 @@ class MarkovCogSettings(BaseCogSettings):
         Whether the markov cog is enabled.
 
     """
+
+
+class MediaTrackerCogSettings(BaseCogSettings):
+    """Settings for the movie tracker cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the movie tracker cog is enabled.
+    update_interval : float
+        Interval (minutes) between updates.
+    letterboxd_channels : list[int]
+        List of channel IDs to post updates to for letterboxd.
+    backloggd_channels : list [int]
+        List of channel IDs to post update to for backloggd.
+
+    """
+
+    update_interval: float
+    letterboxd_channels: list[int]
+    backloggd_channels: list[int]
 
 
 class RemindersCogSettings(BaseCogSettings):
@@ -259,10 +244,9 @@ class CogSettings(BaseModel):
     """
 
     admin: AdminCogSettings
-    backloggd: BackloggdCogSettings
     chatbot: ChatBotCogSettings
-    letterboxd: LetterboxdCogSettings
     markov: MarkovCogSettings
+    media_tracker: MediaTrackerCogSettings
     reminders: RemindersCogSettings
     scheduled_posts: ScheduledPostsCogSettings
     spam: SpamCogSettings

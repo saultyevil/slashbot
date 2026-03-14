@@ -83,7 +83,7 @@ class Slashbot:
             else:
                 bot.log_info("Bot reconnected")
 
-            bot.log_info("Available cogs: %s", list(bot.cogs.keys()))
+            bot.log_info("Available cogs: %s", sorted(list(bot.cogs.keys())))
 
         return on_ready
 
