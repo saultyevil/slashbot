@@ -555,7 +555,8 @@ class ChatBot(CustomCog):
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
         await inter.response.defer(ephemeral=True)
-        summary = await channel_history.generate_summary(requesting_user=inter.user.display_name)
+        # summary = await channel_history.generate_summary(requesting_user=inter.user.display_name)
+        summary = await channel_history.generate_summary(requesting_user=None)
         await inter.delete_original_response()
         await send_message_to_channel(summary, inter)
 

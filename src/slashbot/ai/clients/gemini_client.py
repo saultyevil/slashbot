@@ -20,11 +20,13 @@ class GeminiClient(TextGenerationAbstractClient):
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
         "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite-preview",
     )
     VISION_MODELS = (
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
         "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite-preview",
     )
     SEARCH_MODELS = (
         "gemini-2.5-flash",
@@ -34,11 +36,13 @@ class GeminiClient(TextGenerationAbstractClient):
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
         "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite-preview",
     )
     VIDEO_MODELS = (
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
         "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite-preview",
     )
 
     def __init__(self, model_name: str, **kwargs: Any) -> None:
