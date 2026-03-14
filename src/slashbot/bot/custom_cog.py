@@ -58,14 +58,9 @@ class CustomCog(Cog, Logger):
         """Start all tasks in the cog."""
         for attr in dir(self):
             task_candidate = getattr(self, attr)
-            if isinstance(task_candidate, tasks.Loop) and not task_candidate.is_running():
-                task_candidate.error(self._default_task_error_handler)
+            if isinstance(task_candidate, tasks.Loop):
                 self.log_debug("Starting task: %s", attr)
                 task_candidate.start()
-
-    async def _default_task_error_handler(self, error: Exception) -> None:
-        """Handle an uncaught exception in a task."""
-        self.log_error("Task encountered an error: %s", error)
 
     async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Reset the cooldown for some users and servers.

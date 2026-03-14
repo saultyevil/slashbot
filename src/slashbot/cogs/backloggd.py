@@ -216,7 +216,17 @@ class BackloggdTracker(CustomCog):
             "New games logged: %s",
             [{user: [movie.__dict__ for movie in games]} for user, games in new_games_logged.items()],
         )
-        channels = await self._get_channels()
+
+        # not sure what exception is raised... but if discord is unavailable this
+        # function kills the loop and it's surprisingly hard to automatically restart
+        # tasks. Catching the unavailable error here should also prevent something
+        # like fetch_user() from bringing the task down
+        try:
+            channels = await self._get_channels()
+        except Exception as exc:
+            self.log_error("Exception raised when getting channels: %s", exc)
+            return
+
         backloggd_to_discord_map = {user.backloggd_username: user.discord_id for user in backloggd_users}
 
         for backloggd_username, logged_games in new_games_logged.items():
@@ -229,6 +239,18 @@ class BackloggdTracker(CustomCog):
                 in_guild = channel.guild.get_member(discord_user.id)
                 if in_guild:
                     await channel.send(embeds=embeds)
+
+    @check_for_new_logged_games.error
+    async def handle_uncaught_exception(self, exception: BaseException) -> None:
+        """Log uncaught exceptions raised by the task.
+
+        Parameters
+        ----------
+        exception : BaseException
+            The exception that was raised and not caught in the loop.
+
+        """
+        self.log_error("Uncaught exception raised in task: %s", exception)
 
 
 def setup(bot: CustomInteractionBot) -> None:

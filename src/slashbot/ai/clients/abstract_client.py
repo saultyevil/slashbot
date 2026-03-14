@@ -39,12 +39,13 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         self._async_timeout = 240  # seconds
         self.system_prompt = kwargs.get("system_prompt", self.DEFAULT_SYSTEM_PROMPT.prompt)
         self.system_prompt_name = kwargs.get("system_prompt_name", self.DEFAULT_SYSTEM_PROMPT.name)
-        self.token_size = self.count_tokens_for_message(self.system_prompt)
         self._token_window_size = BotSettings.cogs.chatbot.token_window_size
         self._max_completion_tokens = BotSettings.cogs.chatbot.max_output_tokens
         self._response_logger = logging.getLogger(f"TextGenerationAbstractClient-{model_name}")
         self._logger_lock = asyncio.Lock()
+
         self.init_client(self.model_name)
+        self.token_size = self.count_tokens_for_message(self.system_prompt)
 
     @abstractmethod
     def __len__(self) -> int:
@@ -318,13 +319,16 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def init_client(self, model_name: str) -> None:
+    def init_client(self, model_name: str, *, base_url: str | None = None) -> None:
         """Initialise the client to use a model.
 
         Parameters
         ----------
         model_name : str
             The name of the model to initialise the client for.
+        base_url : str | None
+            The base URL of the API service. By default None, which means the
+            default URL of the relevant SDK is used.
 
         """
 

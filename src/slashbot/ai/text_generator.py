@@ -1,7 +1,8 @@
 from typing import cast
 
-from slashbot.ai.clients.gemini_client import GeminiClient
-from slashbot.ai.clients.openai_client import OpenAIClient
+from slashbot.ai.clients.claude import ClaudeClient
+from slashbot.ai.clients.gemini import GeminiClient
+from slashbot.ai.clients.openai import OpenAIClient
 from slashbot.ai.models import TextGenerationInput, TextGenerationResponse
 from slashbot.logger import Logger
 from slashbot.settings import BotSettings
@@ -16,11 +17,12 @@ class TextGenerator(Logger):
 
     SUPPORTED_OPENAI_MODELS = OpenAIClient.SUPPORTED_MODELS
     SUPPORTED_GOOGLE_MODELS = GeminiClient.SUPPORTED_MODELS
-    SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS + SUPPORTED_GOOGLE_MODELS
-    VISION_MODELS = (*OpenAIClient.VISION_MODELS, *GeminiClient.VISION_MODELS)
-    SEARCH_MODELS = (*OpenAIClient.SEARCH_MODELS, *GeminiClient.SEARCH_MODELS)
-    AUDIO_MODELS = (*OpenAIClient.AUDIO_MODELS, *GeminiClient.AUDIO_MODELS)
-    VIDEO_MODELS = (*OpenAIClient.VIDEO_MODELS, *GeminiClient.VIDEO_MODELS)
+    SUPPORTED_CLAUDE_MODELS = ClaudeClient.SUPPORTED_MODELS
+    SUPPORTED_MODELS = SUPPORTED_OPENAI_MODELS + SUPPORTED_GOOGLE_MODELS + SUPPORTED_CLAUDE_MODELS
+    VISION_MODELS = (*OpenAIClient.VISION_MODELS, *GeminiClient.VISION_MODELS, *ClaudeClient.VISION_MODELS)
+    SEARCH_MODELS = (*OpenAIClient.SEARCH_MODELS, *GeminiClient.SEARCH_MODELS, *ClaudeClient.SEARCH_MODELS)
+    AUDIO_MODELS = (*OpenAIClient.AUDIO_MODELS, *GeminiClient.AUDIO_MODELS, *ClaudeClient.AUDIO_MODELS)
+    VIDEO_MODELS = (*OpenAIClient.VIDEO_MODELS, *GeminiClient.VIDEO_MODELS, *ClaudeClient.VIDEO_MODELS)
 
     def __init__(self, *, model_name: str | None = None, extra_print: str = "") -> None:
         """Initialise a TextGeneratorLLM with default values.
@@ -36,7 +38,7 @@ class TextGenerator(Logger):
         super().__init__(prepend_msg=extra_print)
         model: str = model_name or BotSettings.cogs.chatbot.default_model
         self._extra_print: str = extra_print
-        self._client = cast(OpenAIClient | GeminiClient, None)
+        self._client = cast(OpenAIClient | GeminiClient | ClaudeClient, None)
         self.set_model(model)
 
     # --------------------------------------------------------------------------
@@ -140,8 +142,8 @@ class TextGenerator(Logger):
             The name of the model to use.
 
         """
-        # If the new and old models are both openai, we can change the model
-        # name on the fly. We can't do this for a gemini model because some
+        # If the new and old models are both openai or claude, we can change the
+        # model name on the fly. We can't do this for a gemini model because some
         # don't support certain tools like web searching. In that case, we have
         # to create a new client and destroy the old context
         if model in self.SUPPORTED_OPENAI_MODELS:
@@ -149,6 +151,11 @@ class TextGenerator(Logger):
                 self._client.model_name = model
             else:
                 self._client = OpenAIClient(model)
+        elif model in self.SUPPORTED_CLAUDE_MODELS:
+            if self._client and self._client.client_type == "claude":
+                self._client.model_name = model
+            else:
+                self._client = ClaudeClient(model)
         elif model in self.SUPPORTED_GOOGLE_MODELS:
             self._client = GeminiClient(model)
         else:
