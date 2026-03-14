@@ -44,6 +44,10 @@ class GeminiClient(TextGenerationAbstractClient):
         "gemini-3-flash-preview",
         "gemini-3.1-flash-lite-preview",
     )
+    GOOGLE_MAPS_MODELS = (
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+    )
 
     def __init__(self, model_name: str, **kwargs: Any) -> None:
         """Initialise the Gemini client.
@@ -250,8 +254,9 @@ class GeminiClient(TextGenerationAbstractClient):
         if BotSettings.cogs.chatbot.enable_web_search and self.model_name in self.SEARCH_MODELS:
             request["tools"] = {  # type:ignore
                 "google_search": {},
-                "googleMaps": {},
             }
+            if self.model_name in self.GOOGLE_MAPS_MODELS:
+                request["tools"]["googleMaps"] = {}
 
         return request
 
@@ -325,8 +330,9 @@ class GeminiClient(TextGenerationAbstractClient):
         if BotSettings.cogs.chatbot.enable_web_search and self.model_name in self.SEARCH_MODELS:
             self._context["tools"] = {  # type:ignore
                 "google_search": {},
-                "googleMaps": {},
             }
+            if self.model_name in self.GOOGLE_MAPS_MODELS:
+                self._context["tools"]["googleMaps"] = {}
 
         self._setup_response_logger(model_name)
 
