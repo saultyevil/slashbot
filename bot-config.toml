@@ -17,7 +17,7 @@ response_rate_limit = 3
 rate_limit_interval = 5
 enable_profiling = false
 prefer_image_urls = false
-enable_google_maps = true
+enable_web_search = true
 
 [cogs.markov]
 enabled = true
