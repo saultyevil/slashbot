@@ -253,8 +253,6 @@ class OpenAIClient(TextGenerationAbstractClient):
             messages=content,  # type: ignore
             max_completion_tokens=self._max_completion_tokens,
             temperature=BotSettings.cogs.chatbot.model_temperature,
-            frequency_penalty=BotSettings.cogs.chatbot.model_frequency_penalty,
-            presence_penalty=BotSettings.cogs.chatbot.model_presence_penalty,
         )
         await self._log_response("%s", response)
 

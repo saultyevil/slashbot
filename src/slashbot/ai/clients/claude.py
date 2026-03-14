@@ -72,7 +72,7 @@ class ClaudeClient(TextGenerationAbstractClient):
                 "type": "image",
                 "source": {
                     "type": "base64",
-                    "media_type": f"image/{image.mime_type}",
+                    "media_type": f"{image.mime_type}",
                     "data": f"{image.b64image}",
                 },
             }

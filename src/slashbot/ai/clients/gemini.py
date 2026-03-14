@@ -311,6 +311,9 @@ class GeminiClient(TextGenerationAbstractClient):
                 ]
             },
             "contents": [],
+            "generationConfig": {
+                "temperature": str(BotSettings.cogs.chatbot.model_temperature),
+            },
         }
         if self.model_name in self.SEARCH_MODELS:
             self._context["tools"] = {  # type:ignore

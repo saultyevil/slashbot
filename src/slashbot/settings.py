@@ -64,12 +64,6 @@ class ChatBotCogSettings(BaseCogSettings):
         Maximum number of tokens in model output.
     model_temperature : float
         Sampling temperature for model generation.
-    model_top_p : float
-        Nucleus sampling parameter for model generation.
-    model_frequency_penalty : float
-        Penalty for frequent tokens in model output.
-    model_presence_penalty : float
-        Penalty for new tokens in model output.
     default_model : str
         Name of the default chat model to use.
     default_chat_prompt : str
@@ -95,9 +89,6 @@ class ChatBotCogSettings(BaseCogSettings):
     max_images_in_window: int
     max_output_tokens: int
     model_temperature: float
-    model_top_p: float
-    model_frequency_penalty: float
-    model_presence_penalty: float
     default_model: str
     default_chat_prompt: str
     random_response_chance: float
