@@ -8,16 +8,15 @@ from slashbot.settings import BotSettings
 class OpenAIClient(TextGenerationAbstractClient):
     """Asynchronous OpenAI client."""
 
-    OPENAI_LOW_DETAIL_IMAGE_TOKENS = 85
     SUPPORTED_MODELS = (
-        "gpt-4.1-nano",
-        "gpt-4.1-mini",
-        "gpt-5-nano",
+        # "gpt-4.1-nano",
+        # "gpt-4.1-mini",
+        # "gpt-5-nano",
     )
     VISION_MODELS = (
-        "gpt-4.1-mini",
-        "gpt-4.1-nano",
-        "gpt-5-nano",
+        # "gpt-4.1-mini",
+        # "gpt-4.1-nano",
+        # "gpt-5-nano",
     )
     SEARCH_MODELS = ()
     AUDIO_MODELS = ()
