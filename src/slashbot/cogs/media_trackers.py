@@ -1,5 +1,6 @@
 import datetime
 import re
+from collections.abc import Awaitable, Callable
 
 import disnake
 import feedparser
@@ -8,60 +9,20 @@ from feedparser import FeedParserDict
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
-from slashbot.database.sql_models import WatchedMovieSQL
-from slashbot.database.sql_models import LoggedGameSQL
+from slashbot.database.sql_models import LoggedGameSQL, WatchedMovieSQL
 from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
+# Type alias for the per-entry upsert callables passed to _get_new_feed_entries
+type UpsertCallable[T] = Callable[[str, FeedParserDict], Awaitable[T]]
+
 
 class MediaTrackers(CustomCog):
-    """Cog for posting when a user has logged a new movie on Letterboxd."""
+    """Cog for posting when a user has logged media on Letterboxd or Backloggd."""
 
-    async def _add_watched_movie_to_database(
-        self, letterboxd_username: str, movie_entry: FeedParserDict
-    ) -> WatchedMovieSQL:
-        """Add a RSS feed movie entry into the database.
-
-        Parameters
-        ----------
-        letterboxd_username : str
-            The Letterboxd username.
-        movie_entry : str
-            An entry from the user's RSS feed to add.
-
-        Returns
-        -------
-        WatchedMovie
-            The movie added to the database.
-
-        """
-        user_db = await self.db.get_user("letterboxd_username", letterboxd_username)
-        if not user_db:
-            exc_msg = f"Letterboxd user {letterboxd_username} was not in the database"
-            self.log_error("%s", exc_msg)
-            raise ValueError(exc_msg)
-
-        poster_url_regex = re.search(r'src="([^"]+)"', movie_entry["summary"])  # type: ignore
-        poster_url = poster_url_regex.group(1) if poster_url_regex else None
-        watched_date_str = movie_entry.get("letterboxd_watcheddate", None)
-        watched_date = datetime.datetime.strptime(watched_date_str, r"%Y-%m-%d") if watched_date_str else None  # type: ignore # noqa: DTZ007
-
-        movie = WatchedMovieSQL(
-            user_id=user_db.id,
-            username=letterboxd_username,
-            title=movie_entry["letterboxd_filmtitle"],
-            film_year=movie_entry["letterboxd_filmyear"],
-            user_rating=movie_entry.get("letterboxd_memberrating", None),
-            published_date=datetime.datetime.strptime(movie_entry["published"], "%a, %d %b %Y %H:%M:%S %z"),  # type: ignore
-            watched_date=watched_date,
-            tmdb_id=movie_entry["tmdb_movieid"],
-            url=str(movie_entry["link"]).replace(f"{letterboxd_username}/", ""),
-            poster_url=poster_url,
-        )
-        new_movie = await self.db.upsert_row(movie)
-        self.log_debug("Added new movie %s (%s) for %s", movie.title, movie.watched_date, letterboxd_username)
-
-        return new_movie
+    # ------------------------------------------------------------------
+    # Shared helpers
+    # ------------------------------------------------------------------
 
     @staticmethod
     def _convert_rating_to_stars(rating: float) -> str:
@@ -87,8 +48,16 @@ class MediaTrackers(CustomCog):
             stars += "½"
         return stars
 
-    async def _get_channels_letterboxd(self) -> list[disnake.TextChannel]:
-        """Get the channels for posting movie tracking to.
+    async def _get_channels(self, channel_ids: list[int], label: str) -> list[disnake.TextChannel]:
+        """Get a list of text channels for posting tracking updates to.
+
+        Parameters
+        ----------
+        channel_ids : list[int]
+            The channel IDs to fetch, as configured in settings.
+        label : str
+            A human-readable label for the tracker (e.g. "movie", "game"),
+            used in log messages.
 
         Returns
         -------
@@ -96,32 +65,205 @@ class MediaTrackers(CustomCog):
             A list of TextChannel instances.
 
         """
-        # If bot.reload, then we are in debug mode so return test channel
         if self.bot.reload:
             return [await self.bot.fetch_channel(1117059319230382140)]  # type: ignore
 
         channels = []
-        for channel_id in BotSettings.cogs.media_tracker.letterboxd_channels:
+        for channel_id in channel_ids:
             channel = await self.bot.fetch_channel(channel_id)
             if not isinstance(channel, disnake.TextChannel):
-                self.log_error("Channel %d for movie tracking is not a server text channel", channel)
+                self.log_error("Channel %d for %s tracking is not a server text channel", channel_id, label)
                 continue
             channels.append(channel)
 
-        if len(channels) == 0:
-            exc_msg = "No compatible channels found for movie tracking"
+        if not channels:
+            exc_msg = f"No compatible channels found for {label} tracking"
             raise ValueError(exc_msg)
 
         return channels
 
-    def _create_watched_movie_embed(self, watched_movie: WatchedMovieSQL) -> disnake.Embed:
-        """Create an embed instance for a watched movie and user.
+    async def _get_new_feed_entries[T](
+        self,
+        usernames: list[str],
+        feed_url_template: str,
+        get_last_entry: Callable[[str], Awaitable[T | None]],
+        get_title: Callable[[FeedParserDict], str | None],
+        upsert_entry: UpsertCallable[T],
+        service_label: str,
+        empty_log_label: str,
+    ) -> dict[str, list[T]]:
+        """Fetch new RSS feed entries for a list of users, relative to the last known entry.
+
+        This is the shared core for both Letterboxd and Backloggd polling. For
+        each username it parses the RSS feed, walks entries until it reaches the
+        last known one, and upserts any new ones via the provided callable.
 
         Parameters
         ----------
-        discord_user : disnake.User
-            An instance of a User for discord.
-        watched_movie : WatchedMovie
+        usernames : list[str]
+            The usernames to poll.
+        feed_url_template : str
+            A format string with a single ``{}`` placeholder for the username.
+        get_last_entry : Callable[[str], Awaitable[T | None]]
+            Async callable that returns the most recently stored entry for a
+            username, or ``None`` if none exists.
+        get_title : Callable[[FeedParserDict], str | None]
+            Extracts the title string from a raw feed entry. May return ``None``
+            if the entry should be skipped (e.g. unparseable title).
+        upsert_entry : UpsertCallable[T]
+            Async callable that persists a feed entry and returns the stored row.
+        service_label : str
+            Human-readable service name used in log messages (e.g. "letterboxd").
+        empty_log_label : str
+            Label used in the "empty watchlist" warning (e.g. "watchlist", "log list").
+
+        Returns
+        -------
+        dict[str, list[T]]
+            A mapping of username to newly logged entries.
+
+        """
+        if isinstance(usernames, str):
+            usernames = [usernames]
+
+        results: dict[str, list[T]] = {}
+
+        for username in usernames:
+            user_feed = feedparser.parse(feed_url_template.format(username))
+            if not user_feed.entries:
+                self.log_warning("%s has not logged any content in %s", username, service_label)
+                results[username] = []
+                continue
+
+            last_entry = await get_last_entry(username)
+            self.log_debug(
+                "Last entry for %s is %s",
+                username,
+                last_entry.__dict__ if last_entry else None,
+            )
+            last_title = last_entry.title if last_entry else None
+
+            new_entries: list[T] = []
+            for feed_entry in user_feed.entries:
+                title = get_title(feed_entry)
+                if not title:
+                    self.log_error("Unable to parse entry title %s for %s", feed_entry.get("title"), username)
+                    continue
+                if title == last_title:
+                    break
+                try:
+                    new_entries.append(await upsert_entry(username, feed_entry))
+                except Exception as exc:  # noqa: BLE001
+                    self.log_error("Failed to add entry %s for %s: %s", title, username, exc)
+
+            # If there was no prior entry the user was just added; return an
+            # empty list to avoid re-posting historical content.
+            if not last_title:
+                results[username] = []
+                self.log_warning("%s has probably just been created, sending back empty %s", username, empty_log_label)
+            else:
+                results[username] = new_entries
+
+        return results
+
+    async def _post_new_entries[T](
+        self,
+        new_entries: dict[str, list[T]],
+        username_to_discord_id: dict[str, int],
+        channels: list[disnake.TextChannel],
+        create_embed: Callable[[T], disnake.Embed],
+    ) -> None:
+        """Post embeds for newly logged entries to all relevant channels.
+
+        Parameters
+        ----------
+        new_entries : dict[str, list[T]]
+            Mapping of username to new entries to post.
+        username_to_discord_id : dict[str, int]
+            Mapping of service username to Discord user ID.
+        channels : list[disnake.TextChannel]
+            The channels to post to.
+        create_embed : Callable[[T], disnake.Embed]
+            Callable that builds an embed for a single entry.
+
+        """
+        for username, entries in new_entries.items():
+            if not entries:
+                continue
+            discord_user = await self.bot.fetch_user(username_to_discord_id[username])
+            # Discord caps embeds per message at 10
+            embeds = [create_embed(entry) for entry in entries[:10]]
+            for channel in channels:
+                if channel.guild.get_member(discord_user.id):
+                    await channel.send(embeds=embeds)
+
+    def _handle_task_error(self, exception: BaseException) -> None:
+        """Log uncaught exceptions raised by a task loop.
+
+        Parameters
+        ----------
+        exception : BaseException
+            The exception that was raised and not caught in the loop.
+
+        """
+        self.log_error("Uncaught exception raised in task: %s", exception)
+
+    # ------------------------------------------------------------------
+    # Letterboxd
+    # ------------------------------------------------------------------
+
+    async def _add_watched_movie_to_database(
+        self, letterboxd_username: str, movie_entry: FeedParserDict
+    ) -> WatchedMovieSQL:
+        """Add an RSS feed movie entry into the database.
+
+        Parameters
+        ----------
+        letterboxd_username : str
+            The Letterboxd username.
+        movie_entry : FeedParserDict
+            An entry from the user's RSS feed to add.
+
+        Returns
+        -------
+        WatchedMovieSQL
+            The movie added to the database.
+
+        """
+        user_db = await self.db.get_user("letterboxd_username", letterboxd_username)
+        if not user_db:
+            exc_msg = f"Letterboxd user {letterboxd_username} was not in the database"
+            self.log_error("%s", exc_msg)
+            raise ValueError(exc_msg)
+
+        poster_url_match = re.search(r'src="([^"]+)"', movie_entry["summary"])  # type: ignore
+        poster_url = poster_url_match.group(1) if poster_url_match else None
+        watched_date_str = movie_entry.get("letterboxd_watcheddate", None)
+        watched_date = datetime.datetime.strptime(watched_date_str, r"%Y-%m-%d") if watched_date_str else None  # type: ignore # noqa: DTZ007
+
+        movie = WatchedMovieSQL(
+            user_id=user_db.id,
+            username=letterboxd_username,
+            title=movie_entry["letterboxd_filmtitle"],
+            film_year=movie_entry["letterboxd_filmyear"],
+            user_rating=movie_entry.get("letterboxd_memberrating", None),
+            published_date=datetime.datetime.strptime(movie_entry["published"], "%a, %d %b %Y %H:%M:%S %z"),  # type: ignore
+            watched_date=watched_date,
+            tmdb_id=movie_entry["tmdb_movieid"],
+            url=str(movie_entry["link"]).replace(f"{letterboxd_username}/", ""),
+            poster_url=poster_url,
+        )
+        new_movie = await self.db.upsert_row(movie)
+        self.log_debug("Added new movie %s (%s) for %s", movie.title, movie.watched_date, letterboxd_username)
+
+        return new_movie
+
+    def _create_watched_movie_embed(self, watched_movie: WatchedMovieSQL) -> disnake.Embed:
+        """Create an embed instance for a watched movie.
+
+        Parameters
+        ----------
+        watched_movie : WatchedMovieSQL
             The DB instance of the movie to create the embed for.
 
         Returns
@@ -144,69 +286,40 @@ class MediaTrackers(CustomCog):
 
         return embed
 
-    async def get_most_recent_movie_watched(
-        self, letterboxd_usernames: list[str] | str
-    ) -> dict[str, list[WatchedMovieSQL] | list]:
-        """Get the latest watched movies for some Letterboxd users.
+    async def get_most_recent_movie_watched(self, letterboxd_usernames: list[str]) -> dict[str, list[WatchedMovieSQL]]:
+        """Get newly watched movies for a list of Letterboxd users.
 
-        This will return only the latest movie for the user. Therefore if a user
-        is logging multiple within the update interval, then only the most
-        latest will be retrieved.
+        Only entries logged since the last known entry are returned. If a user
+        has no prior entries (i.e. they were just added), an empty list is
+        returned to avoid replaying their full history.
 
         Parameters
         ----------
-        letterboxd_usernames : list[str] | str
-            The user(s) to find the latest movies watched.
+        letterboxd_usernames : list[str]
+            The Letterboxd usernames to poll.
 
         Returns
         -------
-        dict[str, list[WatchedMovieSQL] | list]
-            A mapping of username to movies watched.
+        dict[str, list[WatchedMovieSQL]]
+            A mapping of username to newly watched movies.
 
         """
-        results = {}
 
-        for letterboxd_username in letterboxd_usernames:
-            user_feed = feedparser.parse(f"https://letterboxd.com/{letterboxd_username}/rss/")
-            if not user_feed.entries:
-                self.log_warning("%s has not logged any content in letterboxd", letterboxd_username)
-                results[letterboxd_username] = []
-                continue
+        def get_title(entry: FeedParserDict) -> str | None:
+            # Skip non-movie entries (e.g. TV shows lack a tmdb_movieid)
+            if "tmdb_movieid" not in entry:
+                return None
+            return entry.get("letterboxd_filmtitle")
 
-            new_movies_watched = []
-            last_movie_watched = await self.db.get_last_movie_for_letterboxd_user(letterboxd_username)
-            self.log_debug(
-                "Last movie watched for %s is %s",
-                letterboxd_username,
-                last_movie_watched.__dict__ if last_movie_watched else None,
-            )
-            last_movie_title = last_movie_watched.title if last_movie_watched else None
-
-            for movie_entry in user_feed.entries:
-                title = movie_entry["letterboxd_filmtitle"]
-                # Early exit to avoid sending all movies watched
-                if title == last_movie_title:
-                    break
-                # This is not a movie then, but probably a tv show
-                if "tmdb_movieid" not in movie_entry:
-                    continue
-                try:
-                    new_movies_watched.append(
-                        await self._add_watched_movie_to_database(letterboxd_username, movie_entry)
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    self.log_error("Failed to add movie %s for %s: %s", title, letterboxd_username, exc)
-
-            # If the user has just been added then there will be no last movie
-            # watched. To avoid sending the last movie they watched before tracking
-            # began, we'll send an empty list back
-            if not last_movie_title:
-                results[letterboxd_username] = []
-                self.log_warning("%s has probably just been created, sending back empty watchlist", letterboxd_username)
-            else:
-                results[letterboxd_username] = new_movies_watched
-
-        return results
+        return await self._get_new_feed_entries(
+            usernames=letterboxd_usernames,
+            feed_url_template="https://letterboxd.com/{}/rss/",
+            get_last_entry=self.db.get_last_movie_for_letterboxd_user,
+            get_title=get_title,
+            upsert_entry=self._add_watched_movie_to_database,
+            service_label="letterboxd",
+            empty_log_label="watchlist",
+        )
 
     @tasks.loop(minutes=BotSettings.cogs.media_tracker.update_interval)
     async def check_for_new_watched_movies(self) -> None:
@@ -222,55 +335,44 @@ class MediaTrackers(CustomCog):
             [{user: [movie.__dict__ for movie in movies]} for user, movies in new_movies_watched.items()],
         )
 
-        # not sure what exception is raised... but if discord is unavailable this
-        # function kills the loop and it's surprisingly hard to automatically restart
-        # tasks. Catching the unavailable error here should also prevent something
-        # like fetch_user() from bringing the task down
+        # Catch Discord unavailability broadly — if this kills the loop it is
+        # surprisingly difficult to automatically restart tasks.
         try:
-            channels = await self._get_channels_letterboxd()
+            channels = await self._get_channels(BotSettings.cogs.media_tracker.letterboxd_channels, label="movie")
         except Exception as exc:
             self.log_error("Exception raised when getting channels: %s", exc)
             return
 
-        letterboxd_to_discord_map = {user.letterboxd_username: user.discord_id for user in letterboxd_users}
-
-        for letterboxd_username, watched_movies in new_movies_watched.items():
-            if not watched_movies:
-                continue
-            discord_user = await self.bot.fetch_user(letterboxd_to_discord_map[letterboxd_username])
-            # limit watched movies to first 10, as that is the embed limit
-            embeds = [self._create_watched_movie_embed(watched_movie) for watched_movie in watched_movies[:10]]
-            for channel in channels:
-                in_guild = channel.guild.get_member(discord_user.id)
-                if in_guild:
-                    await channel.send(embeds=embeds)
+        await self._post_new_entries(
+            new_entries=new_movies_watched,
+            username_to_discord_id={user.letterboxd_username: user.discord_id for user in letterboxd_users},
+            channels=channels,
+            create_embed=self._create_watched_movie_embed,
+        )
 
     @check_for_new_watched_movies.error
     async def letterboxd_handle_uncaught_exception(self, exception: BaseException) -> None:
-        """Log uncaught exceptions raised by the task.
+        """Log uncaught exceptions raised by the Letterboxd task."""
+        self._handle_task_error(exception)
 
-        Parameters
-        ----------
-        exception : BaseException
-            The exception that was raised and not caught in the loop.
-
-        """
-        self.log_error("Uncaught exception raised in task: %s", exception)
+    # ------------------------------------------------------------------
+    # Backloggd
+    # ------------------------------------------------------------------
 
     async def _add_game_to_database(self, backloggd_username: str, game_entry: FeedParserDict) -> LoggedGameSQL:
-        """Add a RSS feed movie entry into the database.
+        """Add an RSS feed game entry into the database.
 
         Parameters
         ----------
         backloggd_username : str
             The Backloggd username.
-        game_entry : str
+        game_entry : FeedParserDict
             An entry from the user's RSS feed to add.
 
         Returns
         -------
-        WatchedMovie
-            The movie added to the database.
+        LoggedGameSQL
+            The game added to the database.
 
         """
         user_db = await self.db.get_user("backloggd_username", backloggd_username)
@@ -279,11 +381,11 @@ class MediaTrackers(CustomCog):
             self.log_error("%s", exc_msg)
             raise ValueError(exc_msg)
 
-        m = re.match(r"^(.*?) \(\d{4}\)", str(game_entry["title"]))
-        title = m.group(1) if m else None
+        title_match = re.match(r"^(.*?) \(\d{4}\)", str(game_entry["title"]))
+        title = title_match.group(1) if title_match else None
 
-        m = re.search(r"\((\d{4})\)", str(game_entry["title"]))
-        year = m.group(1) if m else None
+        year_match = re.search(r"\((\d{4})\)", str(game_entry["title"]))
+        year = year_match.group(1) if year_match else None
 
         date_str = game_entry.get("published", None)
         date = datetime.datetime.strptime(date_str, r"%a, %d %b %Y %H:%M:%S %z") if date_str else None  # type: ignore
@@ -303,43 +405,13 @@ class MediaTrackers(CustomCog):
 
         return new_game
 
-
-    async def _get_channels_backloggd(self) -> list[disnake.TextChannel]:
-        """Get the channels for posting movie tracking to.
-
-        Returns
-        -------
-        list[disnake.TextChannel]
-            A list of TextChannel instances.
-
-        """
-        # If bot.reload, then we are in debug mode so return test channel
-        if self.bot.reload:
-            return [await self.bot.fetch_channel(1117059319230382140)]  # type: ignore
-
-        channels = []
-        for channel_id in BotSettings.cogs.media_tracker.letterboxd_channels:
-            channel = await self.bot.fetch_channel(channel_id)
-            if not isinstance(channel, disnake.TextChannel):
-                self.log_error("Channel %d for game tracking is not a server text channel", channel)
-                continue
-            channels.append(channel)
-
-        if len(channels) == 0:
-            exc_msg = "No compatible channels found for game tracking"
-            raise ValueError(exc_msg)
-
-        return channels
-
     def _create_logged_game_embed(self, logged_game: LoggedGameSQL) -> disnake.Embed:
-        """Create an embed instance for a logged game and user.
+        """Create an embed instance for a logged game.
 
         Parameters
         ----------
-        discord_user : disnake.User
-            An instance of a User for discord.
         logged_game : LoggedGameSQL
-            The DB instance of the movie to create the embed for.
+            The DB instance of the game to create the embed for.
 
         Returns
         -------
@@ -350,76 +422,47 @@ class MediaTrackers(CustomCog):
         embed = disnake.Embed(title=f"{logged_game.username.capitalize()} logged a game", url=logged_game.url)
         embed.add_field(name="Game title", value=logged_game.title, inline=False)
         embed.add_field(name="Release year", value=logged_game.game_year, inline=False)
-        embed.add_field(
-            name="Published date", value=datetime.datetime.strftime(logged_game.published_date, r"%d/%m/%Y")
-        )
+        if logged_game.published_date:
+            embed.add_field(
+                name="Published date", value=datetime.datetime.strftime(logged_game.published_date, r"%d/%m/%Y")
+            )
         embed.add_field(name="User rating", value=self._convert_rating_to_stars(logged_game.user_rating), inline=False)
         embed.set_thumbnail(url=logged_game.poster_url)
 
         return embed
 
-    async def get_most_recent_logged_game(
-        self, backloggd_usernames: list[str] | str
-    ) -> dict[str, list[LoggedGameSQL] | list]:
-        """Get the latest watched movies for some Letterboxd users.
+    async def get_most_recent_logged_game(self, backloggd_usernames: list[str]) -> dict[str, list[LoggedGameSQL]]:
+        """Get newly logged games for a list of Backloggd users.
 
-        This will return only the latest movie for the user. Therefore if a user
-        is logging multiple within the update interval, then only the most
-        latest will be retrieved.
+        Only entries logged since the last known entry are returned. If a user
+        has no prior entries (i.e. they were just added), an empty list is
+        returned to avoid replaying their full history.
 
         Parameters
         ----------
-        backloggd_usernames : list[str] | str
-            The user(s) to find the latest games logged.
+        backloggd_usernames : list[str]
+            The Backloggd usernames to poll.
 
         Returns
         -------
-        dict[str, list[LoggedGameSQL] | list]
-            A mapping of username to games logged.
+        dict[str, list[LoggedGameSQL]]
+            A mapping of username to newly logged games.
 
         """
-        results = {}
 
-        for backloggd_username in backloggd_usernames:
-            user_feed = feedparser.parse(f"https://backloggd.com/u/{backloggd_username}/reviews/rss/")
-            if not user_feed.entries:
-                self.log_warning("%s has not logged any content in backloggd", backloggd_username)
-                results[backloggd_username] = []
-                continue
+        def get_title(entry: FeedParserDict) -> str | None:
+            m = re.match(r"^(.*?) \(\d{4}\)", str(entry["title"]))
+            return m.group(1) if m else None
 
-            new_games_logged = []
-            last_game_logged = await self.db.get_last_game_for_backloggd_user(backloggd_username)
-            self.log_debug(
-                "Last game logged for %s is %s",
-                backloggd_username,
-                last_game_logged.__dict__ if last_game_logged else None,
-            )
-            last_game_title = last_game_logged.title if last_game_logged else None
-
-            for game_entry in user_feed.entries:
-                m = re.match(r"^(.*?) \(\d{4}\)", str(game_entry["title"]))
-                title = m.group(1) if m else None
-                if not title:
-                    self.log_error("Unable to parse game's title %s for %s", game_entry["title"], backloggd_username)
-                    continue
-                # Early exit to avoid sending all games
-                if title == last_game_title:
-                    break
-                try:
-                    new_games_logged.append(await self._add_game_to_database(backloggd_username, game_entry))
-                except Exception as exc:  # noqa: BLE001
-                    self.log_error("Failed to add game %s for %s: %s", title, backloggd_username, exc)
-
-            # If the user has just been added then there will be no last movie
-            # watched. To avoid sending the last movie they watched before tracking
-            # began, we'll send an empty list back
-            if not last_game_title:
-                results[backloggd_username] = []
-                self.log_warning("%s has probably just been created, sending back empty log list", backloggd_username)
-            else:
-                results[backloggd_username] = new_games_logged
-
-        return results
+        return await self._get_new_feed_entries(
+            usernames=backloggd_usernames,
+            feed_url_template="https://backloggd.com/u/{}/reviews/rss/",
+            get_last_entry=self.db.get_last_game_for_backloggd_user,
+            get_title=get_title,
+            upsert_entry=self._add_game_to_database,
+            service_label="backloggd",
+            empty_log_label="log list",
+        )
 
     @tasks.loop(minutes=BotSettings.cogs.media_tracker.update_interval)
     async def check_for_new_logged_games(self) -> None:
@@ -432,43 +475,28 @@ class MediaTrackers(CustomCog):
             return
         self.log_debug(
             "New games logged: %s",
-            [{user: [movie.__dict__ for movie in games]} for user, games in new_games_logged.items()],
+            [{user: [game.__dict__ for game in games]} for user, games in new_games_logged.items()],
         )
 
-        # not sure what exception is raised... but if discord is unavailable this
-        # function kills the loop and it's surprisingly hard to automatically restart
-        # tasks. Catching the unavailable error here should also prevent something
-        # like fetch_user() from bringing the task down
+        # Catch Discord unavailability broadly — if this kills the loop it is
+        # surprisingly difficult to automatically restart tasks.
         try:
-            channels = await self._get_channels_backloggd()
+            channels = await self._get_channels(BotSettings.cogs.media_tracker.backloggd_channels, label="game")
         except Exception as exc:
             self.log_error("Exception raised when getting channels: %s", exc)
             return
 
-        backloggd_to_discord_map = {user.backloggd_username: user.discord_id for user in backloggd_users}
-
-        for backloggd_username, logged_games in new_games_logged.items():
-            if not logged_games:
-                continue
-            discord_user = await self.bot.fetch_user(backloggd_to_discord_map[backloggd_username])
-            # limit watched movies to first 10, as that is the embed limit
-            embeds = [self._create_logged_game_embed(watched_movie) for watched_movie in logged_games[:10]]
-            for channel in channels:
-                in_guild = channel.guild.get_member(discord_user.id)
-                if in_guild:
-                    await channel.send(embeds=embeds)
+        await self._post_new_entries(
+            new_entries=new_games_logged,
+            username_to_discord_id={user.backloggd_username: user.discord_id for user in backloggd_users},
+            channels=channels,
+            create_embed=self._create_logged_game_embed,
+        )
 
     @check_for_new_logged_games.error
     async def backloggd_handle_uncaught_exception(self, exception: BaseException) -> None:
-        """Log uncaught exceptions raised by the task.
-
-        Parameters
-        ----------
-        exception : BaseException
-            The exception that was raised and not caught in the loop.
-
-        """
-        self.log_error("Uncaught exception raised in task: %s", exception)
+        """Log uncaught exceptions raised by the Backloggd task."""
+        self._handle_task_error(exception)
 
 
 def setup(bot: CustomInteractionBot) -> None:
