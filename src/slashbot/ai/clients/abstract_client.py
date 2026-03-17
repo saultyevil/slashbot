@@ -82,7 +82,9 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         # But we still include new video request here, we are only removing OLD
         # youtube links. The one added to the context here will be removed
         # before the next request is sent
-        self._model_context_message_content.append(new_content)
+        self.log_debug("Model context before append: %s", self._model_context)
+        self._model_context.append(new_content)
+        self.log_debug("Updated model context: %s", self._model_context)
 
     def _create_content_payload(self, messages: TextGenerationInput | list[TextGenerationInput]) -> dict | list[dict]:
         """Create the contents payload for a request.
@@ -254,8 +256,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
     def _model_context_message_content(self) -> list[dict]:
         """Return a reference to the contents of the context.
 
-        This reference exists because some LLM clients have the system message
-        as the first message.
+        This reference exists because the request objects are different for
+        each LLM.
 
         Returns
         -------

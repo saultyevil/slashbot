@@ -8,17 +8,12 @@ from slashbot.settings import BotSettings
 class OpenAIClient(TextGenerationAbstractClient):
     """Asynchronous OpenAI client."""
 
-    OPENAI_LOW_DETAIL_IMAGE_TOKENS = 85
     SUPPORTED_MODELS = (
         "gpt-4.1-nano",
         "gpt-4.1-mini",
         "gpt-5-nano",
     )
-    VISION_MODELS = (
-        "gpt-4.1-mini",
-        "gpt-4.1-nano",
-        "gpt-5-nano",
-    )
+    VISION_MODELS = SUPPORTED_MODELS
     SEARCH_MODELS = ()
     AUDIO_MODELS = ()
     VIDEO_MODELS = ()
@@ -34,38 +29,71 @@ class OpenAIClient(TextGenerationAbstractClient):
             The length of the conversation.
 
         """
-        return len(self._context[1:])
+        return len(self._model_context_message_content)
 
     # --------------------------------------------------------------------------
 
-    def _content_contains_image_type(self, contents: list[dict]) -> bool:
-        return any(content["type"] == "image_url" for content in contents)
+    @property
+    def _model_context_message_content(self) -> list[dict]:
+        """Return a reference to the contents of the context.
 
-    def _add_to_contents(self, new_content: dict) -> None:
-        # Keep some variable amount of images in the request. If we have too
-        # many images, then the latency is too high
-        i = 0
-        num_images = 0
-        while i < len(self._context[1:]):
-            contents = self._context[i]["content"]
-            # can only be an image of contents is a dict or a list
-            if not isinstance(contents, str):
-                if self._content_contains_image_type(contents):
-                    num_images += 1
-                if num_images > BotSettings.cogs.chatbot.max_images_in_window:
-                    self._remove_message(i)
-                    continue
-            i += 1
+        This reference exists because the request objects are different for
+        each LLM.
 
-        # But we still include new video request here, we are only removing OLD
-        # youtube links. The one added to the context here will be removed
-        # before the next request is sent
-        self._context.append(new_content)
+        Returns
+        -------
+        list[dict]
+            The contents of the context.
 
-    def _create_assistant_text_payload(self, message: str) -> dict:
-        return {"role": "assistant", "content": message}
+        """
+        return self._model_context[1:]  # first message is system prompt
 
-    def _create_image_payload(self, images: VisionImage | list[VisionImage]) -> list[dict]:
+    @property
+    def client_type(self) -> str:
+        """Get the client type.
+
+        Returns
+        -------
+        str
+            A string representation of the client type.
+
+        """
+        return "openai"
+
+    # --------------------------------------------------------------------------
+
+    def _check_context_contains_images(self, contents: dict) -> bool:
+        """Check if an image is present in the client's content.
+
+        Parameters
+        ----------
+        contents : dict
+            An individual message object which has been passed to LLM, e.g.
+            {"role": "user", "content": [{"type": "text", "text": "hello"}]}
+
+        Returns
+        -------
+        bool
+            If an image, returns True. Otherwise, returns False.
+
+        """
+        content_blocks = contents["content"]
+        return any(block["type"] == "image" for block in content_blocks)
+
+    def _create_image_input_object(self, images: VisionImage | list[VisionImage]) -> list[dict]:
+        """Create a payload for an image request.
+
+        Parameters
+        ----------
+        images : VisionImage | list[VisionImage]
+            The image(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
         if self.model_name not in self.VISION_MODELS:
             return []
         if not isinstance(images, list):
@@ -81,46 +109,79 @@ class OpenAIClient(TextGenerationAbstractClient):
             for image in images
         ]
 
-    def _create_text_payload(self, text: str | list[str]) -> dict | list[dict]:
+    def _create_text_input_object(self, text: str | list[str]) -> dict | list[dict]:
+        """Create a payload for a text request.
+
+        Parameters
+        ----------
+        text : str | list[str]
+            The text messages(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
         return {"type": "text", "text": text}
 
-    def _create_user_payload(
-        self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
-    ) -> dict | list[dict]:
-        return {"role": "user", "content": [*text_content, *image_content, *video_content]}
+    def _create_video_input_object(self, videos: VisionVideo | list[VisionVideo]) -> list[dict]:  # noqa: ARG002
+        """Create a payload for a video request.
 
-    def _create_video_payload(self, videos: VisionVideo | list[VisionVideo]) -> list[dict]:  # noqa: ARG002
-        if self.model_name not in self.VIDEO_MODELS:
-            return []
+        Parameters
+        ----------
+        videos : VisionVideo | list[VisionVideo]
+            The videos(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
         return []
 
-    def _remove_message(self, index: int) -> dict:
-        if index == 0:
-            index = 1
-        if index < 0:
-            msg = "Cannot remove message at negative index"
-            raise IndexError(msg)
-        if index >= len(self._context):
-            msg = "Cannot remove message at index greater than number of messages"
-            raise IndexError(msg)
-        self.token_size -= self.count_tokens_for_message(self._context[index]["content"])
-        return self._context.pop(index)
+    def _create_assistant_response_object(self, message: str) -> dict:
+        """Create a payload for the response from the LLM.
+
+        Parameters
+        ----------
+        message : str
+            The response message from the LLM.
+
+        Returns
+        -------
+        dict
+            The correctly formatted payload.
+
+        """
+        return {"role": "assistant", "content": [self._create_text_input_object(message)]}
+
+    def _create_user_input_object(
+        self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
+    ) -> dict | list[dict]:
+        """Create a payload for a payload, including text, images and videos.
+
+        Parameters
+        ----------
+        text_content : str | list[str]
+            The text messages(s) to add to the payload.
+        image_content : VisionImage | list[VisionImage]
+            The image(s) to add to the payload.
+        video_content : VisionVideo | list[VisionVideo]
+            The videos(s) to add to the  payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
+        return {"role": "user", "content": [*text_content, *image_content, *video_content]}
 
     # --------------------------------------------------------------------------
 
-    @property
-    def context(self) -> list[dict]:
-        """Get the context, minus the system prompt."""
-        return self._context[1:]
-
-    @property
-    def client_type(self) -> str:
-        """Get the model type."""
-        return "openai"
-
-    # --------------------------------------------------------------------------
-
-    def count_tokens_for_message(self, messages: dict | list[dict[str, str]] | str) -> int:
+    def count_tokens(self, messages: dict | list[dict[str, str]] | str) -> int:
         """Get the token count for a given message for the current LLM model.
 
         Parameters
@@ -141,12 +202,24 @@ class OpenAIClient(TextGenerationAbstractClient):
             messages = [{"role": "user", "content": messages}]
 
         client = openai.Client(api_key=self._client.api_key, base_url=self._client.base_url)
-        response = client.responses.input_tokens.count(model=self.model_name, input=messages)
+        response = client.responses.input_tokens.count(model=self.model_name, input=messages)  # type: ignore
         self.log_debug("Count token response %s for messages %s", response, messages)
 
         return response.input_tokens
 
-    def create_request_json(
+    def init_client(self, model_name: str) -> None:
+        """Initialise the client to use a model.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model to initialise the client for.
+
+        """
+        self.model_name = model_name
+        self._client = openai.AsyncClient(api_key=BotSettings.keys.openai, base_url="http://localhost:11434/v1")
+
+    def create_content_payload_object(
         self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
     ) -> dict | list:
         """Create a request JSON for the current LLM model.
@@ -161,81 +234,18 @@ class OpenAIClient(TextGenerationAbstractClient):
             used.
 
         """
-        if not isinstance(messages, list):
-            messages = [messages]
-        content = []
-        for message in messages:
-            if message.role == "user":
-                part = self._create_content_payload(message)
-            else:
-                part = self._create_assistant_text_payload(message.text)
-            content.append(part)
+        request = super().create_content_payload_object(messages)
 
-        request = content
+        if not isinstance(request, list):
+            msg = "Internal issue: an invalid type has been returned from OpenAIClient.create_content_payload_object()"
+            raise TypeError(msg)
+
         if system_prompt:
             request.insert(0, {"role": "system", "content": system_prompt})
 
         return request
 
-    async def generate_response_with_context(
-        self, messages: TextGenerationInput | list[TextGenerationInput]
-    ) -> TextGenerationResponse:
-        """Generate a text response, gievn a message and image inputs.
-
-        Text generation includes the entire context history, and not just the
-        most recent inputs.
-
-        Parameters
-        ----------
-        messages : ContextMessage | list[ContextMessage]
-            Input message(s), from the user, including attached images and
-            videos.
-
-        """
-        if not self._client:
-            self.init_client(self.model_name)
-
-        self._shrink_messages_to_token_window()
-
-        user_contents = self._create_content_payload(messages)
-        if isinstance(user_contents, list):
-            for content in user_contents:
-                self._add_to_contents(content)
-        else:
-            self._add_to_contents(user_contents)
-
-        response = await self.send_response_request(self._context)
-        if not response.message:
-            msg = "A valid response was not generated by the OpenAI client."
-            raise ValueError(msg)
-
-        self._context.append(self._create_assistant_text_payload(response.message))
-        self.token_size = response.tokens_used
-
-        return response
-
-    def init_client(self, model_name: str, *, base_url: str | None = None) -> None:
-        """Initialise the client to use a model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to initialise the client for.
-        base_url : str | None
-            The base URL of the API service. By default None, which means the
-            default URL of the relevant SDK is used.
-
-        """
-        self.model_name = model_name
-        if base_url is None:
-            self._base_url = "https://api.openai.com/v1"
-        else:
-            self._base_url = base_url
-        self._client = openai.AsyncClient(api_key=BotSettings.keys.openai, base_url=self._base_url)
-        self._context = [{"role": "system", "content": self.system_prompt}]
-        self._setup_response_logger(model_name)
-
-    async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
+    async def generate_response(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
 
         Parameters
@@ -256,13 +266,51 @@ class OpenAIClient(TextGenerationAbstractClient):
         )
         await self._log_response("%s", response)
 
-        assistant_response = response.choices[0].message.content
-        if not assistant_response:
+        response_message = response.choices[0].message.content
+        if not response_message:
             msg = "A valid response was not generated by the OpenAI client."
             raise ValueError(msg)
-        token_usage = response.usage.total_tokens if response.usage else self.token_size
 
-        return TextGenerationResponse(assistant_response, token_usage)
+        return TextGenerationResponse(  # Ternary to shut the linter up
+            response_message, response.usage.total_tokens if response.usage else self.token_size
+        )
+
+    async def generate_response_with_context(
+        self, messages: TextGenerationInput | list[TextGenerationInput]
+    ) -> TextGenerationResponse:
+        """Generate a text response, gievn a message and image inputs.
+
+        Text generation includes the entire context history, and not just the
+        most recent inputs.
+
+        Parameters
+        ----------
+        messages : ContextMessage | list[ContextMessage]
+            Input message(s), from the user, including attached images and
+            videos.
+
+        """
+        if not self._client:
+            self.init_client(self.model_name)
+
+        self._shrink_model_context_to_window_size()
+
+        user_contents = self._create_content_payload(messages)
+        if isinstance(user_contents, list):
+            for content in user_contents:
+                self._add_to_model_context(content)
+        else:
+            self._add_to_model_context(user_contents)
+
+        response = await self.generate_response(self._model_context)
+        if not response.message:
+            msg = "A valid response was not generated by the OpenAI client."
+            raise ValueError(msg)
+
+        self._model_context.append(self._create_assistant_response_object(response.message))
+        self.token_size = response.tokens_used
+
+        return response
 
     def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset name") -> None:
         """Set the system prompt.
@@ -277,5 +325,5 @@ class OpenAIClient(TextGenerationAbstractClient):
         """
         self.system_prompt = prompt
         self.system_prompt_name = prompt_name
-        self._context = [{"role": "system", "content": prompt}]
-        self.token_size = self.count_tokens_for_message(prompt)
+        self._model_context = [{"role": "system", "content": prompt}]
+        self.token_size = self.count_tokens(prompt)

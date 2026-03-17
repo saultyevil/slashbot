@@ -38,11 +38,29 @@ class ClaudeClient(TextGenerationAbstractClient):
 
     @property
     def _model_context_message_content(self) -> list[dict]:
+        """Return a reference to the contents of the context.
+
+        This reference exists because the request objects are different for
+        each LLM.
+
+        Returns
+        -------
+        list[dict]
+            The contents of the context.
+
+        """
         return self._model_context
 
     @property
     def client_type(self) -> str:
-        """Get the model type."""
+        """Get the client type.
+
+        Returns
+        -------
+        str
+            A string representation of the client type.
+
+        """
         return "claude"
 
     # --------------------------------------------------------------------------
@@ -111,7 +129,7 @@ class ClaudeClient(TextGenerationAbstractClient):
         """
         return {"type": "text", "text": text}
 
-    def _create_video_input_object(self, videos: VisionVideo | list[VisionVideo]) -> list[dict]:
+    def _create_video_input_object(self, videos: VisionVideo | list[VisionVideo]) -> list[dict]:  # noqa: ARG002
         """Create a payload for a video request.
 
         Parameters
@@ -125,7 +143,6 @@ class ClaudeClient(TextGenerationAbstractClient):
             The correctly formatted payload.
 
         """
-        _videos = videos
         return []
 
     def _create_assistant_response_object(self, message: str) -> dict:
