@@ -145,20 +145,10 @@ class TextGenerator(Logger):
             The name of the model to use.
 
         """
-        # If the new and old models are both openai or claude, we can change the
-        # model name on the fly. We can't do this for a gemini model because some
-        # don't support certain tools like web searching. In that case, we have
-        # to create a new client and destroy the old context
         if model in self.SUPPORTED_OPENAI_MODELS:
-            if self._client and self._client.client_type == "openai":
-                self._client.model_name = model
-            else:
-                self._client = OpenAIClient(model)
+            self._client = OpenAIClient(model)
         elif model in self.SUPPORTED_CLAUDE_MODELS:
-            if self._client and self._client.client_type == "claude":
-                self._client.model_name = model
-            else:
-                self._client = ClaudeClient(model)
+            self._client = ClaudeClient(model)
         elif model in self.SUPPORTED_GOOGLE_MODELS:
             self._client = GeminiClient(model)
         else:

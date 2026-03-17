@@ -5,9 +5,9 @@ enabled = true
 
 [cogs.chatbot]
 enabled = true
-token_window_size = 8192
+max_output_tokens = 8000
+token_window_size = 16000
 max_images_in_window = 2
-max_output_tokens = 8192
 model_temperature = 0.2
 default_model = "claude-haiku-4-5"
 default_chat_prompt = "data/prompts/default.yaml"
