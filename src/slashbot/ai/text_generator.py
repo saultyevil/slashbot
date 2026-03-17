@@ -106,7 +106,7 @@ class TextGenerator(Logger):
             The request JSON for the current LLM model.
 
         """
-        if isinstance(self._client, OpenAIClient):
+        if isinstance(self._client, OpenAIClient | GeminiClient):
             return self._client.create_content_payload_object(messages, system_prompt=system_prompt)
 
         return self._client.create_content_payload_object(messages)

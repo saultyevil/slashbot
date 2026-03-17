@@ -36,6 +36,17 @@ class ClaudeClient(TextGenerationAbstractClient):
 
     # --------------------------------------------------------------------------
 
+    @property
+    def _model_context_message_content(self) -> list[dict]:
+        return self._model_context
+
+    @property
+    def client_type(self) -> str:
+        """Get the model type."""
+        return "claude"
+
+    # --------------------------------------------------------------------------
+
     def _check_context_contains_images(self, contents: dict) -> bool:
         """Check if an image is present in the client's content.
 
@@ -154,19 +165,6 @@ class ClaudeClient(TextGenerationAbstractClient):
 
         """
         return {"role": "user", "content": [*text_content, *image_content, *video_content]}
-
-    # --------------------------------------------------------------------------
-
-    @property
-    def _model_context_message_content(self) -> list[dict]:
-        return self._model_context
-
-    @property
-    def client_type(self) -> str:
-        """Get the model type."""
-        return "claude"
-
-    # --------------------------------------------------------------------------
 
     def count_tokens(self, messages: dict | list[dict[str, str]] | str) -> int:
         """Get the token count for a given message for the current LLM model.

@@ -106,11 +106,11 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         if isinstance(messages, TextGenerationInput):
             messages = [messages]
 
+        self.log_debug("Creating request payload for %s using %s", self.model_name, messages)
+
         text_content = []
         image_content = []
         video_content = []
-
-        self.log_debug("Creating request payload for %s using %s", self.model_name, messages)
 
         for message in messages:
             text_content.append(self._create_text_input_object(message.text))
@@ -119,7 +119,10 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
             if message.videos:
                 video_content.extend(self._create_video_input_object(message.videos))
 
-        return self._create_user_input_object(text_content, image_content, video_content)
+        user_request_object = self._create_user_input_object(text_content, image_content, video_content)
+        self.log_debug("Created request object %s", user_request_object)
+
+        return user_request_object
 
     def _shrink_model_context_to_window_size(self) -> None:
         """Shrink the context of the conversation within a token limit.
@@ -132,7 +135,7 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
         while self.token_size > self._token_window_size and len(self) > min_messages_to_keep:
             msg1 = self._remove_message_from_model_context(0)
             msg2 = self._remove_message_from_model_context(0)
-            self.log_debug("Removed messages (((1))) %s (((2)))", msg1, msg2)
+            self.log_debug("Removed messages\n\t[1] %s\n\t[2] %s", msg1, msg2)
 
     def _remove_message_from_model_context(self, index: int) -> dict:
         """Remove an image from the conversation context.
@@ -237,6 +240,8 @@ class TextGenerationAbstractClient(Logger, metaclass=ABCMeta):
             else:
                 part = self._create_assistant_response_object(message.text)
             content.append(part)
+
+        self.log_debug("create_content_payload_object: current payload to be returned %s", content)
 
         return content
 
