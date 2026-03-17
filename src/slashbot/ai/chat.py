@@ -38,17 +38,6 @@ class AIChat(TextGenerator):
 
     # --------------------------------------------------------------------------
 
-    def get_history(self) -> list[dict]:
-        """Get the conversation context history.
-
-        Returns
-        -------
-        list[dict]
-            The conversation history, formatted for the LLM API.
-
-        """
-        return self._client.context
-
     def reset_history(self) -> None:
         """Reset the conversation history back to the system prompt."""
         self.set_system_prompt(self.system_prompt, prompt_name=self.system_prompt_name)

@@ -61,7 +61,7 @@ class TextGenerator(Logger):
     @property
     def size_messages(self) -> int:
         """Get the size of the context, in messages."""
-        return len(self._client.context)
+        return len(self._client)
 
     @property
     def size_tokens(self) -> int:
@@ -84,7 +84,7 @@ class TextGenerator(Logger):
             The count of tokens in the given message for the current model.
 
         """
-        return self._client.count_tokens_for_message(message)
+        return self._client.count_tokens(message)
 
     def create_request_json(
         self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
@@ -106,7 +106,10 @@ class TextGenerator(Logger):
             The request JSON for the current LLM model.
 
         """
-        return self._client.create_request_json(messages, system_prompt=system_prompt)
+        if isinstance(self._client, OpenAIClient):
+            return self._client.create_content_payload_object(messages, system_prompt=system_prompt)
+
+        return self._client.create_content_payload_object(messages)
 
     async def generate_response_with_context(
         self, messages: TextGenerationInput | list[TextGenerationInput]
@@ -131,7 +134,7 @@ class TextGenerator(Logger):
             The (correctly) formatted content to send to the API.
 
         """
-        return await self._client.send_response_request(content)
+        return await self._client.generate_response(content)
 
     def set_model(self, model: str) -> None:
         """Set the current LLM model.
