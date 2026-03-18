@@ -19,31 +19,15 @@ class GeminiClient(TextGenerationAbstractClient):
     SUPPORTED_MODELS = (
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
-        "gemini-3-flash-preview",
-        "gemini-3.1-flash-lite-preview",
     )
-    VISION_MODELS = (
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-3-flash-preview",
-        "gemini-3.1-flash-lite-preview",
-    )
-    SEARCH_MODELS = (
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-    )
-    AUDIO_MODELS = (
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-3-flash-preview",
-        "gemini-3.1-flash-lite-preview",
-    )
-    VIDEO_MODELS = (
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-3-flash-preview",
-        "gemini-3.1-flash-lite-preview",
-    )
+    # All the models support each of these inputs :)
+    VISION_MODELS = SUPPORTED_MODELS
+    SEARCH_MODELS = SUPPORTED_MODELS
+    AUDIO_MODELS = SUPPORTED_MODELS
+    VIDEO_MODELS = SUPPORTED_MODELS
+    GOOGLE_MAPS_MODELS = SUPPORTED_MODELS
+
+    # --------------------------------------------------------------------------
 
     def __init__(self, model_name: str, **kwargs: Any) -> None:
         """Initialise the Gemini client.
@@ -59,6 +43,8 @@ class GeminiClient(TextGenerationAbstractClient):
         self._count_tokens_url = ""
         super().__init__(model_name, **kwargs)
 
+    # --------------------------------------------------------------------------
+
     def __len__(self) -> int:
         """Get the length of the conversation, excluding the system prompt.
 
@@ -68,50 +54,121 @@ class GeminiClient(TextGenerationAbstractClient):
             The length of the conversation.
 
         """
-        return len(self._context["contents"])
+        return len(self._model_context["contents"])
 
-    def _content_contains_image_type(self, content: dict) -> bool:
-        return any("inline_data" in part for part in content.get("parts", []))
+    # --------------------------------------------------------------------------
+
+    @property
+    def _model_context_message_content(self) -> list[dict]:
+        return self._model_context["contents"]
+
+    @property
+    def client_type(self) -> str:
+        """Get the model type."""
+        return "gemini"
+
+    # --------------------------------------------------------------------------
+
+    def _check_context_contains_images(self, contents: dict | list[dict]) -> bool:
+        """Check if an image is present in the client's content.
+
+        Parameters
+        ----------
+        contents : dict
+            An individual message object which has been passed to LLM, e.g.
+            {"role": "user", "content": [{"type": "text", "text": "hello"}]}
+
+        Returns
+        -------
+        bool
+            If an image, returns True. Otherwise, returns False.
+
+        """
+        if isinstance(contents, list):
+            msg = f"Invalid data type {type(contents)} for contents"
+            raise TypeError(msg)
+        return any("inline_data" in part for part in contents.get("parts", []))
 
     def _content_contains_youtube_video_type(self, content: dict) -> bool:
+        """Check if a youtube link or video is present in the client's content.
+
+        Parameters
+        ----------
+        content : dict
+            An individual message object which has been passed to LLM, e.g.
+            {"role": "user", "content": [{"type": "text", "text": "hello"}]}
+
+        Returns
+        -------
+        bool
+            If there is a youtube link returns True. Otherwise, returns False.
+
+        """
         for part in content.get("parts", []):
             if "file_data" in part:
                 uri = part["file_data"].get("file_uri", "")
                 return "youtube.com" in uri or "youtu.be" in uri
         return False
 
-    def _add_to_contents(self, new_content: dict) -> None:
-        # Remove youtube links (the only supported video understanding) from
-        # the context, as it drastically increases the latency of responses
-        i = 0
-        while i < len(self._context["contents"]):
-            content = self._context["contents"][i]
-            if self._content_contains_youtube_video_type(content):
-                self._remove_message(i)
-            else:
-                i += 1
+    def _add_to_model_context(self, new_content: dict) -> None:
+        """Add new contents to the model context.
 
-        # Keep some variable amount of images in the request. If we have too
-        # many images, then the latency is too high
+        This has various pre-processing steps for adding new messages, such as
+        making sure there is only a certain number of images in the model
+        context as too many images slows responses.
+
+        Note that this method extends the method in the abstract client as we
+        have to deal with YouTube videos as well. This is done first, then we
+        call the super method.
+
+        Parameters
+        ----------
+        new_content : dict
+            The new content to add to the model context.
+
+        """
+        self.log_debug("Adding %s to model context", new_content)
+
+        # Remove any existing YouTube links from the context for the same reason
         i = 0
-        num_images = 0
-        while i < len(self._context["contents"]):
-            content = self._context["contents"][i]
-            if self._content_contains_image_type(content):
-                num_images += 1
-            if num_images > BotSettings.cogs.chatbot.max_images_in_window:
-                self._remove_message(i)
+        while i < len(self):
+            content = self._model_context["contents"][i]
+            if self._content_contains_youtube_video_type(content):
+                self._remove_message_from_model_context(i)
             i += 1
 
-        # But we still include new video request here, we are only removing OLD
-        # youtube links. The one added to the context here will be removed
-        # before the next request is sent
-        self._context["contents"].append(new_content)
+        super()._add_to_model_context(new_content)
 
-    def _create_assistant_text_payload(self, message: str) -> dict:
+    def _create_assistant_response_object(self, message: str) -> dict:
+        """Create a payload for the response from the LLM.
+
+        Parameters
+        ----------
+        message : str
+            The response message from the LLM.
+
+        Returns
+        -------
+        dict
+            The correctly formatted payload.
+
+        """
         return {"role": "model", "parts": [{"text": message}]}
 
-    def _create_image_payload(self, images: VisionImage | list[VisionImage]) -> dict | list[dict]:
+    def _create_image_input_object(self, images: VisionImage | list[VisionImage]) -> dict | list[dict]:
+        """Create a payload for an image request.
+
+        Parameters
+        ----------
+        images : VisionImage | list[VisionImage]
+            The image(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
         if self.model_name not in self.VISION_MODELS:
             return []
         if not isinstance(images, list):
@@ -127,15 +184,58 @@ class GeminiClient(TextGenerationAbstractClient):
             for image in images
         ]
 
-    def _create_text_payload(self, text: str | list[str]) -> dict | list[dict]:
+    def _create_text_input_object(self, text: str | list[str]) -> dict | list[dict]:
+        """Create a payload for a text request.
+
+        Parameters
+        ----------
+        text : str | list[str]
+            The text messages(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
         return {"text": text}
 
-    def _create_user_payload(
+    def _create_user_input_object(
         self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
     ) -> dict:
+        """Create a payload for a payload, including text, images and videos.
+
+        Parameters
+        ----------
+        text_content : str | list[str]
+            The text messages(s) to add to the payload.
+        image_content : VisionImage | list[VisionImage]
+            The image(s) to add to the payload.
+        video_content : VisionVideo | list[VisionVideo]
+            The videos(s) to add to the  payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
         return {"role": "user", "parts": [*video_content, *image_content, *text_content]}
 
-    def _create_video_payload(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
+    def _create_video_input_object(self, videos: VisionVideo | list[VisionVideo]) -> dict | list[dict]:
+        """Create a payload for a video request.
+
+        Parameters
+        ----------
+        videos : VisionVideo | list[VisionVideo]
+            The videos(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload.
+
+        """
         if self.model_name not in self.VIDEO_MODELS:
             return []
         if not isinstance(videos, list):
@@ -149,32 +249,9 @@ class GeminiClient(TextGenerationAbstractClient):
             for video in videos
         ]
 
-    def _remove_message(self, index: int) -> dict:
-        if index < 0:
-            msg = "Cannot remove message at negative index"
-            raise IndexError(msg)
-        if index >= len(self._context["contents"]):
-            msg = "Cannot remove message at index greater than number of messages"
-            raise IndexError(msg)
-        self.token_size -= self.count_tokens_for_message(
-            {"contents": [{"parts": self._context["contents"][index]["parts"]}]}
-        )
-
-        return self._context["contents"].pop(index)
-
     # --------------------------------------------------------------------------
 
-    @property
-    def context(self) -> list[dict]:
-        """Get the context, minus the system prompt."""
-        return self._context["contents"]
-
-    @property
-    def client_type(self) -> str:
-        """Get the model type."""
-        return "gemini"
-
-    def count_tokens_for_message(self, messages: dict | list[dict[str, str]] | str) -> int:
+    def count_tokens(self, messages: dict | list[dict[str, str]] | str) -> int:
         """Count the number of tokens in a message.
 
         Parameters
@@ -210,7 +287,7 @@ class GeminiClient(TextGenerationAbstractClient):
 
         return response_json["totalTokens"]
 
-    def create_request_json(
+    def create_content_payload_object(
         self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
     ) -> dict | list:
         """Create a request JSON for the current LLM model.
@@ -225,15 +302,8 @@ class GeminiClient(TextGenerationAbstractClient):
             used.
 
         """
-        if not isinstance(messages, list):
-            messages = [messages]
-        content = []
-        for message in messages:
-            if message.role == "user":
-                part = self._create_content_payload(message)
-            else:
-                part = self._create_assistant_text_payload(message.text)
-            content.append(part)
+        content = super().create_content_payload_object(messages)
+        self.log_debug("Gemini content payload before adding prompt and tools: %s", content)
 
         request = {
             "contents": content,
@@ -250,8 +320,11 @@ class GeminiClient(TextGenerationAbstractClient):
         if BotSettings.cogs.chatbot.enable_web_search and self.model_name in self.SEARCH_MODELS:
             request["tools"] = {  # type:ignore
                 "google_search": {},
-                "googleMaps": {},
             }
+            if self.model_name in self.GOOGLE_MAPS_MODELS:
+                request["tools"]["googleMaps"] = {}
+
+        self.log_debug("Final request for Gemini: %s", request)
 
         return request
 
@@ -270,45 +343,38 @@ class GeminiClient(TextGenerationAbstractClient):
         if not self._base_url:
             self.init_client(self.model_name)
 
-        self._shrink_messages_to_token_window()
+        self._shrink_model_context_to_window_size()
 
         user_contents = self._create_content_payload(messages)
-        if isinstance(user_contents, list):
-            for content in user_contents:
-                self._add_to_contents(content)
-        else:
-            self._add_to_contents(user_contents)
+        if not isinstance(user_contents, dict):
+            msg = f"Incorrect content payload created for Gemini, should be a dict: {user_contents}"
+            raise TypeError(msg)
+        self._add_to_model_context(user_contents)
 
-        response = await self.send_response_request(self._context)
+        response = await self.generate_response(self._model_context)
         if not response.message:
             msg = "A valid response was not generated by the Gemini API."
             raise ValueError(msg)
 
-        self._add_to_contents(self._create_assistant_text_payload(response.message))
+        self._add_to_model_context(self._create_assistant_response_object(response.message))
         self.token_size = response.tokens_used
 
         return response
 
-    def init_client(self, model_name: str, *, base_url: str | None = None) -> None:
+    def init_client(self, model_name: str) -> None:
         """Initialise the client to use a model.
 
         Parameters
         ----------
         model_name : str
             The name of the model to initialise the client for.
-        base_url : str | None
-            The base URL of the API service. By default None, which means the
-            default URL of the relevant SDK is used.
 
         """
         gen_ai_url = "https://generativelanguage.googleapis.com/v1beta/models"
         self.model_name = model_name
-        if base_url:
-            self._base_url = base_url
-        else:
-            self._base_url = f"{gen_ai_url}/{model_name}:generateContent?key={BotSettings.keys.gemini}"
+        self._base_url = f"{gen_ai_url}/{model_name}:generateContent?key={BotSettings.keys.gemini}"
         self._count_tokens_url = f"{gen_ai_url}/{model_name}:countTokens?key={BotSettings.keys.gemini}"
-        self._context = {
+        self._model_context = {
             "system_instruction": {
                 "parts": [
                     {
@@ -323,14 +389,15 @@ class GeminiClient(TextGenerationAbstractClient):
         }
 
         if BotSettings.cogs.chatbot.enable_web_search and self.model_name in self.SEARCH_MODELS:
-            self._context["tools"] = {  # type:ignore
+            self._model_context["tools"] = {  # type:ignore
                 "google_search": {},
-                "googleMaps": {},
             }
+            if self.model_name in self.GOOGLE_MAPS_MODELS:
+                self._model_context["tools"]["googleMaps"] = {}
 
         self._setup_response_logger(model_name)
 
-    async def send_response_request(self, content: list[dict] | dict) -> TextGenerationResponse:
+    async def generate_response(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
 
         Parameters
@@ -342,13 +409,20 @@ class GeminiClient(TextGenerationAbstractClient):
         if not self._base_url:
             self.init_client(self.model_name)
 
+        self.log_debug("Sending request to Gemini. Url=%s, content=%s", self._base_url, content)
         await self._log_request("%s", content)
-        async with httpx.AsyncClient(timeout=self._async_timeout) as client:
-            response = await client.post(
-                url=self._base_url,
-                json=content,
-                headers={"Content-Type": "application/json"},
-            )
+        try:
+            async with httpx.AsyncClient(timeout=self._async_timeout) as client:
+                response = await client.post(
+                    url=self._base_url,
+                    json=content,
+                    headers={"Content-Type": "application/json"},
+                )
+        except Exception as exc:
+            msg = f"Gemini API failed to generate response due to exception: {exc}"
+            self.log_error("%s", msg)
+            raise GenerationFailureError(msg) from exc
+
         await self._log_response("%s", response.json())
 
         if response.status_code != httpx.codes.OK:
@@ -388,7 +462,7 @@ class GeminiClient(TextGenerationAbstractClient):
         """
         self.system_prompt = prompt
         self.system_prompt_name = prompt_name
-        self._context = {
+        self._model_context = {
             "system_instruction": {
                 "parts": [
                     {
@@ -398,4 +472,4 @@ class GeminiClient(TextGenerationAbstractClient):
             },
             "contents": [],
         }
-        self.token_size = self.count_tokens_for_message(prompt)
+        self.token_size = self.count_tokens(prompt)

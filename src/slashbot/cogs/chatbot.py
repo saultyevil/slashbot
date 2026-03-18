@@ -29,6 +29,7 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.bot.custom_types import ApplicationCommandInteraction, Message
+from slashbot.errors import deferred_error_response
 from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
@@ -435,7 +436,7 @@ class ChatBot(CustomCog):
                 message = TextGenerationInput(user_prompt, images=images, videos=videos)
                 bot_response = await conversation.send_message(message)
             except GenerationFailureError:
-                self.log_warning("Failed to generate response, falling back to markov sentence")
+                self.log_error("Failed to generate response, falling back to markov sentence")
                 bot_response = self.get_random_markov_sentence()
                 if isinstance(bot_response, list):
                     bot_response = bot_response[0]
@@ -555,8 +556,13 @@ class ChatBot(CustomCog):
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
         await inter.response.defer(ephemeral=True)
-        # summary = await channel_history.generate_summary(requesting_user=inter.user.display_name)
-        summary = await channel_history.generate_summary(requesting_user=None)
+
+        try:
+            summary = await channel_history.generate_summary(requesting_user=None)
+        except GenerationFailureError:
+            await deferred_error_response(inter, "There was an error trying to generate the summary")
+            return
+
         await inter.delete_original_response()
         await send_message_to_channel(summary, inter)
 
