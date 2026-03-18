@@ -411,12 +411,18 @@ class GeminiClient(TextGenerationAbstractClient):
 
         self.log_debug("Sending request to Gemini. Url=%s, content=%s", self._base_url, content)
         await self._log_request("%s", content)
-        async with httpx.AsyncClient(timeout=self._async_timeout) as client:
-            response = await client.post(
-                url=self._base_url,
-                json=content,
-                headers={"Content-Type": "application/json"},
-            )
+        try:
+            async with httpx.AsyncClient(timeout=self._async_timeout) as client:
+                response = await client.post(
+                    url=self._base_url,
+                    json=content,
+                    headers={"Content-Type": "application/json"},
+                )
+        except Exception as exc:
+            msg = f"Gemini API failed to generate response due to exception: {exc}"
+            self.log_error("%s", msg)
+            raise GenerationFailureError(msg) from exc
+
         await self._log_response("%s", response.json())
 
         if response.status_code != httpx.codes.OK:

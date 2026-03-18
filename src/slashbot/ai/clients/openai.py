@@ -1,7 +1,13 @@
 import openai
 
 from slashbot.ai.clients.abstract_client import TextGenerationAbstractClient
-from slashbot.ai.models import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
+from slashbot.ai.models import (
+    GenerationFailureError,
+    TextGenerationInput,
+    TextGenerationResponse,
+    VisionImage,
+    VisionVideo,
+)
 from slashbot.settings import BotSettings
 
 
@@ -254,12 +260,19 @@ class OpenAIClient(TextGenerationAbstractClient):
             self.init_client(self.model_name)
 
         await self._log_request("%s", content)
-        response = await self._client.chat.completions.create(
-            model=self.model_name,
-            messages=content,  # type: ignore
-            max_completion_tokens=self._max_completion_tokens,
-            temperature=BotSettings.cogs.chatbot.model_temperature,
-        )
+
+        try:
+            response = await self._client.chat.completions.create(
+                model=self.model_name,
+                messages=content,  # type: ignore
+                max_completion_tokens=self._max_completion_tokens,
+                temperature=BotSettings.cogs.chatbot.model_temperature,
+            )
+        except Exception as exc:
+            msg = f"OpenAI API failed to generate response due to exception: {exc}"
+            self.log_error("%s", msg)
+            raise GenerationFailureError(msg) from exc
+
         await self._log_response("%s", response)
 
         response_message = response.choices[0].message.content

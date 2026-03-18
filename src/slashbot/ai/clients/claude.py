@@ -2,7 +2,13 @@ import anthropic
 from anthropic import Anthropic, AsyncAnthropic
 
 from slashbot.ai.clients.abstract_client import TextGenerationAbstractClient
-from slashbot.ai.models import TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
+from slashbot.ai.models import (
+    GenerationFailureError,
+    TextGenerationInput,
+    TextGenerationResponse,
+    VisionImage,
+    VisionVideo,
+)
 from slashbot.settings import BotSettings
 
 
@@ -236,13 +242,18 @@ class ClaudeClient(TextGenerationAbstractClient):
             self.init_client(self.model_name)
 
         await self._log_request("%s", content)
-        response = await self._client.messages.create(
-            model=self.model_name,
-            messages=content,  # type: ignore
-            max_tokens=self._max_completion_tokens,
-            temperature=BotSettings.cogs.chatbot.model_temperature,
-            system=self.system_prompt,
-        )
+        try:
+            response = await self._client.messages.create(
+                model=self.model_name,
+                messages=content,  # type: ignore
+                max_tokens=self._max_completion_tokens,
+                temperature=BotSettings.cogs.chatbot.model_temperature,
+                system=self.system_prompt,
+            )
+        except Exception as exc:
+            msg = f"Claude API failed to generate response due to exception: {exc}"
+            self.log_error("%s", msg)
+            raise GenerationFailureError(msg) from exc
         await self._log_response("%s", response)
 
         if not response.content:
