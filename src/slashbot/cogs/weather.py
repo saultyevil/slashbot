@@ -11,6 +11,7 @@ import disnake
 import httpx
 from disnake.ext import commands
 from geopy import GoogleV3
+from geopy.exc import GeocoderQueryError
 from geopy.location import Location
 
 from slashbot.bot.custom_bot import CustomInteractionBot
@@ -234,7 +235,10 @@ class Weather(CustomCog):
             of the key provided in extract_type.
 
         """
-        location = self.geolocator.geocode(location, region="GB")  # type: ignore
+        try:
+            location = self.geolocator.geocode(location, region="GB")  # type: ignore
+        except GeocoderQueryError:
+            raise GeocodeError from GeocoderQueryError
         if not location:
             msg = f"{location} not found in Geocoding API"
             raise LocationNotFoundError(msg)
