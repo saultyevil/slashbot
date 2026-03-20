@@ -116,7 +116,7 @@ class Reminders(CustomCog):
 
     # Tasks --------------------------------------------------------------------
 
-    CHECK_PERIOD = 1
+    CHECK_PERIOD = BotSettings.cogs.reminders.check_period
 
     @tasks.loop(seconds=CHECK_PERIOD)
     async def check_reminders(self) -> None:

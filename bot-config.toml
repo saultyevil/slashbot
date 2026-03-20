@@ -30,6 +30,7 @@ backloggd_channels = [710120383235227670]
 
 [cogs.reminders]
 enabled = true
+check_period = 15
 
 [cogs.scheduled_posts]
 enabled = true

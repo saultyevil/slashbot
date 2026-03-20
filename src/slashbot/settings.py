@@ -121,8 +121,12 @@ class RemindersCogSettings(BaseCogSettings):
     ----------
     enabled : bool
         Whether the reminders cog is enabled.
+    check_period : float
+        The period, in seconds, of how often to check for due reminders
 
     """
+
+    check_period: float
 
 
 class ScheduledPostsCogSettings(BaseCogSettings):
