@@ -11,7 +11,17 @@ from geopy.location import Location
 
 from slashbot.settings import BotSettings
 
-from .error import GeocodeError, LocationNotFoundError, OneCallError
+
+class GeocodeError(Exception):
+    """Raised when the Google Geocoding API fails."""
+
+
+class OneCallError(Exception):
+    """Raised when the OWM OneCall API fails."""
+
+
+class LocationNotFoundError(Exception):
+    """Raised when a location cannot be resolved."""
 
 
 @dataclass
@@ -218,9 +228,6 @@ class WeatherService:
     def __init__(self) -> None:
         self._geolocator = GoogleV3(api_key=BotSettings.keys.google, domain="maps.google.co.uk")
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
 
     def resolve_location(self, query: str) -> ResolvedLocation:
         """Geocode *query* and return a :class:`ResolvedLocation`.
