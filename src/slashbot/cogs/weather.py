@@ -21,6 +21,14 @@ from slashbot.errors import deferred_error_response
 from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
+# - Split into multiple classes
+#   1. WeatherService
+#   2. WeatherEmbedBuilder
+#   3. Weather
+# - Move static functions outside of the class and have them as module level
+# - Define data classes instead of passing around raw dicts
+# - get_weather_forecast_for_location should not handle location lookup
+
 
 class GeocodeError(Exception):
     """Raise when the Geocoding API fails."""
@@ -201,7 +209,7 @@ class Weather(CustomCog):
             alert_end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.UTC)
             if alert_start < now < alert_end:
                 alert_strings.append(
-                    f"{alert['event']}: {(alert_start + tz_offset).strftime(r'%H:%m')} to {(alert_end + tz_offset).strftime(r'%H:%m')} ",
+                    f"{alert['event']}: {(alert_start + tz_offset).strftime(r'%H:%M')} to {(alert_end + tz_offset).strftime(r'%H:%M')} ",
                 )
 
         # add the  string to the embed, if
@@ -237,8 +245,8 @@ class Weather(CustomCog):
         """
         try:
             location = self.geolocator.geocode(location, region="GB")  # type: ignore
-        except GeocoderQueryError:
-            raise GeocodeError from GeocoderQueryError
+        except GeocoderQueryError as exc:
+            raise GeocodeError from exc
         if not location:
             msg = f"{location} not found in Geocoding API"
             raise LocationNotFoundError(msg)
