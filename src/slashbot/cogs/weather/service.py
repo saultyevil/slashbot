@@ -93,17 +93,17 @@ class HourlyForecast:
 
 
 def parse_address_components(raw_components: list[dict]) -> str:
-    """Extract a ``"City, CC"`` string from Google geocoder address components.
+    """Extract a "City, CC" string from Google geocoder address components.
 
     Parameters
     ----------
     raw_components:
-        The ``address_components`` list from a Google Geocoding API response.
+        The address_components list from a Google Geocoding API response.
 
     Returns
     -------
     str
-        A formatted address string such as ``"Reading, GB"``.
+        A formatted address string such as "Reading, GB".
 
     """
     locality = next((c["long_name"] for c in raw_components if "locality" in c["types"]), "")
@@ -120,9 +120,14 @@ def parse_active_alerts(
     Parameters
     ----------
     raw_alerts:
-        The ``alerts`` list from the OneCall API, or ``None``.
+        The alerts list from the OneCall API, or None.
     timezone_offset:
         Seconds east of UTC for the queried location.
+
+    Returns
+    -------
+    list[WeatherAlert]
+        A list of alerts valid at the current time, adjusted to the local timezone.
 
     """
     if not raw_alerts:
@@ -140,7 +145,19 @@ def parse_active_alerts(
 
 
 def parse_current_weather(raw: dict) -> CurrentWeather:
-    """Construct a :class:`CurrentWeather` from a OneCall ``current`` dict."""
+    """Construct a `CurrentWeather` from a OneCall current dict.
+
+    Parameters
+    ----------
+    raw:
+        The current dictionary from the OneCall API response.
+
+    Returns
+    -------
+    `CurrentWeather`
+        A typed representation of the current weather conditions.
+
+    """
     return CurrentWeather(
         description=raw["weather"][0]["description"].capitalize(),
         temp=raw["temp"],
@@ -153,7 +170,21 @@ def parse_current_weather(raw: dict) -> CurrentWeather:
 
 
 def parse_daily_forecasts(raw_list: list[dict], tz_offset: int) -> list[DailyForecast]:
-    """Convert a list of raw daily forecast dicts into typed objects."""
+    """Convert a list of raw daily forecast dicts into typed objects.
+
+    Parameters
+    ----------
+    raw_list:
+        A list of daily forecast dictionaries from the OneCall API.
+    tz_offset:
+        Seconds east of UTC for the queried location.
+
+    Returns
+    -------
+    list[DailyForecast]
+        A list of daily forecasts adjusted to the local timezone.
+
+    """
     tz = datetime.timezone(datetime.timedelta(seconds=tz_offset))
     return [
         DailyForecast(
@@ -172,7 +203,21 @@ def parse_daily_forecasts(raw_list: list[dict], tz_offset: int) -> list[DailyFor
 
 
 def parse_hourly_forecasts(raw_list: list[dict], tz_offset: int) -> list[HourlyForecast]:
-    """Convert a list of raw hourly forecast dicts into typed objects."""
+    """Convert a list of raw hourly forecast dicts into typed objects.
+
+    Parameters
+    ----------
+    raw_list:
+        A list of hourly forecast dictionaries from the OneCall API.
+    tz_offset:
+        Seconds east of UTC for the queried location.
+
+    Returns
+    -------
+    list[HourlyForecast]
+        A list of hourly forecasts adjusted to the local timezone.
+
+    """
     tz = datetime.timezone(datetime.timedelta(seconds=tz_offset))
     return [
         HourlyForecast(
@@ -194,7 +239,7 @@ def get_unit_config(units: str) -> UnitConfig:
     Parameters
     ----------
     units:
-        One of ``"metric"``, ``"mixed"``, or ``"imperial"``.
+        One of "metric", "mixed", or "imperial".
 
     Raises
     ------
@@ -226,11 +271,36 @@ class WeatherService:
     )
 
     def __init__(self) -> None:
+        """Initialise the service with a Google Maps geocoder."""
         self._geolocator = GoogleV3(api_key=BotSettings.keys.google, domain="maps.google.co.uk")
 
+    @staticmethod
+    def _extract_fields(payload: dict, fields: str | list[str]) -> dict:
+        """Filter the API response to include only specific fields.
+
+        Parameters
+        ----------
+        payload:
+            The full JSON response from the OneCall API.
+        fields:
+            A single field name or a list of field names to retain.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the requested fields and the mandatory
+            timezone_offset.
+
+        """
+        if isinstance(fields, str):
+            return {
+                fields: payload[fields],
+                "timezone_offset": payload["timezone_offset"],
+            }
+        return {key: value for key, value in payload.items() if key in fields or key == "timezone_offset"}
 
     def resolve_location(self, query: str) -> ResolvedLocation:
-        """Geocode *query* and return a :class:`ResolvedLocation`.
+        """Geocode *query* and return a `ResolvedLocation`.
 
         Raises
         ------
@@ -273,17 +343,17 @@ class WeatherService:
         location:
             A previously resolved location.
         units:
-            ``"metric"`` or ``"imperial"`` (``"mixed"`` is resolved to
-            ``"metric"`` before the request is made).
+            "metric" or "imperial" ("mixed" is resolved to
+            "metric" before the request is made).
         fields:
-            A single field name (e.g. ``"current"``) or a list of field
-            names (e.g. ``["current", "daily", "alerts"]``) to return.
+            A single field name (e.g. "current") or a list of field
+            names (e.g. ["current", "daily", "alerts"]) to return.
 
         Returns
         -------
         dict
             A dict containing only the requested *fields* plus
-            ``timezone_offset``.
+            timezone_offset.
 
         Raises
         ------
@@ -314,11 +384,3 @@ class WeatherService:
         payload = json.loads(response.content)
         return self._extract_fields(payload, fields)
 
-    @staticmethod
-    def _extract_fields(payload: dict, fields: str | list[str]) -> dict:
-        if isinstance(fields, str):
-            return {
-                fields: payload[fields],
-                "timezone_offset": payload["timezone_offset"],
-            }
-        return {key: value for key, value in payload.items() if key in fields or key == "timezone_offset"}

@@ -31,7 +31,7 @@ WEATHER_UNITS = ["metric", "imperial", "mixed"]
 
 
 class Weather(CustomCog):
-    """Query information about the weather."""
+    """Weather slash commands for Discord."""
 
     def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialise the cog.
@@ -125,7 +125,23 @@ class Weather(CustomCog):
             choices=WEATHER_UNITS,
         ),
     ) -> None:
-        """Send the weather forecast to chat, either daily or hourly."""
+        """Send the weather forecast to chat, either daily or hourly.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interaction to respond to.
+        user_location : str
+            The optional location to get the forecast for. If not provided, the
+            default value saved for the user is used.
+        forecast_type : str
+            The type of forecast to get. Either hourly or daily.
+        amount : int
+            The number of results to return.
+        units : str
+            The units to return the weather in.
+
+        """
         await inter.response.defer()
 
         try:
@@ -162,7 +178,19 @@ class Weather(CustomCog):
             choices=WEATHER_UNITS,
         ),
     ) -> None:
-        """Get the weather for a location."""
+        """Get the weather for a location.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interaction to respond to.
+        user_location : str
+            The optional location to get the forecast for. If not provided, the
+            default value saved for the user is used.
+        units : str
+            The units to return the weather in.
+
+        """
         await inter.response.defer()
 
         try:

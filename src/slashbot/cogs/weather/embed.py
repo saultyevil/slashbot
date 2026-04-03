@@ -28,12 +28,12 @@ def degrees_to_cardinal(degrees: float) -> str:
     Parameters
     ----------
     degrees:
-        Bearing in degrees (0–360).
+        Bearing in degrees (0-360).
 
     Returns
     -------
     str
-        Cardinal direction label, e.g. ``"NNW"``.
+        Cardinal direction label, e.g. "NNW".
 
     """
     index = round(degrees / (360.0 / len(_CARDINAL_DIRECTIONS))) % len(_CARDINAL_DIRECTIONS)
