@@ -34,8 +34,7 @@ from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
-
-MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
+DEFAULT_SYSTEM_PROMPT = read_in_prompt(BotSettings.cogs.chatbot.default_chat_prompt)
 
 
 async def is_reply_to_slash_command_response(message: Message) -> bool:
@@ -155,7 +154,7 @@ class Cooldown:
 
 
 class ChatBot(CustomCog):
-    """AI chat features powered by OpenAI."""
+    """AI chatbot for Discord."""
 
     def __init__(self, bot: CustomInteractionBot) -> None:
         """Initialize the AIChatbot class.
@@ -242,6 +241,8 @@ class ChatBot(CustomCog):
             extra_print = f"{obj.channel.id}"
 
         self.chats[context_id] = AIChat(
+            system_prompt=DEFAULT_SYSTEM_PROMPT.prompt,
+            prompt_name=DEFAULT_SYSTEM_PROMPT.name,
             extra_print=extra_print,
         )
         return self.chats[context_id]
@@ -432,8 +433,9 @@ class ChatBot(CustomCog):
             )
 
         async with self._lock:
+            user_label = f"{discord_message.author.display_name}: "
             try:
-                message = TextGenerationInput(user_prompt, images=images, videos=videos)
+                message = TextGenerationInput(user_label + user_prompt, images=images, videos=videos)
                 bot_response = await conversation.send_message(message)
             except GenerationFailureError:
                 self.log_error("Failed to generate response, falling back to markov sentence")
@@ -615,7 +617,7 @@ class ChatBot(CustomCog):
             return
 
         chat = self._get_ai_chat_for_id(inter)
-        chat.set_system_prompt(prompt, prompt_name=prompt_name)
+        chat.set_chat_prompt(prompt, prompt_name=prompt_name)
         self.log_info("%s set new prompt [%s]: %s", inter.author.display_name, prompt_name, prompt)
 
         await inter.response.send_message(
@@ -673,7 +675,7 @@ class ChatBot(CustomCog):
 
         """
         chat = self._get_ai_chat_for_id(inter)
-        chat.set_system_prompt(prompt)
+        chat.set_chat_prompt(prompt)
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
 
         await inter.response.send_message(
