@@ -15,7 +15,6 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.bot.custom_types import ApplicationCommandInteraction
-from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 JERMA_GIFS = list(Path("data/images").glob("jerma*.gif"))
@@ -428,18 +427,3 @@ class AdminTools(CustomCog):
             await inter.edit_original_message("Failed to update local repository")
             return
         await self.restart_bot(inter, on_the_fly_markov)
-
-
-def setup(bot: CustomInteractionBot) -> None:
-    """Set up cogs in this module.
-
-    Parameters
-    ----------
-    bot : CustomInteractionBot
-        The bot to pass to the cog.
-
-    """
-    if not BotSettings.cogs.admin.enabled:
-        logger.log_warning("%s has been disabled in the configuration file", AdminTools.__cog_name__)
-        return
-    bot.add_cog(AdminTools(bot))

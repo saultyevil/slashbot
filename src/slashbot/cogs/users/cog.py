@@ -1,14 +1,9 @@
-"""Commands for remembering user info."""
-
 import disnake
 from disnake.ext import commands
 
-from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import convert_string_to_lower
-from slashbot.logger import logger
-from slashbot.settings import BotSettings
 
 USER_OPTIONS = [
     disnake.OptionChoice("City", "city"),
@@ -99,18 +94,3 @@ class UserInfo(CustomCog):
             return
         await self.db.update_user("discord_id", inter.author.id, thing, None)
         await inter.response.send_message(f"{thing.capitalize()} has been forgotten.", ephemeral=True)
-
-
-def setup(bot: CustomInteractionBot) -> None:
-    """Set up cogs in this module.
-
-    Parameters
-    ----------
-    bot : CustomInteractionBot
-        The bot to pass to the cog.
-
-    """
-    if not BotSettings.cogs.users.enabled:
-        logger.log_warning("%s has been disabled in the configuration file", UserInfo.__cog_name__)
-        return
-    bot.add_cog(UserInfo(bot))

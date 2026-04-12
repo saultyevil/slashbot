@@ -1,5 +1,3 @@
-"""Commands designed to spam the chat with various things."""
-
 import random
 
 import aiofiles
@@ -8,11 +6,9 @@ from ddgs import DDGS
 from ddgs.exceptions import DDGSException
 from disnake.ext import commands
 
-from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.errors import deferred_error_response
-from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 
@@ -101,18 +97,3 @@ class Spam(CustomCog):
 
         image = random.choice(image_results)
         await inter.followup.send(f"{image['image']}")
-
-
-def setup(bot: CustomInteractionBot) -> None:
-    """Set up the entry function for load_extensions().
-
-    Parameters
-    ----------
-    bot : CustomInteractionBot
-        The bot to pass to the cog.
-
-    """
-    if not BotSettings.cogs.spam.enabled:
-        logger.log_warning("%s has been disabled in the configuration file", Spam.__cog_name__)
-        return
-    bot.add_cog(Spam(bot))

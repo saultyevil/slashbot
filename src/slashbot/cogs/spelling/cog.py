@@ -1,5 +1,3 @@
-"""Cog for bullying people about their spelling mistakes."""
-
 import asyncio
 import re
 from collections import defaultdict
@@ -15,7 +13,6 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.clock import calculate_seconds_until
-from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 SPELLING_GUILDS = [int(guild_id) for guild_id in BotSettings.cogs.spelling.servers]
@@ -297,18 +294,3 @@ class Spelling(CustomCog):
                     await channel.send(embed=embed)
 
         self.incorrect_spellings.clear()
-
-
-def setup(bot: CustomInteractionBot) -> None:
-    """Set up cogs in this module.
-
-    Parameters
-    ----------
-    bot : CustomInteractionBot
-        The bot to pass to the cog.
-
-    """
-    if not BotSettings.cogs.spelling.enabled:
-        logger.log_warning("%s has been disabled in the configuration file", Spelling.__cog_name__)
-        return
-    bot.add_cog(Spelling(bot))

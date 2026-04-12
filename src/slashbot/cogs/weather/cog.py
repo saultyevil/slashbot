@@ -11,10 +11,8 @@ from disnake.ext import commands
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.errors import deferred_error_response
-
-from .embed import WeatherEmbedBuilder
-from .service import (
+from slashbot.cogs.weather.embed import WeatherEmbedBuilder
+from slashbot.cogs.weather.service import (
     GeocodeError,
     LocationNotFoundError,
     OneCallError,
@@ -26,6 +24,7 @@ from .service import (
     parse_daily_forecasts,
     parse_hourly_forecasts,
 )
+from slashbot.errors import deferred_error_response
 
 WEATHER_UNITS = ["metric", "imperial", "mixed"]
 

@@ -1,5 +1,3 @@
-"""Commands for setting, viewing and removing reminders."""
-
 import datetime
 import re
 
@@ -13,7 +11,6 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.convertors import get_user_reminders
 from slashbot.database import ReminderSQL, UserSQL
-from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 
@@ -304,18 +301,3 @@ class Reminders(CustomCog):
         message += f"Current UTC time: {datetime.datetime.now(tz=datetime.UTC).strftime(r'%H:%M %d %B %Y')}"
 
         await inter.response.send_message(message, ephemeral=True)
-
-
-def setup(bot: CustomInteractionBot) -> None:
-    """Set up cogs in this module.
-
-    Parameters
-    ----------
-    bot : CustomInteractionBot
-        The bot to pass to the cog.
-
-    """
-    if not BotSettings.cogs.reminders.enabled:
-        logger.log_warning("%s has been disabled in the configuration file", Reminders.__cog_name__)
-        return
-    bot.add_cog(Reminders(bot))

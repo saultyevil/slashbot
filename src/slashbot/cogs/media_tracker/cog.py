@@ -7,10 +7,8 @@ import feedparser
 from disnake.ext import tasks
 from feedparser import FeedParserDict
 
-from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.database.sql_models import LoggedGameSQL, WatchedMovieSQL
-from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 # Type alias for the per-entry upsert callables passed to _get_new_feed_entries
@@ -497,18 +495,3 @@ class MediaTrackers(CustomCog):
     async def backloggd_handle_uncaught_exception(self, exception: BaseException) -> None:
         """Log uncaught exceptions raised by the Backloggd task."""
         self._handle_task_error(exception)
-
-
-def setup(bot: CustomInteractionBot) -> None:
-    """Set up cogs in this module.
-
-    Parameters
-    ----------
-    bot : CustomInteractionBot
-        The bot to pass to the cog.
-
-    """
-    if not BotSettings.cogs.media_tracker.enabled:
-        logger.log_warning("%s has been disabled in the configuration file", MediaTrackers.__cog_name__)
-        return
-    bot.add_cog(MediaTrackers(bot))

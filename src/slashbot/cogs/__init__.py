@@ -1,0 +1,1 @@
+"""Slashbot's cogs."""

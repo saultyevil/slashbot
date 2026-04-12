@@ -1,5 +1,3 @@
-"""Commands for searching for stuff on the internet, and etc."""
-
 import random
 
 import aiofiles
@@ -10,7 +8,6 @@ from disnake.ext import commands
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.logger import logger
 from slashbot.settings import BotSettings
 
 
@@ -110,18 +107,3 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
                 embed.add_field(name=f"Result {n_sol}", value=this_result, inline=False)
 
         await inter.edit_original_message(embed=embed)
-
-
-def setup(bot: CustomInteractionBot) -> None:
-    """Set up cogs in this module.
-
-    Parameters
-    ----------
-    bot : CustomInteractionBot
-        The bot to pass to the cog.
-
-    """
-    if not BotSettings.cogs.tools.enabled:
-        logger.log_warning("%s has been disabled in the configuration file", Tools.__cog_name__)
-        return
-    bot.add_cog(Tools(bot))

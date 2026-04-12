@@ -162,22 +162,22 @@ class Slashbot:
         bot.log_info("Initializing... %s", args)
         bot.log_info("Config file: %s", BotSettings.config_file)
 
-        # TODO: file paths should be based on an env var or relative to this file
-
         if args.on_the_fly_markov:
             markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle")
         else:
             markov.MARKOV_BANK = markov.load_markov_bank("data/markov/markov-sentences.json")
 
-        package = "slashbot.cogs"
         cogs_path = Path(__file__).parent.parent / "cogs"
-        cogs_to_load = cogs_path.glob("*.py")
+        cogs_to_load = sorted([d.stem for d in cogs_path.iterdir() if d.is_dir() and not d.stem.startswith("_")])
+        bot.log_debug("Looking for cog entry points in: %s", cogs_to_load)
 
-        for cog_file_path in cogs_to_load:
-            if cog_file_path.name.startswith("_"):
+        for cog_directory in cogs_to_load:
+            module = f"slashbot.cogs.{cog_directory}"
+            try:
+                bot.load_extension(module)
+            except commands.errors.NoEntryPointError:
+                bot.log_error("No entry point found for cog %s", module)
                 continue
-            module = f"{package}.{cog_file_path.stem}"
-            bot.load_extension(module)
 
         bot.add_listener(self.create_on_ready(bot))
         bot.add_listener(self.create_on_error(bot))
