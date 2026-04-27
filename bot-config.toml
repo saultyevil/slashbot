@@ -5,13 +5,13 @@ enabled = true
 
 [cogs.chatbot]
 enabled = true
-max_output_tokens = 8000
-token_window_size = 16000
-max_images_in_window = 2
+max_output_tokens = 8192
+token_window_size = 16384
+max_images_in_window = 3
 model_temperature = 0.2
-default_model = "claude-haiku-4-5"
+default_model = "claude-sonnet-4-6"
 default_chat_prompt = "data/prompts/default.yaml"
-random_response_chance = 0.005
+random_response_chance = 0
 random_response_use_n_messages = 5
 response_rate_limit = 3
 rate_limit_interval = 5
