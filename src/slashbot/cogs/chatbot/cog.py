@@ -13,8 +13,8 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.cogs.chatbot.chat_registry import ChatRegistry
 from slashbot.cogs.chatbot.response_generator import ResponseGenerator
-from slashbot.cogs.chatbot.utils import is_reply_to_slash_command_response, send_message_to_channel
 from slashbot.errors import deferred_error_response
+from slashbot.messages import is_reply_to_slash_command_response, send_message_to_channel
 from slashbot.settings import BotSettings
 
 

@@ -1,4 +1,5 @@
 import disnake
+
 from slashbot.settings import BotSettings
 
 MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
@@ -15,13 +16,14 @@ async def is_reply_to_slash_command_response(message: disnake.Message) -> bool:
     Returns
     -------
     bool
-        ``True`` if the message is a reply to a slash command interaction
-        response, ``False`` otherwise.
+        True if the message is a reply to a slash command interaction
+        response, False otherwise.
 
     Notes
     -----
-    Returns ``False`` early if the message has no reference, if the referenced
+    Returns False early if the message has no reference, if the referenced
     message cannot be found, or if it carries no interaction metadata.
+
     """
     if not message.reference:
         return False
@@ -36,11 +38,11 @@ async def is_reply_to_slash_command_response(message: disnake.Message) -> bool:
 
 
 def split_text_into_chunks(text: str, chunk_length: int) -> list[str]:
-    """Split a string into chunks no longer than ``chunk_length``, preserving sentences.
+    """Split a string into chunks no longer than chunk_length, preserving sentences.
 
-    The function attempts to break at sentence-ending punctuation (``'.'``,
-    ``'!'``, ``'?'``). If no such boundary is found within the allowed length,
-    it breaks at exactly ``chunk_length``.
+    The function attempts to break at sentence-ending punctuation ('.',
+    '!', '?'). If no such boundary is found within the allowed length,
+    it breaks at exactly chunk_length.
 
     Parameters
     ----------
@@ -52,7 +54,8 @@ def split_text_into_chunks(text: str, chunk_length: int) -> list[str]:
     Returns
     -------
     list of str
-        Ordered list of text chunks, each at most ``chunk_length`` characters.
+        Ordered list of text chunks, each at most chunk_length characters.
+
     """
     chunks = []
     current_chunk = ""
@@ -78,8 +81,8 @@ async def send_message_to_channel(
 ) -> list[disnake.Message]:
     """Send a message to the channel associated with a Discord object.
 
-    If ``message`` exceeds ``MAX_MESSAGE_LENGTH``, it is split into chunks via
-    :func:`split_text_into_chunks` and sent as multiple consecutive messages.
+    If message exceeds MAX_MESSAGE_LENGTH, it is split into chunks via
+    `split_text_into_chunks` and sent as multiple consecutive messages.
     The author mention is prepended to the first chunk only.
 
     Parameters
@@ -90,22 +93,32 @@ async def send_message_to_channel(
         The Discord object whose channel and author are used as the send
         target and mention source respectively.
     dont_tag_user : bool, optional
-        When ``True``, the author mention is omitted from all messages.
-        Defaults to ``False``.
+        When True, the author mention is omitted from all messages.
+        Defaults to False.
 
     Returns
     -------
     list of disnake.Message
         All message objects sent to the channel, in order.
+
     """
+
+    async def _reply(obj: disnake.Message | disnake.ApplicationCommandInteraction, message: str) -> disnake.Message:
+        if isinstance(obj, disnake.Message) and isinstance(obj.channel, disnake.TextChannel):
+            sent = await obj.reply(f"{message}")
+        else:
+            mention = obj.author.mention if not dont_tag_user else ""
+            sent = await obj.channel.send(f"{mention} {message}")
+        return sent
+
     sent_messages = []
     if len(message) > MAX_MESSAGE_LENGTH:
         for i, chunk in enumerate(split_text_into_chunks(message, MAX_MESSAGE_LENGTH)):
-            mention = obj.author.mention if not dont_tag_user else ""
-            sent = await obj.channel.send(f"{mention if i == 0 else ''} {chunk}")
+            if i == 0:
+                sent = await _reply(obj, chunk)
+            else:
+                sent = await obj.channel.send(f"{chunk}")
             sent_messages.append(sent)
     else:
-        mention = obj.author.mention if not dont_tag_user else ""
-        sent = await obj.channel.send(f"{mention} {message}")
-        sent_messages.append(sent)
+        sent_messages.append(await _reply(obj, message))
     return sent_messages

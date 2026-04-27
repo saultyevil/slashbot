@@ -286,6 +286,21 @@ class AdminTools(CustomCog):
         self.invite_tasks[member.id].cancel()
         self.invite_tasks.pop(member.id)
 
+    async def send_jerma_gif(self, message: disnake.Message) -> None:
+        """Respond to a message with a Jerma gif.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to respond to.
+
+        """
+        if message.type != disnake.ChannelType.text:
+            return
+        if random.random() > BotSettings.cogs.admin.jerma_chance:
+            return
+        await message.reply(file=disnake.File(random.choice(JERMA_GIFS)))
+
     @commands.Cog.listener("on_message")
     async def self_listener(self, message: disnake.Message) -> None:
         """Listen to bot messages.
@@ -298,6 +313,9 @@ class AdminTools(CustomCog):
         """
         if message.author.id == self.bot.user.id or self.bot.user in message.mentions:
             self.my_messages.append(message)
+
+        if message.author.id == BotSettings.discord.users.zoomas:
+            await self.send_jerma_gif(message)
 
     @slash_command_with_cooldown(
         name="remove_bot_messages",

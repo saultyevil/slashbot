@@ -30,6 +30,8 @@ class AdminCogSettings(BaseCogSettings):
 
     """
 
+    jerma_chance: float
+
 
 class ChatBotCogSettings(BaseCogSettings):
     """Settings for chatbot cog.
@@ -300,6 +302,7 @@ class DiscordUserIds(BaseModel):
     saultyevil: int = 151378138612367360
     adam: int = 261097001301704704
     seventytwo: int = 176722208243187712
+    zoomas: int = 88397356873039872
 
 
 class DiscordChannelIds(BaseModel):

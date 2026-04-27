@@ -2,6 +2,7 @@
 
 [cogs.admin]
 enabled = true
+jerma_chance = 0.05
 
 [cogs.chatbot]
 enabled = true
