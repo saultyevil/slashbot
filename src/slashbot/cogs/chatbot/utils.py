@@ -102,14 +102,23 @@ async def send_message_to_channel(
         All message objects sent to the channel, in order.
 
     """
+
+    async def _reply(obj: disnake.Message | disnake.ApplicationCommandInteraction, message: str) -> disnake.Message:
+        if isinstance(obj, disnake.Message) and isinstance(obj.channel, disnake.TextChannel):
+            sent = await obj.reply(f"{message}")
+        else:
+            mention = obj.author.mention if not dont_tag_user else ""
+            sent = await obj.channel.send(f"{mention} {message}")
+        return sent
+
     sent_messages = []
     if len(message) > MAX_MESSAGE_LENGTH:
         for i, chunk in enumerate(split_text_into_chunks(message, MAX_MESSAGE_LENGTH)):
-            mention = obj.author.mention if not dont_tag_user else ""
-            sent = await obj.channel.send(f"{mention if i == 0 else ''} {chunk}")
+            if i == 0:
+                sent = await _reply(obj, chunk)
+            else:
+                sent = await obj.channel.send(f"{chunk}")
             sent_messages.append(sent)
     else:
-        mention = obj.author.mention if not dont_tag_user else ""
-        sent = await obj.channel.send(f"{mention} {message}")
-        sent_messages.append(sent)
+        sent_messages.append(await _reply(obj, message))
     return sent_messages
