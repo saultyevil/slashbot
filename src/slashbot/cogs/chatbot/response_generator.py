@@ -16,7 +16,7 @@ from slashbot.ai import (
 )
 from slashbot.bot.custom_types import Message
 from slashbot.cogs.chatbot.chat_registry import ChatRegistry
-from slashbot.cogs.chatbot.utils import send_message_to_channel
+from slashbot.messages import send_message_to_channel
 from slashbot.settings import BotSettings
 
 
