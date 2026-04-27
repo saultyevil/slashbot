@@ -247,7 +247,7 @@ class MediaTrackers(CustomCog):
             user_rating=movie_entry.get("letterboxd_memberrating", None),
             published_date=datetime.datetime.strptime(movie_entry["published"], "%a, %d %b %Y %H:%M:%S %z"),  # type: ignore
             watched_date=watched_date,
-            tmdb_id=movie_entry["tmdb_movieid"],
+            tmdb_id=movie_entry.get("tmdb_movieid", movie_entry["tmdb_tvid"]),
             url=str(movie_entry["link"]).replace(f"{letterboxd_username}/", ""),
             poster_url=poster_url,
         )
@@ -304,10 +304,10 @@ class MediaTrackers(CustomCog):
         """
 
         def get_title(entry: FeedParserDict) -> str | None:
-            # Skip non-movie entries (e.g. TV shows lack a tmdb_movieid)
-            if "tmdb_movieid" not in entry:
-                return None
-            return entry.get("letterboxd_filmtitle")
+            if "tmdb_movieid" in entry or "tmdb_tvid" in entry:
+                return entry.get("letterboxd_filmtitle")
+
+            return None
 
         return await self._get_new_feed_entries(
             usernames=letterboxd_usernames,
