@@ -304,8 +304,7 @@ class MediaTrackers(CustomCog):
         """
 
         def get_title(entry: FeedParserDict) -> str | None:
-            # Skip non-movie entries (e.g. TV shows lack a tmdb_movieid)
-            if "tmdb_movieid" not in entry:
+            if "tmdb_movieid" not in entry or "tmdb_tvid" not in entry:
                 return None
             return entry.get("letterboxd_filmtitle")
 
