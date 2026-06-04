@@ -247,7 +247,7 @@ class MediaTrackers(CustomCog):
             user_rating=movie_entry.get("letterboxd_memberrating", None),
             published_date=datetime.datetime.strptime(movie_entry["published"], "%a, %d %b %Y %H:%M:%S %z"),  # type: ignore
             watched_date=watched_date,
-            tmdb_id=movie_entry.get("tmdb_movieid", movie_entry["tmdb_tvid"]),
+            tmdb_id=movie_entry.get("tmdb_movieid", movie_entry.get("tmdb_tvid", None)),
             url=str(movie_entry["link"]).replace(f"{letterboxd_username}/", ""),
             poster_url=poster_url,
         )
