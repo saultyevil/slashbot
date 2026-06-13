@@ -1,6 +1,6 @@
 [project]
 name = "slashbot"
-version = "2.10.0"
+version = "2.11.0"
 description = "A (useless) discord bot designed around slash commands."
 authors = [{ name = "Edward J. Parkinson" }]
 requires-python = ">=3.11,<3.14"
