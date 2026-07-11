@@ -6,19 +6,19 @@ jerma_chance = 0.25
 
 [cogs.chatbot]
 enabled = true
-max_output_tokens = 8192
-token_window_size = 16384
-max_images_in_window = 3
+max_output_tokens = 512
+token_window_size = 4096
+max_images_in_window = 2
 model_temperature = 0.2
 default_model = "claude-sonnet-4-6"
 default_chat_prompt = "data/prompts/default.yaml"
-random_response_chance = 0
+random_response_chance = 0.05
 random_response_use_n_messages = 5
 response_rate_limit = 3
 rate_limit_interval = 5
 enable_profiling = false
 prefer_image_urls = false
-enable_web_search = true
+enable_web_search = false
 
 [cogs.markov]
 enabled = true

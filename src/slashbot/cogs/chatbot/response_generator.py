@@ -219,7 +219,8 @@ class ResponseGenerator:
             )
 
         async with self._lock:
-            user_label = f"{discord_message.author.display_name}: "
+            timestamp = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
+            user_label = f"{discord_message.author.display_name} ({timestamp}): "
             try:
                 msg_input = TextGenerationInput(user_label + user_prompt, images=images, videos=videos)
                 return await conversation.send_message(msg_input)
