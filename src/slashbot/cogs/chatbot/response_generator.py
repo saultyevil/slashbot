@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import disnake
 
 from slashbot import markov
+from slashbot.bot.custom_types import Message
+from slashbot.cogs.chatbot.chat_registry import ChatRegistry
 from slashbot.llm import (
     GenerationFailureError,
     TextGenerationInput,
@@ -14,8 +16,6 @@ from slashbot.llm import (
     VisionVideo,
     read_in_prompt,
 )
-from slashbot.bot.custom_types import Message
-from slashbot.cogs.chatbot.chat_registry import ChatRegistry
 from slashbot.messages import send_message_to_channel
 from slashbot.settings import BotSettings
 
@@ -198,7 +198,7 @@ class ResponseGenerator:
             The generated response text.
 
         """
-        conversation = self.chat_registry.get_chat(discord_message)
+        conversation = self.chat_registry.get_chat_object(discord_message)
 
         if discord_message.guild:
             bot_member = discord_message.guild.get_member(self.bot.user.id)
@@ -241,7 +241,7 @@ class ResponseGenerator:
 
         """
         prompt = read_in_prompt("data/prompts/_random-response.yaml")
-        chat = self.chat_registry.get_chat(message)
+        chat = self.chat_registry.get_chat_object(message)
         content = chat.create_request_json(TextGenerationInput(message.clean_content), system_prompt=prompt.prompt)
         response = await chat.send_raw_request(content)
 
