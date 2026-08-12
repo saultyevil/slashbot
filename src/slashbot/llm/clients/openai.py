@@ -1,7 +1,7 @@
 import openai
 
-from slashbot.ai.clients.abstract_client import TextGenerationAbstractClient
-from slashbot.ai.models import (
+from slashbot.llm.clients.abstract_client import TextGenerationAbstractClient
+from slashbot.llm.models import (
     GenerationFailureError,
     TextGenerationInput,
     TextGenerationResponse,

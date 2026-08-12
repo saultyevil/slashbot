@@ -5,7 +5,7 @@ import yaml
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from slashbot.ai.prompts import create_prompt_dict, read_in_prompt
+from slashbot.llm.prompts import create_prompt_dict, read_in_prompt
 from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 

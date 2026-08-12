@@ -7,13 +7,13 @@ from disnake.ext import commands
 from pyinstrument import Profiler
 
 import slashbot.watchers
-from slashbot.ai import SUPPORTED_MODELS, GenerationFailureError
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.cogs.chatbot.chat_registry import ChatRegistry
 from slashbot.cogs.chatbot.response_generator import ResponseGenerator
 from slashbot.errors import deferred_error_response
+from slashbot.llm import SUPPORTED_MODELS, GenerationFailureError
 from slashbot.messages import is_reply_to_slash_command_response, send_message_to_channel
 from slashbot.settings import BotSettings
 
@@ -138,7 +138,7 @@ class ChatBot(CustomCog):
             The slash command interaction.
 
         """
-        history = self._chat_registry.get_summary(inter)
+        history = self._chat_registry.get_summary_object(inter)
         if len(history) == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
@@ -163,7 +163,7 @@ class ChatBot(CustomCog):
             The slash command interaction.
 
         """
-        chat = self._chat_registry.get_chat(inter)
+        chat = self._chat_registry.get_chat_object(inter)
         chat.reset_history()
         await inter.response.send_message(
             f"Conversation history has been reset with prompt: {shorten(chat.system_prompt, 1500)}",
@@ -201,7 +201,7 @@ class ChatBot(CustomCog):
                 "You probably meant to use /set_custom_chat_prompt instead of this command."
             )
             return
-        chat = self._chat_registry.get_chat(inter)
+        chat = self._chat_registry.get_chat_object(inter)
         chat.set_chat_prompt(prompt, prompt_name=prompt_name)
         self.log_info("%s set new prompt [%s]: %s", inter.author.display_name, prompt_name, prompt)
         await inter.response.send_message(
@@ -227,8 +227,8 @@ class ChatBot(CustomCog):
 
         """
         await inter.response.defer(ephemeral=True)
-        chat = self._chat_registry.get_chat(inter)
-        summary = self._chat_registry.get_summary(inter)
+        chat = self._chat_registry.get_chat_object(inter)
+        summary = self._chat_registry.get_summary_object(inter)
         original_model = chat.model
         chat.set_model(model_name)
         summary.set_model(model_name)
@@ -256,7 +256,7 @@ class ChatBot(CustomCog):
             The custom system prompt text, up to 1950 characters.
 
         """
-        chat = self._chat_registry.get_chat(inter)
+        chat = self._chat_registry.get_chat_object(inter)
         chat.set_chat_prompt(prompt)
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         await inter.response.send_message(
@@ -277,7 +277,7 @@ class ChatBot(CustomCog):
             The slash command interaction.
 
         """
-        chat = self._chat_registry.get_chat(inter)
+        chat = self._chat_registry.get_chat_object(inter)
         response = (
             f"**Model**: {chat.model}\n"
             f"**Token size**: {chat.size_tokens}\n"

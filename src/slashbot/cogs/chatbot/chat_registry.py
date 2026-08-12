@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 import disnake
 
-from slashbot.ai import GenerationFailureError, TextGenerationInput, read_in_prompt
-from slashbot.ai.text_generator import TextGenerator
+from slashbot.llm import GenerationFailureError, TextGenerationInput, read_in_prompt
+from slashbot.llm.text_generator import TextGenerator
 from slashbot.settings import BotSettings
 
 DEFAULT_SYSTEM_PROMPT = read_in_prompt(BotSettings.cogs.chatbot.default_chat_prompt)
@@ -276,7 +276,7 @@ class ChatRegistry:
             return str(obj.channel.recipient)
         return str(obj.channel.id)
 
-    def get_chat(self, obj: int | disnake.Message | disnake.ApplicationCommandInteraction) -> AIChat:
+    def get_chat_object(self, obj: int | disnake.Message | disnake.ApplicationCommandInteraction) -> AIChat:
         """Retrieve or create the :class:`~slashbot.ai.AIChat` for a channel.
 
         Parameters
@@ -309,7 +309,7 @@ class ChatRegistry:
             )
         return self.chats[cid]
 
-    def get_summary(self, obj: int | disnake.Message | disnake.ApplicationCommandInteraction) -> AIChatSummary:
+    def get_summary_object(self, obj: int | disnake.Message | disnake.ApplicationCommandInteraction) -> AIChatSummary:
         """Retrieve or create the :class:`~slashbot.ai.AIChatSummary` for a channel.
 
         Parameters
@@ -359,7 +359,7 @@ class ChatRegistry:
         clean = message.clean_content.replace(f"@{bot_name}", "[directed at me]")
         for user in message.mentions:
             clean = clean.replace(f"@{user.name}", f"[directed at {user.display_name}]")
-        summary = self.get_summary(message)
+        summary = self.get_summary_object(message)
         summary.add_message_to_history(
             SummaryMessage(
                 user=message.author.display_name if message.author.name != bot_name else "me",

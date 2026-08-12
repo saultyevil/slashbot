@@ -1,8 +1,8 @@
 import anthropic
 from anthropic import Anthropic, AsyncAnthropic
 
-from slashbot.ai.clients.abstract_client import TextGenerationAbstractClient
-from slashbot.ai.models import (
+from slashbot.llm.clients.abstract_client import TextGenerationAbstractClient
+from slashbot.llm.models import (
     GenerationFailureError,
     TextGenerationInput,
     TextGenerationResponse,
@@ -15,14 +15,8 @@ from slashbot.settings import BotSettings
 class ClaudeClient(TextGenerationAbstractClient):
     """Asynchronous Claude client."""
 
-    SUPPORTED_MODELS = (
-        "claude-haiku-4-5",
-        "claude-sonnet-4-6",
-    )
-    VISION_MODELS = (
-        "claude-haiku-4-5",
-        "claude-sonnet-4-6",
-    )
+    SUPPORTED_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
+    VISION_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
     SEARCH_MODELS = ()
     AUDIO_MODELS = ()
     VIDEO_MODELS = ()
@@ -247,7 +241,6 @@ class ClaudeClient(TextGenerationAbstractClient):
                 model=self.model_name,
                 messages=content,  # type: ignore
                 max_tokens=self._max_completion_tokens,
-                temperature=BotSettings.cogs.chatbot.model_temperature,
                 system=self.system_prompt,
             )
         except Exception as exc:
