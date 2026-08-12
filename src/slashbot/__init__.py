@@ -1,9 +1,9 @@
 """Slashbot discord bot."""
 
-from . import ai, bot, cli, clock, convertors, database, errors, logger, markov, scraper, settings, watchers
+from . import llm, bot, cli, clock, convertors, database, errors, logger, markov, scraper, settings, watchers
 
 __all__ = [
-    "ai",
+    "llm",
     "bot",
     "cli",
     "clock",

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import disnake
 
 from slashbot import markov
-from slashbot.ai import (
+from slashbot.llm import (
     GenerationFailureError,
     TextGenerationInput,
     VisionImage,

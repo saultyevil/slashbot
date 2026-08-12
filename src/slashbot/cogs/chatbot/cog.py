@@ -7,7 +7,7 @@ from disnake.ext import commands
 from pyinstrument import Profiler
 
 import slashbot.watchers
-from slashbot.ai import SUPPORTED_MODELS, GenerationFailureError
+from slashbot.llm import SUPPORTED_MODELS, GenerationFailureError
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown

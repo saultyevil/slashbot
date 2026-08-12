@@ -1,9 +1,9 @@
 from typing import cast
 
-from slashbot.ai.clients.claude import ClaudeClient
-from slashbot.ai.clients.gemini import GeminiClient
-from slashbot.ai.clients.openai import OpenAIClient
-from slashbot.ai.models import TextGenerationInput, TextGenerationResponse
+from slashbot.llm.clients.claude import ClaudeClient
+from slashbot.llm.clients.gemini import GeminiClient
+from slashbot.llm.clients.openai import OpenAIClient
+from slashbot.llm.models import TextGenerationInput, TextGenerationResponse
 from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
