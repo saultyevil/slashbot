@@ -295,12 +295,10 @@ class AdminTools(CustomCog):
             The message to respond to.
 
         """
-        self.log_debug("zoom has spoken")
-        if message.type != disnake.ChannelType.text:
+        if not isinstance(message.channel, disnake.TextChannel):
             return
         if random.random() < BotSettings.cogs.admin.jerma_chance:
             await message.reply(file=disnake.File(random.choice(JERMA_GIFS)))
-            self.log_debug("jerma gif sent")
 
     @commands.Cog.listener("on_message")
     async def self_listener(self, message: disnake.Message) -> None:
