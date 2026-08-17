@@ -2,8 +2,11 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest_asyncio
+from dotenv import load_dotenv
 
 from slashbot.database import DatabaseSQL, DeclarativeBase
+
+load_dotenv()
 
 
 @pytest_asyncio.fixture

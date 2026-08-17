@@ -5,7 +5,7 @@ import pytest
 from slashbot.llm import ClaudeClient, TextGenerationInput, TextInput
 from slashbot.settings import BotSettings
 
-BotSettings.keys.claude = os.getenv("ANTHROPIC_API_KEY")
+BotSettings.keys.claude = os.getenv("BOT_ANTHROPIC_API_KEY")
 
 
 @pytest.mark.asyncio
