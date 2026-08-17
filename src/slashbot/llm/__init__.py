@@ -1,6 +1,6 @@
 """Core AI module for Slashbot."""
 
-from .clients import ClaudeClient
+from .client import LLM
 from .models import (
     GenerationFailureError,
     ImageInput,
@@ -12,7 +12,7 @@ from .models import (
 from .prompts import Prompt, read_in_prompt
 
 __all__ = [
-    "ClaudeClient",
+    "LLM",
     "GenerationFailureError",
     "ImageInput",
     "Prompt",

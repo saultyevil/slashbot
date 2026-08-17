@@ -34,6 +34,8 @@ class ClaudeClient(AbstractClient):
     def __init__(self, **kwargs: dict[str, Any]) -> None:
         """Initialise a Claude client with the given arguments."""
         super().__init__(**kwargs)
+
+        self.provider = "anthropic"
         self._client = AsyncAnthropic(api_key=BotSettings.keys.claude)
 
     ## private member functions
@@ -88,7 +90,7 @@ class ClaudeClient(AbstractClient):
 
     def _construct_final_payload(
         self, role: InputRole, text_content: dict, image_content: dict | list[dict], video_content: dict | list[dict]
-    ) -> dict | list[dict]:
+    ) -> dict:
         """Create a payload for a payload, including text, images and videos.
 
         Parameters
@@ -104,7 +106,7 @@ class ClaudeClient(AbstractClient):
 
         Returns
         -------
-        dict | list[dict]
+        dict
             The correctly formatted payload for all inputs.
 
         """
@@ -133,6 +135,23 @@ class ClaudeClient(AbstractClient):
     async def _send_request(
         self, model: str, content: dict | list[dict], system_prompt: str | None = None
     ) -> TextGenerationResponse:
+        """Send a request to the uderlying API client.
+
+        Parameters
+        ----------
+        model : str
+            The model to use.
+        content : dict | list[dict]
+            The payload to send to the API client.
+        system_prompt : str | None
+            The optional system prompt to use.
+
+        Returns
+        -------
+        TextGenerationResponse
+            The response returned from the API client.
+
+        """
         try:
             response = await self._client.messages.create(
                 model=model,
@@ -184,7 +203,7 @@ class ClaudeClient(AbstractClient):
 
         """
         client = Anthropic(api_key=self._client.api_key, base_url=self._client.base_url)
-        response = client.messages.count_tokens(model=model, messages=self.transform_input_to_payload(model, content))
+        response = client.messages.count_tokens(model=model, messages=self.transform_input_to_payload(model, content))  # type: ignore
 
         return response.input_tokens
 

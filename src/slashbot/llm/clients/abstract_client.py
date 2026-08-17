@@ -29,7 +29,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
         """
         super().__init__(**kwargs)
 
-    def _assemble_payload_from_inputs(self, model: str, message: TextGenerationInput) -> dict | list[dict]:
+    def _assemble_payload_from_inputs(self, model: str, content: TextGenerationInput) -> dict:
         """Create the contents payload for a request.
 
         The input object(s), TextGenerationInput, can contain text, image and
@@ -40,56 +40,56 @@ class AbstractClient(Logger, metaclass=ABCMeta):
         ----------
         model : str
             The name of the model to use.
-        message : TextGenerationInput
+        content : TextGenerationInput
             The input message to create a contents payload for,
 
         Returns
         -------
-        dict | list [dict]
+        dict
             An appropriately formatted dict or list of dict's for the current
             active client.
 
         """
-        if message.text == "":
+        if content.text == "":
             error_message = "Can only generate when there is text input"
             self.log_error("%s", error_message)
             raise GenerationFailureError(error_message, 1)
 
         image_content = []
         video_content = []
-        text_content = self._create_text_input_object(message.text)
+        text_content = self._create_text_input_object(content.text)
 
-        if message.images:
-            image_content.extend(self._create_image_input_object(model, message.images))
-        if message.videos:
-            video_content.extend(self._create_video_input_object(model, message.videos))
+        if content.images:
+            image_content.extend(self._create_image_input_object(model, content.images))
+        if content.videos:
+            video_content.extend(self._create_video_input_object(model, content.videos))
 
-        payload = self._construct_final_payload(message.role, text_content, image_content, video_content)
-        self.log_debug("Assemebled payload from %s for %s: %s", message, model, payload)
+        payload = self._construct_final_payload(content.role, text_content, image_content, video_content)
+        self.log_debug("Assemebled payload from %s for %s: %s", content, model, payload)
 
         return payload
 
     def transform_input_to_payload(
-        self, model: str, input_content: TextGenerationInput | list[TextGenerationInput]
-    ) -> dict | list:
+        self, model: str, content: TextGenerationInput | list[TextGenerationInput]
+    ) -> dict | list[dict]:
         """Create a request JSON for the current LLM model.
 
         Parameters
         ----------
         model : str
             The name of the model to generate input for.
-        input_content : TextGenerationInput | list[TextGenerationInput]
+        content : TextGenerationInput | list[TextGenerationInput]
             Input message(s), from the user, including attached images and
             videos.
 
         """
-        if not isinstance(input_content, list):
-            input_content = [input_content]
+        if not isinstance(content, list):
+            content = [content]
 
-        content = [self._assemble_payload_from_inputs(model, message) for message in input_content]
-        self.log_debug("Transformed %s into for %s: %s", input_content, model, content)
+        payload = [self._assemble_payload_from_inputs(model, message) for message in content]
+        self.log_debug("Transformed %s into for %s: %s", content, model, payload)
 
-        return content
+        return payload
 
     # --------------------------------------------------------------------------
     # ABSTRACT METHODS WHICH REQUIRE IMPLEMENTATION
@@ -135,7 +135,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
     @abstractmethod
     def _construct_final_payload(
         self, role: InputRole, text_content: dict, image_content: dict | list[dict], video_content: dict | list[dict]
-    ) -> dict | list[dict]:
+    ) -> dict:
         """Create a payload for a payload, including text, images and videos.
 
         Parameters
@@ -151,7 +151,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
 
         Returns
         -------
-        dict | list[dict]
+        dict
             The correctly formatted payload.
 
         """
