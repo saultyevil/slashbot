@@ -2,8 +2,8 @@ from typing import Any
 
 import httpx
 
-from slashbot.llm.clients.abstract_client import TextGenerationAbstractClient
-from slashbot.llm.models import (
+from slashbot.llm_old.clients.abstract_client import TextGenerationAbstractClient
+from slashbot.llm_old.models import (
     GenerationFailureError,
     TextGenerationInput,
     TextGenerationResponse,

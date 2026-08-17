@@ -9,7 +9,7 @@ import disnake
 from slashbot import markov
 from slashbot.bot.custom_types import Message
 from slashbot.cogs.chatbot.chat_registry import ChatRegistry
-from slashbot.llm import (
+from slashbot.llm_old import (
     GenerationFailureError,
     TextGenerationInput,
     VisionImage,

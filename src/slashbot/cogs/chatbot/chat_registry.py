@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 import disnake
 
-from slashbot.llm import GenerationFailureError, TextGenerationInput, read_in_prompt
-from slashbot.llm.text_generator import TextGenerator
+from slashbot.llm_old import GenerationFailureError, TextGenerationInput, read_in_prompt
+from slashbot.llm_old.text_generator import TextGenerator
 from slashbot.settings import BotSettings
 
 DEFAULT_SYSTEM_PROMPT = read_in_prompt(BotSettings.cogs.chatbot.default_chat_prompt)

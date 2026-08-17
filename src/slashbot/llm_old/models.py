@@ -1,43 +1,24 @@
 import base64
 from dataclasses import dataclass
-from enum import Enum, auto
 
 import httpx
 
 
-class RoleInput(Enum):
-    """Enumerator for the possible roles in text generation."""
-
-    user = "user", auto()
-    assistant = "assistant", auto()
-
-
 @dataclass
-class TextInput:
-    """Dataclass for text input."""
-
-    text: str
-
-    def __len__(self) -> int:
-        return 1
-
-    def __str__(self) -> str:
-        return f"TextInput(text={self.text})"
-
-
-@dataclass
-class ImageInput:
-    """Dataclass for image input."""
+class VisionImage:
+    """Dataclass for images for LLM vision."""
 
     url: str
     b64image: str | None = None
     mime_type: str | None = None
 
     def __len__(self) -> int:
+        """Return a dummy length value."""
         return 1
 
     def __str__(self) -> str:
-        return f"ImageInput(url={self.url} mime_type={self.mime_type} encoded={self.b64image is not None})"
+        """Print the string representation."""
+        return f"VisionImage(url={self.url} mime_type={self.mime_type} encoded={self.b64image is not None})"
 
     async def download_and_encode(self, *, httpx_timeout: int = 30) -> None:
         """Download the image and encode to a base64 string.
@@ -56,7 +37,7 @@ class ImageInput:
 
 
 @dataclass
-class VideoInput:
+class VisionVideo:
     """Dataclass for videos for LLM vision."""
 
     url: str
@@ -64,22 +45,25 @@ class VideoInput:
     mime_type: str | None = None
 
     def __len__(self) -> int:
+        """Return a dummy length value."""
         return 1
 
     def __str__(self) -> str:
-        return f"VideoInput(url={self.url} mime_type={self.mime_type} encoded={self.b64video is not None})"
+        """Print the string representation."""
+        return f"VisionVideo(url={self.url} mime_type={self.mime_type})"
 
 
 @dataclass
 class TextGenerationInput:
     """Message dataclass for an LLM conversation."""
 
-    text: TextInput
-    images: ImageInput | list[ImageInput] | None = None
-    videos: VideoInput | list[VideoInput] | None = None
-    role: RoleInput = RoleInput.user
+    text: str
+    images: VisionImage | list[VisionImage] | None = None
+    videos: VisionVideo | list[VisionVideo] | None = None
+    role: str = "user"
 
     def __str__(self) -> str:
+        """Print the string representation."""
         num_images = len(self.images) if self.images else 0
         num_videos = len(self.videos) if self.videos else 0
         return f"TextGenerationInput(role={self.role} text={self.text} images={num_images} videos={num_videos})"

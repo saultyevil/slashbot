@@ -1,7 +1,8 @@
-import openai
+import anthropic
+from anthropic import Anthropic, AsyncAnthropic
 
-from slashbot.llm.clients.abstract_client import TextGenerationAbstractClient
-from slashbot.llm.models import (
+from slashbot.llm_old.clients.abstract_client import TextGenerationAbstractClient
+from slashbot.llm_old.models import (
     GenerationFailureError,
     TextGenerationInput,
     TextGenerationResponse,
@@ -11,11 +12,11 @@ from slashbot.llm.models import (
 from slashbot.settings import BotSettings
 
 
-class OpenAIClient(TextGenerationAbstractClient):
-    """Asynchronous OpenAI client."""
+class ClaudeClient(TextGenerationAbstractClient):
+    """Asynchronous Claude client."""
 
-    SUPPORTED_MODELS = ()
-    VISION_MODELS = SUPPORTED_MODELS
+    SUPPORTED_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
+    VISION_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
     SEARCH_MODELS = ()
     AUDIO_MODELS = ()
     VIDEO_MODELS = ()
@@ -31,7 +32,7 @@ class OpenAIClient(TextGenerationAbstractClient):
             The length of the conversation.
 
         """
-        return len(self._model_context_message_content)
+        return len(self._model_context)
 
     # --------------------------------------------------------------------------
 
@@ -48,7 +49,7 @@ class OpenAIClient(TextGenerationAbstractClient):
             The contents of the context.
 
         """
-        return self._model_context[1:]  # first message is system prompt
+        return self._model_context
 
     @property
     def client_type(self) -> str:
@@ -60,7 +61,7 @@ class OpenAIClient(TextGenerationAbstractClient):
             A string representation of the client type.
 
         """
-        return "openai"
+        return "claude"
 
     # --------------------------------------------------------------------------
 
@@ -102,10 +103,11 @@ class OpenAIClient(TextGenerationAbstractClient):
             images = [images]
         return [
             {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/{image.mime_type};base64,{image.b64image}" if image.b64image else image.url,
-                    "detail": "low",
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": f"{image.mime_type}",
+                    "data": f"{image.b64image}",
                 },
             }
             for image in images
@@ -181,8 +183,6 @@ class OpenAIClient(TextGenerationAbstractClient):
         """
         return {"role": "user", "content": [*text_content, *image_content, *video_content]}
 
-    # --------------------------------------------------------------------------
-
     def count_tokens(self, messages: dict | list[dict[str, str]] | str) -> int:
         """Get the token count for a given message for the current LLM model.
 
@@ -202,9 +202,11 @@ class OpenAIClient(TextGenerationAbstractClient):
             raise ValueError(msg)
         if isinstance(messages, str):
             messages = [{"role": "user", "content": messages}]
+        if isinstance(messages, dict):
+            messages = [messages]
 
-        client = openai.Client(api_key=self._client.api_key, base_url=self._client.base_url)
-        response = client.responses.input_tokens.count(model=self.model_name, input=messages)  # type: ignore
+        client = Anthropic(api_key=self._client.api_key, base_url=self._client.base_url)
+        response = client.messages.count_tokens(model=self.model_name, messages=messages)  # type: ignore
         self.log_debug("Count token response %s for messages %s", response, messages)
 
         return response.input_tokens
@@ -219,33 +221,7 @@ class OpenAIClient(TextGenerationAbstractClient):
 
         """
         self.model_name = model_name
-        self._client = openai.AsyncClient(api_key=BotSettings.keys.openai, base_url="http://localhost:11434/v1")
-
-    def create_content_payload_object(
-        self, messages: TextGenerationInput | list[TextGenerationInput], *, system_prompt: str | None = None
-    ) -> dict | list:
-        """Create a request JSON for the current LLM model.
-
-        Parameters
-        ----------
-        messages : ContextMessage | list[ContextMessage]
-            Input message(s), from the user, including attached images and
-            videos.
-        system_prompt : str | None
-            The system prompt to use. If None, the current system prompt is
-            used.
-
-        """
-        request = super().create_content_payload_object(messages)
-
-        if not isinstance(request, list):
-            msg = "Internal issue: an invalid type has been returned from OpenAIClient.create_content_payload_object()"
-            raise TypeError(msg)
-
-        if system_prompt:
-            request.insert(0, {"role": "system", "content": system_prompt})
-
-        return request
+        self._client = AsyncAnthropic(api_key=BotSettings.keys.claude)
 
     async def generate_response(self, content: list[dict] | dict) -> TextGenerationResponse:
         """Send a request to the API client.
@@ -260,28 +236,33 @@ class OpenAIClient(TextGenerationAbstractClient):
             self.init_client(self.model_name)
 
         await self._log_request("%s", content)
-
         try:
-            response = await self._client.chat.completions.create(
+            response = await self._client.messages.create(
                 model=self.model_name,
                 messages=content,  # type: ignore
-                max_completion_tokens=self._max_completion_tokens,
-                temperature=BotSettings.cogs.chatbot.model_temperature,
+                max_tokens=self._max_completion_tokens,
+                system=self.system_prompt,
             )
         except Exception as exc:
-            msg = f"OpenAI API failed to generate response due to exception: {exc}"
+            msg = f"Claude API failed to generate response due to exception: {exc}"
             self.log_error("%s", msg)
             raise GenerationFailureError(msg) from exc
-
         await self._log_response("%s", response)
 
-        response_message = response.choices[0].message.content
-        if not response_message:
-            msg = "A valid response was not generated by the OpenAI client."
+        if not response.content:
+            msg = "A valid response was not generated by the Anthropic client."
             raise ValueError(msg)
 
-        return TextGenerationResponse(  # Ternary to shut the linter up
-            response_message, response.usage.total_tokens if response.usage else self.token_size
+        text_response = next(
+            (block for block in response.content if isinstance(block, anthropic.types.TextBlock)), None
+        )
+        if not text_response:
+            msg = "A text response was not generated"
+            raise ValueError(msg)
+
+        return TextGenerationResponse(
+            text_response.text,
+            response.usage.input_tokens + response.usage.output_tokens if response.usage else self.token_size,
         )
 
     async def generate_response_with_context(
@@ -313,7 +294,7 @@ class OpenAIClient(TextGenerationAbstractClient):
 
         response = await self.generate_response(self._model_context)
         if not response.message:
-            msg = "A valid response was not generated by the OpenAI client."
+            msg = "A valid response was not generated by the Anthropic client."
             raise ValueError(msg)
 
         self._model_context.append(self._create_assistant_response_object(response.message))
@@ -334,5 +315,5 @@ class OpenAIClient(TextGenerationAbstractClient):
         """
         self.system_prompt = prompt
         self.system_prompt_name = prompt_name
-        self._model_context = [{"role": "system", "content": prompt}]
+        self._model_context = []
         self.token_size = self.count_tokens(prompt)
