@@ -57,7 +57,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
 
         image_content = []
         video_content = []
-        text_content = self._create_text_input_object(model, message.text)
+        text_content = self._create_text_input_object(message.text)
 
         if message.images:
             image_content.extend(self._create_image_input_object(model, message.images))
@@ -65,7 +65,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
             video_content.extend(self._create_video_input_object(model, message.videos))
 
         payload = self._construct_final_payload(message.role, text_content, image_content, video_content)
-        self.log_debug("Payload created for %s: %s", model, payload)
+        self.log_debug("Assemebled payload from %s for %s: %s", message, model, payload)
 
         return payload
 
@@ -87,7 +87,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
             input_content = [input_content]
 
         content = [self._assemble_payload_from_inputs(model, message) for message in input_content]
-        self.log_debug("Created payload for %s: %s", model, content)
+        self.log_debug("Transformed %s into for %s: %s", input_content, model, content)
 
         return content
 
@@ -114,13 +114,14 @@ class AbstractClient(Logger, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def _create_text_input_object(self, model: str, text: TextInput) -> dict:
+    def _create_text_input_object(self, text: TextInput) -> dict:
         """Create a payload for a text request.
+
+        Does not require a model parameter as all models will support text
+        input.
 
         Parameters
         ----------
-        model : str
-            The name of the model to generate input for.
         text : TextInput
             The text message to format into a payload.
 
