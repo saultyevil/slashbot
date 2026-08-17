@@ -55,22 +55,3 @@ def read_in_prompt(filepath: str | pathlib.Path) -> Prompt:
     prompt.prompt = " ".join(dedent(prompt.prompt).splitlines())
 
     return prompt
-
-
-def create_prompt_dict() -> dict:
-    """Create a dict of prompt_name: prompt.
-
-    Returns
-    -------
-    dict
-        A dictionary of prompt names and their corresponding prompt strings.
-
-    """
-    return {
-        prompt.name: prompt.prompt
-        for prompt in [
-            read_in_prompt(file)
-            for file in pathlib.Path("data/prompts").glob("*.yaml")
-            if not file.name.startswith("_")  # prompts which start with _ are hidden prompts
-        ]
-    }

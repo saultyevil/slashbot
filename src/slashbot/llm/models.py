@@ -1,15 +1,15 @@
 import base64
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
 
 import httpx
 
 
-class RoleInput(Enum):
+class InputRole(Enum):
     """Enumerator for the possible roles in text generation."""
 
-    user = "user", auto()
-    assistant = "assistant", auto()
+    user = "user"
+    assistant = "assistant"
 
 
 @dataclass
@@ -77,7 +77,7 @@ class TextGenerationInput:
     text: TextInput
     images: ImageInput | list[ImageInput] | None = None
     videos: VideoInput | list[VideoInput] | None = None
-    role: RoleInput = RoleInput.user
+    role: InputRole = InputRole.user
 
     def __str__(self) -> str:
         num_images = len(self.images) if self.images else 0
