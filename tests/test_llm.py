@@ -18,5 +18,5 @@ async def test_claude_generation() -> None:
         f"Confirm that this text was successfully received by responding **only** with '{confirmation_text}'."
     )
 
-    response = await client.generate_response("claude-sonnet-5", TextGenerationInput(text_input))
+    response = await client.generate_response("claude-haiku-4-5", TextGenerationInput(text_input))
     assert response.message == confirmation_text

@@ -1,3 +1,5 @@
+from typing import Any
+
 import anthropic
 from anthropic import Anthropic, AsyncAnthropic, Omit
 
@@ -29,7 +31,8 @@ class ClaudeClient(AbstractClient):
 
     ## magic methods
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: dict[str, Any]) -> None:
+        """Initialise a Claude client with the given arguments."""
         super().__init__(**kwargs)
         self._client = AsyncAnthropic(api_key=BotSettings.keys.claude)
 
@@ -67,13 +70,11 @@ class ClaudeClient(AbstractClient):
             for image in images
         ]
 
-    def _create_text_input_object(self, model: str, text: TextInput) -> dict:
+    def _create_text_input_object(self, text: TextInput) -> dict:
         """Create a payload for a text request.
 
         Parameters
         ----------
-        model : str
-            The name of the model.
         text : str | list[str]
             The text messages(s) to format into a payload.
 
@@ -133,7 +134,6 @@ class ClaudeClient(AbstractClient):
         self, model: str, content: dict | list[dict], system_prompt: str | None = None
     ) -> TextGenerationResponse:
         try:
-            # TODO: need a way to set max generation tokens
             response = await self._client.messages.create(
                 model=model,
                 messages=content,  # type: ignore
