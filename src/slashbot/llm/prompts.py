@@ -29,7 +29,7 @@ class Prompt(BaseModel):
         return values
 
 
-def read_in_prompt(filepath: str | pathlib.Path) -> Prompt:
+def load_prompt(filepath: str | pathlib.Path) -> Prompt:
     """Read in a prompt from a YAML file.
 
     Parameters

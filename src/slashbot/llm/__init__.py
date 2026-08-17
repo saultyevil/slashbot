@@ -4,21 +4,23 @@ from .client import LLM
 from .models import (
     GenerationFailureError,
     ImageInput,
+    InputRole,
     TextGenerationInput,
     TextGenerationResponse,
     TextInput,
     VideoInput,
 )
-from .prompts import Prompt, read_in_prompt
+from .prompts import Prompt, load_prompt
 
 __all__ = [
     "LLM",
     "GenerationFailureError",
     "ImageInput",
+    "InputRole",
     "Prompt",
     "TextGenerationInput",
     "TextGenerationResponse",
     "TextInput",
     "VideoInput",
-    "read_in_prompt",
+    "load_prompt",
 ]
