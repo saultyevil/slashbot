@@ -15,7 +15,7 @@ async def test_claude_generation() -> None:
 
     confirmation_text = "I have received your message"
     text_input = TextInput(
-        f"Confirm that recieved this text successfully by responding only with '{confirmation_text}'."
+        f"Confirm that this text was successfully received by responding **only** with '{confirmation_text}'."
     )
 
     response = await client.generate_response("claude-sonnet-5", TextGenerationInput(text_input))

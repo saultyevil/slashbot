@@ -91,6 +91,8 @@ class TextGenerationResponse:
 
     message: str
     tokens_used: int
+    input_tokens: int
+    output_tokens: int
 
 
 class GenerationFailureError(Exception):

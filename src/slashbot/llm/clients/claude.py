@@ -156,7 +156,12 @@ class ClaudeClient(AbstractClient):
             error_message = "A text response was not generated"
             raise GenerationFailureError(error_message)
 
-        return TextGenerationResponse(text_response.text, response.usage.input_tokens + response.usage.output_tokens)
+        return TextGenerationResponse(
+            text_response.text,
+            response.usage.input_tokens + response.usage.output_tokens,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
 
     ## public interface
 
