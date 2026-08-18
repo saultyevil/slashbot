@@ -23,7 +23,7 @@ async def test_chat_responds_for_new_input() -> None:
     text_input = TextInput(
         f"Confirm that this text was successfully received by responding **only** with '{confirmation_text}'."
     )
-    response = await chat.respond(TextGenerationInput(text_input))
+    response = await chat.respond_to_message(TextGenerationInput(text_input))
 
     assert response.message == confirmation_text
     assert len(chat) == 2

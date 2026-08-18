@@ -40,7 +40,7 @@ class Messages:
     def __getitem__(self, index: int) -> TextGenerationInput:
         return self.messages[index]
 
-    def append(self, content: TextGenerationInput, num_tokens: int) -> None:
+    def append_message(self, content: TextGenerationInput, num_tokens: int) -> None:
         """Append a new message.
 
         Parameters
@@ -65,29 +65,17 @@ class Chat(Logger):
         system_prompt = system_prompt if system_prompt else DEFAULT_SYSTEM_PROMPT.prompt
         system_prompt = USER_CONVERSATION_CONTEXT_PROMPT + system_prompt
 
-        self.chat_id = chat_id
+        self.chat_id: str = chat_id
         self.llm: LLM = LLM(model, system_prompt)
         self.messages: Messages = Messages()
 
-        self.model = model
-        self.provider = self.llm.provider
+        self.model: str = self.llm.model
+        self.provider: str = self.llm.provider
 
     def __len__(self) -> int:
         return len(self.messages)
 
-    async def add_message(self, content: TextGenerationInput) -> None:
-        """Add a new message to the chat.
-
-        Parameters
-        ----------
-        content : TextGenerationInput
-            The content of the new message to add.
-
-        """
-        num_tokens = await self.llm.count_tokens(content)
-        self.messages.append(content, num_tokens)
-
-    async def respond(self, content: TextGenerationInput) -> TextGenerationResponse:
+    async def respond_to_message(self, content: TextGenerationInput) -> TextGenerationResponse:
         """Respond to a message.
 
         Parameters
@@ -106,8 +94,8 @@ class Chat(Logger):
         messages = self.messages + content
         response = await self.llm.generate_response(messages)
 
-        self.messages.append(content, response.input_tokens - starting_tokens)
-        self.messages.append(
+        self.messages.append_message(content, response.input_tokens - starting_tokens)
+        self.messages.append_message(
             TextGenerationInput(text=TextInput(response.message), role=InputRole.assistant), response.output_tokens
         )
 
