@@ -160,6 +160,10 @@ class Chat(Logger):
         """
         self.llm = LLM(self.model, USER_CONVERSATION_CONTEXT_PROMPT + system_prompt)
 
+    # TODO: implement token tracking in TextGenerationInput
+    # TODO: implement method to remove message
+    # TODO: implement method to shrink conversation when tokens size is outside context window
+
 
 class ChatStore:
     """Dataclass for storing Chats."""
