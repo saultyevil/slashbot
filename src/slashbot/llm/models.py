@@ -24,6 +24,9 @@ class TextInput:
     def __str__(self) -> str:
         return f"TextInput(text={self.text})"
 
+    def __add__(self, v: "TextInput") -> "TextInput":
+        return TextInput(self.text + v.text)
+
 
 @dataclass
 class ImageInput:
@@ -83,6 +86,29 @@ class TextGenerationInput:
         num_images = len(self.images) if self.images else 0
         num_videos = len(self.videos) if self.videos else 0
         return f"TextGenerationInput(role={self.role} text={self.text} images={num_images} videos={num_videos})"
+
+    def __post_init__(self) -> None:
+        if self.images is None:
+            self.images = []
+        elif isinstance(self.images, ImageInput):
+            self.images = [self.images]
+
+        if self.videos is None:
+            self.videos = []
+        elif isinstance(self.videos, VideoInput):
+            self.videos = [self.videos]
+
+    def __add__(self, v: "TextGenerationInput") -> "TextGenerationInput":
+        if self.role != v.role:
+            error_message = "Cannot add TextGenerationInputs with different roles"
+            raise ValueError(error_message)
+
+        return TextGenerationInput(
+            text=self.text + v.text,
+            images=self.images + v.images,  # type: ignore
+            videos=self.videos + v.videos,  # type: ignore
+            role=self.role,
+        )
 
 
 @dataclass

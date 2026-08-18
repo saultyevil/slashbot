@@ -15,7 +15,7 @@ async def test_claude_generation() -> None:
 
     assert client.provider == "anthropic"
 
-    confirmation_text = "I have received your message"
+    confirmation_text = "Loud and clear!"
     text_input = TextInput(
         f"Confirm that this text was successfully received by responding **only** with '{confirmation_text}'."
     )
