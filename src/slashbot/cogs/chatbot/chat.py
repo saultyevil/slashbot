@@ -1,5 +1,6 @@
 import datetime
 from dataclasses import dataclass, field
+from textwrap import shorten
 from typing import Any
 
 from slashbot.llm import LLM, InputRole, TextGenerationInput, TextGenerationResponse, TextInput, load_prompt
@@ -88,13 +89,14 @@ class Chat(Logger):
 
     def __init__(self, chat_id: str, model: str, system_prompt: str | None = None, **kwargs: Any) -> None:
         """Create an LLM chat."""
-        super().__init__(**kwargs)
+        super().__init__(**kwargs, prepend_msg=f"[Chat {chat_id}]")
 
         system_prompt = system_prompt if system_prompt else DEFAULT_SYSTEM_PROMPT.prompt
 
         self.chat_id: str = chat_id
         self.llm: LLM = LLM(model, USER_CONVERSATION_CONTEXT_PROMPT + system_prompt)
         self.messages: Messages = Messages()
+        self.log_info("Created new chat")
 
     def __len__(self) -> int:
         return len(self.messages)
@@ -137,13 +139,14 @@ class Chat(Logger):
 
         tokens_removed = 0
         messages_removed = 0
-        while self.tokens > SETTINGS.token_window_size and len(self) > 2:
+        keep_messages = 2
+        while self.tokens > SETTINGS.token_window_size and len(self) > keep_messages:
             for _ in range(2):
                 message = self.messages.remove_message(0)
                 tokens_removed += message.tokens
             messages_removed += 2
 
-        self.log_debug("Removed %d tokens from %d messages in chat %s", tokens_removed, messages_removed, self.chat_id)
+        self.log_info("Removed %d tokens from %d messages", tokens_removed, messages_removed)
 
     async def chat(self, username: str, content: TextGenerationInput) -> TextGenerationResponse:
         """Respond to a message.
@@ -169,17 +172,19 @@ class Chat(Logger):
 
         messages = self.messages + content
         response = await self.llm.generate_response(messages)
+        assistant_content = TextGenerationInput(text=TextInput(response.message), role=InputRole.assistant)
 
         self.messages.append_message(content, response.input_tokens - starting_tokens)
-        self.messages.append_message(
-            TextGenerationInput(text=TextInput(response.message), role=InputRole.assistant), response.output_tokens
-        )
+        self.messages.append_message(assistant_content, response.output_tokens)
+        self.log_debug("Added user message %s", content)
+        self.log_debug("Added assistant message %s", assistant_content)
 
         return response
 
     def reset(self) -> None:
         """Reset a conversation back to the start."""
         self.messages.clear_messages()
+        self.log_debug("Cleared all messages")
 
     def set_model(self, model: str) -> None:
         """Change the LLM.
@@ -191,6 +196,7 @@ class Chat(Logger):
 
         """
         self.llm = LLM(model, self.system_prompt)
+        self.log_info("Set model to %s", model)
 
     def set_system_prompt(self, system_prompt: str) -> None:
         """Set the system prompt for the chat.
@@ -202,9 +208,10 @@ class Chat(Logger):
 
         """
         self.llm = LLM(self.model, USER_CONVERSATION_CONTEXT_PROMPT + system_prompt)
+        self.log_info("Set new system prompt: %s", shorten(system_prompt, 512))
 
 
-class ChatStore:
+class ChatStore(Logger):
     """Dataclass for storing Chats."""
 
     SUPPORTED_MODELS = Chat.SUPPORTED_MODELS
@@ -221,9 +228,11 @@ class ChatStore:
         if index not in self.chats:
             self.chats[index] = Chat(index, self.model, self.prompt)
 
+        self.log_debug("Retrived chat %s", index)
+
         return self.chats[index]
 
-    def __init__(self, default_model: str, default_prompt: str) -> None:
+    def __init__(self, default_model: str, default_prompt: str, **kwargs: Any) -> None:
         """Create a ChatStore for storing multiple chats.
 
         Parameters
@@ -232,8 +241,12 @@ class ChatStore:
             The default model to use for chats.
         default_prompt : str
             The default system prompt to use for chats.
+        kwargs : Any
+            Key word arguments.
 
         """
+        super().__init__(**kwargs, prepend_msg="[ChatStore]")
+
         self.model: str = default_model
         self.prompt: str = default_prompt
         self.chats: dict[str, Chat] = {}
