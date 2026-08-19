@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import datetime
 import logging
 from collections.abc import Callable
 from pathlib import Path
@@ -13,11 +14,11 @@ from pyinstrument import Profiler
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.errors import deferred_error_response
 from slashbot.llm import ImageInput, TextGenerationInput, TextInput, VideoInput, load_prompt
 from slashbot.messages import is_reply_to_slash_command_response, send_message_to_channel
 from slashbot.settings import BotSettings
 
+from .channel import Channels
 from .chat import Chats
 
 file_handler = logging.FileHandler("logs/profile.log")
@@ -89,6 +90,7 @@ class ChatBot(CustomCog):
 
         default_prompt = load_prompt(BotSettings.cogs.chatbot.default_chat_prompt)
         self.chats = Chats(BotSettings.cogs.chatbot.default_model, default_prompt.prompt)
+        self.channels = Channels(BotSettings.cogs.chatbot.default_model)
 
         self._lock = asyncio.Lock()
 
@@ -107,11 +109,16 @@ class ChatBot(CustomCog):
             The Discord message received by the on_message event.
 
         """
-        # if message.type in [disnake.MessageType.application_command]:
-        #     return
-        # if not message.content:
-        #     return
-        # self._chat_registry.append_to_history(message, self.bot.user.name)
+        if message.type in [disnake.MessageType.application_command]:
+            return
+        if not message.content:
+            return
+
+        now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
+        content = f"{message.author.display_name} {now_ts}: {message.clean_content}"
+
+        await self.channels[message.channel.id].append_message(TextGenerationInput(TextInput(content)))
+        self.log_debug("XXX REMOVE Added message %s", content)
 
     @commands.Cog.listener("on_message")
     # @profile_response
@@ -272,33 +279,29 @@ class ChatBot(CustomCog):
 
     # Commands -----------------------------------------------------------------
 
-    # @slash_command_with_cooldown(
-    #     name="summarise_channel",
-    #     description="Generate a summary of the messages in the channel",
-    #     contexts=disnake.InteractionContextTypes(guild=True),
-    # )
-    # @profile_response
-    # async def summarise_channel(self, inter: disnake.ApplicationCommandInteraction) -> None:
-    #     """Summarise the recent channel conversation using the current LLM.
+    @slash_command_with_cooldown(
+        name="summarise_channel",
+        description="Generate a summary of the messages in the channel",
+        contexts=disnake.InteractionContextTypes(guild=True),
+    )
+    async def summarise_channel(self, inter: disnake.ApplicationCommandInteraction) -> None:
+        """Summarise the recent channel conversation using the current LLM.
 
-    #     Parameters
-    #     ----------
-    #     inter : disnake.ApplicationCommandInteraction
-    #         The slash command interaction.
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The slash command interaction.
 
-    #     """
-    #     history = self._chat_registry.get_summary_object(inter)
-    #     if len(history) == 0:
-    #         await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
-    #         return
-    #     await inter.response.defer(ephemeral=True)
-    #     try:
-    #         summary = await history.generate_summary(requesting_user=None)
-    #     except GenerationFailureError:
-    #         await deferred_error_response(inter, "There was an error trying to generate the summary")
-    #         return
-    #     await inter.delete_original_response()
-    #     await send_message_to_channel(summary, inter)
+        """
+        channel = self.channels[inter.channel.id]
+        if len(channel) == 0:
+            await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
+            return
+        await inter.response.defer(ephemeral=True)
+
+        summary = await channel.summarise()
+        await inter.delete_original_response()
+        await send_message_to_channel(summary.message, inter)
 
     @slash_command_with_cooldown(name="reset_chat", description="Reset the history of the chat assistant")
     async def reset_chat(self, inter: disnake.ApplicationCommandInteraction) -> None:

@@ -40,8 +40,10 @@ class ChatBotCogSettings(BaseCogSettings):
     ----------
     enabled : bool
         Whether the chatbot cog is enabled.
-    token_window_size : int
-        Number of tokens to keep in context window.
+    chat_token_window_size : int
+        Number of tokens to keep in context window for chatting.
+    channel_token_window_size : int
+        Number of tokens to keep in context window for channel summarisation.
     max_images_in_window : int
         Maximum number of images allowed in context window.
     max_output_tokens : int
@@ -69,7 +71,8 @@ class ChatBotCogSettings(BaseCogSettings):
 
     """
 
-    token_window_size: int
+    chat_token_window_size: int
+    channel_token_window_size: int
     max_images_in_window: int
     max_output_tokens: int
     model_temperature: float

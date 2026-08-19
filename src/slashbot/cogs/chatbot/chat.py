@@ -3,7 +3,15 @@ from textwrap import shorten
 from typing import Any
 
 from slashbot.cogs.chatbot.messages import Messages
-from slashbot.llm import LLM, InputRole, TextGenerationInput, TextGenerationResponse, TextInput, load_prompt
+from slashbot.llm import (
+    LLM,
+    GenerationFailureError,
+    InputRole,
+    TextGenerationInput,
+    TextGenerationResponse,
+    TextInput,
+    load_prompt,
+)
 from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
@@ -76,13 +84,13 @@ class Chat(Logger):
 
     def shrink_messages_to_token_window(self) -> None:
         """Remove messages which take the chat over the context window."""
-        if self.tokens <= SETTINGS.token_window_size:
+        if self.tokens <= SETTINGS.chat_token_window_size:
             return
 
         tokens_removed = 0
         messages_removed = 0
         keep_messages = 2
-        while self.tokens > SETTINGS.token_window_size and len(self) > keep_messages:
+        while self.tokens > SETTINGS.chat_token_window_size and len(self) > keep_messages:
             for _ in range(2):
                 message = self.messages.remove_message(0)
                 tokens_removed += message.tokens
@@ -111,17 +119,22 @@ class Chat(Logger):
 
         now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
         content.text.text = f"{username} at {now_ts}: " + content.text.text.strip()
-
         messages = self.messages + content
-        response = await self.llm.generate_response(messages)
-        assistant_content = TextGenerationInput(text=TextInput(response.message), role=InputRole.assistant)
 
+        try:
+            response = await self.llm.generate_response(messages)
+        except GenerationFailureError as exc:
+            return TextGenerationResponse(
+                message=f"Failed to generate a reasponse: {exc!s}", tokens_used=0, input_tokens=0, output_tokens=0
+            )
+
+        assistant_content = TextGenerationInput(text=TextInput(response.message), role=InputRole.assistant)
         self.messages.append_message(content, response.input_tokens - starting_tokens)
         self.messages.append_message(assistant_content, response.output_tokens)
+        self.shrink_messages_to_token_window()
+
         self.log_debug("Added user message %s", content)
         self.log_debug("Added assistant message %s", assistant_content)
-
-        self.shrink_messages_to_token_window()
 
         return response
 

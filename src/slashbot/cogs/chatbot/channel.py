@@ -1,0 +1,113 @@
+from typing import Any
+
+from slashbot.llm import (
+    LLM,
+    GenerationFailureError,
+    TextGenerationInput,
+    TextGenerationResponse,
+    TextInput,
+    load_prompt,
+)
+from slashbot.logger import Logger
+
+from .messages import Messages
+
+
+class Channel:
+    """Channel class for creating summaries of Discord channels."""
+
+    SUPPORTED_MODELS = LLM.SUPPORTED_MODELS
+
+    def __init__(self, channel_id: str, model: str) -> None:
+        """Create a channel summary."""
+        system_prompt = load_prompt("data/prompts/_summarise.yaml")
+
+        self.channel_id: str = channel_id
+        self.llm: LLM = LLM(model, system_prompt=system_prompt.prompt)
+
+        self.messages: Messages = Messages()
+
+    def __len__(self) -> int:
+        return len(self.messages)
+
+    @property
+    def model(self) -> str:
+        """The model used for the chat."""
+        return self.llm.model
+
+    @property
+    def provider(self) -> str:
+        """The name of the model provider."""
+        return self.llm.provider
+
+    @property
+    def system_prompt(self) -> str:
+        """The system prompt for the chat."""
+        return self.llm.system_prompt if self.llm.system_prompt else ""
+
+    @property
+    def tokens(self) -> int:
+        """The size of the chat in tokens."""
+        return self.messages.tokens
+
+    @property
+    def size(self) -> int:
+        """The number of messages in the chat."""
+        return len(self.messages)
+
+    async def append_message(self, content: TextGenerationInput) -> None:
+        tokens = await self.llm.count_tokens(content)
+        self.messages.append_message(content, tokens)
+
+    async def summarise(self) -> TextGenerationResponse:
+        content = ""
+        for message in self.messages:
+            content += f"{message.text}\n"
+        try:
+            response = await self.llm.generate_response(TextGenerationInput(TextInput(content)))
+        except GenerationFailureError:
+            return TextGenerationResponse(
+                message="Failed to generate a channel summary", tokens_used=0, input_tokens=0, output_tokens=0
+            )
+
+        return response
+
+
+class Channels(Logger):
+    """Dataclass for storing Chats."""
+
+    SUPPORTED_MODELS = Channel.SUPPORTED_MODELS
+
+    def __len__(self) -> int:
+        return len(self.channels)
+
+    def __str__(self) -> str:
+        return f"Channels(channels={self.channels})"
+
+    def __getitem__(self, index: str | Any) -> Channel:
+        if not isinstance(index, str):
+            index = str(index)
+        if index not in self.channels:
+            self.channels[index] = Channel(index, self.model)
+
+        self.log_debug("Retrived channel %s", index)
+
+        return self.channels[index]
+
+    def __init__(self, default_model: str, **kwargs: Any) -> None:
+        """Create a ChatStore for storing multiple chats.
+
+        Parameters
+        ----------
+        default_model : str
+            The default model to use for chats.
+        default_prompt : str
+            The default system prompt to use for chats.
+        kwargs : Any
+            Key word arguments.
+
+        """
+        super().__init__(**kwargs, prepend_msg="[ChatStore]")
+
+        self.model: str = default_model
+        self.channels: dict[str, Channel] = {}

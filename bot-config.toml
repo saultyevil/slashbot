@@ -7,7 +7,8 @@ jerma_chance = 0.25
 [cogs.chatbot]
 enabled = true
 max_output_tokens = 1024
-token_window_size = 4096
+chat_token_window_size = 4096
+channel_token_window_size = 16000
 max_images_in_window = 2
 model_temperature = 0.8
 default_model = "claude-sonnet-5"
