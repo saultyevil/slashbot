@@ -179,6 +179,8 @@ class Chat(Logger):
         self.log_debug("Added user message %s", content)
         self.log_debug("Added assistant message %s", assistant_content)
 
+        self.shrink_messages_to_token_window()
+
         return response
 
     def reset(self) -> None:

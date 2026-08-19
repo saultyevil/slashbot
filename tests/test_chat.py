@@ -41,11 +41,17 @@ async def test_chat_shrinks() -> None:
     """Test that the chat shrinks when exceeding the context window."""
     chat = Chat("2", model)
 
+    # start conversation
     BotSettings.cogs.chatbot.token_window_size = 1000
     await chat.chat("test-user", TextGenerationInput(TextInput("Hello! Say something funny :-).")))
     assert len(chat) == 2
 
+    # set window to be small, only the two new messages should be left
     BotSettings.cogs.chatbot.token_window_size = 10
     await chat.chat("test-user", TextGenerationInput(TextInput("Hello again! What was your previous joke?")))
-    chat.shrink_messages_to_token_window()
     assert len(chat) == 2
+
+    # set window to be big again so there should be 4 mesasages now
+    BotSettings.cogs.chatbot.token_window_size = 2048
+    await chat.chat("test-user", TextGenerationInput(TextInput("What's the capital of France?")))
+    assert len(chat) == 4
