@@ -114,8 +114,9 @@ class ChatBot(CustomCog):
         if not message.content:
             return
 
+        author = "Me" if message.author.id == self.bot.user.id else message.author.display_name
         now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
-        content = f"{message.author.display_name} {now_ts}: {message.clean_content}"
+        content = f"{author} {now_ts}: {message.clean_content}"
 
         await self.channels[message.channel.id].append_message(TextGenerationInput(TextInput(content)))
         self.log_debug("XXX REMOVE Added message %s", content)
