@@ -133,7 +133,7 @@ class ClaudeClient(AbstractClient):
         return []
 
     async def _send_request(
-        self, model: str, content: dict | list[dict], system_prompt: str | None = None
+        self, model: str, content: dict | list[dict], system_prompt: str | None = None, inject_prompt: str | None = None
     ) -> TextGenerationResponse:
         """Send a request to the uderlying API client.
 
@@ -145,6 +145,10 @@ class ClaudeClient(AbstractClient):
             The payload to send to the API client.
         system_prompt : str | None
             The optional system prompt to use.
+        inject_prompt : str | None
+            Additional prompt to inject at the start of the system prompt. Usefull
+            for custom chats and etc.
+
 
         Returns
         -------
@@ -208,7 +212,11 @@ class ClaudeClient(AbstractClient):
         return response.input_tokens
 
     async def generate_response(
-        self, model: str, content: TextGenerationInput | list[TextGenerationInput], system_prompt: str | None = None
+        self,
+        model: str,
+        content: TextGenerationInput | list[TextGenerationInput],
+        system_prompt: str | None = None,
+        inject_prompt: str | None = None,
     ) -> TextGenerationResponse:
         """Send a request to the API client.
 
@@ -220,6 +228,10 @@ class ClaudeClient(AbstractClient):
             The (correctly) formatted content to send to the API.
         system_prompt : str
             The system prompt to use to generate the response with.
+        inject_prompt : str | None
+            Additional prompt to inject at the start of the system prompt. Usefull
+            for custom chats and etc.
+
 
         Returns
         -------
@@ -228,7 +240,7 @@ class ClaudeClient(AbstractClient):
 
         """
         text_generation_response = await self._send_request(
-            model, self.transform_input_to_payload(model, content), system_prompt
+            model, self.transform_input_to_payload(model, content), system_prompt, inject_prompt
         )
 
         return text_generation_response

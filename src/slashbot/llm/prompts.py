@@ -10,6 +10,7 @@ class Prompt(BaseModel):
 
     name: str
     prompt: str
+    path: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -51,7 +52,6 @@ def load_prompt(filepath: str | pathlib.Path) -> Prompt:
     with path.open(encoding="utf-8") as prompt_in:
         prompt_data = yaml.safe_load(prompt_in)
 
-    prompt = Prompt(**prompt_data)
-    prompt.prompt = " ".join(dedent(prompt.prompt).splitlines())
+    prompt = Prompt(**prompt_data, path=str(filepath))
 
     return prompt

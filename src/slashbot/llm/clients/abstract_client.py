@@ -194,7 +194,11 @@ class AbstractClient(Logger, metaclass=ABCMeta):
 
     @abstractmethod
     async def generate_response(
-        self, model: str, content: TextGenerationInput | list[TextGenerationInput], system_prompt: str | None = None
+        self,
+        model: str,
+        content: TextGenerationInput | list[TextGenerationInput],
+        system_prompt: str | None = None,
+        inject_prompt: str | None = None,
     ) -> TextGenerationResponse:
         """Send a request to the API client.
 
@@ -206,6 +210,10 @@ class AbstractClient(Logger, metaclass=ABCMeta):
             The (correctly) formatted content to send to the API.
         system_prompt : str
             The system prompt to use to generate the response with.
+        inject_prompt : str | None
+            Additional prompt to inject at the start of the system prompt. Usefull
+            for custom chats and etc.
+
 
         Returns
         -------

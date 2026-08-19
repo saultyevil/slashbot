@@ -1,6 +1,7 @@
 import time
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
+from watchdog.observers import Observer
 
 from slashbot.settings import BotSettings
 
@@ -38,3 +39,6 @@ class ScheduledPostWatcher(FileSystemEventHandler):
                 while self.parent.post_loop.is_running():
                     time.sleep(0.5)
             self.parent.post_loop.start()
+
+FILE_OBSERVER = Observer()
+FILE_OBSERVER.start()

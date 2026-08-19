@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import Callable
+from pathlib import Path
 from textwrap import shorten
 from typing import Any
 
@@ -9,7 +10,6 @@ import disnake
 from disnake.ext import commands
 from pyinstrument import Profiler
 
-import slashbot.watchers
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
@@ -18,7 +18,7 @@ from slashbot.llm import ImageInput, TextGenerationInput, TextInput, VideoInput,
 from slashbot.messages import is_reply_to_slash_command_response, send_message_to_channel
 from slashbot.settings import BotSettings
 
-from .chat import ChatStore
+from .chat import Chats
 
 file_handler = logging.FileHandler("logs/profile.log")
 file_handler.setFormatter(logging.Formatter("%(asctime)s | %(message)s"))
@@ -27,6 +27,10 @@ _profiler_logger.handlers.clear()
 _profiler_logger.addHandler(file_handler)
 _profiler_logger.setLevel(logging.INFO)
 _profiler = Profiler(async_mode="enabled")
+
+
+_PROMPTS_LIST = [load_prompt(path) for path in Path("data/prompts").glob("*.yaml") if not str(path).startswith("_")]
+AVAILABLE_PROMPTS = {prompt.name: prompt.path for prompt in _PROMPTS_LIST}
 
 
 def _start_profiler() -> None:
@@ -84,7 +88,7 @@ class ChatBot(CustomCog):
         super().__init__(bot)
 
         default_prompt = load_prompt(BotSettings.cogs.chatbot.default_chat_prompt)
-        self.chats = ChatStore(BotSettings.cogs.chatbot.default_model, default_prompt.prompt)
+        self.chats = Chats(BotSettings.cogs.chatbot.default_model, default_prompt.prompt)
 
         self._lock = asyncio.Lock()
 
@@ -323,7 +327,7 @@ class ChatBot(CustomCog):
         self,
         inter: disnake.ApplicationCommandInteraction,
         prompt_name: str = commands.Param(
-            autocomplete=lambda _, user_input: [c for c in slashbot.watchers.AVAILABLE_LLM_PROMPTS if user_input in c],
+            choices=sorted(AVAILABLE_PROMPTS.keys(), key=str.lower),
             description="The name of the prompt to use",
         ),
     ) -> None:
@@ -339,8 +343,10 @@ class ChatBot(CustomCog):
             The key of the desired prompt in AVAILABLE_LLM_PROMPTS.
 
         """
+        self.log_debug("Setting prompt to %s", prompt_name)
+        self.log_debug("Available prompts %s:", AVAILABLE_PROMPTS)
         try:
-            prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[prompt_name]
+            prompt = load_prompt(AVAILABLE_PROMPTS[prompt_name]).prompt  # type: ignore
         except KeyError:
             await inter.response.send_message(
                 "You probably meant to use /set_custom_chat_prompt instead of this command."
@@ -358,7 +364,7 @@ class ChatBot(CustomCog):
     async def set_chat_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        model_name: str = commands.Param(choices=ChatStore.SUPPORTED_MODELS, description="The model to use"),
+        model_name: str = commands.Param(choices=Chats.SUPPORTED_MODELS, description="The model to use"),
     ) -> None:
         """Switch the AI model used for both chat and summary generation.
 
@@ -422,9 +428,9 @@ class ChatBot(CustomCog):
         """
         chat = self.chats[inter.channel.id]
         response = (
-            f"**Model**: {chat.model}\n"
-            f"**Token size**: {chat.tokens}\n"
-            f"**Prompt:\n> {shorten(chat.system_prompt, 1500)}\n"
+            f"**Model:** {chat.model}\n"
+            f"**Token size:** {chat.tokens}\n"
+            f"**Prompt:**\n> {shorten(chat.system_prompt, 1500)}\n"
             if chat.system_prompt
             else ""
         )

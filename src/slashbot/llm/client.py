@@ -15,17 +15,23 @@ class LLM(Logger):
         The name of the LLM to use.
     system_prompt : str | None
         The system prompt to use for generation. Optional.
+    inject_prompt : str | None
+        Additional prompt to inject at the start of the system prompt. Usefull
+        for custom chats and etc.
 
     """
 
     SUPPORTED_MODELS = ClaudeClient.SUPPORTED_MODELS
 
-    def __init__(self, model: str, system_prompt: str | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self, model: str, system_prompt: str | None = None, inject_prompt: str | None = None, **kwargs: Any
+    ) -> None:
         """Initialise an LLM for the given model."""
         super().__init__(**kwargs)
 
         self.model = model
         self.system_prompt = system_prompt
+        self.inject_prompt = inject_prompt
 
         if model in ClaudeClient.SUPPORTED_MODELS:
             self._client = ClaudeClient(**kwargs)

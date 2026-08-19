@@ -1,8 +1,8 @@
 import datetime
-from dataclasses import dataclass, field
 from textwrap import shorten
 from typing import Any
 
+from slashbot.cogs.chatbot.messages import Messages
 from slashbot.llm import LLM, InputRole, TextGenerationInput, TextGenerationResponse, TextInput, load_prompt
 from slashbot.logger import Logger
 from slashbot.settings import BotSettings
@@ -11,7 +11,7 @@ SETTINGS = BotSettings.cogs.chatbot
 DEFAULT_SYSTEM_PROMPT = load_prompt(SETTINGS.default_chat_prompt)
 USER_CONVERSATION_CONTEXT_PROMPT = """
 
-Each user message is prefixed with their username in the format "Username: message".
+Each user message is prefixed with their username in the format "Username Timestamp: message".
 
 Multiple users may be talking simultaneously on different topics. When responding, identify which user sent the most
 recent message and respond only to their query. Use the conversation history to maintain context for each user's
@@ -22,64 +22,6 @@ If a user's latest message clearly pivots to engage with another user's topic ra
 in the context of the topic they are now discussing. Use common sense to determine whether a message is a continuation
 of the user's own thread or a deliberate shift to join another conversation/query/prompt from another user.
 """.replace("\n", "")
-
-
-@dataclass
-class Messages:
-    """Dataclass for storing messages."""
-
-    tokens: int = 0
-    messages: list[TextGenerationInput] = field(default_factory=list)
-
-    def __add__(self, content: TextGenerationInput) -> list[TextGenerationInput]:
-        return [*self.messages, content]
-
-    def __len__(self) -> int:
-        return len(self.messages)
-
-    def __str__(self) -> str:
-        return f"Messages(tokens={self.tokens} messages={self.messages})"
-
-    def __getitem__(self, index: int) -> TextGenerationInput:
-        return self.messages[index]
-
-    def append_message(self, content: TextGenerationInput, num_tokens: int) -> None:
-        """Append a new message.
-
-        Parameters
-        ----------
-        content : TextGenerationInput
-            The content of the new message to append.
-        num_tokens : int
-            The number of tokens the message is.
-
-        """
-        self.tokens += num_tokens
-        content.tokens = num_tokens
-        self.messages.append(content)
-
-    def clear_messages(self) -> None:
-        """Clear all the messages."""
-        self.messages = []
-
-    def remove_message(self, index: int) -> TextGenerationInput:
-        """Remove a message.
-
-        Parameters
-        ----------
-        index : int
-            The index of the message to remove.
-
-        Returns
-        -------
-        TextGenerationInput
-            The message which has been removed.
-
-        """
-        message = self.messages.pop(index)
-        self.tokens -= message.tokens
-
-        return message
 
 
 class Chat(Logger):
@@ -94,7 +36,7 @@ class Chat(Logger):
         system_prompt = system_prompt if system_prompt else DEFAULT_SYSTEM_PROMPT.prompt
 
         self.chat_id: str = chat_id
-        self.llm: LLM = LLM(model, USER_CONVERSATION_CONTEXT_PROMPT + system_prompt)
+        self.llm: LLM = LLM(model, system_prompt, USER_CONVERSATION_CONTEXT_PROMPT)
         self.messages: Messages = Messages()
         self.log_info("Created new chat")
 
@@ -209,11 +151,11 @@ class Chat(Logger):
             The new system prompt.
 
         """
-        self.llm = LLM(self.model, USER_CONVERSATION_CONTEXT_PROMPT + system_prompt)
+        self.llm = LLM(self.model, system_prompt, USER_CONVERSATION_CONTEXT_PROMPT)
         self.log_info("Set new system prompt: %s", shorten(system_prompt, 512))
 
 
-class ChatStore(Logger):
+class Chats(Logger):
     """Dataclass for storing Chats."""
 
     SUPPORTED_MODELS = Chat.SUPPORTED_MODELS
