@@ -1,8 +1,12 @@
 import base64
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import httpx
+
+if TYPE_CHECKING:
+    from slashbot.llm import LLM
 
 
 class InputRole(Enum):
@@ -82,6 +86,8 @@ class TextGenerationInput:
     videos: VideoInput | list[VideoInput] | None = None
     role: InputRole = InputRole.user
 
+    tokens = 0
+
     def __str__(self) -> str:
         num_images = len(self.images) if self.images else 0
         num_videos = len(self.videos) if self.videos else 0
@@ -109,6 +115,17 @@ class TextGenerationInput:
             videos=self.videos + v.videos,  # type: ignore
             role=self.role,
         )
+
+    async def count_tokens(self, llm: "LLM") -> None:
+        """Get the size of the input in tokens.
+
+        Parameters
+        ----------
+        llm : LLM
+            The LLM client to use to count tokens.
+
+        """
+        self.tokens = await llm.count_tokens(self)
 
 
 @dataclass

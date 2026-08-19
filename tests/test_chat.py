@@ -1,10 +1,14 @@
+import logging
 import os
 
 import pytest
 
 from slashbot.cogs.chatbot.chat import Chat
 from slashbot.llm import InputRole, TextGenerationInput, TextInput
+from slashbot.logger import logger
 from slashbot.settings import BotSettings
+
+logger.set_log_level(logging.DEBUG)
 
 BotSettings.keys.claude = os.getenv("BOT_ANTHROPIC_API_KEY")
 model = "claude-haiku-4-5"
@@ -30,3 +34,18 @@ async def test_chat_responds_for_new_input() -> None:
 
     assert chat.messages[0].role == InputRole.user
     assert chat.messages[1].role == InputRole.assistant
+
+
+@pytest.mark.asyncio
+async def test_chat_shrinks() -> None:
+    """Test that the chat shrinks when exceeding the context window."""
+    chat = Chat("2", model)
+
+    BotSettings.cogs.chatbot.token_window_size = 1000
+    await chat.chat("test-user", TextGenerationInput(TextInput("Hello! Say something funny :-).")))
+    assert len(chat) == 2
+
+    BotSettings.cogs.chatbot.token_window_size = 10
+    await chat.chat("test-user", TextGenerationInput(TextInput("Hello again! What was your previous joke?")))
+    chat.shrink_messages_to_token_window()
+    assert len(chat) == 2

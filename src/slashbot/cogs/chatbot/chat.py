@@ -6,7 +6,8 @@ from slashbot.llm import LLM, InputRole, TextGenerationInput, TextGenerationResp
 from slashbot.logger import Logger
 from slashbot.settings import BotSettings
 
-DEFAULT_SYSTEM_PROMPT = load_prompt(BotSettings.cogs.chatbot.default_chat_prompt)
+SETTINGS = BotSettings.cogs.chatbot
+DEFAULT_SYSTEM_PROMPT = load_prompt(SETTINGS.default_chat_prompt)
 USER_CONVERSATION_CONTEXT_PROMPT = """
 
 Each user message is prefixed with their username in the format "Username: message".
@@ -53,11 +54,31 @@ class Messages:
 
         """
         self.tokens += num_tokens
+        content.tokens = num_tokens
         self.messages.append(content)
 
     def clear_messages(self) -> None:
         """Clear all the messages."""
         self.messages = []
+
+    def remove_message(self, index: int) -> TextGenerationInput:
+        """Remove a message.
+
+        Parameters
+        ----------
+        index : int
+            The index of the message to remove.
+
+        Returns
+        -------
+        TextGenerationInput
+            The message which has been removed.
+
+        """
+        message = self.messages.pop(index)
+        self.tokens -= message.tokens
+
+        return message
 
 
 class Chat(Logger):
@@ -96,12 +117,33 @@ class Chat(Logger):
     @property
     def tokens(self) -> int:
         """The size of the chat in tokens."""
-        return self.tokens
+        return self.messages.tokens
 
     @property
     def size(self) -> int:
         """The number of messages in the chat."""
         return len(self.messages)
+
+    async def _count_tokens_in_chat(self) -> None:
+        """Count the number of tokens in the chat."""
+        for message in self.messages:
+            if self.messages.tokens == 0:
+                await message.count_tokens(self.llm)
+
+    def shrink_messages_to_token_window(self) -> None:
+        """Remove messages which take the chat over the context window."""
+        if self.tokens <= SETTINGS.token_window_size:
+            return
+
+        tokens_removed = 0
+        messages_removed = 0
+        while self.tokens > SETTINGS.token_window_size and len(self) > 2:
+            for _ in range(2):
+                message = self.messages.remove_message(0)
+                tokens_removed += message.tokens
+            messages_removed += 2
+
+        self.log_debug("Removed %d tokens from %d messages in chat %s", tokens_removed, messages_removed, self.chat_id)
 
     async def chat(self, username: str, content: TextGenerationInput) -> TextGenerationResponse:
         """Respond to a message.
@@ -119,6 +161,7 @@ class Chat(Logger):
             The response to the message.
 
         """
+        self.shrink_messages_to_token_window()
         starting_tokens = self.messages.tokens
 
         now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
@@ -159,10 +202,6 @@ class Chat(Logger):
 
         """
         self.llm = LLM(self.model, USER_CONVERSATION_CONTEXT_PROMPT + system_prompt)
-
-    # TODO: implement token tracking in TextGenerationInput
-    # TODO: implement method to remove message
-    # TODO: implement method to shrink conversation when tokens size is outside context window
 
 
 class ChatStore:
