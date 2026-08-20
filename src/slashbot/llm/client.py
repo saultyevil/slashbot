@@ -92,6 +92,6 @@ class LLM(Logger):
             The response from the LLM.
 
         """
-        response = await self._client.generate_response(self.model, content, self.system_prompt)
+        response = await self._client.generate_response(self.model, content, self.system_prompt, self.inject_prompt)
 
         return response
