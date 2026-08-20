@@ -156,12 +156,15 @@ class ClaudeClient(AbstractClient):
             The response returned from the API client.
 
         """
+        parts = [p for p in (inject_prompt, system_prompt) if p]
+        system = "\n\n".join(parts) if parts else Omit()
+
         try:
             response = await self._client.messages.create(
                 model=model,
                 messages=content,  # type: ignore
                 max_tokens=BotSettings.cogs.chatbot.max_output_tokens,
-                system=system_prompt if system_prompt else Omit(),
+                system=system,
             )
         except Exception as exc:
             error_message = f"Claude API failed to generate response due to exception: {exc}"

@@ -19,7 +19,7 @@ SETTINGS = BotSettings.cogs.chatbot
 DEFAULT_SYSTEM_PROMPT = load_prompt(SETTINGS.default_chat_prompt)
 USER_CONVERSATION_CONTEXT_PROMPT = """
 
-Each user message is prefixed with their username in the format "Username Timestamp: message".
+Each user message is prefixed with their username in the format "Username [Timestamp of message]: message".
 
 Multiple users may be talking simultaneously on different topics. When responding, identify which user sent the most
 recent message and respond only to their query. Use the conversation history to maintain context for each user's
@@ -139,7 +139,7 @@ class Chat(Logger):
         starting_tokens = self.messages.tokens
 
         now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
-        content.text.text = f"{username} at {now_ts}: " + content.text.text.strip()
+        content.text.text = f"{username} [{now_ts}]: " + content.text.text.strip()
         messages = self.messages + content
 
         try:
