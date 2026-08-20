@@ -146,30 +146,33 @@ class ChatBot(CustomCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
-            input_from_message = TextGenerationInput(
-                text=await self.get_text_in_message(message),
-                images=await self.get_images_in_message(message),
-                videos=await self.get_videos_in_message(message),
-            )
-            if message.reference:
-                referenced_message = await self.get_referenced_message(message)
-                if referenced_message != message:
-                    text_input_for_reference = await self.get_text_in_message(referenced_message)
-                    text_input_for_reference.text = (
-                        f'Previous message to respond to: "{text_input_for_reference.text}"\n'
-                    )
-                    input_from_message = (
-                        TextGenerationInput(
-                            text=text_input_for_reference,
-                            images=await self.get_images_in_message(referenced_message),
-                            videos=await self.get_videos_in_message(referenced_message),
+            async with message.channel.typing():
+                input_from_message = TextGenerationInput(
+                    text=await self.get_text_in_message(message),
+                    images=await self.get_images_in_message(message),
+                    videos=await self.get_videos_in_message(message),
+                )
+                if message.reference:
+                    referenced_message = await self.get_referenced_message(message)
+                    if referenced_message != message:
+                        text_input_for_reference = await self.get_text_in_message(referenced_message)
+                        text_input_for_reference.text = (
+                            f'Previous message to respond to: "{text_input_for_reference.text}"\n'
                         )
-                        + input_from_message
+                        input_from_message = (
+                            TextGenerationInput(
+                                text=text_input_for_reference,
+                                images=await self.get_images_in_message(referenced_message),
+                                videos=await self.get_videos_in_message(referenced_message),
+                            )
+                            + input_from_message
+                        )
+                async with self._lock:
+                    response = await self.chats[message.channel.id].chat(
+                        message.author.display_name, input_from_message
                     )
-            async with self._lock:
-                response = await self.chats[message.channel.id].chat(message.author.display_name, input_from_message)
 
-            await send_message_to_channel(response.message, message)
+                await send_message_to_channel(response.message, message, dont_tag_user=message_in_dm)
 
     # Methods
 
