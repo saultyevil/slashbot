@@ -82,7 +82,27 @@ class Chat(Logger):
             if self.messages.tokens == 0:
                 await message.count_tokens(self.llm)
 
-    def shrink_messages_to_token_window(self) -> None:
+    async def shrink_images_to_window(self) -> None:
+        """Remove images from the oldest messages until the chat is within the maximum allowed images."""
+        total_images = sum(len(message.images) for message in self.messages)
+        if total_images <= SETTINGS.max_images_in_window:
+            return
+
+        images_removed = 0
+
+        for message in self.messages:
+            if total_images - images_removed <= SETTINGS.max_images_in_window:
+                break
+            if message.images:
+                images_removed += len(message.images)
+                message.images = []
+                start_tokens = message.tokens
+                await message.count_tokens(self.llm)
+                self.messages.tokens -= start_tokens - message.tokens
+
+        self.log_info("Removed %d images to fit within the image window", images_removed)
+
+    async def shrink_messages_to_token_window(self) -> None:
         """Remove messages which take the chat over the context window."""
         if self.tokens <= SETTINGS.chat_token_window_size:
             return
@@ -114,7 +134,8 @@ class Chat(Logger):
             The response to the message.
 
         """
-        self.shrink_messages_to_token_window()
+        await self.shrink_images_to_window()
+        await self.shrink_messages_to_token_window()
         starting_tokens = self.messages.tokens
 
         now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
@@ -131,7 +152,7 @@ class Chat(Logger):
         assistant_content = TextGenerationInput(text=TextInput(response.message), role=InputRole.assistant)
         self.messages.append_message(content, response.input_tokens - starting_tokens)
         self.messages.append_message(assistant_content, response.output_tokens)
-        self.shrink_messages_to_token_window()
+        await self.shrink_messages_to_token_window()
 
         self.log_debug("Added user message %s", content)
         self.log_debug("Added assistant message %s", assistant_content)

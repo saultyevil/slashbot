@@ -1,5 +1,7 @@
 from typing import Any
 
+from disnake import channel
+
 from slashbot.llm import (
     LLM,
     GenerationFailureError,
@@ -9,17 +11,22 @@ from slashbot.llm import (
     load_prompt,
 )
 from slashbot.logger import Logger
+from slashbot.settings import BotSettings
 
 from .messages import Messages
 
+SETTINGS = BotSettings.cogs.chatbot
 
-class Channel:
+
+class Channel(Logger):
     """Channel class for creating summaries of Discord channels."""
 
     SUPPORTED_MODELS = LLM.SUPPORTED_MODELS
 
-    def __init__(self, channel_id: str, model: str) -> None:
+    def __init__(self, channel_id: str, model: str, **kwargs: Any) -> None:
         """Create a channel summary."""
+        super().__init__(**kwargs, prepend_msg=f"[Channel {channel_id}]")
+
         system_prompt = load_prompt("data/prompts/_summarise.yaml")
 
         self.channel_id: str = channel_id
@@ -55,11 +62,44 @@ class Channel:
         """The number of messages in the chat."""
         return len(self.messages)
 
+    def shrink_messages_to_token_window(self) -> None:
+        """Remove messages which take the chat over the context window."""
+        if self.tokens <= SETTINGS.channel_token_window_size:
+            return
+
+        tokens_removed = 0
+        messages_removed = 0
+        keep_messages = 1
+        while self.tokens > SETTINGS.channel_token_window_size and len(self) > keep_messages:
+            for _ in range(2):
+                message = self.messages.remove_message(0)
+                tokens_removed += message.tokens
+            messages_removed += 2
+
+        self.log_info("Removed %d tokens from %d messages", tokens_removed, messages_removed)
+
     async def append_message(self, content: TextGenerationInput) -> None:
+        """Append a new message.
+
+        Parameters
+        ----------
+        content : TextGenerationInput
+            The message to add.
+
+        """
         tokens = await self.llm.count_tokens(content)
         self.messages.append_message(content, tokens)
+        self.shrink_messages_to_token_window()
 
     async def summarise(self) -> TextGenerationResponse:
+        """Summarise the messages.
+
+        Returns
+        -------
+        TextGenerationResponse
+            The response from the LLM.
+
+        """
         content = ""
         for message in self.messages:
             content += f"{message.text}\n"

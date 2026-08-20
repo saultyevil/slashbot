@@ -1,15 +1,11 @@
 import asyncio
 import contextlib
 import datetime
-import logging
-from collections.abc import Callable
 from pathlib import Path
 from textwrap import shorten
-from typing import Any
 
 import disnake
 from disnake.ext import commands
-from pyinstrument import Profiler
 
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
@@ -20,58 +16,10 @@ from slashbot.settings import BotSettings
 
 from .channel import Channels
 from .chat import Chats
-
-file_handler = logging.FileHandler("logs/profile.log")
-file_handler.setFormatter(logging.Formatter("%(asctime)s | %(message)s"))
-_profiler_logger = logging.getLogger("ProfilerLogger")
-_profiler_logger.handlers.clear()
-_profiler_logger.addHandler(file_handler)
-_profiler_logger.setLevel(logging.INFO)
-_profiler = Profiler(async_mode="enabled")
-
+from .profiler import profile
 
 _PROMPTS_LIST = [load_prompt(path) for path in Path("data/prompts").glob("*.yaml") if not str(path).startswith("_")]
 AVAILABLE_PROMPTS = {prompt.name: prompt.path for prompt in _PROMPTS_LIST}
-
-
-def _start_profiler() -> None:
-    """Start the pyinstrument profiler if profiling is enabled.
-
-    Resets any previously running session before starting a new one.
-    Has no effect when BotSettings.cogs.chatbot.enable_profiling is
-    False.
-    """
-    if not BotSettings.cogs.chatbot.enable_profiling:
-        return
-    if _profiler.is_running:
-        _profiler.stop()
-        _profiler.reset()
-    _profiler.start()
-
-
-def _stop_profiler() -> None:
-    """Stop the profiler and write its output to the profile log."""
-    if not BotSettings.cogs.chatbot.enable_profiling:
-        return
-    if not _profiler.is_running:
-        _profiler.reset()
-        return
-    _profiler.stop()
-    _profiler_logger.info("\n%s", _profiler.output_text())
-    _profiler.reset()
-
-
-def profile_response(func: Callable) -> Callable:
-    """Profile function execution using pyinstrument."""
-
-    def _profile(*args: Any, **kwargs: dict[str, Any]) -> Any:
-        _start_profiler()
-        ret = func(*args, **kwargs)
-        _stop_profiler()
-
-        return ret
-
-    return _profile
 
 
 class ChatBot(CustomCog):
@@ -114,14 +62,13 @@ class ChatBot(CustomCog):
         if not message.content:
             return
 
+        author = "Me" if message.author.id == self.bot.user.id else message.author.display_name
         now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
-        content = f"{message.author.display_name} {now_ts}: {message.clean_content}"
-
+        content = f"{author} {now_ts}: {message.clean_content}"
         await self.channels[message.channel.id].append_message(TextGenerationInput(TextInput(content)))
-        self.log_debug("XXX REMOVE Added message %s", content)
 
     @commands.Cog.listener("on_message")
-    # @profile_response
+    @profile
     async def send_message_to_chat_assistant(self, message: disnake.Message) -> None:
         """Decide whether and how to respond to an incoming message.
 
@@ -287,6 +234,7 @@ class ChatBot(CustomCog):
         description="Generate a summary of the messages in the channel",
         contexts=disnake.InteractionContextTypes(guild=True),
     )
+    @profile
     async def summarise_channel(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Summarise the recent channel conversation using the current LLM.
 

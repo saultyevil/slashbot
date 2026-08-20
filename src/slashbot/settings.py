@@ -54,10 +54,6 @@ class ChatBotCogSettings(BaseCogSettings):
         Name of the default chat model to use.
     default_chat_prompt : str
         Default prompt for chat.
-    random_response_chance : float
-        Chance to send a random response.
-    random_response_use_n_messages : int
-        Number of messages to consider for random response.
     response_rate_limit : int
         Maximum responses to a user allowed per interval.
     rate_limit_interval : int
@@ -78,8 +74,6 @@ class ChatBotCogSettings(BaseCogSettings):
     model_temperature: float
     default_model: str
     default_chat_prompt: str
-    random_response_chance: float
-    random_response_use_n_messages: int
     response_rate_limit: int
     rate_limit_interval: int
     enable_profiling: bool

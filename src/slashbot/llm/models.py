@@ -1,5 +1,5 @@
 import base64
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -82,8 +82,8 @@ class TextGenerationInput:
     """Message dataclass for an LLM conversation."""
 
     text: TextInput
-    images: ImageInput | list[ImageInput] | None = None
-    videos: VideoInput | list[VideoInput] | None = None
+    images: ImageInput | list[ImageInput] = field(default_factory=list)
+    videos: VideoInput | list[VideoInput] = field(default_factory=list)
     role: InputRole = InputRole.user
 
     tokens = 0
@@ -94,15 +94,12 @@ class TextGenerationInput:
         return f"TextGenerationInput(role={self.role} text={self.text} images={num_images} videos={num_videos})"
 
     def __post_init__(self) -> None:
-        if self.images is None:
-            self.images = []
-        elif isinstance(self.images, ImageInput):
+        if isinstance(self.images, ImageInput):
             self.images = [self.images]
-
-        if self.videos is None:
-            self.videos = []
-        elif isinstance(self.videos, VideoInput):
+        if isinstance(self.videos, VideoInput):
             self.videos = [self.videos]
+        if not self.text.text and (self.videos or self.images):
+            self.text = TextInput("Please describe the following attached item(s)")
 
     def __add__(self, v: "TextGenerationInput") -> "TextGenerationInput":
         if self.role != v.role:
