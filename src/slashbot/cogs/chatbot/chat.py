@@ -5,10 +5,10 @@ from typing import Any
 from slashbot.cogs.chatbot.messages import Messages
 from slashbot.llm import (
     LLM,
-    GenerationFailureError,
     InputRole,
-    TextGenerationInput,
-    TextGenerationResponse,
+    LLMGenerationFailureError,
+    LLMInput,
+    LLMResponse,
     TextInput,
     load_prompt,
 )
@@ -118,19 +118,19 @@ class Chat(Logger):
 
         self.log_info("Removed %d tokens from %d messages", tokens_removed, messages_removed)
 
-    async def chat(self, username: str, content: TextGenerationInput) -> TextGenerationResponse:
+    async def chat(self, username: str, content: LLMInput) -> LLMResponse:
         """Respond to a message.
 
         Parameters
         ----------
         username: str
             The username of the person who sent a message.
-        content : TextGenerationInput
+        content : LLMInput
             The new message to respond to.
 
         Returns
         -------
-        TextGenerationResponse
+        LLMResponse
             The response to the message.
 
         """
@@ -144,12 +144,12 @@ class Chat(Logger):
 
         try:
             response = await self.llm.generate_response(messages)
-        except GenerationFailureError as exc:
-            return TextGenerationResponse(
+        except LLMGenerationFailureError as exc:
+            return LLMResponse(
                 message=f"Failed to generate a reasponse: {exc!s}", tokens_used=0, input_tokens=0, output_tokens=0
             )
 
-        assistant_content = TextGenerationInput(text=TextInput(response.message), role=InputRole.assistant)
+        assistant_content = LLMInput(text=TextInput(response.message), role=InputRole.assistant)
         self.messages.append_message(content, response.input_tokens - starting_tokens)
         self.messages.append_message(assistant_content, response.output_tokens)
         await self.shrink_messages_to_token_window()

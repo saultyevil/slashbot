@@ -10,16 +10,17 @@ from disnake.ext import commands
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.llm import ImageInput, TextGenerationInput, TextInput, VideoInput, load_prompt
+from slashbot.llm import ImageInput, LLMInput, TextInput, VideoInput, load_prompt
+from slashbot.llm.models import LLMResponse
 from slashbot.messages import is_reply_to_slash_command_response, send_message_to_channel
+from slashbot.profiler import profile
 from slashbot.settings import BotSettings
 
-from .channel import Channels
+from .channel import Channel, Channels
 from .chat import Chats
-from .profiler import profile
 
 _PROMPTS_LIST = [load_prompt(path) for path in Path("data/prompts").glob("*.yaml") if not str(path).startswith("_")]
-AVAILABLE_PROMPTS = {prompt.name: prompt.path for prompt in _PROMPTS_LIST}
+AVAILABLE_PROMPTS = {prompt.name.capitalize(): prompt.path for prompt in _PROMPTS_LIST}
 
 
 class ChatBot(CustomCog):
@@ -65,10 +66,9 @@ class ChatBot(CustomCog):
         author = "Me" if message.author.id == self.bot.user.id else message.author.display_name
         now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
         content = f"{author} {now_ts}: {message.clean_content}"
-        await self.channels[message.channel.id].append_message(TextGenerationInput(TextInput(content)))
+        await self.channels[message.channel.id].append_message(LLMInput(TextInput(content)))
 
     @commands.Cog.listener("on_message")
-    @profile
     async def send_message_to_chat_assistant(self, message: disnake.Message) -> None:
         """Decide whether and how to respond to an incoming message.
 
@@ -94,36 +94,71 @@ class ChatBot(CustomCog):
 
         if bot_mentioned or message_in_dm:
             async with message.channel.typing():
-                input_from_message = TextGenerationInput(
-                    text=await self.get_text_in_message(message),
-                    images=await self.get_images_in_message(message),
-                    videos=await self.get_videos_in_message(message),
-                )
-                if message.reference:
-                    referenced_message = await self.get_referenced_message(message)
-                    if referenced_message != message:
-                        text_input_for_reference = await self.get_text_in_message(referenced_message)
-                        text_input_for_reference.text = (
-                            f'Previous message to respond to: "{text_input_for_reference.text}"\n'
-                        )
-                        input_from_message = (
-                            TextGenerationInput(
-                                text=text_input_for_reference,
-                                images=await self.get_images_in_message(referenced_message),
-                                videos=await self.get_videos_in_message(referenced_message),
-                            )
-                            + input_from_message
-                        )
-                async with self._lock:
-                    response = await self.chats[message.channel.id].chat(
-                        message.author.display_name, input_from_message
-                    )
-
+                response = await self._get_assistant_response(message)
                 await send_message_to_channel(response.message, message, dont_tag_user=message_in_dm)
 
     # Methods
 
-    async def get_referenced_message(self, message: disnake.Message) -> disnake.Message:
+    @profile
+    async def _get_assitant_channel_summary(self, channel: Channel) -> LLMResponse:
+        """Generate a channel summary.
+
+        Parameters
+        ----------
+        channel : Channel
+            The channel object for the channel to summarise.
+
+        Returns
+        -------
+        LLMResponse
+            The generated response containing the summary.
+
+        """
+        response = await channel.summarise()
+
+        return response
+
+    @profile
+    async def _get_assistant_response(self, message: disnake.Message) -> LLMResponse:
+        """Get a response from the Chat assistant.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message for the chat assistant to respond to.
+
+        Returns
+        -------
+        LLMResponse
+            The response from the assistant.
+
+        """
+        content = LLMInput(
+            text=await self._get_text_in_message(message),
+            images=await self._get_images_in_message(message),
+            videos=await self._get_videos_in_message(message),
+        )
+
+        if message.reference:
+            referenced_message = await self._get_referenced_message(message)
+            if referenced_message != message:
+                text_input_for_reference = await self._get_text_in_message(referenced_message)
+                text_input_for_reference.text = f'Previous message to respond to: "{text_input_for_reference.text}"\n'
+                content = (
+                    LLMInput(
+                        text=text_input_for_reference,
+                        images=await self._get_images_in_message(referenced_message),
+                        videos=await self._get_videos_in_message(referenced_message),
+                    )
+                    + content
+                )
+
+        async with self._lock:
+            response = await self.chats[message.channel.id].chat(message.author.display_name, content)
+
+        return response
+
+    async def _get_referenced_message(self, message: disnake.Message) -> disnake.Message:
         """Fetch the message referenced by a reply, falling back to the original.
 
         Attempts to use the cached reference first; if unavailable, fetches
@@ -158,7 +193,7 @@ class ChatBot(CustomCog):
 
         return previous_message
 
-    async def get_text_in_message(self, message: disnake.Message) -> TextInput:
+    async def _get_text_in_message(self, message: disnake.Message) -> TextInput:
         """Extract text from a Discord message.
 
         Parameters
@@ -175,7 +210,7 @@ class ChatBot(CustomCog):
         """
         return TextInput(message.clean_content.replace(f"@{self.bot.user.display_name}", ""))
 
-    async def get_images_in_message(self, message: disnake.Message) -> list[ImageInput]:
+    async def _get_images_in_message(self, message: disnake.Message) -> list[ImageInput]:
         """Extract image attachments and embeds from a Discord message.
 
         When BotSettings.cogs.chatbot.prefer_image_urls is False, each
@@ -206,7 +241,7 @@ class ChatBot(CustomCog):
 
         return images
 
-    async def get_videos_in_message(self, message: disnake.Message) -> list[VideoInput]:
+    async def _get_videos_in_message(self, message: disnake.Message) -> list[VideoInput]:
         """Extract YouTube video embeds from a Discord message.
 
         Only embedded videos are considered; raw video file attachments are
@@ -248,11 +283,12 @@ class ChatBot(CustomCog):
         if len(channel) == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
-        await inter.response.defer(ephemeral=True)
 
-        summary = await channel.summarise()
+        await inter.response.defer(ephemeral=True)
+        response = await self._get_assitant_channel_summary(channel)
+
         await inter.delete_original_response()
-        await send_message_to_channel(summary.message, inter)
+        await send_message_to_channel(response.message, inter)
 
     @slash_command_with_cooldown(name="reset_chat", description="Reset the history of the chat assistant")
     async def reset_chat(self, inter: disnake.ApplicationCommandInteraction) -> None:
@@ -297,8 +333,6 @@ class ChatBot(CustomCog):
             The key of the desired prompt in AVAILABLE_LLM_PROMPTS.
 
         """
-        self.log_debug("Setting prompt to %s", prompt_name)
-        self.log_debug("Available prompts %s:", AVAILABLE_PROMPTS)
         try:
             prompt = load_prompt(AVAILABLE_PROMPTS[prompt_name]).prompt  # type: ignore
         except KeyError:

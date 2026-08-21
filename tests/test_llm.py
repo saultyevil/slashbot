@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from slashbot.llm import LLM, TextGenerationInput, TextInput
+from slashbot.llm import LLM, LLMInput, TextInput
 from slashbot.settings import BotSettings
 
 BotSettings.keys.claude = os.getenv("BOT_ANTHROPIC_API_KEY")
@@ -20,5 +20,5 @@ async def test_claude_generation() -> None:
         f"Confirm that this text was successfully received by responding **only** with '{confirmation_text}'."
     )
 
-    response = await client.generate_response(TextGenerationInput(text_input))
+    response = await client.generate_response(LLMInput(text_input))
     assert response.message == confirmation_text

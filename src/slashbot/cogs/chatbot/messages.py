@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from slashbot.llm import TextGenerationInput
+from slashbot.llm import LLMInput
 
 
 @dataclass
@@ -8,9 +8,9 @@ class Messages:
     """Dataclass for storing messages."""
 
     tokens: int = 0
-    messages: list[TextGenerationInput] = field(default_factory=list)
+    messages: list[LLMInput] = field(default_factory=list)
 
-    def __add__(self, content: TextGenerationInput) -> list[TextGenerationInput]:
+    def __add__(self, content: LLMInput) -> list[LLMInput]:
         return [*self.messages, content]
 
     def __len__(self) -> int:
@@ -19,15 +19,15 @@ class Messages:
     def __str__(self) -> str:
         return f"Messages(tokens={self.tokens} messages={self.messages})"
 
-    def __getitem__(self, index: int) -> TextGenerationInput:
+    def __getitem__(self, index: int) -> LLMInput:
         return self.messages[index]
 
-    def append_message(self, content: TextGenerationInput, num_tokens: int) -> None:
+    def append_message(self, content: LLMInput, num_tokens: int) -> None:
         """Append a new message.
 
         Parameters
         ----------
-        content : TextGenerationInput
+        content : LLMInput
             The content of the new message to append.
         num_tokens : int
             The number of tokens the message is.
@@ -41,7 +41,7 @@ class Messages:
         """Clear all the messages."""
         self.messages = []
 
-    def remove_message(self, index: int) -> TextGenerationInput:
+    def remove_message(self, index: int) -> LLMInput:
         """Remove a message.
 
         Parameters
@@ -51,7 +51,7 @@ class Messages:
 
         Returns
         -------
-        TextGenerationInput
+        LLMInput
             The message which has been removed.
 
         """

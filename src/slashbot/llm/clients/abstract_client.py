@@ -2,11 +2,11 @@ from abc import ABCMeta, abstractmethod
 from typing import Any
 
 from slashbot.llm.models import (
-    GenerationFailureError,
     ImageInput,
     InputRole,
-    TextGenerationInput,
-    TextGenerationResponse,
+    LLMGenerationFailureError,
+    LLMInput,
+    LLMResponse,
     TextInput,
     VideoInput,
 )
@@ -14,7 +14,7 @@ from slashbot.logger import Logger
 
 
 class AbstractClient(Logger, metaclass=ABCMeta):
-    """Abstract class for a TextGenerationClient."""
+    """Abstract class for a LLMClient."""
 
     def __init__(self, **kwargs: Any) -> None:
         """Initialise the text generation class.
@@ -29,10 +29,10 @@ class AbstractClient(Logger, metaclass=ABCMeta):
         """
         super().__init__(**kwargs)
 
-    def _assemble_payload_from_inputs(self, model: str, content: TextGenerationInput) -> dict:
+    def _assemble_payload_from_inputs(self, model: str, content: LLMInput) -> dict:
         """Create the contents payload for a request.
 
-        The input object(s), TextGenerationInput, can contain text, image and
+        The input object(s), LLMInput, can contain text, image and
         video (url) data to add to the contents payload. The methods inside this
         method are all abstract and must be implemented by the current client.
 
@@ -40,7 +40,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
         ----------
         model : str
             The name of the model to use.
-        content : TextGenerationInput
+        content : LLMInput
             The input message to create a contents payload for,
 
         Returns
@@ -53,7 +53,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
         if content.text == "":
             error_message = "Can only generate when there is text input"
             self.log_error("%s", error_message)
-            raise GenerationFailureError(error_message, 1)
+            raise LLMGenerationFailureError(error_message, 1)
 
         image_content = []
         video_content = []
@@ -69,16 +69,14 @@ class AbstractClient(Logger, metaclass=ABCMeta):
 
         return payload
 
-    def transform_input_to_payload(
-        self, model: str, content: TextGenerationInput | list[TextGenerationInput]
-    ) -> dict | list[dict]:
+    def transform_input_to_payload(self, model: str, content: LLMInput | list[LLMInput]) -> dict | list[dict]:
         """Create a request JSON for the current LLM model.
 
         Parameters
         ----------
         model : str
             The name of the model to generate input for.
-        content : TextGenerationInput | list[TextGenerationInput]
+        content : LLMInput | list[LLMInput]
             Input message(s), from the user, including attached images and
             videos.
 
@@ -175,14 +173,14 @@ class AbstractClient(Logger, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def count_tokens(self, model: str, content: TextGenerationInput | list[TextGenerationInput]) -> int:
+    async def count_tokens(self, model: str, content: LLMInput | list[LLMInput]) -> int:
         """Get the token count for a given message for the current LLM model.
 
         Parameters
         ----------
         model : str
             The name of the model to generate a response with.
-        content : TextGenerationInput | list[TextGenerationInput]
+        content : LLMInput | list[LLMInput]
             The (correctly) formatted content to send to the API.
 
         Returns
@@ -196,17 +194,17 @@ class AbstractClient(Logger, metaclass=ABCMeta):
     async def generate_response(
         self,
         model: str,
-        content: TextGenerationInput | list[TextGenerationInput],
+        content: LLMInput | list[LLMInput],
         system_prompt: str | None = None,
         inject_prompt: str | None = None,
-    ) -> TextGenerationResponse:
+    ) -> LLMResponse:
         """Send a request to the API client.
 
         Parameters
         ----------
         model : str
             The name of the model to generate a response with.
-        content : TextGenerationInput | list[TextGenerationInput]
+        content : LLMInput | list[LLMInput]
             The (correctly) formatted content to send to the API.
         system_prompt : str
             The system prompt to use to generate the response with.
@@ -217,7 +215,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
 
         Returns
         -------
-        TextGenerationResponse
+        LLMResponse
             The response from the LLM.
 
         """

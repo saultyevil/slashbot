@@ -1,12 +1,10 @@
 from typing import Any
 
-from disnake import channel
-
 from slashbot.llm import (
     LLM,
-    GenerationFailureError,
-    TextGenerationInput,
-    TextGenerationResponse,
+    LLMGenerationFailureError,
+    LLMInput,
+    LLMResponse,
     TextInput,
     load_prompt,
 )
@@ -78,12 +76,12 @@ class Channel(Logger):
 
         self.log_info("Removed %d tokens from %d messages", tokens_removed, messages_removed)
 
-    async def append_message(self, content: TextGenerationInput) -> None:
+    async def append_message(self, content: LLMInput) -> None:
         """Append a new message.
 
         Parameters
         ----------
-        content : TextGenerationInput
+        content : LLMInput
             The message to add.
 
         """
@@ -91,12 +89,12 @@ class Channel(Logger):
         self.messages.append_message(content, tokens)
         self.shrink_messages_to_token_window()
 
-    async def summarise(self) -> TextGenerationResponse:
+    async def summarise(self) -> LLMResponse:
         """Summarise the messages.
 
         Returns
         -------
-        TextGenerationResponse
+        LLMResponse
             The response from the LLM.
 
         """
@@ -104,9 +102,9 @@ class Channel(Logger):
         for message in self.messages:
             content += f"{message.text}\n"
         try:
-            response = await self.llm.generate_response(TextGenerationInput(TextInput(content)))
-        except GenerationFailureError:
-            return TextGenerationResponse(
+            response = await self.llm.generate_response(LLMInput(TextInput(content)))
+        except LLMGenerationFailureError:
+            return LLMResponse(
                 message="Failed to generate a channel summary", tokens_used=0, input_tokens=0, output_tokens=0
             )
 

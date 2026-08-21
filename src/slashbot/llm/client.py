@@ -3,7 +3,7 @@ from typing import Any
 from slashbot.logger import Logger
 
 from .clients import ClaudeClient
-from .models import TextGenerationInput, TextGenerationResponse
+from .models import LLMInput, LLMResponse
 
 
 class LLM(Logger):
@@ -44,12 +44,12 @@ class LLM(Logger):
 
     ## public interface
 
-    async def assemble_input_payload(self, content: TextGenerationInput | list[TextGenerationInput]) -> dict | list:
+    async def assemble_input_payload(self, content: LLMInput | list[LLMInput]) -> dict | list:
         """Create a payload object for the LLM.
 
         Parameters
         ----------
-        content : TextGenerationInput | list[TextGenerationInput]
+        content : LLMInput | list[LLMInput]
             Input message(s), from the user, including attached images and
             videos.
 
@@ -58,12 +58,12 @@ class LLM(Logger):
 
         return payload
 
-    async def count_tokens(self, content: TextGenerationInput | list[TextGenerationInput]) -> int:
+    async def count_tokens(self, content: LLMInput | list[LLMInput]) -> int:
         """Get the token count for a given message for the current LLM model.
 
         Parameters
         ----------
-        content : TextGenerationInput | list[TextGenerationInput]
+        content : LLMInput | list[LLMInput]
             The (correctly) formatted content to send to the API.
 
         Returns
@@ -76,19 +76,17 @@ class LLM(Logger):
 
         return total_tokens
 
-    async def generate_response(
-        self, content: TextGenerationInput | list[TextGenerationInput]
-    ) -> TextGenerationResponse:
+    async def generate_response(self, content: LLMInput | list[LLMInput]) -> LLMResponse:
         """Genereate a response from the LLM for the provided input.
 
         Parameters
         ----------
-        content : TextGenerationInput | list[TextGenerationInput]
+        content : LLMInput | list[LLMInput]
             The (correctly) formatted content to send to the API.
 
         Returns
         -------
-        TextGenerationResponse
+        LLMResponse
             The response from the LLM.
 
         """

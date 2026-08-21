@@ -78,7 +78,7 @@ class VideoInput:
 
 
 @dataclass
-class TextGenerationInput:
+class LLMInput:
     """Message dataclass for an LLM conversation."""
 
     text: TextInput
@@ -91,7 +91,7 @@ class TextGenerationInput:
     def __str__(self) -> str:
         num_images = len(self.images) if self.images else 0
         num_videos = len(self.videos) if self.videos else 0
-        return f"TextGenerationInput(role={self.role} text={self.text} images={num_images} videos={num_videos})"
+        return f"LLMInput(role={self.role} text={self.text} images={num_images} videos={num_videos})"
 
     def __post_init__(self) -> None:
         if isinstance(self.images, ImageInput):
@@ -101,12 +101,12 @@ class TextGenerationInput:
         if not self.text.text and (self.videos or self.images):
             self.text = TextInput("Please describe the following attached item(s)")
 
-    def __add__(self, v: "TextGenerationInput") -> "TextGenerationInput":
+    def __add__(self, v: "LLMInput") -> "LLMInput":
         if self.role != v.role:
-            error_message = "Cannot add TextGenerationInputs with different roles"
+            error_message = "Cannot add LLMInputs with different roles"
             raise ValueError(error_message)
 
-        return TextGenerationInput(
+        return LLMInput(
             text=self.text + v.text,
             images=self.images + v.images,  # type: ignore
             videos=self.videos + v.videos,  # type: ignore
@@ -126,7 +126,7 @@ class TextGenerationInput:
 
 
 @dataclass
-class TextGenerationResponse:
+class LLMResponse:
     """Response object for text generation."""
 
     message: str
@@ -135,7 +135,7 @@ class TextGenerationResponse:
     output_tokens: int
 
 
-class GenerationFailureError(Exception):
+class LLMGenerationFailureError(Exception):
     """Exception for generation failures."""
 
     def __init__(self, message: str, code: int = 0) -> None:

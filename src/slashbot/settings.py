@@ -58,8 +58,6 @@ class ChatBotCogSettings(BaseCogSettings):
         Maximum responses to a user allowed per interval.
     rate_limit_interval : int
         Time interval for rate limiting (seconds).
-    enable_profiling : bool
-        Whether to enable profiling for chat response time.
     prefer_image_urls : bool
         Prefer using image URLs in request to chat API.
     enable_web_search : bool
@@ -76,7 +74,6 @@ class ChatBotCogSettings(BaseCogSettings):
     default_chat_prompt: str
     response_rate_limit: int
     rate_limit_interval: int
-    enable_profiling: bool
     prefer_image_urls: bool
     enable_web_search: bool
 
@@ -386,12 +383,15 @@ class LoggingSettings(BaseModel):
         Path to the debug log file.
     logger_name : str
         Name of the logger.
+    enale_profiling : bool
+        Whether to enable profiling or not.
 
     """
 
     log_location: str = "logs/slashbot.log"
     debug_log_location: str = "logs/slashbot_debug.log"
     logger_name: str = "slashbot"
+    enable_profiling: bool
 
 
 class MarkovSettings(BaseModel):

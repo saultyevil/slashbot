@@ -76,6 +76,7 @@ scheduled_posts = "data/scheduled_posts.yaml"
 
 [logging]
 log_location = "logs/slashbot.log"
+enable_profiling = false
 
 [markov]
 enable_markov_training = false
