@@ -420,6 +420,6 @@ class ChatBot(CustomCog):
             f"**Token size:** {chat.tokens}\n"
             f"**Prompt:**\n> {shorten(chat.system_prompt, 1500)}\n"
             if chat.system_prompt
-            else ""
+            else "No system prompt has been set"
         )
         await inter.response.send_message(response, ephemeral=True)

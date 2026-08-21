@@ -52,7 +52,7 @@ class ImageInput:
         Parameters
         ----------
         httpx_timeout : int
-            The timeout for the HTTP request. Default is 60 seconds.
+            The timeout for the HTTP request. Default is 30 seconds.
 
         """
         async with httpx.AsyncClient() as client:
@@ -86,7 +86,7 @@ class LLMInput:
     videos: VideoInput | list[VideoInput] = field(default_factory=list)
     role: InputRole = InputRole.user
 
-    tokens = 0
+    tokens: int = 0
 
     def __str__(self) -> str:
         num_images = len(self.images) if self.images else 0

@@ -61,18 +61,18 @@ class Channel(Logger):
         return len(self.messages)
 
     def shrink_messages_to_token_window(self) -> None:
-        """Remove messages which take the chat over the context window."""
+        """Remove messages which take the message log over the context window."""
         if self.tokens <= SETTINGS.channel_token_window_size:
             return
 
         tokens_removed = 0
         messages_removed = 0
-        keep_messages = 1
-        while self.tokens > SETTINGS.channel_token_window_size and len(self) > keep_messages:
-            for _ in range(2):
-                message = self.messages.remove_message(0)
-                tokens_removed += message.tokens
-            messages_removed += 2
+        num_to_keep = 1
+
+        while self.tokens > SETTINGS.channel_token_window_size and len(self) - 1 > num_to_keep:
+            message = self.messages.remove_message(0)
+            tokens_removed += message.tokens
+            messages_removed += 1
 
         self.log_info("Removed %d tokens from %d messages", tokens_removed, messages_removed)
 
@@ -100,7 +100,7 @@ class Channel(Logger):
         """
         content = ""
         for message in self.messages:
-            content += f"{message.text}\n"
+            content += f"{message.text.text}\n"
         try:
             response = await self.llm.generate_response(LLMInput(TextInput(content)))
         except LLMGenerationFailureError:

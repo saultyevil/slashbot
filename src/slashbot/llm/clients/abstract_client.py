@@ -50,7 +50,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
             active client.
 
         """
-        if content.text == "":
+        if content.text.text == "":
             error_message = "Can only generate when there is text input"
             self.log_error("%s", error_message)
             raise LLMGenerationFailureError(error_message, 1)

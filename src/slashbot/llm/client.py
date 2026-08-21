@@ -3,7 +3,7 @@ from typing import Any
 from slashbot.logger import Logger
 
 from .clients import ClaudeClient
-from .models import LLMInput, LLMResponse
+from .models import LLMInput, LLMResponse, TextInput
 
 
 class LLM(Logger):
@@ -33,6 +33,8 @@ class LLM(Logger):
         self.system_prompt = system_prompt
         self.inject_prompt = inject_prompt
 
+        self.prompt_tokens = 0
+
         if model in ClaudeClient.SUPPORTED_MODELS:
             self._client = ClaudeClient(**kwargs)
         else:
@@ -41,6 +43,14 @@ class LLM(Logger):
             raise ValueError(error_message)
 
         self.provider = self._client.provider
+
+    ## private methods
+
+    async def _count_tokens_in_prompt(self) -> None:
+        if self.prompt_tokens == 0 and (self.system_prompt or self.inject_prompt):
+            prompt_parts = [p for p in (self.inject_prompt, self.system_prompt) if p]
+            if prompt_parts:
+                self.prompt_tokens = await self.count_tokens(LLMInput(TextInput("\n\n".join(prompt_parts))))
 
     ## public interface
 
@@ -90,6 +100,7 @@ class LLM(Logger):
             The response from the LLM.
 
         """
+        await self._count_tokens_in_prompt()
         response = await self._client.generate_response(self.model, content, self.system_prompt, self.inject_prompt)
 
         return response

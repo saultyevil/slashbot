@@ -109,8 +109,11 @@ class Chat(Logger):
 
         tokens_removed = 0
         messages_removed = 0
-        keep_messages = 2
-        while self.tokens > SETTINGS.chat_token_window_size and len(self) > keep_messages:
+        num_to_keep = 2
+
+        # this makes the asssumption to chat is *always* user -> assistant -> user -> assistant
+        # and etc. If it's not like this, then oh well. I'm sure it'll be fine.
+        while self.tokens > SETTINGS.chat_token_window_size and len(self) - 2 >= num_to_keep:
             for _ in range(2):
                 message = self.messages.remove_message(0)
                 tokens_removed += message.tokens
@@ -150,7 +153,7 @@ class Chat(Logger):
             )
 
         assistant_content = LLMInput(text=TextInput(response.message), role=InputRole.assistant)
-        self.messages.append_message(content, response.input_tokens - starting_tokens)
+        self.messages.append_message(content, response.input_tokens - starting_tokens - self.llm.prompt_tokens)
         self.messages.append_message(assistant_content, response.output_tokens)
         await self.shrink_messages_to_token_window()
 

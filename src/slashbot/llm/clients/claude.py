@@ -159,10 +159,6 @@ class ClaudeClient(AbstractClient):
         parts = [p for p in (inject_prompt, system_prompt) if p]
         system = "\n\n".join(parts) if parts else Omit()
 
-        self.log_debug("system_prompt '%s", system_prompt)
-        self.log_debug("inject_prommpt '%s'", inject_prompt)
-        self.log_debug("Using system prompt '%s'", system)
-
         try:
             response = await self._client.messages.create(
                 model=model,
@@ -213,8 +209,10 @@ class ClaudeClient(AbstractClient):
             The count of tokens in the given message for the current model.
 
         """
-        client = Anthropic(api_key=self._client.api_key, base_url=self._client.base_url)
-        response = client.messages.count_tokens(model=model, messages=self.transform_input_to_payload(model, content))  # type: ignore
+        response = await self._client.messages.count_tokens(
+            model=model,
+            messages=self.transform_input_to_payload(model, content),  # type: ignore
+        )
 
         return response.input_tokens
 
