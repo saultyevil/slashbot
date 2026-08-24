@@ -164,6 +164,7 @@ class ClaudeClient(AbstractClient):
             response = await self._client.messages.create(
                 model=model,
                 messages=content,  # type: ignore
+                thinking={"type": "disabled"},
                 max_tokens=BotSettings.cogs.chatbot.max_output_tokens,
                 system=system,
             )
