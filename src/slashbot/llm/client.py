@@ -2,7 +2,7 @@ from typing import Any
 
 from slashbot.logger import Logger
 
-from .clients import ClaudeClient
+from .clients import AbstractClient, ClaudeClient
 from .models import LLMInput, LLMResponse, TextInput
 
 
@@ -29,25 +29,24 @@ class LLM(Logger):
         """Initialise an LLM for the given model."""
         super().__init__(**kwargs)
 
-        self.model = model
-        self.system_prompt = system_prompt
-        self.inject_prompt = inject_prompt
+        self.model: str = model
+        self.system_prompt: str | None = system_prompt
+        self.inject_prompt: str | None = inject_prompt
 
-        self.prompt_tokens = 0
+        self.prompt_tokens: int | None = None
 
         if model in ClaudeClient.SUPPORTED_MODELS:
-            self._client = ClaudeClient(**kwargs)
+            self._client: AbstractClient = ClaudeClient(**kwargs)
         else:
-            supported_models = ClaudeClient.SUPPORTED_MODELS
-            error_message = f"Unknown model {model}. Supported models: {supported_models}"
+            error_message = f"Unknown model {model}. Supported models: {self.SUPPORTED_MODELS}"
             raise ValueError(error_message)
 
-        self.provider = self._client.provider
+        self.provider: str = self._client.provider
 
     ## private methods
 
     async def _count_tokens_in_prompt(self) -> None:
-        if self.prompt_tokens == 0 and (self.system_prompt or self.inject_prompt):
+        if self.prompt_tokens is None and (self.system_prompt or self.inject_prompt):
             prompt_parts = [p for p in (self.inject_prompt, self.system_prompt) if p]
             if prompt_parts:
                 self.prompt_tokens = await self.count_tokens(LLMInput(TextInput("\n\n".join(prompt_parts))))

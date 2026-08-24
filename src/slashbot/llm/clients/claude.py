@@ -1,7 +1,7 @@
 from typing import Any
 
 import anthropic
-from anthropic import Anthropic, AsyncAnthropic, Omit
+from anthropic import AsyncAnthropic, Omit
 
 from slashbot.llm.models import (
     ImageInput,
@@ -158,6 +158,7 @@ class ClaudeClient(AbstractClient):
         """
         parts = [p for p in (inject_prompt, system_prompt) if p]
         system = "\n\n".join(parts) if parts else Omit()
+        self.log_debug("system prompt: %s", system)
 
         try:
             response = await self._client.messages.create(
@@ -236,7 +237,6 @@ class ClaudeClient(AbstractClient):
         inject_prompt : str | None
             Additional prompt to inject at the start of the system prompt. Usefull
             for custom chats and etc.
-
 
         Returns
         -------
