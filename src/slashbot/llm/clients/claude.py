@@ -210,10 +210,15 @@ class ClaudeClient(AbstractClient):
             The count of tokens in the given message for the current model.
 
         """
-        response = await self._client.messages.count_tokens(
-            model=model,
-            messages=self.transform_input_to_payload(model, content),  # type: ignore
-        )
+        try:
+            response = await self._client.messages.count_tokens(
+                model=model,
+                messages=self.transform_input_to_payload(model, content),  # type: ignore
+            )
+        except Exception as exc:
+            error_message = f"Claude API failed to count tokens due to exception: {exc}"
+            self.log_error("%s", error_message)
+            raise LLMGenerationFailureError(error_message) from exc
 
         return response.input_tokens
 
