@@ -153,7 +153,9 @@ class Chat(Logger):
             )
 
         assistant_content = LLMInput(text=TextInput(response.message), role=InputRole.assistant)
-        self.messages.append_message(content, response.input_tokens - starting_tokens - self.llm.prompt_tokens)
+        self.messages.append_message(
+            content, response.input_tokens - starting_tokens - (self.llm.prompt_tokens if self.llm.prompt_tokens else 0)
+        )
         self.messages.append_message(assistant_content, response.output_tokens)
         await self.shrink_messages_to_token_window()
 

@@ -133,7 +133,10 @@ class ClaudeClient(AbstractClient):
         return []
 
     async def _send_request(
-        self, model: str, content: dict | list[dict], system_prompt: str | None = None, inject_prompt: str | None = None
+        self,
+        model: str,
+        content: dict | list[dict],
+        system_prompt: str | None = None,
     ) -> LLMResponse:
         """Send a request to the uderlying API client.
 
@@ -145,10 +148,6 @@ class ClaudeClient(AbstractClient):
             The payload to send to the API client.
         system_prompt : str | None
             The optional system prompt to use.
-        inject_prompt : str | None
-            Additional prompt to inject at the start of the system prompt. Usefull
-            for custom chats and etc.
-
 
         Returns
         -------
@@ -156,9 +155,7 @@ class ClaudeClient(AbstractClient):
             The response returned from the API client.
 
         """
-        parts = [p for p in (inject_prompt, system_prompt) if p]
-        system = "\n\n".join(parts) if parts else Omit()
-        self.log_debug("system prompt: %s", system)
+        self.log_debug("System prompt: %s", system_prompt)
 
         try:
             response = await self._client.messages.create(
@@ -166,7 +163,7 @@ class ClaudeClient(AbstractClient):
                 messages=content,  # type: ignore
                 thinking={"type": "disabled"},
                 max_tokens=BotSettings.cogs.chatbot.max_output_tokens,
-                system=system,
+                system=system_prompt if system_prompt else Omit(),
             )
         except Exception as exc:
             error_message = f"Claude API failed to generate response due to exception: {exc}"
@@ -225,7 +222,6 @@ class ClaudeClient(AbstractClient):
         model: str,
         content: LLMInput | list[LLMInput],
         system_prompt: str | None = None,
-        inject_prompt: str | None = None,
     ) -> LLMResponse:
         """Send a request to the API client.
 
@@ -248,7 +244,7 @@ class ClaudeClient(AbstractClient):
 
         """
         text_generation_response = await self._send_request(
-            model, self.transform_input_to_payload(model, content), system_prompt, inject_prompt
+            model, self.transform_input_to_payload(model, content), system_prompt
         )
 
         return text_generation_response
