@@ -149,7 +149,7 @@ class Chat(Logger):
             response = await self.llm.generate_response(messages)
         except LLMGenerationFailureError as exc:
             return LLMResponse(
-                message=f"Failed to generate a reasponse: {exc!s}", tokens_used=0, input_tokens=0, output_tokens=0
+                message=f"Failed to generate a response: {exc!s}", tokens_used=0, input_tokens=0, output_tokens=0
             )
 
         assistant_content = LLMInput(text=TextInput(response.message), role=InputRole.assistant)
