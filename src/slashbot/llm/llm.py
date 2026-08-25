@@ -1,9 +1,10 @@
+import contextlib
 from typing import Any
 
 from slashbot.logger import Logger
 
 from .clients import AbstractClient, ClaudeClient
-from .models import LLMInput, LLMResponse, TextInput
+from .models import LLMGenerationFailureError, LLMInput, LLMResponse, TextInput
 
 
 class LLM(Logger):
@@ -15,23 +16,17 @@ class LLM(Logger):
         The name of the LLM to use.
     system_prompt : str | None
         The system prompt to use for generation. Optional.
-    inject_prompt : str | None
-        Additional prompt to inject at the start of the system prompt. Usefull
-        for custom chats and etc.
 
     """
 
     SUPPORTED_MODELS = ClaudeClient.SUPPORTED_MODELS
 
-    def __init__(
-        self, model: str, system_prompt: str | None = None, hidden_prompt: str | None = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, model: str, system_prompt: str | None = None, **kwargs: Any) -> None:
         """Initialise an LLM for the given model."""
         super().__init__(**kwargs)
 
         self.model: str = model
         self.system_prompt: str | None = system_prompt
-        self.hidden_prompt: str | None = hidden_prompt
 
         self.prompt_tokens: int | None = None
 
@@ -45,14 +40,9 @@ class LLM(Logger):
 
     ## private methods
 
-    @property
-    def _combined_system_prompt(self) -> str | None:
-        parts = [p for p in (self.hidden_prompt, self.system_prompt) if p]
-        return "\n\n".join(parts) if parts else None
-
     async def _count_tokens_in_prompt(self) -> None:
-        if self.prompt_tokens is None and self._combined_system_prompt:
-            self.prompt_tokens = await self.count_tokens(LLMInput(TextInput(self._combined_system_prompt)))
+        if self.prompt_tokens is None and self.system_prompt:
+            self.prompt_tokens = await self.count_tokens(LLMInput(TextInput(self.system_prompt)))
 
     ## public interface
 
@@ -102,7 +92,9 @@ class LLM(Logger):
             The response from the LLM.
 
         """
-        await self._count_tokens_in_prompt()
-        response = await self._client.generate_response(self.model, content, self._combined_system_prompt)
+        with contextlib.suppress(LLMGenerationFailureError):
+            await self._count_tokens_in_prompt()
+
+        response = await self._client.generate_response(self.model, content, self.system_prompt)
 
         return response

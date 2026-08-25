@@ -41,10 +41,10 @@ class Chat(Logger):
         """Create an LLM chat."""
         super().__init__(**kwargs, prepend_msg=f"[Chat {chat_id}]")
 
-        system_prompt = system_prompt if system_prompt else DEFAULT_SYSTEM_PROMPT.prompt
+        self._prompt: str = system_prompt if system_prompt else DEFAULT_SYSTEM_PROMPT.prompt
 
         self.chat_id: str = chat_id
-        self.llm: LLM = LLM(model, system_prompt, USER_CONVERSATION_CONTEXT_PROMPT)
+        self.llm: LLM = LLM(model, self._combined_system_prompt)
         self.messages: Messages = Messages()
         self.log_info("Created new chat")
 
@@ -62,9 +62,18 @@ class Chat(Logger):
         return self.llm.provider
 
     @property
-    def system_prompt(self) -> str:
-        """The system prompt for the chat."""
-        return self.llm.system_prompt if self.llm.system_prompt else ""
+    def prompt(self) -> str:
+        """The user-visible system prompt for the chat."""
+        return self._prompt
+
+    @prompt.setter
+    def prompt(self, prompt: str) -> None:
+        self._prompt = prompt
+
+    @property
+    def _combined_system_prompt(self) -> str:
+        """The system prompt sent to the LLM, including hidden context."""
+        return "\n\n".join(prompt for prompt in (USER_CONVERSATION_CONTEXT_PROMPT, self.prompt) if prompt)
 
     @property
     def tokens(self) -> int:
@@ -178,7 +187,7 @@ class Chat(Logger):
             The name of the model to use.
 
         """
-        self.llm = LLM(model, self.system_prompt, USER_CONVERSATION_CONTEXT_PROMPT)
+        self.llm = LLM(model, self._combined_system_prompt)
         self.log_info("Set model to %s", model)
 
     def set_system_prompt(self, system_prompt: str) -> None:
@@ -190,7 +199,8 @@ class Chat(Logger):
             The new system prompt.
 
         """
-        self.llm = LLM(self.model, system_prompt, USER_CONVERSATION_CONTEXT_PROMPT)
+        self.prompt = system_prompt
+        self.llm = LLM(self.model, self._combined_system_prompt)
         self.log_info("Set new system prompt: %s", shorten(system_prompt, 512))
 
 

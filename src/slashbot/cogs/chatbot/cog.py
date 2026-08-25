@@ -305,7 +305,7 @@ class ChatBot(CustomCog):
         chat = self.chats[inter.channel.id]
         chat.reset()
         await inter.response.send_message(
-            f"Conversation history has been reset with prompt: {shorten(chat.system_prompt, 1500)}",
+            f"Conversation history has been reset with prompt: {shorten(chat.prompt, 1500)}",
             ephemeral=True,
         )
 
@@ -415,11 +415,7 @@ class ChatBot(CustomCog):
 
         """
         chat = self.chats[inter.channel.id]
-        response = (
-            f"**Model:** {chat.model}\n"
-            f"**Token size:** {chat.tokens}\n"
-            f"**Prompt:**\n> {shorten(chat.system_prompt, 1500)}\n"
-            if chat.system_prompt
-            else "No system prompt has been set"
-        )
+        response = f"**Model:** {chat.model}\n**Token size:** {chat.tokens}\n**Prompt:**\n> {
+            shorten(chat.prompt, 1500) if chat.prompt else 'No system prompt has been set'
+        }\n"
         await inter.response.send_message(response, ephemeral=True)
