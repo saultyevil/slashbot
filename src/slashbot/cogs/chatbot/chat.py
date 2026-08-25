@@ -178,7 +178,7 @@ class Chat(Logger):
             The name of the model to use.
 
         """
-        self.llm = LLM(model, self.system_prompt)
+        self.llm = LLM(model, self.system_prompt, USER_CONVERSATION_CONTEXT_PROMPT)
         self.log_info("Set model to %s", model)
 
     def set_system_prompt(self, system_prompt: str) -> None:
