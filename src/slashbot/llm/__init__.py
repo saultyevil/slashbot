@@ -1,6 +1,6 @@
 """Core AI module for Slashbot."""
 
-from .client import LLM
+from .llm import LLM
 from .models import (
     ImageInput,
     InputRole,
