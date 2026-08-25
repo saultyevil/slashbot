@@ -1,17 +1,20 @@
-import logging
 import os
+from unittest.mock import AsyncMock
 
 import pytest
 
 from slashbot.cogs.chatbot.chat import Chat
 from slashbot.llm import InputRole, LLMInput, TextInput
-from slashbot.logger import logger
 from slashbot.settings import BotSettings
-
-logger.set_log_level(logging.DEBUG)
 
 BotSettings.keys.claude = os.getenv("BOT_ANTHROPIC_API_KEY")
 model = "claude-haiku-4-5"
+
+
+@pytest.fixture(autouse=True)
+def disable_chat_file_logging(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prevent chat tests from writing transcript files."""
+    monkeypatch.setattr(Chat, "_write_chat_log", AsyncMock())
 
 
 @pytest.mark.asyncio

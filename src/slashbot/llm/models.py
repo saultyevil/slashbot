@@ -1,7 +1,7 @@
 import base64
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -133,6 +133,7 @@ class LLMResponse:
     tokens_used: int
     input_tokens: int
     output_tokens: int
+    _original_response: Any = field(default=None, repr=False, compare=False)
 
 
 class LLMGenerationFailureError(Exception):

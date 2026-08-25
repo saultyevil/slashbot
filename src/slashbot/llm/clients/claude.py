@@ -184,10 +184,11 @@ class ClaudeClient(AbstractClient):
             raise LLMGenerationFailureError(error_message)
 
         return LLMResponse(
-            text_response.text,
-            response.usage.input_tokens + response.usage.output_tokens,
-            response.usage.input_tokens,
-            response.usage.output_tokens,
+            message=text_response.text,
+            tokens_used=response.usage.input_tokens + response.usage.output_tokens,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            _original_response=response,
         )
 
     ## public interface
