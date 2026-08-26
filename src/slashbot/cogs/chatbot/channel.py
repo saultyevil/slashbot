@@ -74,7 +74,7 @@ class Channel(Logger):
             tokens_removed += message.tokens
             messages_removed += 1
 
-        self.log_info("Removed %d tokens from %d messages", tokens_removed, messages_removed)
+        self.log_debug("Removed %d tokens from %d messages", tokens_removed, messages_removed)
 
     async def append_message(self, content: LLMInput) -> None:
         """Append a new message.

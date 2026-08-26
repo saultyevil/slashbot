@@ -141,7 +141,7 @@ class Chat(Logger):
                 await message.count_tokens(self.llm)
                 self.messages.tokens -= start_tokens - message.tokens
 
-        self.log_info("Removed %d images to fit within the image window", images_removed)
+        self.log_debug("Removed %d images to fit within the image window", images_removed)
 
     async def shrink_messages_to_token_window(self) -> None:
         """Remove messages which take the chat over the context window."""
@@ -160,7 +160,7 @@ class Chat(Logger):
                 tokens_removed += message.tokens
             messages_removed += 2
 
-        self.log_info("Removed %d tokens from %d messages", tokens_removed, messages_removed)
+        self.log_debug("Removed %d tokens from %d messages", tokens_removed, messages_removed)
 
     async def _write_chat_log(
         self, log_path: str, timestamp: str, username: str, request: str, response: LLMResponse
