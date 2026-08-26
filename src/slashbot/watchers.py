@@ -3,7 +3,10 @@ import time
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
+
+LOGGER = Logger(prepend_msg="[File watcher]")
 
 
 class ScheduledPostWatcher(FileSystemEventHandler):
@@ -33,12 +36,17 @@ class ScheduledPostWatcher(FileSystemEventHandler):
         self.last_restart_time = time.time()
 
         if event.src_path == str(BotSettings.files.scheduled_posts):
-            self.parent.get_scheduled_posts()
-            if self.parent.post_loop.is_running():
-                self.parent.post_loop.cancel()
-                while self.parent.post_loop.is_running():
-                    time.sleep(0.5)
-            self.parent.post_loop.start()
+            LOGGER.log_info("Scheduled-post file changed; reloading posts")
+            try:
+                self.parent.get_scheduled_posts()
+                if self.parent.post_loop.is_running():
+                    self.parent.post_loop.cancel()
+                    while self.parent.post_loop.is_running():
+                        time.sleep(0.5)
+                self.parent.post_loop.start()
+            except Exception:  # noqa: BLE001
+                LOGGER.log_exception("Failed to reload scheduled posts")
 
 FILE_OBSERVER = Observer()
 FILE_OBSERVER.start()
+LOGGER.log_info("Started file observer")

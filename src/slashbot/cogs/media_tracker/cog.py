@@ -128,6 +128,9 @@ class MediaTrackers(CustomCog):
 
         for username in usernames:
             user_feed = feedparser.parse(feed_url_template.format(username))
+            if user_feed.bozo:
+                self.log_warning("Malformed %s feed: username=%s", service_label, username)
+            self.log_debug("Fetched %s feed: username=%s entries=%d", service_label, username, len(user_feed.entries))
             if not user_feed.entries:
                 self.log_warning("%s has not logged any content in %s", username, service_label)
                 results[username] = []
@@ -135,9 +138,10 @@ class MediaTrackers(CustomCog):
 
             last_entry = await get_last_entry(username)
             self.log_debug(
-                "Last entry for %s is %s",
+                "Checked last %s entry: username=%s found=%s",
+                service_label,
                 username,
-                last_entry.__dict__ if last_entry else None,
+                last_entry is not None,
             )
             last_title = last_entry.title if last_entry else None
 
@@ -327,16 +331,17 @@ class MediaTrackers(CustomCog):
         )
         if not new_movies_watched:
             return
-        self.log_debug(
-            "New movies watched: %s",
-            [{user: [movie.__dict__ for movie in movies]} for user, movies in new_movies_watched.items()],
+        self.log_info(
+            "New movies found: users=%d entries=%d",
+            len(new_movies_watched),
+            sum(map(len, new_movies_watched.values())),
         )
 
         # Catch Discord unavailability broadly — if this kills the loop it is
         # surprisingly difficult to automatically restart tasks.
         try:
             channels = await self._get_channels(BotSettings.cogs.media_tracker.letterboxd_channels, label="movie")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.log_error("Exception raised when getting channels: %s", exc)
             return
 
@@ -346,6 +351,7 @@ class MediaTrackers(CustomCog):
             channels=channels,
             create_embed=self._create_watched_movie_embed,
         )
+        self.log_info("Posted new movie entries: users=%d channels=%d", len(new_movies_watched), len(channels))
 
     @check_for_new_watched_movies.error
     async def letterboxd_handle_uncaught_exception(self, exception: BaseException) -> None:
@@ -470,16 +476,17 @@ class MediaTrackers(CustomCog):
         new_games_logged = await self.get_most_recent_logged_game([user.backloggd_username for user in backloggd_users])
         if not new_games_logged:
             return
-        self.log_debug(
-            "New games logged: %s",
-            [{user: [game.__dict__ for game in games]} for user, games in new_games_logged.items()],
+        self.log_info(
+            "New games found: users=%d entries=%d",
+            len(new_games_logged),
+            sum(map(len, new_games_logged.values())),
         )
 
         # Catch Discord unavailability broadly — if this kills the loop it is
         # surprisingly difficult to automatically restart tasks.
         try:
             channels = await self._get_channels(BotSettings.cogs.media_tracker.backloggd_channels, label="game")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.log_error("Exception raised when getting channels: %s", exc)
             return
 
@@ -489,6 +496,7 @@ class MediaTrackers(CustomCog):
             channels=channels,
             create_embed=self._create_logged_game_embed,
         )
+        self.log_info("Posted new game entries: users=%d channels=%d", len(new_games_logged), len(channels))
 
     @check_for_new_logged_games.error
     async def backloggd_handle_uncaught_exception(self, exception: BaseException) -> None:

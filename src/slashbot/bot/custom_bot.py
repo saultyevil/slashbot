@@ -35,6 +35,7 @@ class CustomInteractionBot(InteractionBot, Logger):
         self.times_connected = 0
         self.db = DatabaseSQL(BotSettings.files.database, DeclarativeBase)
         self.use_markov_cache = enable_markov_cache and markov.MARKOV_MODEL
+        self.log_debug("Created bot instance; markov cache=%s", self.use_markov_cache)
         if markov.MARKOV_MODEL:
             self.log_info(
                 "Automatic Markov sentence generation is %s",
@@ -58,6 +59,7 @@ class CustomInteractionBot(InteractionBot, Logger):
 
     async def close(self) -> None:
         """Clean up things on close."""
+        self.log_info("Shutting down bot; running %d cleanup functions", len(self.cleanup_functions))
         for function in self.cleanup_functions:
             if function["message"]:
                 self.log_info("%s", function["message"])
@@ -68,6 +70,7 @@ class CustomInteractionBot(InteractionBot, Logger):
                 await function["function"]()
 
         await super().close()
+        self.log_info("Bot shutdown complete")
 
     async def initialise_database(self) -> None:
         """Initialise the database.
@@ -79,3 +82,4 @@ class CustomInteractionBot(InteractionBot, Logger):
         if not self.db:
             self.db = DatabaseSQL(BotSettings.files.database, DeclarativeBase)
         await self.db.init()
+        self.log_info("Bot database ready")

@@ -65,7 +65,14 @@ class AbstractClient(Logger, metaclass=ABCMeta):
             video_content.extend(self._create_video_input_object(model, content.videos))
 
         payload = self._construct_final_payload(content.role, text_content, image_content, video_content)
-        self.log_debug("Assemebled payload from %s for %s: %s", content, model, payload)
+        self.log_debug(
+            "Assembled LLM input: model=%s role=%s text_length=%d images=%d videos=%d",
+            model,
+            content.role.value,
+            len(content.text.text),
+            len(image_content),
+            len(video_content),
+        )
 
         return payload
 
@@ -85,7 +92,7 @@ class AbstractClient(Logger, metaclass=ABCMeta):
             content = [content]
 
         payload = [self._assemble_payload_from_inputs(model, message) for message in content]
-        self.log_debug("Transformed %s into for %s: %s", content, model, payload)
+        self.log_debug("Transformed LLM input: model=%s messages=%d", model, len(content))
 
         return payload
 

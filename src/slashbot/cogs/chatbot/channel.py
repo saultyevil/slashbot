@@ -103,11 +103,13 @@ class Channel(Logger):
             content += f"{message.text.text}\n"
         try:
             response = await self.llm.generate_response(LLMInput(TextInput(content)))
-        except LLMGenerationFailureError:
+        except LLMGenerationFailureError as exc:
+            self.log_warning("Channel summary generation failed: messages=%d error=%s", len(self.messages), exc)
             return LLMResponse(
                 message="Failed to generate a channel summary", tokens_used=0, input_tokens=0, output_tokens=0
             )
 
+        self.log_debug("Channel summary generated: messages=%d", len(self.messages))
         return response
 
 

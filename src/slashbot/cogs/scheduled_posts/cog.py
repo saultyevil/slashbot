@@ -128,8 +128,13 @@ class ScheduledPosts(CustomCog):
 
     def get_scheduled_posts(self) -> None:
         """Read in the scheduled posts Json file."""
-        with Path.open(BotSettings.files.scheduled_posts, encoding="utf-8") as file_in:
-            posts_data = yaml.safe_load(file_in)
+        self.log_debug("Loading scheduled posts from %s", BotSettings.files.scheduled_posts)
+        try:
+            with Path.open(BotSettings.files.scheduled_posts, encoding="utf-8") as file_in:
+                posts_data = yaml.safe_load(file_in)
+        except Exception:
+            self.log_exception("Failed to load scheduled posts from %s", BotSettings.files.scheduled_posts)
+            raise
         for post in posts_data:
             try:
                 self.scheduled_posts.append(ScheduledPost(**post))
@@ -198,9 +203,10 @@ class ScheduledPosts(CustomCog):
             post_message = post_message.strip()
 
             for channel in post.channels:
-                channel = await self.bot.fetch_channel(channel)  # noqa: PLW2901
+                channel_id = channel
+                channel = await self.bot.fetch_channel(channel_id)  # noqa: PLW2901
                 if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
-                    self.log_error("Scheduled post '%s' has invalid channel %s", post.title, channel)
+                    self.log_error("Scheduled post '%s' has invalid channel %s", post.title, channel_id)
                     continue
                 # Check in this case, just to be safe as I don't want
                 # disnake.File to complain if it gets nothing
@@ -211,6 +217,12 @@ class ScheduledPosts(CustomCog):
                     )
                 else:
                     await channel.send(f"{post_message} {markov_sentence}")
+                self.log_info("Sent scheduled post '%s' to channel %s", post.title, channel_id)
+
+    @post_loop.error
+    async def post_loop_error(self, exception: BaseException) -> None:
+        """Log an unexpected scheduled-post worker failure."""
+        self.log_error("Scheduled-post worker stopped unexpectedly: %s", exception)
 
     @post_loop.before_loop
     async def wait(self) -> None:

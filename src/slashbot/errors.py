@@ -1,6 +1,9 @@
 """Commands for getting the weather."""
 
 from slashbot.bot.custom_types import ApplicationCommandInteraction
+from slashbot.logger import Logger
+
+LOGGER = Logger(prepend_msg="[Discord errors]")
 
 
 async def deferred_error_response(
@@ -21,5 +24,10 @@ async def deferred_error_response(
         default 30
 
     """
-    await inter.edit_original_message(content=message)
-    await inter.delete_original_message(delay=delay)
+    try:
+        await inter.edit_original_message(content=message)
+        await inter.delete_original_message(delay=delay)
+    except Exception:
+        LOGGER.log_exception("Failed to deliver deferred error response")
+        raise
+    LOGGER.log_debug("Delivered deferred error response")

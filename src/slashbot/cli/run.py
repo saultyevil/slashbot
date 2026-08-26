@@ -159,7 +159,12 @@ class Slashbot:
         if args.debug:
             bot.set_log_level(logging.DEBUG)
 
-        bot.log_info("Initializing... %s", args)
+        bot.log_info(
+            "Initializing bot: debug=%s on_the_fly_markov=%s markov_cache=%s",
+            args.debug,
+            args.on_the_fly_markov,
+            args.enable_markov_cache,
+        )
         bot.log_info("Config file: %s", BotSettings.config_file)
 
         if args.on_the_fly_markov:
@@ -178,6 +183,10 @@ class Slashbot:
             except commands.errors.NoEntryPointError:
                 bot.log_error("No entry point found for cog %s", module)
                 continue
+            except Exception:  # noqa: BLE001
+                bot.log_exception("Failed to load cog extension %s", module)
+                continue
+            bot.log_info("Loaded cog extension %s", module)
 
         bot.add_listener(self.create_on_ready(bot))
         bot.add_listener(self.create_on_error(bot))
@@ -185,6 +194,7 @@ class Slashbot:
 
         event_loop = asyncio.get_event_loop()
         event_loop.run_until_complete(bot.initialise_database())
+        bot.log_debug("Registered %d cogs and listeners", len(bot.cogs))
 
         for cog in bot.cogs.values():
             if args.debug:

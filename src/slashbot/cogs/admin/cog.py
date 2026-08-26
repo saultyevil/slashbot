@@ -49,10 +49,13 @@ def update_local_repository(branch: str) -> None:
 
     """
     repo = git.Repo(".", search_parent_directories=True)
+    logger = logging.getLogger(BotSettings.logging.logger_name)
+    logger.info("Updating repository to branch %s", branch)
     if repo.active_branch != branch:
         target_branch = repo.heads[branch]
         target_branch.checkout()
     repo.remotes.origin.pull()
+    logger.info("Repository update complete: branch=%s", branch)
 
 
 def ordinal_suffix(n: int) -> str:
@@ -443,4 +446,5 @@ class AdminTools(CustomCog):
             self.log_exception("Failed to update repository")
             await inter.edit_original_message("Failed to update local repository")
             return
+        self.log_info("Repository updated by user %s; restarting", inter.author.id)
         await self.restart_bot(inter, on_the_fly_markov)

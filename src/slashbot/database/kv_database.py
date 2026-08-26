@@ -35,6 +35,7 @@ class DatabaseKV(Logger):
     async def _create_empty_database(self) -> None:
         async with aiofiles.open(self._filename, mode="w") as file_out:
             await file_out.write(json.dumps({self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}, indent=4))
+        self.log_info("Created empty KV database at %s", self._filename)
 
     async def _load_database(self) -> None:
         if not self._filename.exists():
@@ -46,7 +47,10 @@ class DatabaseKV(Logger):
             try:
                 data = json.loads(content)
             except json.JSONDecodeError as e:
-                self.log_error("Failed to parse database. Creating new empty one. exc=%s", e)
+                self.log_warning(
+                    "Failed to parse KV database at %s; replacing it with an empty database", self._filename
+                )
+                self.log_exception("KV database parse failure: %s", e)
                 await self._create_empty_database()
                 data = {self.USER_DATA_KEY: {}, self.REMINDERS_KEY: {}}
 
@@ -56,6 +60,11 @@ class DatabaseKV(Logger):
             self._tables[self.REMINDERS_KEY] = {
                 int(k): ReminderKV.from_dict(v) for k, v in data[self.REMINDERS_KEY].items()
             }
+        self.log_info(
+            "Loaded KV database: users=%d reminders=%d",
+            len(self._tables[self.USER_DATA_KEY]),
+            len(self._tables[self.REMINDERS_KEY]),
+        )
 
     async def _save_database(self) -> None:
         async with self._lock:
@@ -70,6 +79,11 @@ class DatabaseKV(Logger):
             }
             async with aiofiles.open(self._filename, mode="w") as file_out:
                 await file_out.write(json.dumps(serialisable_tables, indent=4))
+        self.log_debug(
+            "Saved KV database: users=%d reminders=%d",
+            len(self._tables[self.USER_DATA_KEY]),
+            len(self._tables[self.REMINDERS_KEY]),
+        )
 
     async def _create_empty_user(self, user_id: int, user_name: str) -> UserKV:
         new_user = UserKV(user_id, user_name)

@@ -113,6 +113,7 @@ class Spelling(CustomCog):
             await file_out.write("\n".join(self.custom_words))
 
         await inter.response.send_message(f"Added '{word_lower}' to dictionary.", ephemeral=True)
+        self.log_info("Added spelling dictionary word: user=%s word_length=%d", inter.author.id, len(word_lower))
 
     @slash_command_with_cooldown(
         name="remove_word_from_dict",
@@ -148,6 +149,7 @@ class Spelling(CustomCog):
             await file_out.write("\n".join(self.custom_words))
 
         await inter.response.send_message(f"Removed '{word_lower}' from dictionary.", ephemeral=True)
+        self.log_info("Removed spelling dictionary word: user=%s word_length=%d", inter.author.id, len(word_lower))
 
     def get_custom_words(self) -> list[str]:
         """Get a list of custom dictionary words.

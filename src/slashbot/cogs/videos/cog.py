@@ -25,6 +25,7 @@ class Videos(CustomCog):
         await inter.edit_original_message(
             file=disnake.File("data/videos/admin_abuse.mp4"),
         )
+        self.log_info("Sent video: command=admin_abuse user=%s", inter.author.id)
 
     @slash_command_with_cooldown(name="goodbye", description="goodbye")
     async def goodbye(self, inter: disnake.ApplicationCommandInteraction) -> None:
@@ -38,6 +39,7 @@ class Videos(CustomCog):
         """
         await inter.response.defer()
         await inter.edit_original_message(file=disnake.File("data/videos/goodbye.mp4"))
+        self.log_info("Sent video: command=goodbye user=%s", inter.author.id)
 
     @slash_command_with_cooldown(name="good_morning", description="good morning people")
     async def good_morning(self, inter: disnake.ApplicationCommandInteraction) -> None:
@@ -68,6 +70,7 @@ class Videos(CustomCog):
         video = random.choice(video_choices)
 
         await inter.edit_original_message(file=disnake.File(video))
+        self.log_info("Sent video: command=good_morning user=%s asset=%s", inter.author.id, video)
 
     @slash_command_with_cooldown(name="haha", description="haha very funny")
     async def laugh(self, inter: disnake.ApplicationCommandInteraction) -> None:
@@ -81,3 +84,4 @@ class Videos(CustomCog):
         """
         await inter.response.defer()
         await inter.edit_original_message(file=disnake.File("data/videos/marko_laugh.mp4"))
+        self.log_info("Sent video: command=haha user=%s", inter.author.id)

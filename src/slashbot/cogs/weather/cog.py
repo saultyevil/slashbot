@@ -160,6 +160,7 @@ class Weather(CustomCog):
 
         except (GeocodeError, LocationNotFoundError, OneCallError, httpx.TimeoutException) as exc:
             # Only send error if the helper hasn't already handled the message
+            self.log_warning("Forecast request failed for user %s: %s", inter.author.id, exc)
             await deferred_error_response(inter, f"Error: {exc}")
 
     @slash_command_with_cooldown(name="weather", description="Get a weather report for a location.")
@@ -209,4 +210,5 @@ class Weather(CustomCog):
             await inter.edit_original_message(embed=embed)
 
         except (GeocodeError, LocationNotFoundError, OneCallError, httpx.TimeoutException) as exc:
+            self.log_warning("Weather request failed for user %s: %s", inter.author.id, exc)
             await deferred_error_response(inter, f"Error: {exc}")

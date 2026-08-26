@@ -1,6 +1,9 @@
 import disnake
 
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
+
+LOGGER = Logger(prepend_msg="[Messages]")
 
 MAX_MESSAGE_LENGTH = BotSettings.discord.max_chars
 
@@ -29,9 +32,12 @@ async def is_reply_to_slash_command_response(message: disnake.Message) -> bool:
         return False
 
     reference = message.reference
-    old_message = (
-        reference.cached_message if reference.cached_message else await message.channel.fetch_message(message.id)
-    )
+    if reference.cached_message:
+        old_message = reference.cached_message
+        LOGGER.log_debug("Used cached message reference: message=%s", message.id)
+    else:
+        old_message = await message.channel.fetch_message(reference.message_id)
+        LOGGER.log_debug("Fetched message reference: message=%s", reference.message_id)
     if not old_message or not old_message.interaction_metadata:
         return False
     return old_message.interaction_metadata.type == disnake.InteractionType.application_command
@@ -112,8 +118,9 @@ async def send_message_to_channel(
         return sent
 
     sent_messages = []
-    if len(message) > MAX_MESSAGE_LENGTH:
-        for i, chunk in enumerate(split_text_into_chunks(message, MAX_MESSAGE_LENGTH)):
+    chunks = split_text_into_chunks(message, MAX_MESSAGE_LENGTH) if len(message) > MAX_MESSAGE_LENGTH else [message]
+    if len(chunks) > 1:
+        for i, chunk in enumerate(chunks):
             if i == 0:
                 sent = await _reply(obj, chunk)
             else:
@@ -121,4 +128,5 @@ async def send_message_to_channel(
             sent_messages.append(sent)
     else:
         sent_messages.append(await _reply(obj, message))
+    LOGGER.log_debug("Sent message response: chunks=%d length=%d", len(sent_messages), len(message))
     return sent_messages

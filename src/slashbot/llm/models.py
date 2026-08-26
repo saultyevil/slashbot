@@ -1,9 +1,14 @@
 import base64
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import httpx
+
+from slashbot.logger import Logger
+
+LOGGER = Logger(prepend_msg="[LLM image]")
 
 if TYPE_CHECKING:
     from slashbot.llm import LLM
@@ -55,11 +60,22 @@ class ImageInput:
             The timeout for the HTTP request. Default is 30 seconds.
 
         """
-        async with httpx.AsyncClient() as client:
-            response = await client.get(self.url, timeout=httpx_timeout)
-            response.raise_for_status()
+        started = time.perf_counter()
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(self.url, timeout=httpx_timeout)
+                response.raise_for_status()
+        except Exception:
+            LOGGER.log_exception("Failed to download image after %.2fs", time.perf_counter() - started)
+            raise
         self.mime_type = response.headers["Content-Type"]
         self.b64image = base64.b64encode(response.content).decode("utf-8")
+        LOGGER.log_debug(
+            "Downloaded image: bytes=%d mime_type=%s duration=%.2fs",
+            len(response.content),
+            self.mime_type,
+            time.perf_counter() - started,
+        )
 
 
 @dataclass

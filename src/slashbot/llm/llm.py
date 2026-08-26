@@ -1,4 +1,5 @@
 import contextlib
+import time
 from typing import Any
 
 from slashbot.logger import Logger
@@ -74,7 +75,14 @@ class LLM(Logger):
             The count of tokens in the given message for the current model.
 
         """
+        started = time.perf_counter()
         total_tokens = await self._client.count_tokens(self.model, content)
+        self.log_debug(
+            "Counted tokens: model=%s tokens=%d duration=%.2fs",
+            self.model,
+            total_tokens,
+            time.perf_counter() - started,
+        )
 
         return total_tokens
 
@@ -95,6 +103,8 @@ class LLM(Logger):
         with contextlib.suppress(LLMGenerationFailureError):
             await self._count_tokens_in_prompt()
 
+        started = time.perf_counter()
         response = await self._client.generate_response(self.model, content, self.system_prompt)
+        self.log_debug("Generated response: model=%s duration=%.2fs", self.model, time.perf_counter() - started)
 
         return response

@@ -210,7 +210,16 @@ class Chat(Logger):
         log_path = f"logs/{self.model}.log"
         log_task = asyncio.create_task(self._write_chat_log(log_path, timestamp, username, request, response))
         self._log_tasks.add(log_task)
-        log_task.add_done_callback(self._log_tasks.discard)
+        log_task.add_done_callback(self._handle_log_task_result)
+
+    def _handle_log_task_result(self, task: asyncio.Task[None]) -> None:
+        """Remove a transcript task and report unexpected failures."""
+        self._log_tasks.discard(task)
+        if task.cancelled():
+            self.log_debug("Chat transcript task cancelled")
+            return
+        if task.exception() is not None:
+            self.log_exception("Chat transcript task failed")
 
     async def chat(self, username: str, content: LLMInput) -> LLMResponse:
         """Respond to a message.

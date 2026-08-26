@@ -1,6 +1,6 @@
 import asyncio
-import contextlib
 import datetime
+import time
 from pathlib import Path
 from textwrap import shorten
 
@@ -93,9 +93,24 @@ class ChatBot(CustomCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
+            self.log_debug(
+                "Chat response requested: channel=%s message=%s author=%s dm=%s attachments=%d",
+                message.channel.id,
+                message.id,
+                message.author.id,
+                message_in_dm,
+                len(message.attachments),
+            )
             async with message.channel.typing():
                 response = await self._get_assistant_response(message)
                 await send_message_to_channel(response.message, message, dont_tag_user=message_in_dm)
+            self.log_info(
+                "Chat response sent: channel=%s message=%s input_tokens=%d output_tokens=%d",
+                message.channel.id,
+                message.id,
+                response.input_tokens,
+                response.output_tokens,
+            )
 
     # Methods
 
@@ -133,6 +148,7 @@ class ChatBot(CustomCog):
             The response from the assistant.
 
         """
+        started = time.perf_counter()
         content = LLMInput(
             text=await self._get_text_in_message(message),
             images=await self._get_images_in_message(message),
@@ -155,6 +171,14 @@ class ChatBot(CustomCog):
 
         async with self._lock:
             response = await self.chats[message.channel.id].chat(message.author.display_name, content)
+
+        self.log_debug(
+            "Chat response generated: channel=%s duration=%.2fs images=%d videos=%d",
+            message.channel.id,
+            time.perf_counter() - started,
+            len(content.images),
+            len(content.videos),
+        )
 
         return response
 
@@ -235,8 +259,10 @@ class ChatBot(CustomCog):
         for url in image_urls:
             image = ImageInput(url)
             if not BotSettings.cogs.chatbot.prefer_image_urls:
-                with contextlib.suppress(Exception):
+                try:
                     await image.download_and_encode()
+                except Exception as exc:  # noqa: BLE001
+                    self.log_warning("Image download failed: message=%s error=%s", message.id, type(exc).__name__)
             images.append(image)
 
         return images
