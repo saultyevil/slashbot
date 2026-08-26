@@ -329,7 +329,7 @@ class MediaTrackers(CustomCog):
         new_movies_watched = await self.get_most_recent_movie_watched(
             [user.letterboxd_username for user in letterboxd_users]
         )
-        if not new_movies_watched:
+        if not any(new_movies_watched.values()):
             return
         self.log_info(
             "New movies found: users=%d entries=%d",
@@ -474,7 +474,7 @@ class MediaTrackers(CustomCog):
         if not backloggd_users:
             return
         new_games_logged = await self.get_most_recent_logged_game([user.backloggd_username for user in backloggd_users])
-        if not new_games_logged:
+        if not any(new_games_logged.values()):
             return
         self.log_info(
             "New games found: users=%d entries=%d",
