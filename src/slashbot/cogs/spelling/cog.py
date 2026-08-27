@@ -1,10 +1,8 @@
 import asyncio
 import re
 from collections import defaultdict
-from dataclasses import dataclass
 from pathlib import Path
 
-import aiofiles
 import disnake
 from disnake.ext import commands, tasks
 from spellchecker import SpellChecker
@@ -13,17 +11,11 @@ from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.clock import calculate_seconds_until
+from slashbot.cogs.spelling.dictionary import add_word, load_words, remove_word, save_words
+from slashbot.cogs.spelling.processing import UserSpellCheck, cleanup_message, get_incorrect_words, join_list_into_csv
 from slashbot.settings import BotSettings
 
 SPELLING_GUILDS = [int(guild_id) for guild_id in BotSettings.cogs.spelling.servers]
-
-
-@dataclass
-class UserSpellCheck:
-    """Dataclass for storing the incorrect spellings of a user."""
-
-    total: int
-    incorrect: list[str]
 
 
 class Spelling(CustomCog):
@@ -48,36 +40,205 @@ class Spelling(CustomCog):
         self.spellchecker = SpellChecker(case_sensitive=False)
         self.custom_words = self.get_custom_words()
 
-    @staticmethod
-    def _join_list_into_csv(words: list[str], max_chars: int) -> str:
-        """Join a list of words into a comma-separated list.
+    def get_custom_words(self) -> list[str]:
+        """Get a list of custom dictionary words.
 
-        Parameters
-        ----------
-        words : List[str]
-            A list of words to join together
-        max_chars : int
-            The maximum length the output string can be
+        These are checked in addition to the unknown words in spellchecker.
 
         Returns
         -------
-        str
-            The joined words with "..." at the end if max_chars is hit
+        List[str]
+            The list of words in the custom dictionary.
 
         """
-        result = ""
-        current_length = 0
+        try:
+            return load_words(Path(BotSettings.cogs.spelling.custom_dictionary))
+        except OSError:
+            self.log_exception("No dictionary found at %s", BotSettings.cogs.spelling.custom_dictionary)
+            return []
 
-        for word in words:
-            if current_length + len(word) > max_chars - 3:
-                if result:
-                    result += "..."
-                break
-            result += word + ", "
-            current_length += len(word)
+    def _get_checked_words(self, message: disnake.Message) -> list[str]:
+        """Get the words from a message that should be spell-checked.
 
-        # Remove the trailing ", " if there's anything in the result
-        return result.removesuffix(", ")
+        Parameters
+        ----------
+        message : disnake.Message
+            The message whose content should be processed.
+
+        Returns
+        -------
+        list[str]
+            The normalized words to check.
+
+        """
+        return cleanup_message(message.content).split()
+
+    def _is_tracked_message(self, message: disnake.Message) -> bool:
+        """Return whether a message belongs to a configured spelling-check user.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to check against the spelling configuration.
+
+        Returns
+        -------
+        bool
+            Whether spelling checks are enabled for the message author and guild.
+
+        """
+        if not BotSettings.cogs.spelling.enabled or not message.guild or message.author.bot:
+            return False
+        guild_settings = BotSettings.cogs.spelling.servers.get(str(message.guild.id))
+        return guild_settings is not None and message.author.id in guild_settings["users"]
+
+    def _record_spellings(self, guild_id: str, user_id: int, words: list[str]) -> None:
+        """Record checked words and their incorrect spellings for a user.
+
+        Parameters
+        ----------
+        guild_id : str
+            The ID of the guild containing the message.
+        user_id : int
+            The ID of the user who sent the message.
+        words : list[str]
+            The normalized words to record.
+
+        """
+        user_data = self.incorrect_spellings[guild_id][user_id]
+        user_data.total += len(words)
+        user_data.incorrect.extend(get_incorrect_words(words, self.spellchecker, self.custom_words))
+
+    async def _create_user_summary(self, user_id: int, user_data: UserSpellCheck) -> disnake.Embed | None:
+        """Create a spelling summary embed for a user with recorded mistakes.
+
+        Parameters
+        ----------
+        user_id : int
+            The ID of the user being summarized.
+        user_data : UserSpellCheck
+            The user's recorded word counts and incorrect spellings.
+
+        Returns
+        -------
+        disnake.Embed or None
+            The summary embed, or ``None`` when the user has no mistakes.
+
+        """
+        mistakes = sorted(set(user_data.incorrect))
+        if not mistakes:
+            return None
+
+        word_count = user_data.total
+        percent_wrong = len(user_data.incorrect) / word_count * 100.0
+        corrections = [self.spellchecker.correction(mistake) or "" for mistake in mistakes]
+        actual_mistakes = [
+            f"{correction} [{mistake}]"
+            for mistake, correction in zip(mistakes, corrections, strict=False)
+            if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake
+        ]
+
+        user = await self.bot.fetch_user(user_id)
+        embed = disnake.Embed(
+            title=f"{user.display_name.capitalize()}'s spelling summary",
+            description=join_list_into_csv(actual_mistakes, 1950),
+        )
+        embed.add_field(name="Total words", value=f"{word_count}", inline=True)
+        embed.add_field(name="Mistakes", value=f"{len(mistakes)}", inline=True)
+        embed.add_field(name="Percent wrong", value=f"{percent_wrong:.1f}%", inline=True)
+        embed.set_thumbnail(url=user.display_avatar.url)
+        return embed
+
+    async def _create_guild_summaries(self, user_spellings: dict[int, UserSpellCheck]) -> list[disnake.Embed]:
+        """Create summaries for all users with mistakes in a guild.
+
+        Parameters
+        ----------
+        user_spellings : dict[int, UserSpellCheck]
+            The recorded spelling data keyed by user ID.
+
+        Returns
+        -------
+        list[disnake.Embed]
+            The summary embeds for users with at least one mistake.
+
+        """
+        embeds = []
+        for user_id, user_data in user_spellings.items():
+            if embed := await self._create_user_summary(user_id, user_data):
+                embeds.append(embed)
+        return embeds
+
+    async def _send_summaries(self, guild_id: str, embeds: list[disnake.Embed]) -> None:
+        """Send a guild's summaries to its configured channel.
+
+        Parameters
+        ----------
+        guild_id : str
+            The ID of the guild whose configured channel should receive the summaries.
+        embeds : list[disnake.Embed]
+            The summary embeds to send.
+
+        """
+        if not embeds:
+            return
+
+        channel = await self.bot.fetch_channel(BotSettings.cogs.spelling.servers[guild_id]["post_channel"])
+        if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+            self.log_warning("Spelling summary has invalid channel %s for guild %s", channel, guild_id)
+            return
+
+        if len(embeds) < self.MAX_EMBEDS_AT_ONCE:
+            await channel.send(embeds=embeds)
+            return
+        for embed in embeds:
+            await channel.send(embed=embed)
+
+    @commands.Cog.listener("on_message")
+    async def check_for_incorrect_spelling(self, message: disnake.Message) -> None:
+        """Check a message for an incorrect spelling.
+
+        At the moment, this will only run in the Bumpaper server.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message to check.
+
+        """
+        if not self._is_tracked_message(message):
+            return
+
+        if message.guild is None:
+            return
+        guild_key = str(message.guild.id)
+        self._record_spellings(guild_key, message.author.id, self._get_checked_words(message))
+
+    @tasks.loop(seconds=5)
+    async def spelling_summary(self) -> None:
+        """Print the misspellings of the day.
+
+        The summary will be in a single message. This will run everyday at 5pm.
+        """
+        if not BotSettings.cogs.spelling.enabled:
+            return
+
+        sleep_time = calculate_seconds_until(weekday=-1, hour=17, minute=0, frequency_days=1)
+        await self.bot.wait_until_ready()
+
+        self.log_info(
+            "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",
+            sleep_time,
+            sleep_time // 60,
+            sleep_time / 3600,
+        )
+        await asyncio.sleep(sleep_time)
+
+        for guild_id, user_spellings in self.incorrect_spellings.items():
+            embeds = await self._create_guild_summaries(user_spellings)
+            await self._send_summaries(str(guild_id), embeds)
+
+        self.incorrect_spellings.clear()
 
     @slash_command_with_cooldown(
         name="add_word_to_dict",
@@ -104,13 +265,11 @@ class Spelling(CustomCog):
             The word to add to the dictionary.
 
         """
-        word_lower = word.lower()
-        if word_lower in self.custom_words:
+        word_lower = add_word(self.custom_words, word)
+        if word_lower is None:
             await inter.response.send_message(f"The word '{word}' is already in the dictionary.", ephemeral=True)
             return
-        self.custom_words.append(word_lower)
-        async with aiofiles.open(BotSettings.cogs.spelling.custom_dictionary, "w", encoding="utf-8") as file_out:
-            await file_out.write("\n".join(self.custom_words))
+        save_words(Path(BotSettings.cogs.spelling.custom_dictionary), self.custom_words)
 
         await inter.response.send_message(f"Added '{word_lower}' to dictionary.", ephemeral=True)
         self.log_info("Added spelling dictionary word: user=%s word_length=%d", inter.author.id, len(word_lower))
@@ -140,159 +299,11 @@ class Spelling(CustomCog):
             The word to add to the dictionary.
 
         """
-        word_lower = word.lower()
-        if word_lower not in self.custom_words:
+        word_lower = remove_word(self.custom_words, word)
+        if word_lower is None:
             await inter.response.send_message(f"The word '{word}' is not in the dictionary.", ephemeral=True)
             return
-        self.custom_words.remove(word_lower)
-        async with aiofiles.open(BotSettings.cogs.spelling.custom_dictionary, "w", encoding="utf-8") as file_out:
-            await file_out.write("\n".join(self.custom_words))
+        save_words(Path(BotSettings.cogs.spelling.custom_dictionary), self.custom_words)
 
         await inter.response.send_message(f"Removed '{word_lower}' from dictionary.", ephemeral=True)
         self.log_info("Removed spelling dictionary word: user=%s word_length=%d", inter.author.id, len(word_lower))
-
-    def get_custom_words(self) -> list[str]:
-        """Get a list of custom dictionary words.
-
-        These are checked in addition to the unknown words in spellchecker.
-
-        Returns
-        -------
-        List[str]
-            The list of words in the custom dictionary.
-
-        """
-        try:
-            with Path(BotSettings.cogs.spelling.custom_dictionary).open(encoding="utf-8") as file_in:
-                return list({line.strip() for line in file_in})
-        except OSError:
-            self.log_exception("No dictionary found at %s", BotSettings.cogs.spelling.custom_dictionary)
-            return []
-
-    @staticmethod
-    def cleanup_message(text: str) -> str:
-        """Remove certain parts of a string, so spell checking is cleaner.
-
-        Parameters
-        ----------
-        text : str
-            The string to clean up.
-
-        Returns
-        -------
-        str
-            The cleaned up string.
-
-        """
-        # remove mentions
-        clean_text = re.sub(r"@(\w+|\d+)", "", text.lower())
-        # remove URLs
-        clean_text = re.sub(r"https?://\S+|www\.\S+", "", clean_text)
-        # remove code wrappings, so we don't get any code
-        clean_text = re.sub(r"`[^`]+`", "", clean_text)
-        clean_text = re.sub(r"```[^`]+```", "", clean_text, flags=re.DOTALL)
-        # remove numbers and non-word characters (excluding hyphens in words)
-        clean_text = re.sub(r"[0-9]+|(?<!\w)-(?!\w)|[^\w\s-]|<[^>]+>", " ", clean_text)
-        # replace multiple spaces with a single space
-        return re.sub(r"\s+", " ", clean_text)
-
-    @commands.Cog.listener("on_message")
-    async def check_for_incorrect_spelling(self, message: disnake.Message) -> None:
-        """Check a message for an incorrect spelling.
-
-        At the moment, this will only run in the Bumpaper server.
-
-        Parameters
-        ----------
-        message : disnake.Message
-            The message to check.
-
-        """
-        if not BotSettings.cogs.spelling.enabled:
-            return
-        if not message.guild or message.author.bot:
-            return
-        guild_key = str(message.guild.id)
-        if guild_key not in BotSettings.cogs.spelling.servers:
-            return
-        if message.author.id not in BotSettings.cogs.spelling.servers[guild_key]["users"]:
-            return
-
-        cleaned_content = self.cleanup_message(message.content)
-        unknown_words = self.spellchecker.unknown(cleaned_content.split())
-        unknown_words = list(filter(lambda w: w not in self.custom_words, unknown_words))
-        self.incorrect_spellings[guild_key][message.author.id].total += len(message.content.split())
-        self.incorrect_spellings[guild_key][message.author.id].incorrect.extend(unknown_words)
-
-    @tasks.loop(seconds=5)
-    async def spelling_summary(self) -> None:
-        """Print the misspellings of the day.
-
-        The summary will be in a single message. This will run everyday at 5pm.
-        """
-        if not BotSettings.cogs.spelling.enabled:
-            return
-
-        sleep_time = calculate_seconds_until(weekday=-1, hour=17, minute=0, frequency_days=1)
-        await self.bot.wait_until_ready()
-
-        self.log_info(
-            "Waiting %d seconds/%d minutes/%.1f hours till spelling summary",
-            sleep_time,
-            sleep_time // 60,
-            sleep_time / 3600,
-        )
-        await asyncio.sleep(sleep_time)
-
-        # first loop over the guild stuff
-        for guild_id, user_spellings in self.incorrect_spellings.items():
-            # next we'll loop over each user in that guild
-            embeds = []
-            for user_id, user_data in user_spellings.items():
-                mistakes = sorted(set(user_data.incorrect))
-                if len(mistakes) == 0:
-                    continue
-                word_count = int(user_data.total)  # let's be safe, I guess.
-                percent_wrong = float(len(mistakes) / float(word_count)) * 100.0
-                corrections = [
-                    correction if (correction := self.spellchecker.correction(mistake)) is not None else ""
-                    for mistake in mistakes
-                ]
-                actual_mistakes = [
-                    f"{correction} [{mistake}]"
-                    for mistake, correction in zip(mistakes, corrections, strict=False)
-                    if re.sub(r"[0-9]+|\W+|<[^>]+>", " ", correction) != mistake  # this re.sub removes all punctuation
-                ]
-                mistake_string = self._join_list_into_csv(actual_mistakes, 1950)
-
-                user = await self.bot.fetch_user(int(user_id))
-                embed = disnake.Embed(
-                    title=f"{user.display_name.capitalize()}'s spelling summary",
-                    description=mistake_string,
-                )
-                embed.add_field(name="Total words", value=f"{word_count}", inline=True)
-                embed.add_field(name="Mistakes", value=f"{len(mistakes)}", inline=True)
-                embed.add_field(name="Percent wrong", value=f"{percent_wrong:.1f}%", inline=True)
-                embed.set_thumbnail(url=user.display_avatar.url)
-
-                embeds.append(embed)
-
-            if len(embeds) == 0:
-                continue
-
-            channel = await self.bot.fetch_channel(BotSettings.cogs.spelling.servers[str(guild_id)]["post_channel"])
-            if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
-                self.log_warning(
-                    "Spelling summary has invalid channel %s for guild %s",
-                    channel,
-                    guild_id,
-                )
-                continue
-
-            if len(embeds) < self.MAX_EMBEDS_AT_ONCE:
-                await channel.send(embeds=embeds)
-            else:
-                for embed in embeds:
-                    await channel.send(embed=embed)
-
-        self.incorrect_spellings.clear()
