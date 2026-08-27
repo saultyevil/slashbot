@@ -15,6 +15,7 @@ from slashbot.settings import BotSettings
 
 LOGGER = Logger(prepend_msg="[Weather service]")
 
+
 class GeocodeError(Exception):
     """Raised when the Google Geocoding API fails."""
 
@@ -139,11 +140,17 @@ def parse_active_alerts(
     now = datetime.datetime.now(tz=datetime.UTC)
     tz = datetime.timezone(datetime.timedelta(seconds=timezone_offset))
     active = []
+    seen: set[tuple[str, int, int]] = set()
     for alert in raw_alerts:
+        alert_key = (alert["event"], alert["start"], alert["end"])
+        if alert_key in seen:
+            continue
+
         start = datetime.datetime.fromtimestamp(alert["start"], tz=datetime.UTC).astimezone(tz)
         end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.UTC).astimezone(tz)
         if start <= now <= end:
             active.append(WeatherAlert(event=alert["event"], start=start, end=end))
+            seen.add(alert_key)
     return active
 
 
@@ -372,6 +379,8 @@ class WeatherService:
         )
 
         started = time.perf_counter()
+        redacted_url = url.replace(f"appid={BotSettings.keys.openweathermap}", "appid=[REDACTED]")
+        LOGGER.log_debug("Weather API request: %s", redacted_url)
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, timeout=5)
@@ -385,6 +394,7 @@ class WeatherService:
             fields,
             time.perf_counter() - started,
         )
+        LOGGER.log_debug("Weather API response body: %s", response.text)
 
         if response.status_code == httpx.codes.NOT_FOUND:
             msg = f"OWM could not find co-ordinates ({location.lat}, {location.lon})"
@@ -395,4 +405,3 @@ class WeatherService:
 
         payload = json.loads(response.content)
         return self._extract_fields(payload, fields)
-
