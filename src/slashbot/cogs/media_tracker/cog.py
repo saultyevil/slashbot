@@ -71,13 +71,16 @@ class MediaTrackers(CustomCog):
         results: dict[str, list[T]] = {}
         for username in usernames:
             user_feed = feedparser.parse(tracker.feed_url_template.format(username))
+
             if user_feed.bozo:
-                self.log_warning("Malformed %s feed: username=%s", tracker.service_label, username)
+                self.log_error("Malformed %s feed: username=%s", tracker.service_label, username)
+                results[username] = []
+                continue
+
             self.log_debug(
                 "Fetched %s feed: username=%s entries=%d", tracker.service_label, username, len(user_feed.entries)
             )
             if not user_feed.entries:
-                self.log_warning("%s has not logged any content in %s", username, tracker.service_label)
                 results[username] = []
                 continue
 
@@ -237,7 +240,7 @@ class MediaTrackers(CustomCog):
         adapter = BackloggdTracker(self.db, self.log_error, self.log_debug)
         return await self._poll_tracker(usernames, adapter.config())
 
-    @tasks.loop(minutes=BotSettings.cogs.media_tracker.update_interval)
+    # @tasks.loop(minutes=BotSettings.cogs.media_tracker.update_interval)
     async def check_for_new_logged_games(self) -> None:
         """Periodically check for new logged games."""
         users = await self.db.get_backloggd_usernames()
@@ -255,7 +258,7 @@ class MediaTrackers(CustomCog):
             )
         )
 
-    @check_for_new_logged_games.error
+    # @check_for_new_logged_games.error
     async def backloggd_handle_uncaught_exception(self, exception: BaseException) -> None:
         """Log uncaught exceptions raised by the Backloggd task."""
         self.log_error("Uncaught exception raised in task: %s", exception)
