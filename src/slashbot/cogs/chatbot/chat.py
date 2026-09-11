@@ -105,7 +105,7 @@ class Chat(Logger):
     @property
     def _combined_system_prompt(self) -> str:
         """The system prompt sent to the LLM, including hidden context."""
-        return "\n\n".join(prompt for prompt in (USER_CONVERSATION_CONTEXT_PROMPT, self.prompt) if prompt)
+        return "\n\n".join([prompt for prompt in (USER_CONVERSATION_CONTEXT_PROMPT, self.prompt) if prompt])
 
     @property
     def tokens(self) -> int:
@@ -266,9 +266,9 @@ class Chat(Logger):
 
         return response
 
-    def reset(self) -> None:
+    def clear_messages(self) -> None:
         """Reset a conversation back to the start."""
-        self.messages.clear_messages()
+        self.messages.clear()
         self.log_debug("Cleared all messages")
 
     def set_model(self, model: str) -> None:
@@ -292,6 +292,7 @@ class Chat(Logger):
             The new system prompt.
 
         """
+        self.clear_messages()
         self.prompt = system_prompt
         self.llm = LLM(self.model, self._combined_system_prompt)
         self.log_info("Set new system prompt: %s", shorten(system_prompt, 512))

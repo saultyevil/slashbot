@@ -329,7 +329,7 @@ class ChatBot(CustomCog):
 
         """
         chat = self.chats[inter.channel.id]
-        chat.reset()
+        chat.clear_messages()
         await inter.response.send_message(
             f"Conversation history has been reset with prompt: {shorten(chat.prompt, 1500)}",
             ephemeral=True,

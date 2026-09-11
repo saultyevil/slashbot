@@ -37,7 +37,7 @@ class Messages:
         content.tokens = num_tokens
         self.messages.append(content)
 
-    def clear_messages(self) -> None:
+    def clear(self) -> None:
         """Clear all the messages."""
         self.messages = []
 
