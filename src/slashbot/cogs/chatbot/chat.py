@@ -21,19 +21,19 @@ from slashbot.settings import BotSettings
 
 SETTINGS = BotSettings.cogs.chatbot
 DEFAULT_SYSTEM_PROMPT = load_prompt(SETTINGS.default_chat_prompt)
-USER_CONVERSATION_CONTEXT_PROMPT = """
-
-Each user message is prefixed with their username in the format "Username [Timestamp of message]: message".
+USER_CONVERSATION_CONTEXT_PROMPT = """Each user message is prefixed with their username in the format
+"Username [Timestamp of message]: message". You **SHOULD NOT** respond in this format. Only respond with your actual
+response with no metadata, such as what is sent to you.
 
 Multiple users may be talking simultaneously on different topics. When responding, identify which user sent the most
-recent message and respond only to their query. Use the conversation history to maintain context for each user's
-individual topic thread. Do not conflate separate users' conversations. Never include a username prefix in your own
-responses.
+recent message and respond to their query. Use the conversation history to maintain context for each user's
+individual topic thread. Do not conflate separate users' conversations. **Never include a username prefix in your own
+responses, including the name of the persona you are role playing as.**
 
 If a user's latest message clearly pivots to engage with another user's topic rather than continuing their own, respond
 in the context of the topic they are now discussing. Use common sense to determine whether a message is a continuation
 of the user's own thread or a deliberate shift to join another conversation/query/prompt from another user.
-""".replace("\n", "")
+""".replace("\n", " ")
 
 
 CHAT_LOG_MAX_BYTES = 10 * 1024 * 1024
