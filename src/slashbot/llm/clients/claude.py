@@ -71,6 +71,7 @@ class ClaudeClient(AbstractClient):
                 },
             }
             for image in images
+            if image.b64image
         ]
 
     def _create_text_input_object(self, text: TextInput) -> dict:

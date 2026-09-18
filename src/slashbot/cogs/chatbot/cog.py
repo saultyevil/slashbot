@@ -258,12 +258,14 @@ class ChatBot(CustomCog):
         images = []
         for url in image_urls:
             image = ImageInput(url)
+
             if not BotSettings.cogs.chatbot.prefer_image_urls:
                 try:
                     await image.download_and_encode()
-                    images.append(image)
                 except Exception as exc:  # noqa: BLE001
                     self.log_warning("Image download failed: message=%s error=%s", message.id, type(exc).__name__)
+
+            images.append(image)
 
         return images
 
