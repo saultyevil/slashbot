@@ -24,6 +24,7 @@ class FirefoxWebScraper(Logger):
 
         """
         super().__init__(prepend_msg=log_label)
+        self.log_info("Starting headless Firefox scraper")
 
         options = webdriver.FirefoxOptions()
         options.add_argument("--headless")
@@ -44,6 +45,7 @@ class FirefoxWebScraper(Logger):
         self.driver.install_addon("data/uBlock.firefox.xpi", temporary=True)
         self.wait = WebDriverWait(self.driver, timeout=20)
         atexit.register(self._cleanup_after)
+        self.log_info("Firefox scraper ready")
 
     def __del__(self) -> None:
         """Ensure the browser is closed when the object is destroyed."""
@@ -51,7 +53,12 @@ class FirefoxWebScraper(Logger):
 
     def _cleanup_after(self) -> None:
         """Ensure the browser is closed at exit."""
-        self.driver.quit()
+        try:
+            self.driver.quit()
+        except Exception:  # noqa: BLE001
+            self.log_exception("Failed to close Firefox scraper")
+            return
+        self.log_debug("Firefox scraper closed")
 
     def _handle_cookie_banner(self, timeout: int = 1) -> None:
         """Clicks the 'decline' button on a cookie banner.
@@ -71,6 +78,7 @@ class FirefoxWebScraper(Logger):
             )
             decline_button.click()
         except TimeoutException:
+            self.log_debug("No cookie banner found")
             pass
 
     def _scroll_and_click(self, by: str, value: str) -> None:
@@ -87,14 +95,16 @@ class FirefoxWebScraper(Logger):
             The locator value for the element.
 
         """
-        # First, find the element and scroll it into view
-        element = self.wait.until(
-            expected_conditions.presence_of_element_located((by, value)),
-        )
-        self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
-
-        # Now, wait for the element to be clickable and click it
-        clickable_element = self.wait.until(
-            expected_conditions.element_to_be_clickable((by, value)),
-        )
-        clickable_element.click()
+        try:
+            element = self.wait.until(
+                expected_conditions.presence_of_element_located((by, value)),
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
+            clickable_element = self.wait.until(
+                expected_conditions.element_to_be_clickable((by, value)),
+            )
+            clickable_element.click()
+        except Exception:  # noqa: BLE001
+            self.log_exception("Failed to scroll and click locator: strategy=%s", by)
+            raise
+        self.log_debug("Clicked scraper locator: strategy=%s", by)

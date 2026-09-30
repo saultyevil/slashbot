@@ -49,6 +49,11 @@ def setup_logging() -> None:
     one logger and this was the cleaner way to do it.
     """
     logger = logging.getLogger(BotSettings.logging.logger_name)
+    configured_handler_names = {handler.name for handler in logger.handlers}
+    required_handler_names = {"console", USER_LOG_HANDLER_NAME, DEBUG_FILE_LOG_HANDLER_NAME}
+    if configured_handler_names >= required_handler_names:
+        logger.debug("Logging is already configured")
+        return
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
         "%(asctime)s | %(levelname)8s | %(message)s",
@@ -89,6 +94,7 @@ def setup_logging() -> None:
     logger.addHandler(debug_handler)
 
     logger.info("Loaded config file %s", BotSettings.config_file)
+    logger.debug("Configured console, user-log, and debug-log handlers")
 
 
 class Logger:
@@ -266,8 +272,12 @@ class Logger:
         handler = self._get_file_handler()
         path = pathlib.Path(handler.baseFilename)
 
-        with path.open(encoding="utf-8") as file_in:
-            lines = file_in.readlines()
+        try:
+            with path.open(encoding="utf-8") as file_in:
+                lines = file_in.readlines()
+        except OSError:
+            self.log_exception("Failed to read log file %s", path)
+            return ""
 
         error_lines = self._extract_latest_error_block(lines)
         if not error_lines:

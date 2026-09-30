@@ -44,14 +44,19 @@ class CustomCog(Cog, Logger):
             - Pre-generated markov sentences, if enabled
             - Starts all tasks
         """
-        await self.bot.wait_until_ready()
-        self.db = self.bot.db or self.db
-        await self.db.init()
-        if self.bot.use_markov_cache and self.markov_seed_words:
-            self.log_info("Generating markov sentence cache")
-            self._populate_markov_cache()
-            self.check_markov_cache_size.start()
-        self._start_all_tasks()
+        self.log_debug("Loading cog")
+        try:
+            await self.bot.wait_until_ready()
+            self.db = self.bot.db or self.db
+            await self.db.init()
+            if self.bot.use_markov_cache and self.markov_seed_words:
+                self.log_info("Generating markov sentence cache")
+                self._populate_markov_cache()
+                self.check_markov_cache_size.start()
+            self._start_all_tasks()
+        except Exception:
+            self.log_exception("Failed while loading cog")
+            raise
         self.log_info("Loaded cog: %s", self.__cog_name__)
 
     def _start_all_tasks(self) -> None:
@@ -60,7 +65,11 @@ class CustomCog(Cog, Logger):
             task_candidate = getattr(self, attr)
             if isinstance(task_candidate, tasks.Loop):
                 self.log_debug("Starting task: %s", attr)
-                task_candidate.start()
+                try:
+                    task_candidate.start()
+                except Exception:
+                    self.log_exception("Failed to start task: %s", attr)
+                    raise
 
     async def cog_before_slash_command_invoke(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Reset the cooldown for some users and servers.
@@ -71,6 +80,13 @@ class CustomCog(Cog, Logger):
             The interaction to possibly remove the cooldown from.
 
         """
+        self.log_debug(
+            "Command invoked: command=%s user=%s guild=%s channel=%s",
+            inter.application_command.name,
+            inter.author.id,
+            inter.guild.id if inter.guild else None,
+            inter.channel.id if inter.channel else None,
+        )
         # Servers which don't have a cooldown
         if inter.guild and inter.guild.id not in BotSettings.cooldown.no_cooldown_servers:
             inter.application_command.reset_cooldown(inter)

@@ -19,5 +19,5 @@ def setup(bot: CustomInteractionBot) -> None:
         return
     try:
         bot.add_cog(ChatBot(bot))
-    except:  # noqa: E722
-        bot.log_error("Failed to initialise ArtificialIntelligence cog, probably due to a missing API key")
+    except Exception:  # noqa: BLE001
+        bot.log_exception("Failed to initialise %s cog", ChatBot.__cog_name__)

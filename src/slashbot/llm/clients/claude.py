@@ -1,103 +1,63 @@
-import anthropic
-from anthropic import Anthropic, AsyncAnthropic
+import time
+from typing import Any
 
-from slashbot.llm.clients.abstract_client import TextGenerationAbstractClient
+import anthropic
+from anthropic import AsyncAnthropic, Omit
+
 from slashbot.llm.models import (
-    GenerationFailureError,
-    TextGenerationInput,
-    TextGenerationResponse,
-    VisionImage,
-    VisionVideo,
+    ImageInput,
+    InputRole,
+    LLMGenerationFailureError,
+    LLMInput,
+    LLMResponse,
+    TextInput,
+    VideoInput,
 )
 from slashbot.settings import BotSettings
 
+from .abstract_client import AbstractClient
 
-class ClaudeClient(TextGenerationAbstractClient):
-    """Asynchronous Claude client."""
 
-    SUPPORTED_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
+class ClaudeClient(AbstractClient):
+    """Claude client for text generation."""
+
+    ## class variables
+
     VISION_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
     SEARCH_MODELS = ()
     AUDIO_MODELS = ()
     VIDEO_MODELS = ()
 
-    # --------------------------------------------------------------------------
+    SUPPORTED_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
 
-    def __len__(self) -> int:
-        """Get the length of the conversation, excluding the system prompt.
+    ## magic methods
 
-        Returns
-        -------
-        int
-            The length of the conversation.
+    def __init__(self, **kwargs: dict[str, Any]) -> None:
+        """Initialise a Claude client with the given arguments."""
+        super().__init__(**kwargs)
 
-        """
-        return len(self._model_context)
+        self.provider = "anthropic"
+        self._client = AsyncAnthropic(api_key=BotSettings.keys.claude)
 
-    # --------------------------------------------------------------------------
+    ## private member functions
 
-    @property
-    def _model_context_message_content(self) -> list[dict]:
-        """Return a reference to the contents of the context.
-
-        This reference exists because the request objects are different for
-        each LLM.
-
-        Returns
-        -------
-        list[dict]
-            The contents of the context.
-
-        """
-        return self._model_context
-
-    @property
-    def client_type(self) -> str:
-        """Get the client type.
-
-        Returns
-        -------
-        str
-            A string representation of the client type.
-
-        """
-        return "claude"
-
-    # --------------------------------------------------------------------------
-
-    def _check_context_contains_images(self, contents: dict) -> bool:
-        """Check if an image is present in the client's content.
-
-        Parameters
-        ----------
-        contents : dict
-            An individual message object which has been passed to LLM, e.g.
-            {"role": "user", "content": [{"type": "text", "text": "hello"}]}
-
-        Returns
-        -------
-        bool
-            If an image, returns True. Otherwise, returns False.
-
-        """
-        content_blocks = contents["content"]
-        return any(block["type"] == "image" for block in content_blocks)
-
-    def _create_image_input_object(self, images: VisionImage | list[VisionImage]) -> list[dict]:
+    def _create_image_input_object(self, model: str, images: ImageInput | list[ImageInput]) -> dict | list[dict]:
         """Create a payload for an image request.
 
         Parameters
         ----------
+        model : str
+            The name of the model.
         images : VisionImage | list[VisionImage]
             The image(s) to format into a payload.
 
         Returns
         -------
         dict | list[dict]
-            The correctly formatted payload.
+            The correctly formatted payload for image inputs.
 
         """
-        if self.model_name not in self.VISION_MODELS:
+        if model not in self.VISION_MODELS:
             return []
         if not isinstance(images, list):
             images = [images]
@@ -111,9 +71,10 @@ class ClaudeClient(TextGenerationAbstractClient):
                 },
             }
             for image in images
+            if image.b64image
         ]
 
-    def _create_text_input_object(self, text: str | list[str]) -> dict | list[dict]:
+    def _create_text_input_object(self, text: TextInput) -> dict:
         """Create a payload for a text request.
 
         Parameters
@@ -123,51 +84,21 @@ class ClaudeClient(TextGenerationAbstractClient):
 
         Returns
         -------
-        dict | list[dict]
-            The correctly formatted payload.
-
-        """
-        return {"type": "text", "text": text}
-
-    def _create_video_input_object(self, videos: VisionVideo | list[VisionVideo]) -> list[dict]:  # noqa: ARG002
-        """Create a payload for a video request.
-
-        Parameters
-        ----------
-        videos : VisionVideo | list[VisionVideo]
-            The videos(s) to format into a payload.
-
-        Returns
-        -------
-        dict | list[dict]
-            The correctly formatted payload.
-
-        """
-        return []
-
-    def _create_assistant_response_object(self, message: str) -> dict:
-        """Create a payload for the response from the LLM.
-
-        Parameters
-        ----------
-        message : str
-            The response message from the LLM.
-
-        Returns
-        -------
         dict
-            The correctly formatted payload.
+            The correctly formatted payload for text input.
 
         """
-        return {"role": "assistant", "content": [self._create_text_input_object(message)]}
+        return {"type": "text", "text": text.text}
 
-    def _create_user_input_object(
-        self, text_content: dict | list[dict], image_content: dict | list[dict], video_content: dict | list[dict]
-    ) -> dict | list[dict]:
+    def _construct_final_payload(
+        self, role: InputRole, text_content: dict, image_content: dict | list[dict], video_content: dict | list[dict]
+    ) -> dict:
         """Create a payload for a payload, including text, images and videos.
 
         Parameters
         ----------
+        role : InputRole
+            The role of the input, e.g. user or assistant
         text_content : str | list[str]
             The text messages(s) to add to the payload.
         image_content : VisionImage | list[VisionImage]
@@ -177,19 +108,114 @@ class ClaudeClient(TextGenerationAbstractClient):
 
         Returns
         -------
-        dict | list[dict]
-            The correctly formatted payload.
+        dict
+            The correctly formatted payload for all inputs.
 
         """
-        return {"role": "user", "content": [*text_content, *image_content, *video_content]}
+        return {"role": role.value, "content": [text_content, *image_content, *video_content]}
 
-    def count_tokens(self, messages: dict | list[dict[str, str]] | str) -> int:
-        """Get the token count for a given message for the current LLM model.
+    def _create_video_input_object(self, model: str, videos: VideoInput | list[VideoInput]) -> dict | list[dict]:
+        """Create a payload for a video request.
 
         Parameters
         ----------
-        messages : dict | list[str] | str
-            The message for which the token count needs to be computed.
+        model : str
+            The name of the model.
+        videos : VisionVideo | list[VisionVideo]
+            The videos(s) to format into a payload.
+
+        Returns
+        -------
+        dict | list[dict]
+            The correctly formatted payload for video inputs.
+
+        """
+        if model not in self.VIDEO_MODELS:
+            return []
+        return []
+
+    async def _send_request(
+        self,
+        model: str,
+        content: dict | list[dict],
+        system_prompt: str | None = None,
+    ) -> LLMResponse:
+        """Send a request to the uderlying API client.
+
+        Parameters
+        ----------
+        model : str
+            The model to use.
+        content : dict | list[dict]
+            The payload to send to the API client.
+        system_prompt : str | None
+            The optional system prompt to use.
+
+        Returns
+        -------
+        LLMResponse
+            The response returned from the API client.
+
+        """
+        request_started = time.perf_counter()
+        content_count = len(content) if isinstance(content, list) else 1
+        self.log_debug("Sending Claude request: model=%s messages=%d", model, content_count)
+
+        try:
+            response = await self._client.messages.create(
+                model=model,
+                messages=content,  # type: ignore
+                thinking={"type": "disabled"},
+                max_tokens=BotSettings.cogs.chatbot.max_output_tokens,
+                system=system_prompt if system_prompt else Omit(),
+            )
+        except Exception as exc:
+            error_message = f"Claude API failed to generate response due to exception: {exc}"
+            self.log_exception("%s", error_message)
+            raise LLMGenerationFailureError(error_message) from exc
+
+        if not response.content:
+            error_message = "A valid response was not generated by the Anthropic client."
+            self.log_warning("Claude returned no content for model %s", model)
+            raise LLMGenerationFailureError(error_message)
+
+        text_response = next(
+            (block for block in response.content if isinstance(block, anthropic.types.TextBlock)), None
+        )
+        if not text_response:
+            error_message = "A text response was not generated"
+            self.log_warning("Claude returned no text content for model %s", model)
+            raise LLMGenerationFailureError(error_message)
+
+        self.log_info(
+            "Claude request completed: model=%s duration=%.2fs input_tokens=%d output_tokens=%d",
+            model,
+            time.perf_counter() - request_started,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
+        )
+
+        return LLMResponse(
+            message=text_response.text,
+            tokens_used=response.usage.input_tokens + response.usage.output_tokens,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            _original_response=response,
+        )
+
+    ## public interface
+
+    async def count_tokens(self, model: str, content: LLMInput | list[LLMInput]) -> int:
+        """Get the token count for a given message for the current LLM model.
+
+        The synchronous client must be used for token counting.
+
+        Parameters
+        ----------
+        model : str
+            The name of the model to generate a response with.
+        content : LLMInput | list[LLMInput]
+            The (correctly) formatted content to send to the API.
 
         Returns
         -------
@@ -197,123 +223,47 @@ class ClaudeClient(TextGenerationAbstractClient):
             The count of tokens in the given message for the current model.
 
         """
-        if not self._client:
-            msg = "No API client is available to query the tokens endpoint"
-            raise ValueError(msg)
-        if isinstance(messages, str):
-            messages = [{"role": "user", "content": messages}]
-        if isinstance(messages, dict):
-            messages = [messages]
+        try:
+            response = await self._client.messages.count_tokens(
+                model=model,
+                messages=self.transform_input_to_payload(model, content),  # type: ignore
+            )
+        except Exception as exc:
+            error_message = f"Claude API failed to count tokens due to exception: {exc}"
+            self.log_exception("%s", error_message)
+            raise LLMGenerationFailureError(error_message) from exc
 
-        client = Anthropic(api_key=self._client.api_key, base_url=self._client.base_url)
-        response = client.messages.count_tokens(model=self.model_name, messages=messages)  # type: ignore
-        self.log_debug("Count token response %s for messages %s", response, messages)
-
+        self.log_debug("Counted Claude input tokens: model=%s tokens=%d", model, response.input_tokens)
         return response.input_tokens
 
-    def init_client(self, model_name: str) -> None:
-        """Initialise the client to use a model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model to initialise the client for.
-
-        """
-        self.model_name = model_name
-        self._client = AsyncAnthropic(api_key=BotSettings.keys.claude)
-
-    async def generate_response(self, content: list[dict] | dict) -> TextGenerationResponse:
+    async def generate_response(
+        self,
+        model: str,
+        content: LLMInput | list[LLMInput],
+        system_prompt: str | None = None,
+    ) -> LLMResponse:
         """Send a request to the API client.
 
         Parameters
         ----------
-        content : list[dict]
+        model : str
+            The name of the model to generate a response with.
+        content : LLMInput | list[LLMInput]
             The (correctly) formatted content to send to the API.
+        system_prompt : str
+            The system prompt to use to generate the response with.
+        inject_prompt : str | None
+            Additional prompt to inject at the start of the system prompt. Usefull
+            for custom chats and etc.
+
+        Returns
+        -------
+        LLMResponse
+            The response from the LLM.
 
         """
-        if not self._client:
-            self.init_client(self.model_name)
-
-        await self._log_request("%s", content)
-        try:
-            response = await self._client.messages.create(
-                model=self.model_name,
-                messages=content,  # type: ignore
-                max_tokens=self._max_completion_tokens,
-                system=self.system_prompt,
-            )
-        except Exception as exc:
-            msg = f"Claude API failed to generate response due to exception: {exc}"
-            self.log_error("%s", msg)
-            raise GenerationFailureError(msg) from exc
-        await self._log_response("%s", response)
-
-        if not response.content:
-            msg = "A valid response was not generated by the Anthropic client."
-            raise ValueError(msg)
-
-        text_response = next(
-            (block for block in response.content if isinstance(block, anthropic.types.TextBlock)), None
-        )
-        if not text_response:
-            msg = "A text response was not generated"
-            raise ValueError(msg)
-
-        return TextGenerationResponse(
-            text_response.text,
-            response.usage.input_tokens + response.usage.output_tokens if response.usage else self.token_size,
+        text_generation_response = await self._send_request(
+            model, self.transform_input_to_payload(model, content), system_prompt
         )
 
-    async def generate_response_with_context(
-        self, messages: TextGenerationInput | list[TextGenerationInput]
-    ) -> TextGenerationResponse:
-        """Generate a text response, gievn a message and image inputs.
-
-        Text generation includes the entire context history, and not just the
-        most recent inputs.
-
-        Parameters
-        ----------
-        messages : ContextMessage | list[ContextMessage]
-            Input message(s), from the user, including attached images and
-            videos.
-
-        """
-        if not self._client:
-            self.init_client(self.model_name)
-
-        self._shrink_model_context_to_window_size()
-
-        user_contents = self._create_content_payload(messages)
-        if isinstance(user_contents, list):
-            for content in user_contents:
-                self._add_to_model_context(content)
-        else:
-            self._add_to_model_context(user_contents)
-
-        response = await self.generate_response(self._model_context)
-        if not response.message:
-            msg = "A valid response was not generated by the Anthropic client."
-            raise ValueError(msg)
-
-        self._model_context.append(self._create_assistant_response_object(response.message))
-        self.token_size = response.tokens_used
-
-        return response
-
-    def set_system_prompt(self, prompt: str, *, prompt_name: str = "unset name") -> None:
-        """Set the system prompt.
-
-        Parameters
-        ----------
-        prompt : str
-            The system prompt to set.
-        prompt_name : str
-            The name of the system prompt.
-
-        """
-        self.system_prompt = prompt
-        self.system_prompt_name = prompt_name
-        self._model_context = []
-        self.token_size = self.count_tokens(prompt)
+        return text_generation_response

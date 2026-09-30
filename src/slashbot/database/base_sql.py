@@ -46,14 +46,22 @@ class BaseDatabaseSQL(Logger):
         self.engine = create_async_engine(self.database_url, echo=False)
         self.session_factory = async_sessionmaker(self.engine, expire_on_commit=False)
         self.initialised = False
+        self.log_debug("Created database engine for %s", Path(database_location).absolute())
 
     async def init(self) -> None:
         """Initialize the database and create all tables."""
         if self.initialised:
+            self.log_debug("Database is already initialized")
             return
-        async with self.engine.begin() as conn:
-            await conn.run_sync(self.declarative_base.metadata.create_all)
+        self.log_info("Initializing database")
+        try:
+            async with self.engine.begin() as conn:
+                await conn.run_sync(self.declarative_base.metadata.create_all)
+        except Exception:
+            self.log_exception("Failed to initialize database")
+            raise
         self.initialised = True
+        self.log_info("Database initialized")
 
     @asynccontextmanager
     async def _get_async_session(self) -> AsyncGenerator[AsyncSession, None]:
@@ -70,6 +78,7 @@ class BaseDatabaseSQL(Logger):
                 yield session
             except Exception:
                 await session.rollback()
+                self.log_exception("Database session rolled back after an error")
                 raise
             finally:
                 await session.close()
@@ -115,7 +124,12 @@ class BaseDatabaseSQL(Logger):
                     exc,
                 )
                 raise
+            except Exception:
+                await session.rollback()
+                self.log_exception("Failed to upsert %s", type(model).__name__)
+                raise
             else:
+                self.log_debug("Upserted %s row", type(model).__name__)
                 return model
 
     async def delete_row(self, model: UserSQL | ReminderSQL | WatchedMovieSQL) -> None:
@@ -135,11 +149,16 @@ class BaseDatabaseSQL(Logger):
         model_cls = type(model)
         pk_cols = [col.name for col in model_cls.__table__.primary_key.columns]
         filters = [getattr(model_cls, col) == getattr(model, col) for col in pk_cols]
-        async with self._get_async_session() as session:
-            await session.execute(
-                delete(model_cls).where(*filters),
-            )
-            await session.commit()
+        try:
+            async with self._get_async_session() as session:
+                await session.execute(
+                    delete(model_cls).where(*filters),
+                )
+                await session.commit()
+        except Exception:
+            self.log_exception("Failed to delete %s", model_cls.__name__)
+            raise
+        self.log_debug("Deleted %s row", model_cls.__name__)
 
     async def query(
         self,

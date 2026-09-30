@@ -4,12 +4,17 @@ from textwrap import dedent
 import yaml
 from pydantic import BaseModel, model_validator
 
+from slashbot.logger import Logger
+
+LOGGER = Logger(prepend_msg="[Prompts]")
+
 
 class Prompt(BaseModel):
     """Dataclass for prompt input validation using Pydantic."""
 
     name: str
     prompt: str
+    path: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -29,7 +34,7 @@ class Prompt(BaseModel):
         return values
 
 
-def read_in_prompt(filepath: str | pathlib.Path) -> Prompt:
+def load_prompt(filepath: str | pathlib.Path) -> Prompt:
     """Read in a prompt from a YAML file.
 
     Parameters
@@ -46,31 +51,16 @@ def read_in_prompt(filepath: str | pathlib.Path) -> Prompt:
     path = pathlib.Path(filepath)
     if not path.is_file():
         msg = f"Prompt file {filepath} does not exist."
+        LOGGER.log_error("Prompt file missing: %s", filepath)
         raise OSError(msg)
 
-    with path.open(encoding="utf-8") as prompt_in:
-        prompt_data = yaml.safe_load(prompt_in)
+    try:
+        with path.open(encoding="utf-8") as prompt_in:
+            prompt_data = yaml.safe_load(prompt_in)
+        prompt = Prompt(**prompt_data, path=str(filepath))
+    except Exception:
+        LOGGER.log_exception("Failed to load prompt file %s", filepath)
+        raise
 
-    prompt = Prompt(**prompt_data)
-    prompt.prompt = " ".join(dedent(prompt.prompt).splitlines())
-
+    LOGGER.log_debug("Loaded prompt: %s", filepath)
     return prompt
-
-
-def create_prompt_dict() -> dict:
-    """Create a dict of prompt_name: prompt.
-
-    Returns
-    -------
-    dict
-        A dictionary of prompt names and their corresponding prompt strings.
-
-    """
-    return {
-        prompt.name: prompt.prompt
-        for prompt in [
-            read_in_prompt(file)
-            for file in pathlib.Path("data/prompts").glob("*.yaml")
-            if not file.name.startswith("_")  # prompts which start with _ are hidden prompts
-        ]
-    }

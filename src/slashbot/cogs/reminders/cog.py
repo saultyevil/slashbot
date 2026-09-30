@@ -128,12 +128,15 @@ class Reminders(CustomCog):
         if len(reminders) == 0:
             return
 
+        sent = 0
+        skipped = 0
         for reminder in reminders:
             # Be careful, reminders are stored as UTC+0, so we don't need to
             # convert the times back to UTC!!!! But we still need to make it
             # timezone aware.
             reminder_date = reminder.date.replace(tzinfo=datetime.UTC)
             if reminder_date >= dt_now and not reminder.notified:
+                skipped += 1
                 continue
 
             try:
@@ -164,6 +167,14 @@ class Reminders(CustomCog):
 
             await channel.send(f"Here's your reminder, {message}", embed=embed)
             await self.db.mark_reminder_as_notified(reminder.id)
+            sent += 1
+
+        self.log_debug("Reminder cycle complete: checked=%d sent=%d skipped=%d", len(reminders), sent, skipped)
+
+    @check_reminders.error
+    async def check_reminders_error(self, exception: BaseException) -> None:
+        """Log an unexpected reminder worker failure."""
+        self.log_error("Reminder worker stopped unexpectedly: %s", exception)
 
     # Commands -----------------------------------------------------------------
 

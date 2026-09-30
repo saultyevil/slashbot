@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import time
 from dataclasses import dataclass
 
 import httpx
@@ -9,7 +10,10 @@ from geopy import GoogleV3
 from geopy.exc import GeocoderQueryError
 from geopy.location import Location
 
+from slashbot.logger import Logger
 from slashbot.settings import BotSettings
+
+LOGGER = Logger(prepend_msg="[Weather service]")
 
 
 class GeocodeError(Exception):
@@ -136,11 +140,17 @@ def parse_active_alerts(
     now = datetime.datetime.now(tz=datetime.UTC)
     tz = datetime.timezone(datetime.timedelta(seconds=timezone_offset))
     active = []
+    seen: set[tuple[str, int, int]] = set()
     for alert in raw_alerts:
+        alert_key = (alert["event"], alert["start"], alert["end"])
+        if alert_key in seen:
+            continue
+
         start = datetime.datetime.fromtimestamp(alert["start"], tz=datetime.UTC).astimezone(tz)
         end = datetime.datetime.fromtimestamp(alert["end"], tz=datetime.UTC).astimezone(tz)
         if start <= now <= end:
             active.append(WeatherAlert(event=alert["event"], start=start, end=end))
+            seen.add(alert_key)
     return active
 
 
@@ -300,35 +310,32 @@ class WeatherService:
         return {key: value for key, value in payload.items() if key in fields or key == "timezone_offset"}
 
     def resolve_location(self, query: str) -> ResolvedLocation:
-        """Geocode *query* and return a `ResolvedLocation`.
-
-        Raises
-        ------
-        GeocodeError
-            If the Geocoding API raises an exception.
-        LocationNotFoundError
-            If the query returns no results.
-
-        """
+        """Geocode *query* and return a `ResolvedLocation`."""
+        started = time.perf_counter()
+        LOGGER.log_debug("Resolving weather location")
         try:
             result = self._geolocator.geocode(query, region="GB")
         except GeocoderQueryError as exc:
             msg = f"Geocoding API error for {query!r}"
+            LOGGER.log_exception("Geocoding failed after %.2fs", time.perf_counter() - started)
             raise GeocodeError(msg) from exc
 
         if result is None or not isinstance(result, Location):
             msg = f"{query!r} could not be geocoded"
+            LOGGER.log_warning("Location could not be resolved after %.2fs", time.perf_counter() - started)
             raise LocationNotFoundError(msg)
 
         address = parse_address_components(result.raw["address_components"])
         if address.startswith(",") or address.endswith(","):
             address = str(result)
 
-        return ResolvedLocation(
+        resolved = ResolvedLocation(
             display=f"{address}\n({result.latitude}, {result.longitude})",
             lat=result.latitude,
             lon=result.longitude,
         )
+        LOGGER.log_debug("Resolved weather location in %.2fs", time.perf_counter() - started)
+        return resolved
 
     async def fetch_weather(
         self,
@@ -371,8 +378,23 @@ class WeatherService:
             key=BotSettings.keys.openweathermap,
         )
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=5)
+        started = time.perf_counter()
+        redacted_url = url.replace(f"appid={BotSettings.keys.openweathermap}", "appid=[REDACTED]")
+        LOGGER.log_debug("Weather API request: %s", redacted_url)
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, timeout=5)
+        except Exception:
+            LOGGER.log_exception("Weather API request failed after %.2fs", time.perf_counter() - started)
+            raise
+        LOGGER.log_debug(
+            "Weather API response: status=%d units=%s fields=%s duration=%.2fs",
+            response.status_code,
+            api_units,
+            fields,
+            time.perf_counter() - started,
+        )
+        LOGGER.log_debug("Weather API response body: %s", response.text)
 
         if response.status_code == httpx.codes.NOT_FOUND:
             msg = f"OWM could not find co-ordinates ({location.lat}, {location.lon})"
@@ -383,4 +405,3 @@ class WeatherService:
 
         payload = json.loads(response.content)
         return self._extract_fields(payload, fields)
-

@@ -40,8 +40,10 @@ class ChatBotCogSettings(BaseCogSettings):
     ----------
     enabled : bool
         Whether the chatbot cog is enabled.
-    token_window_size : int
-        Number of tokens to keep in context window.
+    chat_token_window_size : int
+        Number of tokens to keep in context window for chatting.
+    channel_token_window_size : int
+        Number of tokens to keep in context window for channel summarisation.
     max_images_in_window : int
         Maximum number of images allowed in context window.
     max_output_tokens : int
@@ -52,16 +54,10 @@ class ChatBotCogSettings(BaseCogSettings):
         Name of the default chat model to use.
     default_chat_prompt : str
         Default prompt for chat.
-    random_response_chance : float
-        Chance to send a random response.
-    random_response_use_n_messages : int
-        Number of messages to consider for random response.
     response_rate_limit : int
         Maximum responses to a user allowed per interval.
     rate_limit_interval : int
         Time interval for rate limiting (seconds).
-    enable_profiling : bool
-        Whether to enable profiling for chat response time.
     prefer_image_urls : bool
         Prefer using image URLs in request to chat API.
     enable_web_search : bool
@@ -69,17 +65,15 @@ class ChatBotCogSettings(BaseCogSettings):
 
     """
 
-    token_window_size: int
+    chat_token_window_size: int
+    channel_token_window_size: int
     max_images_in_window: int
     max_output_tokens: int
     model_temperature: float
     default_model: str
     default_chat_prompt: str
-    random_response_chance: float
-    random_response_use_n_messages: int
     response_rate_limit: int
     rate_limit_interval: int
-    enable_profiling: bool
     prefer_image_urls: bool
     enable_web_search: bool
 
@@ -389,12 +383,15 @@ class LoggingSettings(BaseModel):
         Path to the debug log file.
     logger_name : str
         Name of the logger.
+    enale_profiling : bool
+        Whether to enable profiling or not.
 
     """
 
     log_location: str = "logs/slashbot.log"
     debug_log_location: str = "logs/slashbot_debug.log"
     logger_name: str = "slashbot"
+    enable_profiling: bool
 
 
 class MarkovSettings(BaseModel):

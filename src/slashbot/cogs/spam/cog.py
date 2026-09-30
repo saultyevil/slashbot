@@ -29,6 +29,7 @@ class Spam(CustomCog):
             bad_words = await file_in.readlines()
         bad_word = random.choice(bad_words).strip()
         await inter.response.send_message(f"{bad_word.capitalize()}.")
+        self.log_debug("Sent bad-word response: user=%s", inter.author.id)
 
     @slash_command_with_cooldown(name="evil_wii", description="evil wii")
     async def evil_wii(self, inter: disnake.ApplicationCommandInteraction) -> None:
@@ -64,6 +65,7 @@ class Spam(CustomCog):
         await inter.response.send_message(
             f"{' '.join([word.strip() for word in random.sample(oracle_words, random.randint(5, 25))])}",
         )
+        self.log_debug("Sent oracle response: user=%s", inter.author.id)
 
     @slash_command_with_cooldown(name="image", description="search for an image")
     async def image_search(
@@ -88,6 +90,7 @@ class Spam(CustomCog):
                 DDGS(timeout=5).images(query, max_results=15, backend="duckduckgo", safesearch="off", region="uk-en")
             )
         except DDGSException as exc:
+            self.log_warning("Image search failed for user %s: %s", inter.author.id, exc)
             await deferred_error_response(inter, f"Exception rasied by image querier: {exc}")
             return
 
@@ -97,3 +100,4 @@ class Spam(CustomCog):
 
         image = random.choice(image_results)
         await inter.followup.send(f"{image['image']}")
+        self.log_info("Sent image search result: user=%s", inter.author.id)

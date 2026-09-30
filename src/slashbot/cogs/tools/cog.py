@@ -1,4 +1,5 @@
 import random
+import time
 
 import aiofiles
 import disnake
@@ -69,12 +70,16 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
 
         """
         await inter.response.defer()
+        started = time.perf_counter()
         embed = disnake.Embed(title="Stephen Wolfram says...", color=disnake.Color.default())
         embed.set_thumbnail(
             url=r"https://upload.wikimedia.org/wikipedia/commons/4/44/Stephen_Wolfram_PR_%28cropped%29.jpg",
         )
 
         results = self.worlfram_alpha_client.query(question)
+        self.log_debug(
+            "Wolfram query completed: user=%s duration=%.2fs", inter.author.id, time.perf_counter() - started
+        )
 
         if not results["@success"]:
             async with aiofiles.open(BotSettings.files.bad_words, encoding="utf-8") as file_in:
@@ -85,6 +90,7 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
                 inline=False,
             )
             await inter.edit_original_message(embed=embed)
+            self.log_info("Wolfram query returned no answer: user=%s", inter.author.id)
             return
 
         # only go through the first N results to add to embed
@@ -107,3 +113,4 @@ class Tools(CustomCog):  # pylint: disable=too-many-instance-attributes
                 embed.add_field(name=f"Result {n_sol}", value=this_result, inline=False)
 
         await inter.edit_original_message(embed=embed)
+        self.log_info("Wolfram response sent: user=%s solutions=%d", inter.author.id, num_solutions - 1)

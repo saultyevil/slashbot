@@ -1,21 +1,26 @@
-import logging
-import random
+import asyncio
+import datetime
+import time
+from pathlib import Path
 from textwrap import shorten
 
 import disnake
 from disnake.ext import commands
-from pyinstrument import Profiler
 
-import slashbot.watchers
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
-from slashbot.cogs.chatbot.chat_registry import ChatRegistry
-from slashbot.cogs.chatbot.response_generator import ResponseGenerator
-from slashbot.errors import deferred_error_response
-from slashbot.llm import SUPPORTED_MODELS, GenerationFailureError
+from slashbot.llm import ImageInput, LLMInput, TextInput, VideoInput, load_prompt
+from slashbot.llm.models import LLMResponse
 from slashbot.messages import is_reply_to_slash_command_response, send_message_to_channel
+from slashbot.profiler import profile
 from slashbot.settings import BotSettings
+
+from .channel import Channel, Channels
+from .chat import Chats
+
+_PROMPTS_LIST = [load_prompt(path) for path in Path("data/prompts").glob("*.yaml") if not str(path).startswith("_")]
+AVAILABLE_PROMPTS = {prompt.name.capitalize(): prompt.path for prompt in _PROMPTS_LIST}
 
 
 class ChatBot(CustomCog):
@@ -31,47 +36,17 @@ class ChatBot(CustomCog):
 
         """
         super().__init__(bot)
-        self._chat_registry = ChatRegistry()
-        self._responder = ResponseGenerator(self._chat_registry, bot)
-        self._profiler = Profiler(async_mode="enabled")
 
-        file_handler = logging.FileHandler("logs/profile.log")
-        file_handler.setFormatter(logging.Formatter("%(asctime)s | %(message)s"))
-        self._profiler_logger = logging.getLogger("ProfilerLogger")
-        self._profiler_logger.handlers.clear()
-        self._profiler_logger.addHandler(file_handler)
-        self._profiler_logger.setLevel(logging.INFO)
+        default_prompt = load_prompt(BotSettings.cogs.chatbot.default_chat_prompt)
+        self.chats = Chats(BotSettings.cogs.chatbot.default_model, default_prompt.prompt)
+        self.channels = Channels(BotSettings.cogs.chatbot.default_model)
 
-    def _start_profiler(self) -> None:
-        """Start the pyinstrument profiler if profiling is enabled.
-
-        Resets any previously running session before starting a new one.
-        Has no effect when BotSettings.cogs.chatbot.enable_profiling is
-        False.
-        """
-        if not BotSettings.cogs.chatbot.enable_profiling:
-            return
-        if self._profiler.is_running:
-            self._profiler.stop()
-            self._profiler.reset()
-        self._profiler.start()
-
-    def _stop_profiler(self) -> None:
-        """Stop the profiler and write its output to the profile log."""
-        if not BotSettings.cogs.chatbot.enable_profiling:
-            return
-        if not self._profiler.is_running:
-            self.log_error("Attempted to stop the profiler when it's not running -- resetting profiler")
-            self._profiler.reset()
-            return
-        self._profiler.stop()
-        self._profiler_logger.info("\n%s", self._profiler.output_text())
-        self._profiler.reset()
+        self._lock = asyncio.Lock()
 
     # Listeners ----------------------------------------------------------------
 
     @commands.Cog.listener("on_message")
-    async def _append_message_to_history(self, message: disnake.Message) -> None:
+    async def track_channel_message(self, message: disnake.Message) -> None:
         """Record an incoming message in the channel's conversation history.
 
         Application command messages and messages with no text content are
@@ -87,10 +62,14 @@ class ChatBot(CustomCog):
             return
         if not message.content:
             return
-        self._chat_registry.append_to_history(message, self.bot.user.name)
+
+        author = "Me" if message.author.id == self.bot.user.id else message.author.display_name
+        now_ts = datetime.datetime.now(tz=datetime.UTC).strftime("%a %d %b %Y %H:%M:%S %Z")
+        content = f"{author} {now_ts}: {message.clean_content}"
+        await self.channels[message.channel.id].append_message(LLMInput(TextInput(content)))
 
     @commands.Cog.listener("on_message")
-    async def _listen_for_prompts(self, message: disnake.Message) -> None:
+    async def send_message_to_chat_assistant(self, message: disnake.Message) -> None:
         """Decide whether and how to respond to an incoming message.
 
         Ignores messages from bots. Ignores replies to slash command responses
@@ -114,22 +93,212 @@ class ChatBot(CustomCog):
         message_in_dm = isinstance(message.channel, disnake.channel.DMChannel)
 
         if bot_mentioned or message_in_dm:
-            self._start_profiler()
-            await self._responder.respond_to_prompted(message, message_in_dm=message_in_dm)
-            self._stop_profiler()
-            return
+            self.log_debug(
+                "Chat response requested: channel=%s message=%s author=%s dm=%s attachments=%d",
+                message.channel.id,
+                message.id,
+                message.author.id,
+                message_in_dm,
+                len(message.attachments),
+            )
+            async with message.channel.typing():
+                response = await self._get_assistant_response(message)
+                await send_message_to_channel(response.message, message, dont_tag_user=message_in_dm)
+            self.log_info(
+                "Chat response sent: channel=%s message=%s input_tokens=%d output_tokens=%d",
+                message.channel.id,
+                message.id,
+                response.input_tokens,
+                response.output_tokens,
+            )
 
-        if random.random() < BotSettings.cogs.chatbot.random_response_chance:
-            await self._responder.respond_to_unprompted(message)
+    # Methods
+
+    @profile
+    async def _get_assitant_channel_summary(self, channel: Channel) -> LLMResponse:
+        """Generate a channel summary.
+
+        Parameters
+        ----------
+        channel : Channel
+            The channel object for the channel to summarise.
+
+        Returns
+        -------
+        LLMResponse
+            The generated response containing the summary.
+
+        """
+        response = await channel.summarise()
+
+        return response
+
+    @profile
+    async def _get_assistant_response(self, message: disnake.Message) -> LLMResponse:
+        """Get a response from the Chat assistant.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message for the chat assistant to respond to.
+
+        Returns
+        -------
+        LLMResponse
+            The response from the assistant.
+
+        """
+        started = time.perf_counter()
+        content = LLMInput(
+            text=await self._get_text_in_message(message),
+            images=await self._get_images_in_message(message),
+            videos=await self._get_videos_in_message(message),
+        )
+
+        if message.reference:
+            referenced_message = await self._get_referenced_message(message)
+            if referenced_message != message:
+                text_input_for_reference = await self._get_text_in_message(referenced_message)
+                text_input_for_reference.text = f'Previous message to respond to: "{text_input_for_reference.text}"\n'
+                content = (
+                    LLMInput(
+                        text=text_input_for_reference,
+                        images=await self._get_images_in_message(referenced_message),
+                        videos=await self._get_videos_in_message(referenced_message),
+                    )
+                    + content
+                )
+
+        async with self._lock:
+            response = await self.chats[message.channel.id].chat(message.author.display_name, content)
+
+        self.log_debug(
+            "Chat response generated: channel=%s duration=%.2fs images=%d videos=%d",
+            message.channel.id,
+            time.perf_counter() - started,
+            len(content.images),
+            len(content.videos),
+        )
+
+        return response
+
+    async def _get_referenced_message(self, message: disnake.Message) -> disnake.Message:
+        """Fetch the message referenced by a reply, falling back to the original.
+
+        Attempts to use the cached reference first; if unavailable, fetches
+        the message from the Discord API. Returns message unchanged if the
+        reference cannot be resolved.
+
+        Parameters
+        ----------
+        message : disnake.Message
+            The message that contains a reply reference.
+
+        Returns
+        -------
+        disnake.Message
+            The referenced message, or message itself if resolution fails.
+
+        """
+        message_reference = message.reference
+        if not message_reference:
+            return message
+        previous_message = message_reference.cached_message
+        if not previous_message:
+            try:
+                channel = await self.bot.fetch_channel(message_reference.channel_id)
+                if not isinstance(channel, disnake.TextChannel | disnake.DMChannel):
+                    return message
+                if not message_reference.message_id:
+                    return message
+                previous_message = await channel.fetch_message(message_reference.message_id)
+            except disnake.NotFound:
+                return message
+
+        return previous_message
+
+    async def _get_text_in_message(self, message: disnake.Message) -> TextInput:
+        """Extract text from a Discord message.
+
+        Parameters
+        ----------
+        message : Message
+            The Discord message to inspect for image content.
+
+        Returns
+        -------
+        TextInput
+            An instance of a TextInput containing the text content of the
+            message.
+
+        """
+        return TextInput(message.clean_content.replace(f"@{self.bot.user.display_name}", ""))
+
+    async def _get_images_in_message(self, message: disnake.Message) -> list[ImageInput]:
+        """Extract image attachments and embeds from a Discord message.
+
+        When BotSettings.cogs.chatbot.prefer_image_urls is False, each
+        image is downloaded and base64-encoded in place. Failures are
+        ignored so that a single bad URL does not abort the whole response.
+
+        Parameters
+        ----------
+        message : Message
+            The Discord message to inspect for image content.
+
+        Returns
+        -------
+        list[ImageInput]
+            ImageInput instances for every image attachment or embed found in
+            the message.
+
+        """
+        image_urls = [a.url for a in message.attachments if a.content_type and a.content_type.startswith("image/")]
+        image_urls += [e.url for e in message.embeds if e.type == "image" and e.url]
+        images = []
+        for url in image_urls:
+            image = ImageInput(url)
+
+            if not BotSettings.cogs.chatbot.prefer_image_urls:
+                try:
+                    await image.download_and_encode()
+                except Exception as exc:  # noqa: BLE001
+                    self.log_warning("Image download failed: message=%s error=%s", message.id, type(exc).__name__)
+
+            images.append(image)
+
+        return images
+
+    async def _get_videos_in_message(self, message: disnake.Message) -> list[VideoInput]:
+        """Extract YouTube video embeds from a Discord message.
+
+        Only embedded videos are considered; raw video file attachments are
+        excluded to avoid the cost of downloading and encoding them.
+
+        Parameters
+        ----------
+        message : Message
+            The Discord message to inspect for video embeds.
+
+        Returns
+        -------
+        list[VideoInput]
+            VideoInput instances for every video embed found in the message.
+
+        """
+        urls = [e.url for e in message.embeds if e.type == "video" and e.url]
+
+        return [VideoInput(url) for url in set(urls)]
 
     # Commands -----------------------------------------------------------------
 
     @slash_command_with_cooldown(
-        name="generate_chat_summary",
-        description="Generate a summary of the conversation",
+        name="summarise_channel",
+        description="Generate a summary of the messages in the channel",
         contexts=disnake.InteractionContextTypes(guild=True),
     )
-    async def create_chat_summary(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    @profile
+    async def summarise_channel(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Summarise the recent channel conversation using the current LLM.
 
         Parameters
@@ -138,21 +307,19 @@ class ChatBot(CustomCog):
             The slash command interaction.
 
         """
-        history = self._chat_registry.get_summary_object(inter)
-        if len(history) == 0:
+        channel = self.channels[inter.channel.id]
+        if len(channel) == 0:
             await inter.response.send_message("There are no messages to summarise.", ephemeral=True)
             return
-        await inter.response.defer(ephemeral=True)
-        try:
-            summary = await history.generate_summary(requesting_user=None)
-        except GenerationFailureError:
-            await deferred_error_response(inter, "There was an error trying to generate the summary")
-            return
-        await inter.delete_original_response()
-        await send_message_to_channel(summary, inter)
 
-    @slash_command_with_cooldown(name="reset_chat_history", description="Reset the AI conversation history")
-    async def reset_conversation(self, inter: disnake.ApplicationCommandInteraction) -> None:
+        await inter.response.defer(ephemeral=True)
+        response = await self._get_assitant_channel_summary(channel)
+
+        await inter.delete_original_response()
+        await send_message_to_channel(response.message, inter)
+
+    @slash_command_with_cooldown(name="reset_chat", description="Reset the history of the chat assistant")
+    async def reset_chat(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Clear the AI conversation history for the current channel.
 
         The system prompt is preserved; only the message history is reset.
@@ -163,22 +330,22 @@ class ChatBot(CustomCog):
             The slash command interaction.
 
         """
-        chat = self._chat_registry.get_chat_object(inter)
-        chat.reset_history()
+        chat = self.chats[inter.channel.id]
+        chat.clear_messages()
         await inter.response.send_message(
-            f"Conversation history has been reset with prompt: {shorten(chat.system_prompt, 1500)}",
+            f"Conversation history has been reset with prompt: {shorten(chat.prompt, 1500)}",
             ephemeral=True,
         )
 
     @slash_command_with_cooldown(
         name="select_chat_prompt",
-        description="Set the AI conversation prompt from a list of pre-made prompts",
+        description="Select a pre-made system prompt for the chat assistant",
     )
-    async def select_existing_prompt(
+    async def select_chat_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
         prompt_name: str = commands.Param(
-            autocomplete=lambda _, user_input: [c for c in slashbot.watchers.AVAILABLE_LLM_PROMPTS if user_input in c],
+            choices=sorted(AVAILABLE_PROMPTS.keys(), key=str.lower),
             description="The name of the prompt to use",
         ),
     ) -> None:
@@ -195,25 +362,25 @@ class ChatBot(CustomCog):
 
         """
         try:
-            prompt = slashbot.watchers.AVAILABLE_LLM_PROMPTS[prompt_name]
+            prompt = load_prompt(AVAILABLE_PROMPTS[prompt_name]).prompt  # type: ignore
         except KeyError:
             await inter.response.send_message(
                 "You probably meant to use /set_custom_chat_prompt instead of this command."
             )
             return
-        chat = self._chat_registry.get_chat_object(inter)
-        chat.set_chat_prompt(prompt, prompt_name=prompt_name)
+        chat = self.chats[inter.channel.id]
+        chat.set_system_prompt(prompt)
         self.log_info("%s set new prompt [%s]: %s", inter.author.display_name, prompt_name, prompt)
         await inter.response.send_message(
             f"Conversation history been reset and system prompt set to:\n> {shorten(prompt, 1500)}",
             ephemeral=True,
         )
 
-    @slash_command_with_cooldown(name="set_chat_model", description="Set the AI model to use")
-    async def set_model(
+    @slash_command_with_cooldown(name="set_chat_model", description="Set the LLM to use for the chat assistant")
+    async def set_chat_model(
         self,
         inter: disnake.ApplicationCommandInteraction,
-        model_name: str = commands.Param(choices=SUPPORTED_MODELS, description="The model to use"),
+        model_name: str = commands.Param(choices=Chats.SUPPORTED_MODELS, description="The model to use"),
     ) -> None:
         """Switch the AI model used for both chat and summary generation.
 
@@ -227,19 +394,17 @@ class ChatBot(CustomCog):
 
         """
         await inter.response.defer(ephemeral=True)
-        chat = self._chat_registry.get_chat_object(inter)
-        summary = self._chat_registry.get_summary_object(inter)
+        chat = self.chats[inter.channel.id]
         original_model = chat.model
         chat.set_model(model_name)
-        summary.set_model(model_name)
         self.log_info("%s set new model: %s", inter.author.display_name, model_name)
         await inter.edit_original_response(content=f"LLM model updated from {original_model} to {model_name}.")
 
     @slash_command_with_cooldown(
         name="set_custom_chat_prompt",
-        description="Change the AI conversation prompt to one you write",
+        description="Set a system prompt for the chat assistant",
     )
-    async def set_custom_prompt(
+    async def set_custom_chat_prompt(
         self,
         inter: disnake.ApplicationCommandInteraction,
         prompt: str = commands.Param(description="The prompt to set", max_length=1950),
@@ -256,8 +421,8 @@ class ChatBot(CustomCog):
             The custom system prompt text, up to 1950 characters.
 
         """
-        chat = self._chat_registry.get_chat_object(inter)
-        chat.set_chat_prompt(prompt)
+        chat = self.chats[inter.channel.id]
+        chat.set_system_prompt(prompt)
         self.log_info("%s set new prompt: %s", inter.author.display_name, prompt)
         await inter.response.send_message(
             f"Conversation history been reset and system prompt set to:\n> {shorten(prompt, 1500)}",
@@ -266,9 +431,9 @@ class ChatBot(CustomCog):
 
     @slash_command_with_cooldown(
         name="show_chat_prompt",
-        description="Print information about the current AI conversation",
+        description="Display the current system prompt and other details from the chat assistant",
     )
-    async def show_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
+    async def show_chat_prompt(self, inter: disnake.ApplicationCommandInteraction) -> None:
         """Display the current model, token usage, and system prompt.
 
         Parameters
@@ -277,10 +442,8 @@ class ChatBot(CustomCog):
             The slash command interaction.
 
         """
-        chat = self._chat_registry.get_chat_object(inter)
-        response = (
-            f"**Model**: {chat.model}\n"
-            f"**Token size**: {chat.size_tokens}\n"
-            f"**Prompt [*{chat.system_prompt_name}*]**:\n> {shorten(chat.system_prompt, 1500)}\n"
-        )
+        chat = self.chats[inter.channel.id]
+        response = f"**Model:** {chat.model}\n**Token size:** {chat.tokens}\n**Prompt:**\n> {
+            shorten(chat.prompt, 1500) if chat.prompt else 'No system prompt has been set'
+        }\n"
         await inter.response.send_message(response, ephemeral=True)

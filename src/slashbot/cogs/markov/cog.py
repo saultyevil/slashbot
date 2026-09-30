@@ -89,6 +89,8 @@ class Markov(CustomCog):
         )
         await asyncio.sleep(sleep_time)
 
+        sample_count = len(self.markov_training_sample)
+        self.log_info("Updating Markov chain with %d training samples", sample_count)
         await markov.update_markov_chain_for_model(
             None,
             markov.MARKOV_MODEL,
@@ -96,3 +98,9 @@ class Markov(CustomCog):
             BotSettings.markov.current_chain_location,
         )
         self.markov_training_sample.clear()
+        self.log_info("Markov chain update complete")
+
+    @markov_chain_update_loop.error
+    async def markov_chain_update_loop_error(self, exception: BaseException) -> None:
+        """Log an unexpected Markov worker failure."""
+        self.log_error("Markov chain worker stopped unexpectedly: %s", exception)

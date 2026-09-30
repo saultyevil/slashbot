@@ -1,20 +1,26 @@
 """Core AI module for Slashbot."""
 
-from .models import GenerationFailureError, TextGenerationInput, TextGenerationResponse, VisionImage, VisionVideo
-from .prompts import Prompt, read_in_prompt
-from .text_generator import TextGenerator
-
-SUPPORTED_MODELS = TextGenerator.SUPPORTED_MODELS
-
+from .llm import LLM
+from .models import (
+    ImageInput,
+    InputRole,
+    LLMGenerationFailureError,
+    LLMInput,
+    LLMResponse,
+    TextInput,
+    VideoInput,
+)
+from .prompts import Prompt, load_prompt
 
 __all__ = [
-    "SUPPORTED_MODELS",
-    "GenerationFailureError",
+    "LLM",
+    "ImageInput",
+    "InputRole",
+    "LLMGenerationFailureError",
+    "LLMInput",
+    "LLMResponse",
     "Prompt",
-    "TextGenerationInput",
-    "TextGenerationResponse",
-    "TextGenerator",
-    "VisionImage",
-    "VisionVideo",
-    "read_in_prompt",
+    "TextInput",
+    "VideoInput",
+    "load_prompt",
 ]

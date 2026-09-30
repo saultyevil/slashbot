@@ -44,6 +44,7 @@ class UserInfo(CustomCog):
         user = await self.get_user_db_from_inter(inter)
         await self.db.update_user("discord_id", user.discord_id, thing, value)
         await inter.response.send_message(f"{thing.capitalize()} has been set to '{value}'.", ephemeral=True)
+        self.log_info("Updated user setting: user=%s field=%s", inter.author.id, thing)
 
     @slash_command_with_cooldown(name="show_info", description="View data you set to be remembered about you")
     async def query_info(
@@ -69,6 +70,7 @@ class UserInfo(CustomCog):
             return
         value = getattr(user, thing)
         await inter.response.send_message(f"{thing.capitalize()} is set to '{value}'.", ephemeral=True)
+        self.log_debug("Read user setting: user=%s field=%s present=%s", inter.author.id, thing, value is not None)
 
     @slash_command_with_cooldown(name="forget_info", description="Forget some data remembered about you")
     async def forget_info(
@@ -94,3 +96,4 @@ class UserInfo(CustomCog):
             return
         await self.db.update_user("discord_id", inter.author.id, thing, None)
         await inter.response.send_message(f"{thing.capitalize()} has been forgotten.", ephemeral=True)
+        self.log_info("Cleared user setting: user=%s field=%s", inter.author.id, thing)
