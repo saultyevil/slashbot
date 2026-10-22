@@ -240,7 +240,7 @@ class MediaTrackers(CustomCog):
         adapter = BackloggdTracker(self.db, self.log_error, self.log_debug)
         return await self._poll_tracker(usernames, adapter.config())
 
-    # @tasks.loop(minutes=BotSettings.cogs.media_tracker.update_interval)
+    @tasks.loop(minutes=BotSettings.cogs.media_tracker.update_interval)
     async def check_for_new_logged_games(self) -> None:
         """Periodically check for new logged games."""
         users = await self.db.get_backloggd_usernames()
