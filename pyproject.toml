@@ -34,6 +34,7 @@ dependencies = [
     "feedparser>=6.0.12,<7",
     "alembic>=1.16.5,<2",
     "anthropic[aiohttp]>=0.84.0",
+    "psutil>=7.2.2",
 ]
 
 [project.scripts]
