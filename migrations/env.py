@@ -14,7 +14,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from slashbot.database.sql_models import DeclarativeBase
+from slashbot.database.models import DeclarativeBase
 
 target_metadata = DeclarativeBase.metadata
 

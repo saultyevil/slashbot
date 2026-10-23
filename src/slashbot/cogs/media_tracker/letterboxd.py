@@ -5,8 +5,8 @@ from collections.abc import Callable
 import disnake
 from feedparser import FeedParserDict
 
-from slashbot.database.sql_database import DatabaseSQL
-from slashbot.database.sql_models import WatchedMovieSQL
+from slashbot.database.database import DatabaseSQL
+from slashbot.database.models import WatchedMovieSQL
 
 from .tracker import MediaTracker, convert_rating_to_stars
 

@@ -3,7 +3,7 @@ from typing import Any
 from sqlalchemy import select
 
 from slashbot.database.base_sql import BaseDatabaseSQL
-from slashbot.database.sql_models import LoggedGameSQL, ReminderSQL, UserSQL, WatchedMovieSQL
+from slashbot.database.models import LoggedGameSQL, ReminderSQL, UserSQL, WatchedMovieSQL
 
 
 class DatabaseSQL(BaseDatabaseSQL):
