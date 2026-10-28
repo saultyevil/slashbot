@@ -87,7 +87,7 @@ class Spam(CustomCog):
 
         try:
             image_results = list(
-                DDGS(timeout=5).images(query, max_results=15, backend="duckduckgo", safesearch="off", region="uk-en")
+                DDGS(timeout=5).images(query, max_results=15, backend="auto", safesearch="off", region="uk-en")
             )
         except DDGSException as exc:
             self.log_warning("Image search failed for user %s: %s", inter.author.id, exc)
