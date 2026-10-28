@@ -100,4 +100,3 @@ class Spam(CustomCog):
 
         image = random.choice(image_results)
         await inter.followup.send(f"{image['image']}")
-        self.log_info("Sent image search result: user=%s", inter.author.id)
