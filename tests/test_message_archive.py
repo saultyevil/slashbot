@@ -168,3 +168,31 @@ async def test_full_backfill_ignores_limit_and_archived(store: MessageStore) -> 
     assert added == 10  # noqa: PLR2004
     assert await store.count() == 10  # noqa: PLR2004
     assert channel.seen == 10  # noqa: PLR2004
+
+
+@pytest.mark.asyncio
+async def test_generate_chain_script_from_archive(store: MessageStore, tmp_path: Path) -> None:
+    """The training script can train from the message archive database."""
+    import importlib.util  # noqa: PLC0415
+    import pickle  # noqa: PLC0415
+
+    for i, text in enumerate(["the cat sat on the mat", "the dog ate the bone", "the cat ate the bone today"]):
+        await store.upsert(i, text)
+    await store.close()
+
+    script = Path(__file__).parent / "../scripts/markov/generate_chain.py"
+    spec = importlib.util.spec_from_file_location("generate_chain", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    database = next((tmp_path / "nested").glob("messages.db"))
+    # asyncio.run cannot be nested, so the script is run from a worker thread
+    import asyncio  # noqa: PLC0415
+
+    assert len(await asyncio.to_thread(module.load_training_data, database)) == 3  # noqa: PLR2004
+    with pytest.raises(FileNotFoundError):
+        await asyncio.to_thread(module.load_training_data, tmp_path / "missing.db")
+
+    await asyncio.to_thread(module.train, database, tmp_path / "out", state_size=1)
+    with (tmp_path / "out" / "chain.pickle").open("rb") as f:
+        assert pickle.load(f).state_size == 1  # noqa: S301
