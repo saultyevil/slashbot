@@ -25,6 +25,11 @@ random_response_chance = 0.002
 update_hour = 4
 update_minute = 0
 
+[cogs.message_archive]
+enabled = true
+database_location = "data/markov/messages.db"
+backfill_limit = 10000
+
 [cogs.media_tracker]
 enabled = true
 update_interval = 5
