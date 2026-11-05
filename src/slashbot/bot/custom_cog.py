@@ -1,5 +1,7 @@
 """Custom Cog class."""
 
+import asyncio
+from collections import deque
 from typing import Any
 
 import disnake
@@ -31,7 +33,8 @@ class CustomCog(Cog, Logger):
         self.bot = bot
         self.db = DatabaseSQL(BotSettings.files.database, DeclarativeBase)
         self.markov_seed_words = []
-        self._markov_sentences = {}
+        self._markov_sentences: dict[str, deque[str]] = {}
+        self._markov_refill_task: asyncio.Task | None = None
 
     # --------------------------------------------------------------------------
 
@@ -50,8 +53,7 @@ class CustomCog(Cog, Logger):
             await self.db.init()
             if self.bot.use_markov_cache and self.markov_seed_words:
                 self.log_info("Generating markov sentence cache")
-                self._populate_markov_cache()
-                self.check_markov_cache_size.start()
+                await self._populate_markov_cache()
             self._start_all_tasks()
         except Exception:
             self.log_exception("Failed while loading cog")
@@ -98,9 +100,10 @@ class CustomCog(Cog, Logger):
     def _get_random_markov_sentence(self, seed_word: str | None, amount: int) -> str | list[str]:
         """Get a random markov generated sentence.
 
-        If the markov cache is enabled, the sentence will be taken from the
-        cache if there are not in there. If not, the sentence will be generated
-        on-the-fly or taken directly from the markov bank.
+        If the markov cache is enabled and the seed word is cached, sentences
+        are taken from the cache without any computation, and a refill is
+        scheduled in the background. Anything the cache cannot supply is
+        generated immediately.
 
         Parameters
         ----------
@@ -111,18 +114,20 @@ class CustomCog(Cog, Logger):
 
         Returns
         -------
-        str
-            The generated sentence.
+        str | list[str]
+            The generated sentence, or sentences if more than one was asked for.
 
         """
-        if self.bot.use_markov_cache:
-            sentence_cache = self._markov_sentences.get(seed_word, [])
-            if amount > len(sentence_cache):
-                sentences = self._generate_markov_sentences(seed_word, amount)
-            else:
-                sentences = [sentence_cache.pop(0) for _ in range(amount)]
-        else:
-            sentences = self._generate_markov_sentences(seed_word, amount)
+        sentences = []
+        cache = self._markov_sentences.get(seed_word) if self.bot.use_markov_cache and seed_word else None
+
+        if cache is not None:
+            sentences = [cache.popleft() for _ in range(min(amount, len(cache)))]
+            if len(cache) < BotSettings.markov.pregenerate_limit:
+                self._request_markov_cache_refill()
+
+        if len(sentences) < amount:
+            sentences.extend(self._generate_markov_sentences(seed_word, amount - len(sentences)))
 
         return sentences[0] if amount == 1 else sentences
 
@@ -132,24 +137,31 @@ class CustomCog(Cog, Logger):
             return ["Markov generation is not available."] * amount
         return self.bot.markov_generator.generate_response(amount, seed_word)
 
-    def _populate_markov_cache(self, *, seed_words: list[str] | None = None) -> None:
-        """Populate the markov cache for the given seed words.
-
-        If no seed words are provided, the seed words in the class attribute
-        will be used.
-
-        Parameters
-        ----------
-        seed_words : list[str] | None, optional
-           The seed words to generate sentences for, by default None
-
-        """
-        for seed_word in seed_words or self.markov_seed_words or []:
-            cache = self._markov_sentences.setdefault(seed_word, [])
+    async def _populate_markov_cache(self) -> None:
+        """Top up the cache for every seed word, generating off the event loop."""
+        for seed_word in self.markov_seed_words:
+            cache = self._markov_sentences.setdefault(seed_word, deque())
             missing = BotSettings.markov.num_pregen_sentences - len(cache)
             if missing > 0:
-                cache.extend(self._generate_markov_sentences(seed_word, missing))
-        self.log_info("Generated markov sentences for seed words: %s", self.markov_seed_words)
+                cache.extend(await asyncio.to_thread(self._generate_markov_sentences, seed_word, missing))
+        self.log_debug("Markov sentence cache populated for seed words: %s", self.markov_seed_words)
+
+    def _request_markov_cache_refill(self) -> None:
+        """Start a background refill of the cache, if one is not already running."""
+        if self._markov_refill_task and not self._markov_refill_task.done():
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._markov_refill_task = loop.create_task(self._refill_markov_cache())
+
+    async def _refill_markov_cache(self) -> None:
+        """Refill the cache, logging rather than raising any failure."""
+        try:
+            await self._populate_markov_cache()
+        except Exception:
+            self.log_exception("Failed to refill the markov sentence cache")
 
     def get_random_markov_sentence(
         self,
@@ -175,15 +187,6 @@ class CustomCog(Cog, Logger):
             msg = "Requested number of sentences must be > 1"
             raise ValueError(msg)
         return self._get_random_markov_sentence(seed_word, amount)
-
-    @tasks.loop(seconds=10)
-    async def check_markov_cache_size(self) -> None:
-        """Populate the markov cache if a seed word is below the threshold."""
-        if not self.bot.use_markov_cache:
-            return
-        for seed_word in self.markov_seed_words:
-            if len(self._markov_sentences[seed_word]) < BotSettings.markov.pregenerate_limit:
-                self._populate_markov_cache(seed_words=[seed_word])
 
     async def get_user_db_from_inter(self, inter: disnake.ApplicationCommandInteraction) -> UserSQL:
         """Get the associated user in the database from an interaction.
