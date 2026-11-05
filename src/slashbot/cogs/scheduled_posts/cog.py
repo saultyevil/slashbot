@@ -11,7 +11,6 @@ import slashbot.watchers
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
 from slashbot.clock import calculate_seconds_until
-from slashbot.markov import generate_text_from_markov_chain
 from slashbot.settings import BotSettings
 from slashbot.watchers import ScheduledPostWatcher
 
@@ -185,8 +184,7 @@ class ScheduledPosts(CustomCog):
             await asyncio.sleep(sleep_for)
 
             if post.markov_seed_word:
-                # MARKOV: set markov model here based on settings
-                markov_sentence = generate_text_from_markov_chain(None, post.markov_seed_word, 1)
+                markov_sentence = self.get_random_markov_sentence(post.markov_seed_word, 1)
                 markov_sentence = markov_sentence.replace(  # type: ignore
                     post.markov_seed_word,
                     f"**{post.markov_seed_word}**",

@@ -85,8 +85,40 @@ class MarkovCogSettings(BaseCogSettings):
     ----------
     enabled : bool
         Whether the markov cog is enabled.
+    random_response_chance : float
+        The probability, between 0 and 1, of responding to any message with a
+        random Markov sentence.
+    update_hour : int
+        The hour of the day (local time) at which to update the chain.
+    update_minute : int
+        The minute of the hour at which to update the chain.
 
     """
+
+    random_response_chance: float = Field(default=0.002, ge=0.0, le=1.0)
+    update_hour: int = Field(default=4, ge=0, le=23)
+    update_minute: int = Field(default=0, ge=0, le=59)
+
+
+class MessageArchiveCogSettings(BaseCogSettings):
+    """Settings for the message archive cog.
+
+    Attributes
+    ----------
+    enabled : bool
+        Whether the message archive cog is enabled.
+    database_location : Path
+        Path to the SQLite database which messages are archived to.
+    backfill_limit : int
+        The maximum number of messages to look back through, per channel, when
+        catching up on missed messages at launch. This is ignored, and the
+        entire history is read, when the archive is empty. A value of 0
+        disables the backfill entirely.
+
+    """
+
+    database_location: Path = Path("data/markov/messages.db")
+    backfill_limit: int = Field(default=10000, ge=0)
 
 
 class MediaTrackerCogSettings(BaseCogSettings):
@@ -224,6 +256,8 @@ class CogSettings(BaseModel):
         Settings for the movie tracker cog.
     markov : MarkovCogSettings
         Settings for the markov cog.
+    message_archive : MessageArchiveCogSettings
+        Settings for the message archive cog.
     reminders : RemindersCogSettings
         Settings for the reminders cog.
     scheduled_posts : ScheduledPostsCogSettings
@@ -246,6 +280,7 @@ class CogSettings(BaseModel):
     admin: AdminCogSettings
     chatbot: ChatBotCogSettings
     markov: MarkovCogSettings
+    message_archive: MessageArchiveCogSettings
     media_tracker: MediaTrackerCogSettings
     reminders: RemindersCogSettings
     scheduled_posts: ScheduledPostsCogSettings
