@@ -19,7 +19,7 @@ UPDATE_TIME = datetime.time(
     tzinfo=datetime.datetime.now(datetime.UTC).astimezone().tzinfo,
 )
 
-SEED_WORD_PATTERN = re.compile(r"^\?(\S+)")
+SEED_WORD_PATTERN = re.compile(r"^\?(?=\S*[^\W_])(\S+)")
 
 
 def can_train(generator: MarkovTextGenerator | None) -> bool:

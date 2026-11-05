@@ -307,12 +307,16 @@ async def test_seed_listener_responds(chain_file: Path) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("content", ["hello", "what? no", "?", "  ", ""])
+@pytest.mark.parametrize("content", ["hello", "what? no", "?", "  ", "", "???", "?!!!", "?…", "?___"])
 async def test_seed_listener_ignores_non_seed(chain_file: Path, content: str) -> None:
     """Messages not starting with "?word" are ignored."""
+    seeds = []
+    cog = _generating_cog(chain_file)
+    cog.generate_sentences = lambda seed, _: (seeds.append(seed), ["generated"])[1]
     message = _chat_message(content)
-    await Markov.respond_to_seed_word_message(_generating_cog(chain_file), message)
+    await Markov.respond_to_seed_word_message(cog, message)
     assert message.sent == []
+    assert seeds == []
 
 
 @pytest.mark.asyncio
