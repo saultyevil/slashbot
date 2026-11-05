@@ -20,9 +20,9 @@ from typing import Any
 import disnake
 from disnake.ext import commands
 
-from slashbot import markov
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.logger import setup_logging
+from slashbot.markov import MarkovTextGenerator
 from slashbot.settings import BotSettings
 
 LAUNCH_TIME = time.time()
@@ -150,8 +150,15 @@ class Slashbot:
         intents.messages = True
         intents.members = True
 
+        markov_generator = MarkovTextGenerator(
+            BotSettings.markov.current_chain_location
+            if args.on_the_fly_markov
+            else Path("data/markov/markov-sentences.json")
+        )
+
         bot = CustomInteractionBot(
             enable_markov_cache=args.enable_markov_cache,
+            markov_generator=markov_generator,
             intents=intents,
             reload=bool(args.debug),
         )
@@ -166,11 +173,6 @@ class Slashbot:
             args.enable_markov_cache,
         )
         bot.log_info("Config file: %s", BotSettings.config_file)
-
-        if args.on_the_fly_markov:
-            markov.MARKOV_MODEL = markov.load_markov_model("data/markov/chain.pickle")
-        else:
-            markov.MARKOV_BANK = markov.load_markov_bank("data/markov/markov-sentences.json")
 
         cogs_path = Path(__file__).parent.parent / "cogs"
         cogs_to_load = sorted([d.stem for d in cogs_path.iterdir() if d.is_dir() and not d.stem.startswith("_")])

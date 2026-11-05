@@ -85,8 +85,19 @@ class MarkovCogSettings(BaseCogSettings):
     ----------
     enabled : bool
         Whether the markov cog is enabled.
+    random_response_chance : float
+        The probability, between 0 and 1, of responding to any message with a
+        random Markov sentence.
+    update_hour : int
+        The hour of the day (local time) at which to update the chain.
+    update_minute : int
+        The minute of the hour at which to update the chain.
 
     """
+
+    random_response_chance: float = Field(default=0.002, ge=0.0, le=1.0)
+    update_hour: int = Field(default=4, ge=0, le=23)
+    update_minute: int = Field(default=0, ge=0, le=59)
 
 
 class MediaTrackerCogSettings(BaseCogSettings):

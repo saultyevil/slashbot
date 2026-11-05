@@ -6,7 +6,7 @@ import pytest_asyncio
 from dotenv import load_dotenv
 
 from slashbot.database import DatabaseSQL, DeclarativeBase
-from slashbot.markov_class import MarkovTextGenerator
+from slashbot.markov import MarkovTextGenerator
 
 load_dotenv()
 

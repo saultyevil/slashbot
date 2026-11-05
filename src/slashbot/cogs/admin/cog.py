@@ -398,7 +398,7 @@ class AdminTools(CustomCog):
 
         arguments = ["slashbot"]
         if on_the_fly_markov:
-            arguments.append("--only-the-fly-markov")
+            arguments.append("--on-the-fly-markov")
 
         if inter.response.type == disnake.InteractionResponseType.deferred_channel_message:
             await inter.edit_original_message("Restarting the bot...")

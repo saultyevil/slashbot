@@ -1,48 +1,9 @@
 """Generate a new Markov chain for use with MarkovTextGenerator."""
 
-import pickle
 from argparse import ArgumentParser
 from pathlib import Path
 
-from markovify import Text
-
-
-def clean(text: str) -> str:
-    """Clean up a sentence ready for training.
-
-    Parameters
-    ----------
-    text : str
-        Text to be cleaned up for training.
-
-    Returns
-    -------
-    str
-        The cleaned up text.
-
-    """
-    clean = text
-    # Put rules and stuff here to clean up the sentence
-
-    return clean
-
-
-def prepare_training_data(input_data: list[str]) -> str:
-    """Prepare the input data for training.
-
-    Parameters
-    ----------
-    input_data : list[str]
-        A list of strings to train the model on.
-
-
-    Returns
-    -------
-    str
-        The cleaned up text ready for training.
-
-    """
-    return ". ".join([clean(sentence) for sentence in input_data])
+from slashbot.markov import save_chain, train_chain
 
 
 def train(input_data: Path, output_dir: Path, *, state_size: int = 2) -> None:
@@ -59,13 +20,13 @@ def train(input_data: Path, output_dir: Path, *, state_size: int = 2) -> None:
 
     """
     raw_data = input_data.read_text().split("\n")
-    training_data = prepare_training_data(raw_data)
-
-    model = Text(training_data, state_size=state_size)
+    chain = train_chain(raw_data, state_size=state_size)
+    if chain is None:
+        print("No usable training data")
+        return
 
     output_file = output_dir / "chain.pickle"
-    with output_file.open("wb") as file_out:
-        pickle.dump(model.chain, file_out)
+    save_chain(chain, output_file)
 
     print(f"New chain created at {output_file.resolve()}")
 
@@ -76,4 +37,4 @@ if __name__ == "__main__":
     ap.add_argument("output_dir", type=Path, help="The directory to write the output to")
     ap.add_argument("--state-size", default=2, type=int, help="The state size of the chain")
     args = ap.parse_args()
-    train(args.input_data, args.output_dir)
+    train(args.input_data, args.output_dir, state_size=args.state_size)

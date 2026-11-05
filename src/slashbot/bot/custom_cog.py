@@ -6,7 +6,6 @@ import disnake
 from disnake.ext import tasks
 from disnake.ext.commands import Cog
 
-from slashbot import markov
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.database import DatabaseSQL, DeclarativeBase, UserSQL
 from slashbot.logger import Logger
@@ -119,19 +118,19 @@ class CustomCog(Cog, Logger):
         if self.bot.use_markov_cache:
             sentence_cache = self._markov_sentences.get(seed_word, [])
             if amount > len(sentence_cache):
-                sentences = markov.generate_text_from_markov_chain(
-                    markov.MARKOV_MODEL or markov.MARKOV_BANK, seed_word, amount
-                )
+                sentences = self._generate_markov_sentences(seed_word, amount)
             else:
-                sentences = []
-                for _ in range(amount):
-                    sentences.append(sentence_cache.pop(0))
+                sentences = [sentence_cache.pop(0) for _ in range(amount)]
         else:
-            sentences = markov.generate_text_from_markov_chain(
-                markov.MARKOV_MODEL or markov.MARKOV_BANK, seed_word, amount
-            )
+            sentences = self._generate_markov_sentences(seed_word, amount)
 
-        return sentences
+        return sentences[0] if amount == 1 else sentences
+
+    def _generate_markov_sentences(self, seed_word: str | None, amount: int) -> list[str]:
+        """Generate sentences using the bot's Markov generator."""
+        if self.bot.markov_generator is None:
+            return ["Markov generation is not available."] * amount
+        return self.bot.markov_generator.generate_response(amount, seed_word)
 
     def _populate_markov_cache(self, *, seed_words: list[str] | None = None) -> None:
         """Populate the markov cache for the given seed words.
@@ -146,10 +145,10 @@ class CustomCog(Cog, Logger):
 
         """
         for seed_word in seed_words or self.markov_seed_words or []:
-            current_amount = len(self._markov_sentences.get(seed_word, []))
-            self._markov_sentences[seed_word] = self.get_random_markov_sentence(
-                seed_word, amount=BotSettings.markov.num_pregen_sentences - current_amount
-            )
+            cache = self._markov_sentences.setdefault(seed_word, [])
+            missing = BotSettings.markov.num_pregen_sentences - len(cache)
+            if missing > 0:
+                cache.extend(self._generate_markov_sentences(seed_word, missing))
         self.log_info("Generated markov sentences for seed words: %s", self.markov_seed_words)
 
     def get_random_markov_sentence(

@@ -5,9 +5,9 @@ from typing import Any
 
 from disnake.ext.commands import InteractionBot
 
-from slashbot import markov
 from slashbot.database import DatabaseSQL, DeclarativeBase
 from slashbot.logger import Logger
+from slashbot.markov import MarkovGeneratorType, MarkovTextGenerator
 from slashbot.settings import BotSettings
 
 
@@ -17,7 +17,13 @@ class CustomInteractionBot(InteractionBot, Logger):
     This is a modified version of disnake.ext.commands.InteractionBot.
     """
 
-    def __init__(self, *, enable_markov_cache: bool = False, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        enable_markov_cache: bool = False,
+        markov_generator: MarkovTextGenerator | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialise the bot.
 
         Parameters
@@ -25,6 +31,8 @@ class CustomInteractionBot(InteractionBot, Logger):
         enable_markov_cache: bool
             Whether or not to enable automatic Markov sentence generation,
             default is False.
+        markov_generator: MarkovTextGenerator | None
+            The Markov generator shared by all cogs, default is None.
         **kwargs : int
             The keyword arguments to pass to the parent class.
 
@@ -34,9 +42,12 @@ class CustomInteractionBot(InteractionBot, Logger):
         self.cleanup_functions = []
         self.times_connected = 0
         self.db = DatabaseSQL(BotSettings.files.database, DeclarativeBase)
-        self.use_markov_cache = enable_markov_cache and markov.MARKOV_MODEL
+        self.markov_generator = markov_generator
+        self.use_markov_cache = bool(
+            enable_markov_cache and markov_generator and markov_generator.type == MarkovGeneratorType.ON_THE_FLY
+        )
         self.log_debug("Created bot instance; markov cache=%s", self.use_markov_cache)
-        if markov.MARKOV_MODEL:
+        if markov_generator:
             self.log_info(
                 "Automatic Markov sentence generation is %s",
                 "enabled" if self.use_markov_cache else "disabled",

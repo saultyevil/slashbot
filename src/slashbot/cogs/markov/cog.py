@@ -1,13 +1,30 @@
 import asyncio
+import datetime
+import random
+import re
 
 import disnake
 from disnake.ext import commands, tasks
 
-from slashbot import markov
 from slashbot.bot.custom_bot import CustomInteractionBot
 from slashbot.bot.custom_cog import CustomCog
-from slashbot.clock import calculate_seconds_until
+from slashbot.bot.custom_command import slash_command_with_cooldown
+from slashbot.markov import MarkovGeneratorType, MarkovTextGenerator
 from slashbot.settings import BotSettings
+
+# Naive times are interpreted as UTC by disnake, so use the local timezone
+UPDATE_TIME = datetime.time(
+    BotSettings.cogs.markov.update_hour,
+    BotSettings.cogs.markov.update_minute,
+    tzinfo=datetime.datetime.now(datetime.UTC).astimezone().tzinfo,
+)
+
+SEED_WORD_PATTERN = re.compile(r"^\?(\S+)")
+
+
+def can_train(generator: MarkovTextGenerator | None) -> bool:
+    """Check whether a generator has a chain which can be trained."""
+    return generator is not None and generator.type == MarkovGeneratorType.ON_THE_FLY
 
 
 class Markov(CustomCog):
@@ -24,6 +41,27 @@ class Markov(CustomCog):
         """
         super().__init__(bot)
         self.markov_training_sample = {}
+        self.markov_generator = bot.markov_generator
+
+    def generate_sentences(self, seed_word: str | None = None, amount: int = 1) -> list[str]:
+        """Generate sentences from the Markov chain.
+
+        Parameters
+        ----------
+        seed_word: str | None
+            An optional seed word to include in the sentences.
+        amount: int
+            The number of sentences to generate.
+
+        Returns
+        -------
+        list[str]
+            The generated sentences, or an empty list if no chain is loaded.
+
+        """
+        if self.markov_generator is None:
+            return []
+        return self.markov_generator.generate_response(amount, seed_word)
 
     # Listeners ---------------------------------------------------------------
 
@@ -42,6 +80,46 @@ class Markov(CustomCog):
         if message.author.bot:
             return
         self.markov_training_sample[message.id] = message.clean_content
+
+    @commands.Cog.listener("on_message")
+    async def respond_to_seed_word_message(self, message: disnake.Message) -> None:
+        """Respond to messages of the form "?word" with a sentence using that word.
+
+        Parameters
+        ----------
+        message: disnake.Message
+            The message to check.
+
+        """
+        if message.author.bot:
+            return
+        match = SEED_WORD_PATTERN.match(message.content.strip())
+        if not match or self.markov_generator is None:
+            return
+        sentences = await asyncio.to_thread(self.generate_sentences, match.group(1), 1)
+        if sentences:
+            await message.channel.send(sentences[0])
+
+    @commands.Cog.listener("on_message")
+    async def respond_randomly(self, message: disnake.Message) -> None:
+        """Very rarely respond to a message with a random Markov sentence.
+
+        Parameters
+        ----------
+        message: disnake.Message
+            The message to possibly respond to.
+
+        """
+        if message.author.bot:
+            return
+        # messages starting with ? are handled by the seed word listener
+        if message.content.lstrip().startswith("?") or self.markov_generator is None:
+            return
+        if random.random() >= BotSettings.cogs.markov.random_response_chance:  # noqa: S311
+            return
+        sentences = await asyncio.to_thread(self.generate_sentences, None, 1)
+        if sentences:
+            await message.channel.send(sentences[0])
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_message_from_markov_training_sample(self, payload: disnake.RawMessageDeleteEvent) -> None:
@@ -73,32 +151,62 @@ class Markov(CustomCog):
 
         self.markov_training_sample.pop(message.id, None)
 
-    @tasks.loop(seconds=1)
-    async def markov_chain_update_loop(self) -> None:
-        """Get the bot to update the chain every 6 hours."""
-        if not BotSettings.markov.enable_markov_training:
-            return
-        if not markov.MARKOV_MODEL:
-            return
-        sleep_time = calculate_seconds_until(-1, 3, 0, 1)
-        self.log_info(
-            "Waiting %d seconds/%d minutes/%.1f hours till markov chain update",
-            sleep_time,
-            sleep_time // 60,
-            sleep_time / 3600,
-        )
-        await asyncio.sleep(sleep_time)
+    # Commands ----------------------------------------------------------------
 
-        sample_count = len(self.markov_training_sample)
-        self.log_info("Updating Markov chain with %d training samples", sample_count)
-        await markov.update_markov_chain_for_model(
-            None,
-            markov.MARKOV_MODEL,
-            list(self.markov_training_sample.values()),
-            BotSettings.markov.current_chain_location,
-        )
+    @slash_command_with_cooldown(name="markov", description="Generate a sentence using the Markov chain")
+    async def markov_sentence(
+        self,
+        inter: disnake.ApplicationCommandInteraction,
+        seed_word: str | None = commands.Param(
+            default=None,
+            name="seed_word",
+            description="An optional single word for the sentence to contain",
+            max_length=64,
+        ),
+    ) -> None:
+        """Generate a Markov sentence, optionally containing a seed word.
+
+        Parameters
+        ----------
+        inter : disnake.ApplicationCommandInteraction
+            The interaction to respond to.
+        seed_word : str | None
+            An optional seed word, which must be a single word.
+
+        """
+        seed_word = seed_word.strip() if seed_word else None
+        if seed_word and len(seed_word.split()) > 1:
+            await inter.response.send_message("The seed word must be a single word.", ephemeral=True)
+            return
+
+        if self.markov_generator is None:
+            await inter.response.send_message("The Markov chain is not available.", ephemeral=True)
+            return
+
+        await inter.response.defer()
+        sentences = await asyncio.to_thread(self.generate_sentences, seed_word, 1)
+        await inter.edit_original_message(content=sentences[0])
+
+    @tasks.loop(time=UPDATE_TIME)
+    async def markov_chain_update_loop(self) -> None:
+        """Update the Markov chain with the recorded messages every day at 4 am."""
+        if not BotSettings.markov.enable_markov_training or not can_train(self.markov_generator):
+            return
+
+        sentences = list(self.markov_training_sample.values())
+        self.log_info("Updating Markov chain with %d training samples", len(sentences))
+        try:
+            updated = await asyncio.to_thread(self.markov_generator.update_chain, sentences)
+        except Exception:
+            self.log_exception("Failed to update the Markov chain")
+            return
         self.markov_training_sample.clear()
-        self.log_info("Markov chain update complete")
+        self.log_info("Markov chain update complete with %d sentences", updated)
+
+    @markov_chain_update_loop.before_loop
+    async def markov_chain_update_loop_before(self) -> None:
+        """Wait for the bot to be ready before the first scheduled run."""
+        await self.bot.wait_until_ready()
 
     @markov_chain_update_loop.error
     async def markov_chain_update_loop_error(self, exception: BaseException) -> None:

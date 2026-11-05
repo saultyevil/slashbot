@@ -1,379 +1,359 @@
-"""Markov sentence generation functions.
+"""Markov text generator.
 
-This module contains functions for loading and updating Markov chains and
-generating sentences using the Markov chain. There is a synchronous and
-asynchronous version of sentence generation functions.
+This module contains a class for text generation using a trained Markov Chain.
 """
 
 import json
 import pickle
 import random
-import re
 import shutil
 import string
+from enum import Enum, auto
 from pathlib import Path
 from textwrap import shorten
+from typing import Any
 
 import markovify
 
-from slashbot.bot.custom_types import ApplicationCommandInteraction
-from slashbot.errors import deferred_error_response
 from slashbot.logger import Logger
-from slashbot.settings import BotSettings
-
-LOGGER = Logger()
-MARKOV_MODEL = None
-MARKOV_BANK = None
 
 
-def _search_for_seed_in_markov_bank(seed_word: str) -> str:
-    """Search for a sentence in the markov bank for a given seed word.
+def clean(text: str) -> str:
+    """Clean up a sentence ready for training.
 
     Parameters
     ----------
-    seed_word : str
-        The seed word to search for.
+    text : str
+        Text to be cleaned up for training.
 
     Returns
     -------
     str
-        The markov sentence.
+        The cleaned up text. This is an empty string if the text should not be
+        learned, i.e. it is empty, looks like a command, or contains a mention.
 
     """
-    if not MARKOV_BANK:
-        LOGGER.log_error("Markov bank is not loaded")
-        return "Markov bank is not loaded."
-
-    if seed_word not in MARKOV_BANK:
-        LOGGER.log_error("Seed word '%s' not found in markov bank", seed_word)
-        sentences = MARKOV_BANK.get(
-            "error", ["An error occurred with the markov sentence generation [a seed word is probably missing]"]
-        )
-        return random.choice(sentences)
-
-    return random.choice(MARKOV_BANK[seed_word])
+    text = " ".join(text.split())
+    if not text or text[0] in string.punctuation or "@" in text:
+        return ""
+    return text
 
 
-def _generate_markov_sentence(
-    model: markovify.Text | None = None, seed_word: str | None = None, attempts: int = 5
-) -> str:
-    """Generate a sentence using a markov chain.
+def prepare_training_data(input_data: list[str]) -> str:
+    """Prepare the input data for training.
 
     Parameters
     ----------
-    model : markovify.Text
-        The model to generate the sentence from, by default None
-    seed_word : str, optional
-        A seed word to include in the sentence, by default None
-    attempts : int, optional
-        The number of attempts to generate a sentence with a seed word, by
-        default 5
+    input_data : list[str]
+        A list of strings to train the model on.
 
     Returns
     -------
     str
-        The generated sentence
+        The cleaned up text ready for training.
 
     """
-    sentence = "My Markov Chain sentence generator isn't working!"
-
-    if not model:
-        model = MARKOV_MODEL
-    if not model or not isinstance(model, markovify.Text):
-        LOGGER.log_error("An invalid Markov model was passed to sentence generation")
-        return sentence
-
-    for _ in range(attempts):
-        if seed_word:
-            try:
-                if len(seed_word.split()) > 1:
-                    sentence = model.make_sentence_with_start(seed_word)
-                else:
-                    sentence = model.make_sentence_that_contains(seed_word)
-            except (IndexError, KeyError, markovify.text.ParamError):
-                sentence = model.make_sentence()
-        else:
-            sentence = model.make_sentence()
-
-        # fallback case, usually when the chain is too sparse for a seed word
-        if not sentence:
-            sentence = "My Markov chain isn't work properly!"
-
-        # No matter what, don't allow @here and @everyone mentions, but
-        # allow user mentions, if mentions == True
-
-        if "@" not in sentence:
-            break
-
-    if not sentence:
-        sentence = "My Markov chain isn't work properly!"
-
-    return shorten(sentence.strip(), 1024)
+    # each message is treated as its own sentence, so terminate it if needed
+    return " ".join(
+        cleaned if cleaned[-1] in ".!?" else f"{cleaned}." for sentence in input_data if (cleaned := clean(sentence))
+    )
 
 
-def _get_sentence_from_bank(seed_word: str | None, amount: int = 1) -> str | list[str]:
-    """Get a sentence from the markov bank.
+def train_chain(input_data: list[str], *, state_size: int = 2) -> markovify.Chain | None:
+    """Train a new Markov chain.
 
     Parameters
     ----------
-    seed_word : str
-        The seed word for the sentence.
-    amount : int, optional
-        The number of sentences to generate, by default 1
-
-    Returns
-    -------
-    str | list[str]
-        The generated sentence(s).
-
-    """
-    if not seed_word:
-        seed_word = "?random"
-    if amount == 1:
-        return _search_for_seed_in_markov_bank(seed_word)
-    return [_search_for_seed_in_markov_bank(seed_word) for _ in range(amount)]
-
-
-def _get_sentence_from_model(model: markovify.Text, seed_word: str | None, amount: int = 1) -> str | list[str]:
-    """Get a sentence from the markov model.
-
-    Parameters
-    ----------
-    model : markovify.Text
-        The model to generate the sentence from.
-    seed_word : str
-        The seed word for the sentence.
-    amount : int, optional
-        The number of sentences to generate, by default 1
-
-    Returns
-    -------
-    str | list[str]
-        The generated sentence(s).
-
-    """
-    if not model or not isinstance(model, markovify.Text):
-        msg = "The provided markov model is not valid"
-        raise ValueError(msg)
-    if amount == 1:
-        return _generate_markov_sentence(model, seed_word)
-    return [_generate_markov_sentence(model, seed_word) for _ in range(amount)]
-
-
-def _clean_sentence_for_learning(sentences: list[str]) -> list[str]:
-    """Clean up a list of sentences for learning.
-
-    This will remove empty strings, messages which start with punctuation
-    and any sentences with @ oi them.
-
-    Parameters
-    ----------
-    sentences : List[str]
-        A list of sentences to clean up for learning.
-
-    Returns
-    -------
-    List[str]
-        The cleaned up list of sentences.
-
-    """
-    clean_sentences = []
-
-    for sentence in sentences:
-        # ignore empty strings
-        if not sentence:
-            continue
-        # ignore commands, which usually start with punctuation
-        if sentence[0] in string.punctuation:
-            continue
-        # don't want to learn how to mention :)
-        if "@" in sentence:
-            continue
-
-        clean_sentences.append(sentence)
-
-    return clean_sentences
-
-
-def load_markov_model(chain_location: str | Path, state_size: int = 2) -> markovify.Text:
-    """Load a Markovify markov chain.
-
-    If a chain exists at chain_location, this is read in and applied. Otherwise
-    a new model is created which is practically empty.
-
-    Parameters
-    ----------
-    chain_location : str | Path
-        The location of the markov chain to load. Must be a pickle.
+    input_data : list[str]
+        The sentences to train the chain on.
     state_size : int
-        The state size of the model, defaults to 2.
+        The state size of the chain. By default, 2.
 
     Returns
     -------
-    markovify.Text
-        The Markov Chain model loaded.
+    markovify.Chain | None
+        The trained chain, or None if there was no usable training data.
 
     """
-    chain_location = Path(chain_location)
-    model = markovify.Text(
-        "This is an empty markov model. I think you may need two sentences.",
-        state_size=state_size if state_size != 0 else 2,
-    )
-
-    if chain_location.exists():
-        with chain_location.open("rb") as file_in:
-            try:
-                model.chain = pickle.load(file_in)  # noqa: S301
-                LOGGER.log_info("Model %s has been loaded", str(chain_location))
-            except EOFError:
-                shutil.copy2(str(chain_location) + ".bak", chain_location)
-                model = load_markov_model(chain_location, state_size)  # the recursion might be a bit spicy here
-    else:
-        msg = f"No chain at {chain_location}"
-        raise OSError(msg)
-
-    BotSettings.markov.current_chain_location = chain_location
-
-    return model
+    training_data = prepare_training_data(input_data)
+    if not training_data:
+        return None
+    return markovify.Text(training_data, state_size=state_size).chain
 
 
-def load_markov_bank(bank_location: str | Path) -> dict:
-    """Load a pre-generated bank of Markov sentences.
-
-    This file should be a JSON file with the following format:
-
-        {
-            "seed_word": [sentence1, sentence2, ...]
-        }
+def save_chain(chain: markovify.Chain, output_file: Path) -> None:
+    """Pickle a chain to disk.
 
     Parameters
     ----------
-    bank_location : str | Path
-        The file path to the bank file.
-
-    Returns
-    -------
-    dict
-        The bank of Markov sentences, as a dict.
+    chain : markovify.Chain
+        The chain to save.
+    output_file : Path
+        The file to write the chain to.
 
     """
-    path = Path(bank_location)
-    if not path.exists():
-        msg = f"No bank at {bank_location}"
-        raise OSError(msg)
-
-    with path.open("r") as file_in:
-        bank = json.load(file_in)
-
-    LOGGER.log_info("Markov bank %s has been loaded", bank_location)
-
-    return bank
+    with output_file.open("wb") as file_out:
+        pickle.dump(chain, file_out)
 
 
-async def update_markov_chain_for_model(  # noqa: PLR0911
-    inter: ApplicationCommandInteraction | None,
-    model: markovify.Text | None,
-    new_messages: list[str],
-    save_location: str | Path,
-) -> markovify.Text | None:
-    """Update a Markov chain model.
+class MarkovGeneratorType(Enum):
+    """Enumerator for different type of Markov generator.
 
-    Can be used either with a command interaction, or by itself.
-
-    Parameters
-    ----------
-    inter : ApplicationCommandInteraction
-        A Discord interaction with a deferred response.
-    model : markovify.Text
-        The model to update with new messages.
-    new_messages : List[str]
-        A list of strings to update the chain with.
-    save_location : str | Path
-        The location the save the chain.
-
-    Returns
-    -------
-    markovify.Text | None
-        Either the updated model, a co-routine for a interaction, or None
-        when no interaction is passed and a model could not be updated.
-
+    The MarkovTextGenerator can either used a pre-generated json file of seed
+    words and sentences, or use a Markovify Text class to generate on-the-fly
+    responses.
     """
-    if not model or not isinstance(model, markovify.Text):
-        msg = "The provided markov model is not valid"
-        raise ValueError(msg)
 
-    if not isinstance(save_location, Path):
-        save_location = Path(save_location)
-
-    state_size = int(re.findall(r"\d+", save_location.name)[0])
-
-    if len(new_messages) == 0:
-        if inter:
-            await deferred_error_response(inter, "No new messages to update chain with.")
-            return None
-        LOGGER.log_info("No sentences to update chain with")
-        return None
-
-    messages = _clean_sentence_for_learning(new_messages)
-    num_messages = len(messages)
-
-    if num_messages == 0:
-        if inter:
-            await deferred_error_response(inter, "No new messages to update chain with.")
-            return None
-        LOGGER.log_info("No sentences to update chain with")
-        return None
-
-    shutil.copy2(save_location, str(save_location) + ".bak")
-    try:
-        new_model = markovify.NewlineText("\n".join(messages), state_size=state_size if state_size != 0 else 2)
-    except KeyError:  # I can't remember what causes this... but it can happen when indexing new words
-        if inter:
-            await deferred_error_response(inter, "The interim model failed to train.")
-            return None
-        LOGGER.log_exception("The interim model failed to train.")
-        return None
-
-    combined_chain = markovify.combine([model.chain, new_model.chain])
-    with Path.open(save_location, "wb") as file_out:
-        pickle.dump(combined_chain, file_out)
-    model.chain = combined_chain
-
-    if inter:
-        await inter.edit_original_message(content=f"Markov chain updated with {num_messages} new messages.")
-
-    # num_messages should already but an int, but sometimes it isn't...
-    LOGGER.log_info(
-        "Markov chain (%s) updated with %d new messages",
-        str(save_location),
-        int(num_messages),
-    )
-
-    return model
+    UNKNOWN = auto()
+    PREGEN = auto()
+    ON_THE_FLY = auto()
 
 
-def generate_text_from_markov_chain(
-    model: markovify.Text | None, seed_word: str | None, amount: int
-) -> str | list[str]:
-    """Generate a list of markov generated sentences for a specific key word.
+class Pregen(Logger):
+    """Markov generation using pre-generated sentences."""
 
-    Parameters
-    ----------
-    model : markovify.Text | None
-        The markov model to use to generate sentences.
-    seed_word : str | None
-        The seed word to use.
-    amount : int, optional
-        The number of sentences to generate.
+    def __init__(self, markov_data: Path) -> None:
+        """Initialise the class.
 
-    Returns
-    -------
-    str | list[str]
-        The generated sentence(s), as a str or a list of str.
+        Parameters
+        ----------
+        markov_data : Path
+            The file path to the .json file containing seed words and sentences.
 
+        """
+        super().__init__()
+
+        if not markov_data.exists():
+            exc_msg = f"Unable to open {markov_data}. Does it exist?"
+            raise FileNotFoundError(exc_msg)
+
+        with markov_data.open("r") as file_in:
+            self.model = json.load(file_in)
+
+    def generate(self, seed_word: str | None = None) -> str:
+        """Generate a sentence, optionally containing a given seed word.
+
+        Parameters
+        ----------
+        seed_word : str | None
+            An optional seed word to include in the generated sentence.
+
+        Returns
+        -------
+        str
+            The generated sentence.
+
+        """
+        seed = seed_word if seed_word else "?random"
+
+        if seed not in self.model:
+            seed = "?random"
+
+        return random.choice(self.model.get(seed))
+
+
+class OnTheFly(Logger):
+    """On-the-fly markov sentence generation."""
+
+    def __init__(self, markov_data: Path, *, state_size: int = 2, attempts: int = 5) -> None:
+        """Initialise the class.
+
+        Parameters
+        ----------
+        markov_data : Path
+            The file path to the .chain or .pickle file containing the Markovify
+            markov chain.
+        state_size : int
+            The state size of the Markov chain, by default 2. This controls the
+            number of words which the probability of the next generated word
+            depends on. For example, a state size of 2 uses two words. A state
+            size of 1 will only use the last word and create very interesting
+            sentences.
+        attempts : int
+            The number of attempts to try and generate a sentence containing
+            the seed word.
+
+        """
+        super().__init__()
+        if not isinstance(state_size, int) or state_size < 1:
+            exc_msg = "state_size should be a non-negative and non-zero integer"
+            raise TypeError(exc_msg)
+
+        if not markov_data.exists():
+            exc_msg = f"Unable to open {markov_data}. Does it exist?"
+            raise FileNotFoundError(exc_msg)
+
+        self._markov_data = markov_data
+        self._state_size = state_size
+        self._attempts = attempts
+
+        self._model = markovify.Text(
+            "This is an empty model. You need at least two sentences, I think.",
+            state_size=self._state_size,
+        )
+
+        with markov_data.open("rb") as file_in:
+            self._model.chain = pickle.load(file_in)  # noqa: S301
+
+    def replace_chain(self, chain: markovify.Chain) -> None:
+        """Replace the chain of the model in-place.
+
+        Parameters
+        ----------
+        chain : markovify.Chain
+            The new chain to use for sentence generation.
+
+        """
+        self._model.chain = chain
+
+    def update(self, new_sentences: list[str]) -> int:
+        """Update the chain with new sentences and save it to disk.
+
+        The existing chain is combined with a chain trained on the new
+        sentences, and the model's chain is replaced in-place.
+
+        Parameters
+        ----------
+        new_sentences : list[str]
+            The new sentences to train on.
+
+        Returns
+        -------
+        int
+            The number of sentences used for training, which is zero if the
+            chain was not updated.
+
+        """
+        usable = [sentence for sentence in new_sentences if clean(sentence)]
+        new_chain = train_chain(usable, state_size=self._state_size)
+        if new_chain is None:
+            self.log_info("No sentences to update chain with")
+            return 0
+
+        shutil.copy2(self._markov_data, self._markov_data.with_name(self._markov_data.name + ".bak"))
+        combined = markovify.combine([self._model.chain, new_chain])
+        save_chain(combined, self._markov_data)
+        self.replace_chain(combined)
+        self.log_info("Markov chain %s updated with %d new sentences", self._markov_data, len(usable))
+        return len(usable)
+
+    def generate(self, seed_word: str | None) -> str:
+        """Generate a sentence, optionally containing a given seed word.
+
+        Parameters
+        ----------
+        seed_word : str | None
+            An optional seed word to include in the generated sentence.
+
+        Returns
+        -------
+        str
+            The generated sentence.
+
+        """
+        attempts = self._attempts if seed_word else 1
+        sentence = "My Markov Chain is not working :-("
+
+        for _ in range(attempts):
+            if seed_word:
+                try:
+                    sentence = self._model.make_sentence_that_contains(seed_word)
+                except (IndexError, KeyError, markovify.text.ParamError):
+                    sentence = self._model.make_sentence()
+                if not sentence:
+                    sentence = "My Markov Chain is not working :-("
+                if seed_word in sentence:
+                    break
+            else:
+                sentence = self._model.make_sentence()
+
+        if not sentence:
+            sentence = "My Markov Chain is not working :-("
+
+        return shorten(sentence.strip(), 1024)
+
+
+class MarkovTextGenerator(Logger):
+    """Generate text using a pre-trained Markov chain.
+
+    The MarkovTextGenerator can either used a pre-generated json file of seed
+    words and sentences, or use a Markovify Text class to generate on-the-fly
+    responses.
     """
-    if model and isinstance(model, markovify.Text):
-        return _get_sentence_from_model(model, seed_word, amount)
-    if MARKOV_MODEL:
-        return _get_sentence_from_model(MARKOV_MODEL, seed_word, amount)
-    return _get_sentence_from_bank(seed_word, amount)
+
+    def __init__(self, markov_data: Path, **kwargs: dict[Any, Any]) -> None:
+        """Initisliation method.
+
+        Parameters
+        ----------
+        markov_data : Path
+            A file path to a file containing markov chain data to load.
+        kwargs : dict[Any, Any]
+            Additional keyword arguments to pass.
+
+        """
+        super().__init__(*kwargs, prepend_msg="[MarkovTextGenerator]")
+
+        if markov_data.suffix not in [".json", ".chain", ".pickle"]:
+            exc_msg = f"Unable to open {markov_data.suffix} file for Markov data. Expected .json, .chain or .pickle."
+            raise TypeError(exc_msg)
+
+        self.type = MarkovGeneratorType.UNKNOWN
+        self._model = self._load_markov_data(markov_data)
+        self.log_info("MarkovTextGenerator type %s loaded using %s", self.type, markov_data.resolve())
+
+    # Private API --------------------------------------------------------------
+
+    def _load_markov_bank(self, markov_data: Path) -> Pregen:
+        return Pregen(markov_data)
+
+    def _load_markov_chain(self, markov_data: Path) -> OnTheFly:
+        return OnTheFly(markov_data)
+
+    def _load_markov_data(self, markov_data: Path) -> Pregen | OnTheFly:
+        self.type = MarkovGeneratorType.PREGEN if markov_data.suffix == ".json" else MarkovGeneratorType.ON_THE_FLY
+        return (
+            self._load_markov_bank(markov_data)
+            if self.type == MarkovGeneratorType.PREGEN
+            else self._load_markov_chain(markov_data)
+        )
+
+    # Public API ---------------------------------------------------------------
+
+    def update_chain(self, new_sentences: list[str]) -> int:
+        """Update the on-the-fly chain with new sentences.
+
+        Parameters
+        ----------
+        new_sentences : list[str]
+            The sentences to train on.
+
+        Returns
+        -------
+        int
+            The number of sentences trained on.
+
+        """
+        if not isinstance(self._model, OnTheFly):
+            exc_msg = "Only on-the-fly Markov chains can be updated"
+            raise TypeError(exc_msg)
+        return self._model.update(new_sentences)
+
+    def generate_response(self, amount: int = 1, seed_word: str | None = None) -> list[str]:
+        """Generate a response from the Markov chain.
+
+        Parameters
+        ----------
+        amount : int
+            The number of sentences to generate. By default one sentence is
+            generated.
+        seed_word : str | None
+            An optional seed word to include in the generated response.
+
+        Returns
+        -------
+        str
+            The generated response.
+
+        """
+        return [self._model.generate(seed_word) for _ in range(amount)]
