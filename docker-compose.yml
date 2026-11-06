@@ -9,6 +9,7 @@ services:
       - .env
     environment:
       - DEBUG=${DEBUG:-false}
+      - MARKOV_ON_THE_FLY=${MARKOV_ON_THE_FLY:-false}
     volumes:
       - .:/bot
       - ~/.ssh:/home/slashbot/.ssh:ro

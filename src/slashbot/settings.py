@@ -451,7 +451,7 @@ class MarkovSettings(BaseModel):
     enable_pregen_sentences: bool
     num_pregen_sentences: int
     pregenerate_limit: int
-    current_chain_location: Path = Path("data/markov/chain.pickle")
+    current_chain_location: Path = Path("data/markov/chain-2.pickle")
 
 
 class KeyStore(BaseModel):

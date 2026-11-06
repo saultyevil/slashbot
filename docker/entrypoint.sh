@@ -24,12 +24,17 @@ fi
 # Tell uv where to create a venv, then sync the packages and run the bot
 export UV_PROJECT_ENVIRONMENT=/venv
 uv sync --link-mode=copy --no-dev
+args=()
 case "${DEBUG:-}" in
   1|true|yes|on)
     echo "Launching Slashbot in debug mode"
-    exec uv run slashbot --debug
-    ;;
-  *)
-    exec uv run slashbot
+    args+=(--debug)
     ;;
 esac
+case "${MARKOV_ON_THE_FLY:-}" in
+  1|true|yes|on)
+    echo "Using on-the-fly Markov generation"
+    args+=(--on-the-fly-markov)
+    ;;
+esac
+exec uv run slashbot "${args[@]}"
