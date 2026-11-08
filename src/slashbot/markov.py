@@ -33,7 +33,6 @@ def clean(text: str) -> str:
         learned, i.e. it is empty, looks like a command, or contains a mention.
 
     """
-    text = " ".join(text.split())
     if not text or text[0] in string.punctuation or "@" in text:
         return ""
     return text
@@ -53,10 +52,7 @@ def prepare_training_data(input_data: list[str]) -> str:
         The cleaned up text ready for training.
 
     """
-    # each message is treated as its own sentence, so terminate it if needed
-    return " ".join(
-        cleaned if cleaned[-1] in ".!?" else f"{cleaned}." for sentence in input_data if (cleaned := clean(sentence))
-    )
+    return "\n".join([cleaned for sentence in input_data if (cleaned := clean(sentence))])
 
 
 def train_chain(input_data: list[str], *, state_size: int = 2) -> markovify.Chain | None:
@@ -78,7 +74,7 @@ def train_chain(input_data: list[str], *, state_size: int = 2) -> markovify.Chai
     training_data = prepare_training_data(input_data)
     if not training_data:
         return None
-    return markovify.Text(training_data, state_size=state_size).chain
+    return markovify.NewlineText(training_data, state_size=state_size).chain
 
 
 def save_chain(chain: markovify.Chain, output_file: Path) -> None:
