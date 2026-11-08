@@ -23,12 +23,12 @@ class ClaudeClient(AbstractClient):
 
     ## class variables
 
-    VISION_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
+    VISION_MODELS = ("claude-haiku-4-5", "claude-haiku-5-5", "claude-sonnet-5", "claude-sonnet-5-5")
     SEARCH_MODELS = ()
     AUDIO_MODELS = ()
     VIDEO_MODELS = ()
 
-    SUPPORTED_MODELS = ("claude-haiku-4-5", "claude-sonnet-5")
+    SUPPORTED_MODELS = VISION_MODELS
 
     ## magic methods
 
