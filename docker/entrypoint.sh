@@ -35,6 +35,7 @@ case "${MARKOV_ON_THE_FLY:-}" in
   1|true|yes|on)
     echo "Using on-the-fly Markov generation"
     args+=(--on-the-fly-markov)
+    args+=(--enable-markov-cache)
     ;;
 esac
 exec uv run slashbot "${args[@]}"
