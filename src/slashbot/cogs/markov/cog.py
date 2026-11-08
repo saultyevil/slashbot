@@ -96,9 +96,10 @@ class Markov(CustomCog):
         match = SEED_WORD_PATTERN.match(message.content.strip())
         if not match or self.markov_generator is None:
             return
-        sentences = await asyncio.to_thread(self.generate_sentences, match.group(1), 1)
-        if sentences:
-            await message.channel.send(sentences[0])
+        async with message.channel.typing():
+            sentences = await asyncio.to_thread(self.generate_sentences, match.group(1), 1)
+            if sentences:
+                await message.channel.send(sentences[0])
 
     @commands.Cog.listener("on_message")
     async def respond_randomly(self, message: disnake.Message) -> None:
@@ -117,9 +118,10 @@ class Markov(CustomCog):
             return
         if random.random() >= BotSettings.cogs.markov.random_response_chance:  # noqa: S311
             return
-        sentences = await asyncio.to_thread(self.generate_sentences, None, 1)
-        if sentences:
-            await message.channel.send(sentences[0])
+        async with message.channel.typing():
+            sentences = await asyncio.to_thread(self.generate_sentences, None, 1)
+            if sentences:
+                await message.channel.send(sentences[0])
 
     @commands.Cog.listener("on_raw_message_delete")
     async def remove_message_from_markov_training_sample(self, payload: disnake.RawMessageDeleteEvent) -> None:
