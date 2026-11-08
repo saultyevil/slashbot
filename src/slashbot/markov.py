@@ -191,6 +191,8 @@ class OnTheFly(Logger):
         with markov_data.open("rb") as file_in:
             self._model.chain = pickle.load(file_in)  # noqa: S301
 
+        self._model = self._model.compile()
+
     def replace_chain(self, chain: markovify.Chain) -> None:
         """Replace the chain of the model in-place.
 
@@ -201,6 +203,7 @@ class OnTheFly(Logger):
 
         """
         self._model.chain = chain
+        self._model = self._model.compile()
 
     def update(self, new_sentences: list[str]) -> int:
         """Update the chain with new sentences and save it to disk.
