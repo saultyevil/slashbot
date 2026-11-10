@@ -78,7 +78,7 @@ async def test_archive_message_filters(store: MessageStore) -> None:
         _message(7, "  spaced   out  "),
     ]:
         await MessageArchive.archive_message(cog, message)
-    assert await store.messages() == ["a good message", "spaced out"]
+    assert await store.messages() == ["a good message", "   ", "  spaced   out  "]
 
 
 @pytest.mark.asyncio

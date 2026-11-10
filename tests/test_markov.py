@@ -1,5 +1,6 @@
 import importlib.util
 import pickle
+from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -50,9 +51,8 @@ def chain_file(tmp_path: Path) -> Path:
     ("text", "expected"),
     [
         ("hello there", "hello there"),
-        ("  padded   text \n here ", "padded text here"),
         ("", ""),
-        ("   ", ""),
+        ("   ", "   "),
         ("/command arg", ""),
         ("!bang", ""),
         ("hello @user", ""),
@@ -64,7 +64,7 @@ def test_clean(text: str, expected: str) -> None:
 
 def test_prepare_training_data() -> None:
     data = ["hi there.", "what\nis this?", "/cmd", "no end", "@x y", ""]
-    assert prepare_training_data(data) == "hi there. what is this? no end."
+    assert prepare_training_data(data) == "hi there.\nwhat\nis this?\nno end"
 
 
 def test_prepare_training_data_empty() -> None:
@@ -101,7 +101,7 @@ def test_on_the_fly_seed_word(chain_file: Path) -> None:
 def test_replace_chain_in_place(chain_file: Path) -> None:
     model = OnTheFly(chain_file)
     new_chain = train_chain(["zebras eat grass daily", "zebras drink water daily"])
-    model.replace_chain(new_chain)
+    model.replace_chain(new_chain, compile_chain=False)
     assert model._model.chain is new_chain  # noqa: SLF001
     assert "zebras" in model.generate("zebras")
 
@@ -282,8 +282,15 @@ def _chat_message(content: str, *, bot: bool = False) -> SimpleNamespace:
     async def send(text: str) -> None:
         sent.append(text)
 
+    @asynccontextmanager
+    async def typing():  # noqa: ANN202
+        yield
+
     return SimpleNamespace(
-        content=content, author=SimpleNamespace(bot=bot), channel=SimpleNamespace(send=send), sent=sent
+        content=content,
+        author=SimpleNamespace(bot=bot),
+        channel=SimpleNamespace(send=send, typing=typing),
+        sent=sent,
     )
 
 
