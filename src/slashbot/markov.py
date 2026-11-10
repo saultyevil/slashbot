@@ -3,6 +3,7 @@
 This module contains a class for text generation using a trained Markov Chain.
 """
 
+import copy
 import json
 import pickle
 import random
@@ -191,19 +192,25 @@ class OnTheFly(Logger):
         with markov_data.open("rb") as file_in:
             self._model.chain = pickle.load(file_in)  # noqa: S301
 
+        self._uncompiled_chain = copy.deepcopy(self._model.chain)
         self._model = self._model.compile()
 
-    def replace_chain(self, chain: markovify.Chain) -> None:
+    def replace_chain(self, chain: markovify.Chain, *, compile_chain: bool = True) -> None:
         """Replace the chain of the model in-place.
 
         Parameters
         ----------
         chain : markovify.Chain
             The new chain to use for sentence generation.
+        compile_chain : bool
+            Wheter to compile the chain for improved generation speeds. Default
+            is True.
 
         """
         self._model.chain = chain
-        self._model = self._model.compile()
+        if compile_chain:
+            self._uncompiled_chain = copy.deepcopy(self._model.chain)
+            self._model = self._model.compile()
 
     def update(self, new_sentences: list[str]) -> int:
         """Update the chain with new sentences and save it to disk.
@@ -230,7 +237,7 @@ class OnTheFly(Logger):
             return 0
 
         shutil.copy2(self._markov_data, self._markov_data.with_name(self._markov_data.name + ".bak"))
-        combined = markovify.combine([self._model.chain, new_chain])
+        combined = markovify.combine([self._uncompiled_chain, new_chain])
         save_chain(combined, self._markov_data)
         self.replace_chain(combined)
         self.log_info("Markov chain %s updated with %d new sentences", self._markov_data, len(usable))

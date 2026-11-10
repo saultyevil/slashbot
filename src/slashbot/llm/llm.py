@@ -4,7 +4,7 @@ from typing import Any
 
 from slashbot.logger import Logger
 
-from .clients import AbstractClient, ClaudeClient
+from .clients import AbstractClient, ClaudeClient, GeminiClient
 from .models import LLMGenerationFailureError, LLMInput, LLMResponse, TextInput
 
 
@@ -20,7 +20,7 @@ class LLM(Logger):
 
     """
 
-    SUPPORTED_MODELS = ClaudeClient.SUPPORTED_MODELS
+    SUPPORTED_MODELS = ClaudeClient.SUPPORTED_MODELS + GeminiClient.SUPPORTED_MODELS
 
     def __init__(self, model: str, system_prompt: str | None = None, **kwargs: Any) -> None:
         """Initialise an LLM for the given model."""
@@ -33,6 +33,8 @@ class LLM(Logger):
 
         if model in ClaudeClient.SUPPORTED_MODELS:
             self._client: AbstractClient = ClaudeClient(**kwargs)
+        elif model in GeminiClient.SUPPORTED_MODELS:
+            self._client = GeminiClient(**kwargs)
         else:
             error_message = f"Unknown model {model}. Supported models: {self.SUPPORTED_MODELS}"
             raise ValueError(error_message)

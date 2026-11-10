@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import re
 import time
 from pathlib import Path
 from textwrap import shorten
@@ -18,6 +19,11 @@ from slashbot.settings import BotSettings
 
 from .channel import Channel, Channels
 from .chat import Chats
+
+YOUTUBE_LINK_RE = re.compile(
+    r"https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?[^\s<>]*v=|shorts/|live/)|youtu\.be/)[\w-]{11}[^\s<>]*",
+    re.IGNORECASE,
+)
 
 _PROMPTS_LIST = [load_prompt(path) for path in Path("data/prompts").glob("*.yaml") if not str(path).startswith("_")]
 AVAILABLE_PROMPTS = {prompt.name.capitalize(): prompt.path for prompt in _PROMPTS_LIST}
@@ -270,10 +276,10 @@ class ChatBot(CustomCog):
         return images
 
     async def _get_videos_in_message(self, message: disnake.Message) -> list[VideoInput]:
-        """Extract YouTube video embeds from a Discord message.
+        """Extract YouTube videos from video embeds and links in a Discord message.
 
-        Only embedded videos are considered; raw video file attachments are
-        excluded to avoid the cost of downloading and encoding them.
+        Raw video file attachments are excluded to avoid the cost of
+        downloading and encoding them.
 
         Parameters
         ----------
@@ -287,8 +293,9 @@ class ChatBot(CustomCog):
 
         """
         urls = [e.url for e in message.embeds if e.type == "video" and e.url]
+        urls.extend(YOUTUBE_LINK_RE.findall(message.content))
 
-        return [VideoInput(url) for url in set(urls)]
+        return [VideoInput(url) for url in dict.fromkeys(urls)]
 
     # Commands -----------------------------------------------------------------
 
