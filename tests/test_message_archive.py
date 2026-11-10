@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -6,6 +7,7 @@ import pytest_asyncio
 
 from slashbot.cogs.message_archive.cog import MessageArchive, MessageStore
 from slashbot.markov import train_chain
+from slashbot.settings import BotSettings
 
 
 @pytest_asyncio.fixture
@@ -17,14 +19,98 @@ async def store(tmp_path: Path) -> MessageStore:
     await store.close()
 
 
-def _message(msg_id: int, content: str, *, bot: bool = False, guild: bool = True) -> SimpleNamespace:
+def _message(
+    msg_id: int, content: str, *, bot: bool = False, guild: bool = True, author_id: int = 1
+) -> SimpleNamespace:
     return SimpleNamespace(
-        id=msg_id, clean_content=content, author=SimpleNamespace(bot=bot), guild=object() if guild else None
+        id=msg_id,
+        clean_content=content,
+        author=SimpleNamespace(bot=bot, id=author_id),
+        channel=SimpleNamespace(id=1),
+        guild=object() if guild else None,
     )
 
 
 def _cog(store: MessageStore) -> SimpleNamespace:
     return SimpleNamespace(store=store, _should_archive=MessageArchive._should_archive)  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_group_consecutive_messages(store: MessageStore) -> None:
+    """Adjacent messages from the same author are joined without changing case."""
+    await store.upsert(1, "hello", author_id=10, channel_id=100)
+    await store.upsert(2, "what is up guys?", author_id=10, channel_id=100)
+    await store.upsert(3, "how is everyone doing?", author_id=10, channel_id=100)
+    await store.upsert(4, "Good thanks!", author_id=20, channel_id=100)
+    await store.upsert(5, "another channel", author_id=10, channel_id=200)
+    assert await store.grouped_messages() == [
+        "hello. what is up guys? how is everyone doing?",
+        "Good thanks!",
+        "another channel",
+    ]
+    assert await store.count() == 5  # noqa: PLR2004
+
+
+@pytest.mark.asyncio
+async def test_groups_handle_out_of_order_messages_edits_and_deletions(store: MessageStore) -> None:
+    """Historical inserts and later edits keep groups and individual messages consistent."""
+    await store.upsert(4, "again", author_id=10, channel_id=100)
+    await store.upsert(2, "reply", author_id=20, channel_id=100)
+    await store.upsert(1, "hello", author_id=10, channel_id=100)
+    await store.upsert(3, "what?", author_id=10, channel_id=100)
+    assert await store.grouped_messages() == ["hello", "reply", "what? again"]
+
+    await store.update_if_present(3, "Fine!")
+    assert await store.grouped_messages() == ["hello", "reply", "Fine! again"]
+    await store.delete(2)
+    assert await store.grouped_messages() == ["hello. Fine! again"]
+    await store.delete(3)
+    assert await store.grouped_messages() == ["hello. again"]
+    await store.upsert(2, "back", author_id=20, channel_id=100)
+    assert await store.grouped_messages() == ["hello", "back", "again"]
+
+
+@pytest.mark.asyncio
+async def test_filtered_messages_are_boundaries(store: MessageStore) -> None:
+    """Messages omitted from the original archive still interrupt a group."""
+    cog = _cog(store)
+    for message in [
+        _message(1, "one"),
+        _message(3, "two"),
+        _message(2, "/command"),
+        _message(4, "bot", bot=True),
+        _message(5, "three"),
+    ]:
+        await MessageArchive.archive_message(cog, message)
+    assert await store.messages() == ["one", "two", "three"]
+    assert await store.grouped_messages() == ["one", "two", "three"]
+
+    await MessageArchive.remove_deleted_message(cog, SimpleNamespace(message_id=2))
+    assert await store.grouped_messages() == ["one. two", "three"]
+    await MessageArchive.update_edited_message(cog, _message(3, "two"), _message(3, "/changed"))
+    assert await store.grouped_messages() == ["one", "three"]
+    await MessageArchive.update_edited_message(cog, _message(3, "/changed"), _message(3, "restored"))
+    assert await store.grouped_messages() == ["one. restored", "three"]
+
+
+@pytest.mark.asyncio
+async def test_groups_persist_and_channel_order_is_independent(tmp_path: Path) -> None:
+    """Interleaved channels are grouped independently and survive reopening."""
+    path = tmp_path / "messages.db"
+    first = MessageStore(path)
+    await first.init()
+    await first.upsert(1, "first", author_id=10, channel_id=100)
+    await first.upsert(2, "elsewhere", author_id=20, channel_id=200)
+    await first.upsert(3, "second", author_id=10, channel_id=100)
+    await first.mark_grouping_backfilled(100)
+    await first.close()
+
+    second = MessageStore(path)
+    await second.init()
+    assert await second.grouped_messages() == ["first. second", "elsewhere"]
+    assert await second.grouping_backfilled(100)
+    assert not await second.grouping_backfilled(200)
+    await second.close()
 
 
 @pytest.mark.asyncio
@@ -120,7 +206,7 @@ class _Channel:
         self._messages = messages
         self.seen = 0
 
-    async def history(self, limit: int):  # noqa: ANN201
+    async def history(self, limit: int | None) -> AsyncIterator[SimpleNamespace]:
         for message in self._messages[:limit]:
             self.seen += 1
             yield message
@@ -171,10 +257,49 @@ async def test_full_backfill_ignores_limit_and_archived(store: MessageStore) -> 
 
 
 @pytest.mark.asyncio
+async def test_full_backfill_groups_existing_archive(store: MessageStore) -> None:
+    """A historical scan adds grouping information to pre-existing messages."""
+    await store.upsert(1, "hello")
+    await store.upsert(2, "what is up?")
+    cog = _cog(store)
+    channel = _Channel([_message(3, "fine", author_id=2), _message(2, "what is up?"), _message(1, "hello")])
+    await MessageArchive._backfill_channel(cog, channel, None, stop_at_archived=False)  # noqa: SLF001
+    assert await store.grouped_messages() == ["hello. what is up?", "fine"]
+    assert await store.messages() == ["hello", "what is up?", "fine"]
+
+
+@pytest.mark.asyncio
+async def test_backfill_scans_existing_archive_once(store: MessageStore, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Existing archives get a full scan, then use the normal bounded catch-up."""
+    await store.upsert(1, "oldest")
+    channel = _Channel([_message(3, "newest"), _message(2, "middle"), _message(1, "oldest")])
+    channel.id = 1
+    channel.permissions_for = lambda _: SimpleNamespace(read_message_history=True)
+    guild = SimpleNamespace(text_channels=[channel], threads=[], me=object())
+    cog = SimpleNamespace(
+        store=store,
+        bot=SimpleNamespace(guilds=[guild]),
+        _should_archive=MessageArchive._should_archive,  # noqa: SLF001
+        log_info=lambda *_args: None,
+        log_exception=lambda *_args: None,
+    )
+    cog._backfill_channel = lambda *args, **kwargs: MessageArchive._backfill_channel(cog, *args, **kwargs)  # noqa: SLF001
+    monkeypatch.setattr(BotSettings.cogs.message_archive, "backfill_limit", 2)
+
+    await MessageArchive.backfill_archive.coro(cog)
+    assert channel.seen == 3  # noqa: PLR2004
+    assert await store.grouped_messages() == ["oldest. middle. newest"]
+    assert await store.grouping_backfilled(channel.id)
+
+    await MessageArchive.backfill_archive.coro(cog)
+    assert channel.seen == 4  # noqa: PLR2004
+
+
+@pytest.mark.asyncio
 async def test_generate_chain_script_from_archive(store: MessageStore, tmp_path: Path) -> None:
     """The training script can train from the message archive database."""
-    import importlib.util  # noqa: PLC0415
-    import pickle  # noqa: PLC0415
+    import importlib.util
+    import pickle
 
     for i, text in enumerate(["the cat sat on the mat", "the dog ate the bone", "the cat ate the bone today"]):
         await store.upsert(i, text)
@@ -187,7 +312,7 @@ async def test_generate_chain_script_from_archive(store: MessageStore, tmp_path:
 
     database = next((tmp_path / "nested").glob("messages.db"))
     # asyncio.run cannot be nested, so the script is run from a worker thread
-    import asyncio  # noqa: PLC0415
+    import asyncio
 
     assert len(await asyncio.to_thread(module.load_training_data, database)) == 3  # noqa: PLR2004
     with pytest.raises(FileNotFoundError):

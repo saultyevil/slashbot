@@ -111,9 +111,9 @@ class MessageArchiveCogSettings(BaseCogSettings):
         Path to the SQLite database which messages are archived to.
     backfill_limit : int
         The maximum number of messages to look back through, per channel, when
-        catching up on missed messages at launch. This is ignored, and the
-        entire history is read, when the archive is empty. A value of 0
-        disables the backfill entirely.
+        catching up on missed messages at launch. Each channel's entire
+        available history is read once to populate grouped messages. A value
+        of 0 disables the backfill entirely.
 
     """
 
