@@ -29,6 +29,7 @@ dependencies = [
     "google>=3.0.0",
     "aiosqlite>=0.22.1",
     "greenlet>=3.2.4",
+    "psutil>=7.2.2",
 ]
 
 [project.scripts]

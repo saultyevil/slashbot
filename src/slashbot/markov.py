@@ -7,6 +7,7 @@ import copy
 import json
 import pickle
 import random
+import re
 import shutil
 import string
 from enum import Enum, auto
@@ -39,13 +40,15 @@ def clean(text: str) -> str:
     return text
 
 
-def prepare_training_data(input_data: list[str]) -> str:
+def prepare_training_data(input_data: list[str], *, preserve_messages: bool = False) -> str:
     """Prepare the input data for training.
 
     Parameters
     ----------
     input_data : list[str]
         A list of strings to train the model on.
+    preserve_messages : bool
+        Treat each input string as one message, including embedded newlines.
 
     Returns
     -------
@@ -53,10 +56,15 @@ def prepare_training_data(input_data: list[str]) -> str:
         The cleaned up text ready for training.
 
     """
-    return "\n".join([cleaned for sentence in input_data if (cleaned := clean(sentence))])
+    cleaned = [text for sentence in input_data if (text := clean(sentence))]
+    if preserve_messages:
+        cleaned = [re.sub(r"\s*\n\s*", " ", text) for text in cleaned]
+    return "\n".join(cleaned)
 
 
-def train_chain(input_data: list[str], *, state_size: int = 2) -> markovify.Chain | None:
+def train_chain(
+    input_data: list[str], *, state_size: int = 2, preserve_messages: bool = False
+) -> markovify.Chain | None:
     """Train a new Markov chain.
 
     Parameters
@@ -65,6 +73,8 @@ def train_chain(input_data: list[str], *, state_size: int = 2) -> markovify.Chai
         The sentences to train the chain on.
     state_size : int
         The state size of the chain. By default, 2.
+    preserve_messages : bool
+        Treat each input string as one message, including embedded newlines.
 
     Returns
     -------
@@ -72,7 +82,7 @@ def train_chain(input_data: list[str], *, state_size: int = 2) -> markovify.Chai
         The trained chain, or None if there was no usable training data.
 
     """
-    training_data = prepare_training_data(input_data)
+    training_data = prepare_training_data(input_data, preserve_messages=preserve_messages)
     if not training_data:
         return None
     return markovify.NewlineText(training_data, state_size=state_size).chain
@@ -243,6 +253,31 @@ class OnTheFly(Logger):
         self.log_info("Markov chain %s updated with %d new sentences", self._markov_data, len(usable))
         return len(usable)
 
+    def rebuild_grouped(self, messages: list[str]) -> int:
+        """Rebuild the grouped-message chain from the current archive."""
+        usable = [message for message in messages if clean(message)]
+        chain = train_chain(usable, state_size=self._state_size, preserve_messages=True)
+        if chain is None:
+            self.log_info("No grouped messages to train the chain with")
+            return 0
+        output_file = self._markov_data.with_name(f"{self._markov_data.stem}_grouped{self._markov_data.suffix}")
+        save_chain(chain, output_file)
+        self.log_info("Grouped Markov chain %s rebuilt with %d messages", output_file, len(usable))
+        return len(usable)
+
+    def rebuild(self, messages: list[str]) -> int:
+        """Rebuild the active chain from the current individual-message archive."""
+        usable = [message for message in messages if clean(message)]
+        chain = train_chain(usable, state_size=self._state_size)
+        if chain is None:
+            self.log_info("No archived messages to train the chain with")
+            return 0
+        shutil.copy2(self._markov_data, self._markov_data.with_name(self._markov_data.name + ".bak"))
+        save_chain(chain, self._markov_data)
+        self.replace_chain(chain)
+        self.log_info("Markov chain %s rebuilt with %d messages", self._markov_data, len(usable))
+        return len(usable)
+
     def generate(self, seed_word: str | None) -> str:
         """Generate a sentence, optionally containing a given seed word.
 
@@ -344,6 +379,20 @@ class MarkovTextGenerator(Logger):
             exc_msg = "Only on-the-fly Markov chains can be updated"
             raise TypeError(exc_msg)
         return self._model.update(new_sentences)
+
+    def rebuild_grouped_chain(self, messages: list[str]) -> int:
+        """Rebuild the grouped-message chain alongside the on-the-fly chain."""
+        if not isinstance(self._model, OnTheFly):
+            exc_msg = "Only on-the-fly Markov chains can be updated"
+            raise TypeError(exc_msg)
+        return self._model.rebuild_grouped(messages)
+
+    def rebuild_chain(self, messages: list[str]) -> int:
+        """Rebuild the on-the-fly chain from individual archived messages."""
+        if not isinstance(self._model, OnTheFly):
+            exc_msg = "Only on-the-fly Markov chains can be updated"
+            raise TypeError(exc_msg)
+        return self._model.rebuild(messages)
 
     def generate_response(self, amount: int = 1, seed_word: str | None = None) -> list[str]:
         """Generate a response from the Markov chain.

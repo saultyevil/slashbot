@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import random
 import re
+from typing import TYPE_CHECKING, cast
 
 import disnake
 from disnake.ext import commands, tasks
@@ -11,6 +12,9 @@ from slashbot.bot.custom_cog import CustomCog
 from slashbot.bot.custom_command import slash_command_with_cooldown
 from slashbot.markov import MarkovGeneratorType, MarkovTextGenerator
 from slashbot.settings import BotSettings
+
+if TYPE_CHECKING:
+    from slashbot.cogs.message_archive.cog import MessageArchive
 
 # Naive times are interpreted as UTC by disnake, so use the local timezone
 UPDATE_TIME = datetime.time(
@@ -191,19 +195,37 @@ class Markov(CustomCog):
 
     @tasks.loop(time=UPDATE_TIME)
     async def markov_chain_update_loop(self) -> None:
-        """Update the Markov chain with the recorded messages every day at 4 am."""
+        """Update the regular chain and rebuild the grouped chain daily."""
         if not BotSettings.markov.enable_markov_training or not can_train(self.markov_generator):
             return
 
-        sentences = list(self.markov_training_sample.values())
+        archive = cast("MessageArchive | None", self.bot.get_cog("MessageArchive"))
+        sample = self.markov_training_sample.copy()
+        sentences = list(sample.values())
         self.log_info("Updating Markov chain with %d training samples", len(sentences))
         try:
-            updated = await asyncio.to_thread(self.markov_generator.update_chain, sentences)
+            if archive is None:
+                updated = await asyncio.to_thread(self.markov_generator.update_chain, sentences)
+            else:
+                messages = await archive.store.messages()
+                updated = await asyncio.to_thread(self.markov_generator.rebuild_chain, messages)
         except Exception:
             self.log_exception("Failed to update the Markov chain")
-            return
-        self.markov_training_sample.clear()
-        self.log_info("Markov chain update complete with %d sentences", updated)
+        else:
+            if archive is None or updated:
+                for message_id, content in sample.items():
+                    if self.markov_training_sample.get(message_id) == content:
+                        self.markov_training_sample.pop(message_id)
+            self.log_info("Markov chain update complete with %d sentences", updated)
+
+        if archive is not None:
+            try:
+                grouped = await archive.store.grouped_messages()
+                count = await asyncio.to_thread(self.markov_generator.rebuild_grouped_chain, grouped)
+            except Exception:  # noqa: BLE001
+                self.log_exception("Failed to rebuild the grouped Markov chain")
+            else:
+                self.log_info("Grouped Markov chain update complete with %d messages", count)
 
     @markov_chain_update_loop.before_loop
     async def markov_chain_update_loop_before(self) -> None:

@@ -300,9 +300,10 @@ async def test_generate_chain_script_from_archive(store: MessageStore, tmp_path:
     """The training script can train from the message archive database."""
     import importlib.util
     import pickle
+    import shutil
 
     for i, text in enumerate(["the cat sat on the mat", "the dog ate the bone", "the cat ate the bone today"]):
-        await store.upsert(i, text)
+        await store.upsert(i, text, author_id=1, channel_id=1)
     await store.close()
 
     script = Path(__file__).parent / "../scripts/markov/generate_chain.py"
@@ -311,13 +312,40 @@ async def test_generate_chain_script_from_archive(store: MessageStore, tmp_path:
     spec.loader.exec_module(module)
 
     database = next((tmp_path / "nested").glob("messages.db"))
+    custom_database = tmp_path / "messages.archive"
+    shutil.copyfile(database, custom_database)
     # asyncio.run cannot be nested, so the script is run from a worker thread
     import asyncio
 
-    assert len(await asyncio.to_thread(module.load_training_data, database)) == 3  # noqa: PLR2004
+    messages, grouped_messages = await asyncio.to_thread(module.load_training_data, database)
+    assert len(messages) == 3  # noqa: PLR2004
+    assert grouped_messages == ["the cat sat on the mat. the dog ate the bone. the cat ate the bone today"]
     with pytest.raises(FileNotFoundError):
         await asyncio.to_thread(module.load_training_data, tmp_path / "missing.db")
 
-    await asyncio.to_thread(module.train, database, tmp_path / "out", state_size=1)
+    await asyncio.to_thread(module.train, custom_database, tmp_path / "out", state_size=1)
     with (tmp_path / "out" / "chain.pickle").open("rb") as f:
-        assert pickle.load(f).state_size == 1  # noqa: S301
+        regular_chain = pickle.load(f)  # noqa: S301
+    with (tmp_path / "out" / "chain_grouped.pickle").open("rb") as f:
+        grouped_chain = pickle.load(f)  # noqa: S301
+    assert regular_chain.state_size == grouped_chain.state_size == 1
+    assert "the" not in regular_chain.model[("mat",)]
+    assert grouped_chain.model[("mat.",)] == {"the": 1}
+
+
+@pytest.mark.asyncio
+async def test_generate_chain_script_requires_grouped_messages(store: MessageStore, tmp_path: Path) -> None:
+    """An incomplete archive cannot silently produce only the individual chain."""
+    import asyncio
+    import importlib.util
+
+    await store.upsert(1, "an individual message")
+    await store.close()
+    script = Path(__file__).parent / "../scripts/markov/generate_chain.py"
+    spec = importlib.util.spec_from_file_location("generate_chain", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    with pytest.raises(ValueError, match="grouped_messages"):
+        await asyncio.to_thread(module.train, tmp_path / "nested" / "messages.db", tmp_path / "out")
+    assert not (tmp_path / "out" / "chain.pickle").exists()

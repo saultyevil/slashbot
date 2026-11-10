@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.exc import DatabaseError
 
 from slashbot.cogs.markov.cog import UPDATE_TIME, Markov
 from slashbot.markov import (
@@ -69,6 +70,16 @@ def test_prepare_training_data() -> None:
 
 def test_prepare_training_data_empty() -> None:
     assert prepare_training_data(["", "/cmd"]) == ""
+
+
+def test_grouped_training_preserves_each_message() -> None:
+    """Keep embedded newlines and sentence boundaries inside each group."""
+    messages = ["hello there. what\nis up?", "different person here", "/ignored"]
+    assert prepare_training_data(messages, preserve_messages=True) == "hello there. what is up?\ndifferent person here"
+    chain = train_chain(messages, state_size=1, preserve_messages=True)
+    assert chain is not None
+    assert chain.model[("what",)] == {"is": 1}
+    assert chain.model[("there.",)] == {"what": 1}
 
 
 def test_train_chain_no_data() -> None:
@@ -143,16 +154,16 @@ def test_generator_update_chain_pregen_raises() -> None:
         gen.update_chain(["hello world"])
 
 
-def test_generate_chain_script(tmp_path: Path) -> None:
+def test_generate_chain_script_rejects_text_file(tmp_path: Path) -> None:
+    """The trainer accepts archive databases rather than text corpora."""
     corpus = tmp_path / "corpus.txt"
     corpus.write_text("\n".join(CORPUS))
     script = Path(__file__).parent / "../scripts/markov/generate_chain.py"
     spec = importlib.util.spec_from_file_location("generate_chain", script)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    module.train(corpus, tmp_path, state_size=1)
-    with (tmp_path / "chain.pickle").open("rb") as f:
-        assert pickle.load(f).state_size == 1  # noqa: S301
+    with pytest.raises(DatabaseError):
+        module.train(corpus, tmp_path, state_size=1)
 
 
 # Cog ------------------------------------------------------------------------
@@ -160,6 +171,7 @@ def test_generate_chain_script(tmp_path: Path) -> None:
 
 def _fake_cog(generator: MarkovTextGenerator | None) -> SimpleNamespace:
     return SimpleNamespace(
+        bot=SimpleNamespace(get_cog=lambda _name: None),
         markov_generator=generator,
         markov_training_sample={},
         log_info=lambda *_a, **_k: None,
@@ -203,6 +215,78 @@ async def test_cog_update_loop_trains_and_clears(chain_file: Path, training_enab
 
 
 @pytest.mark.asyncio
+async def test_cog_update_loop_rebuilds_grouped_chain(
+    chain_file: Path,
+    training_enabled: None,
+    tmp_path: Path,  # noqa: ARG001
+) -> None:
+    """Rebuild groups from the archive so deletions are reflected."""
+    from slashbot.cogs.message_archive.cog import MessageStore
+
+    store = MessageStore(tmp_path / "messages.db")
+    await store.init()
+    try:
+        await store.upsert(1, "zebras eat grass", author_id=1, channel_id=1)
+        await store.upsert(2, "zebras drink water", author_id=1, channel_id=1)
+        cog = _fake_cog(MarkovTextGenerator(chain_file))
+        cog.bot.get_cog = lambda _name: SimpleNamespace(store=store)
+        cog.markov_training_sample = {1: "zebras eat grass", 2: "zebras drink water"}
+        await Markov.markov_chain_update_loop.coro(cog)
+        grouped_file = chain_file.with_name("chain_grouped.pickle")
+        with grouped_file.open("rb") as file:
+            grouped = pickle.load(file)  # noqa: S301
+        assert grouped.model[("eat", "grass.")] == {"zebras": 1}
+        with chain_file.open("rb") as file:
+            regular = pickle.load(file)  # noqa: S301
+        assert ("eat", "grass.") not in regular.model
+
+        await store.delete(1)
+        await Markov.markov_chain_update_loop.coro(cog)
+        with grouped_file.open("rb") as file:
+            grouped = pickle.load(file)  # noqa: S301
+        assert ("eat", "grass.") not in grouped.model
+        with chain_file.open("rb") as file:
+            regular = pickle.load(file)  # noqa: S301
+        assert ("zebras", "eat") not in regular.model
+        assert ("zebras", "drink") in regular.model
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_grouped_training_failure_does_not_block_regular_training(
+    chain_file: Path,
+    training_enabled: None,
+    monkeypatch: pytest.MonkeyPatch,  # noqa: ARG001
+) -> None:
+    """A failure rebuilding the grouped chain does not discard regular training."""
+    generator = MarkovTextGenerator(chain_file)
+    cog = _fake_cog(generator)
+    cog.markov_training_sample = {1: "zebras eat grass daily"}
+
+    async def grouped_messages() -> list[str]:
+        return ["a grouped message"]
+
+    async def messages() -> list[str]:
+        return ["zebras eat grass daily"]
+
+    def fail(_messages: list[str]) -> int:
+        raise OSError("disk error")
+
+    monkeypatch.setattr(generator, "rebuild_grouped_chain", fail)
+    cog.bot.get_cog = lambda _name: SimpleNamespace(
+        store=SimpleNamespace(messages=messages, grouped_messages=grouped_messages)
+    )
+    errors = []
+    cog.log_exception = errors.append
+    await Markov.markov_chain_update_loop.coro(cog)
+    assert cog.markov_training_sample == {}
+    assert errors == ["Failed to rebuild the grouped Markov chain"]
+    with chain_file.open("rb") as file:
+        assert any("zebras" in state for state in pickle.load(file).model)  # noqa: S301
+
+
+@pytest.mark.asyncio
 async def test_cog_update_loop_failure_keeps_samples(training_enabled: None) -> None:  # noqa: ARG001
     gen = SimpleNamespace(
         type=MarkovGeneratorType.ON_THE_FLY, update_chain=lambda _s: (_ for _ in ()).throw(OSError("disk"))
@@ -211,6 +295,22 @@ async def test_cog_update_loop_failure_keeps_samples(training_enabled: None) -> 
     cog.markov_training_sample = {1: "hello world"}
     await Markov.markov_chain_update_loop.coro(cog)
     assert cog.markov_training_sample == {1: "hello world"}
+
+
+@pytest.mark.asyncio
+async def test_cog_update_loop_keeps_messages_received_during_training(training_enabled: None) -> None:  # noqa: ARG001
+    """Keep messages added or changed while training is in progress."""
+    cog = _fake_cog(None)
+    cog.markov_training_sample = {1: "old", 2: "unchanged"}
+
+    def update_chain(_sentences: list[str]) -> int:
+        cog.markov_training_sample[1] = "edited"
+        cog.markov_training_sample[3] = "new"
+        return 2
+
+    cog.markov_generator = SimpleNamespace(type=MarkovGeneratorType.ON_THE_FLY, update_chain=update_chain)
+    await Markov.markov_chain_update_loop.coro(cog)
+    assert cog.markov_training_sample == {1: "edited", 3: "new"}
 
 
 @pytest.mark.asyncio
